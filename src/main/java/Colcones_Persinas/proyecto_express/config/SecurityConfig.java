@@ -17,11 +17,15 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
             .csrf(csrf -> csrf.disable())
-            .authorizeHttpRequests(auth -> auth.anyRequest().authenticated())
-            .formLogin(login -> login.defaultSuccessUrl("/pedidos", true)); 
+            .authorizeHttpRequests(auth -> auth
+                .requestMatchers("/css/**", "/js/**", "/images/**").permitAll() // Permitir archivos estáticos
+                .anyRequest().authenticated()
+            )
+            .formLogin(login -> login
+                .defaultSuccessUrl("/taller/pedidos", true) // CORREGIDO: Ruta completa
+            ); 
         return http.build();
     }
-
     // 1. Definimos el codificador de contraseñas
     @Bean
     public PasswordEncoder passwordEncoder() {

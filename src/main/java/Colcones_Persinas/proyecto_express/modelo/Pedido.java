@@ -1,5 +1,7 @@
 package Colcones_Persinas.proyecto_express.modelo;
 
+import org.springframework.web.bind.annotation.GetMapping;
+
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -84,5 +86,11 @@ public class Pedido {
         } else {
             this.estado = "Pendiente";
         }
+    }
+
+    // Agrega este método dentro de tu clase PedidoControlador
+    @GetMapping("/")
+    public String inicio() {
+        return "redirect:/taller/pedidos";
     }
 }
