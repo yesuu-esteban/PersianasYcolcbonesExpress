@@ -36,8 +36,8 @@ public class SecurityConfig {
     @Bean
     public InMemoryUserDetailsManager userDetailsService() {
         UserDetails user = User.builder()
-            .username("persianas")
-            .password(passwordEncoder().encode("123")) // Aquí se codifica la clave
+            .username("jefe")
+            .password(passwordEncoder().encode("123456")) // Aquí se codifica la clave
             .roles("USER")
             .build();
         return new InMemoryUserDetailsManager(user);
