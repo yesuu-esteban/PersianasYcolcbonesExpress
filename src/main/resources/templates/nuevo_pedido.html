@@ -2,91 +2,68 @@
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <title>Nuevo Pedido Masivo</title>
+    <title>Taller de Producción</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .table-small { font-size: 0.85rem; }
+        .ficha-box { background-color: #f8f9fa; border-left: 4px solid #343a40; padding: 10px; }
+        .cliente-group-border { border-top: 4px solid #343a40 !important; }
+    </style>
 </head>
 <body class="bg-light p-4">
-    <div class="container col-md-10">
-        <h2 class="mb-4">➕ Registrar Pedido del Cliente</h2>
+    <div class="container-fluid">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2>📋 Gestión de Órdenes de Fabricación</h2>
+            <a href="/taller/nuevo" class="btn btn-primary">+ Registrar Nuevo Pedido</a>
+        </div>
         
-        <form th:action="@{/taller/guardar-lista}" method="post" class="bg-white p-4 shadow-sm border rounded">
-            
-            <div class="mb-4">
-                <label class="form-label fw-bold">Nombre del Cliente</label>
-                <input type="text" name="nombreCliente" class="form-control" required>
-            </div>
-            
-            <hr>
-            <h6>Detalle de Productos:</h6>
-            <div id="contenedor-productos">
-                <div class="row mb-2">
-                    <div class="col-md-3">
-                        <input type="text" name="descripciones" class="form-control" placeholder="Descripción" required>
-                    </div>
-                    <div class="col-md-1">
-                        <input type="number" name="cantidades" class="form-control" value="1" min="1" required>
-                    </div>
-                    <div class="col-md-2">
-                        <input type="number" step="0.01" name="anchos" class="form-control" placeholder="Ancho (m)" required>
-                    </div>
-                    <div class="col-md-2">
-                        <input type="number" step="0.01" name="alturas" class="form-control" placeholder="Alto (m)" required>
-                    </div>
-                    <div class="col-md-3">
-                        <select name="colores" class="form-select">
-                            <option th:each="c : ${listaColores}" th:value="${c}" th:text="${c}"></option>
-                        </select>
-                    </div>
-                    <div class="col-md-1"></div> </div>
-            </div>
-            
-            <button type="button" class="btn btn-info btn-sm mt-2" onclick="agregarFila()">+ Agregar otro producto</button>
-            
-            <div class="mt-4">
-                <button type="submit" class="btn btn-success w-100">Guardar todos los pedidos</button>
-                <a href="/taller/pedidos" class="btn btn-secondary w-100 mt-2">Cancelar</a>
-            </div>
-        </form>
+        <table class="table table-hover shadow-sm bg-white align-middle table-small">
+            <thead class="table-dark">
+                <tr>
+                    <th>Cliente</th>
+                    <th>Descripción</th>
+                    <th>Lado</th>
+                    <th>Medida Final</th>
+                    <th>Ficha Técnica</th>
+                    <th>Estado</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:each="p, iterStat : ${pedidos}" 
+                    th:classappend="${iterStat.index > 0 and p.nombreCliente != pedidos[iterStat.index-1].nombreCliente} ? 'cliente-group-border' : ''">
+                    
+                    <td class="fw-bold"><span th:if="${iterStat.index == 0 or p.nombreCliente != pedidos[iterStat.index-1].nombreCliente}" th:text="${p.nombreCliente}"></span></td>
+                    <td th:text="${p.descripcion}"></td>
+                    <td class="text-center"><span class="badge bg-info text-dark" th:text="${p.ladoControl}"></span></td>
+                    <td><strong th:text="${p.ancho + 'm x ' + p.altura + 'm'}"></strong></td>
+                    
+                    <td>
+                        <div class="ficha-box">
+                            <strong>Color:</strong> <span th:text="${p.colorTelaDeseado}"></span><br>
+                            <strong>Tela:</strong> <span th:text="${#numbers.formatDecimal(p.corteTelaAncho, 1, 3) + ' x ' + #numbers.formatDecimal(p.corteTelaAlto, 1, 3)}"></span>m<br>
+                            <strong>Tubo:</strong> <span th:text="${#numbers.formatDecimal(p.corteTuberia, 1, 3)}"></span>m<br>
+                            <strong>Sistema:</strong> <span th:text="${p.tipoControl}"></span>
+                        </div>
+                    </td>
+                    
+                    <td><span class="badge bg-secondary" th:text="${p.estado}"></span></td>
+                    
+                    <td>
+                        <form th:action="@{/taller/actualizar/{id}/tela(id=${p.id})}" method="post" class="d-inline">
+                            <button type="submit" th:classappend="${p.telaCortada} ? 'btn-info' : 'btn-outline-info'" class="btn btn-sm">Tela</button>
+                        </form>
+                        <form th:action="@{/taller/actualizar/{id}/perfileria(id=${p.id})}" method="post" class="d-inline">
+                            <button type="submit" th:classappend="${p.perfileriaCortada} ? 'btn-warning' : 'btn-outline-warning'" class="btn btn-sm">Perfiles</button>
+                        </form>
+                        <form th:action="@{/taller/actualizar/{id}/ensamblado(id=${p.id})}" method="post" class="d-inline">
+                            <button type="submit" th:classappend="${p.ensamblado} ? 'btn-success' : 'btn-outline-success'" class="btn btn-sm">Ensamblado</button>
+                        </form>
+                        <a th:href="@{/taller/imprimir/{id}(id=${p.id})}" target="_blank" class="btn btn-sm btn-dark ms-2">🖨️</a>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
     </div>
-
-    <script th:inline="javascript">
-        /* Pasamos la lista del servidor a JS */
-        const listaColores = /*[[${listaColores}]]*/ [];
-
-        function agregarFila() {
-            const contenedor = document.getElementById('contenedor-productos');
-            
-            // Generar opciones dinámicas para el select
-            let opcionesHTML = "";
-            listaColores.forEach(function(color) {
-                opcionesHTML += `<option value="${color}">${color}</option>`;
-            });
-
-            const fila = `
-                <div class="row mb-2">
-                    <div class="col-md-3">
-                        <input type="text" name="descripciones" class="form-control" placeholder="Descripción" required>
-                    </div>
-                    <div class="col-md-1">
-                        <input type="number" name="cantidades" class="form-control" value="1" min="1" required>
-                    </div>
-                    <div class="col-md-2">
-                        <input type="number" step="0.01" name="anchos" class="form-control" placeholder="Ancho (m)" required>
-                    </div>
-                    <div class="col-md-2">
-                        <input type="number" step="0.01" name="alturas" class="form-control" placeholder="Alto (m)" required>
-                    </div>
-                    <div class="col-md-3">
-                        <select name="colores" class="form-select">
-                            ${opcionesHTML}
-                        </select>
-                    </div>
-                    <div class="col-md-1">
-                        <button type="button" class="btn btn-danger btn-sm" onclick="this.parentElement.parentElement.remove()">X</button>
-                    </div>
-                </div>`;
-            contenedor.insertAdjacentHTML('beforeend', fila);
-        }
-    </script>
 </body>
 </html>

@@ -17,22 +17,18 @@ import java.util.List;
 public class PedidoControlador {
 
     @Autowired private PedidoRepository pedidoRepository;
+
     @GetMapping("/pedidos")
     public String verProduccion(Model model) {
-        // Es vital el Sort.by para que el agrupamiento visual no se mezcle
         model.addAttribute("pedidos", pedidoRepository.findAll(Sort.by("nombreCliente")));
         return "pedidos";
     }
+
     @GetMapping("/nuevo")
     public String mostrarFormularioNuevo(Model model) {
-        List<String> coloresDisponibles = Arrays.asList(
-            "Blanco","Gris","fawn", "Vainilla"
-        );
-        
+        List<String> coloresDisponibles = Arrays.asList("Blanco", "Gris", "fawn", "Vainilla");
         model.addAttribute("pedido", new Pedido());
         model.addAttribute("listaColores", coloresDisponibles);
-        
-        // Cambia esto:
         return "nuevo_pedido"; 
     }
 
@@ -43,20 +39,20 @@ public class PedidoControlador {
             @RequestParam("cantidades") List<Integer> cantidades,
             @RequestParam("anchos") List<Double> anchos,
             @RequestParam("alturas") List<Double> alturas,
-            @RequestParam("colores") List<String> colores) {
+            @RequestParam("colores") List<String> colores,
+            @RequestParam("controles") List<String> controles) { // <--- PARAMETRO AGREGADO
         
         for (int i = 0; i < descripciones.size(); i++) {
-            // Obtenemos la cantidad definida para esta fila
             int cantidad = cantidades.get(i);
             
             for (int j = 0; j < cantidad; j++) {
                 Pedido p = new Pedido();
                 p.setNombreCliente(nombreCliente);
-                // Agregamos el identificador de unidad para facilitar la gestión
                 p.setDescripcion(descripciones.get(i) + " (" + (j + 1) + "/" + cantidad + ")");
                 p.setAncho(anchos.get(i));
                 p.setAltura(alturas.get(i));
                 p.setColorTelaDeseado(colores.get(i));
+                p.setLadoControl(controles.get(i)); // <--- ASIGNACION AGREGADA
                 p.setEstado("Pendiente");
                 
                 p.calcularFichaTecnica();

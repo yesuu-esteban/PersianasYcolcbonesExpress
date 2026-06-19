@@ -9,6 +9,7 @@
         h3 { margin: 0 0 10px 0; border-bottom: 2px solid #333; font-size: 1.2rem; }
         p { margin: 5px 0; font-size: 1rem; }
         .destacado { font-weight: bold; color: #000; }
+        .lado-control { font-size: 1.2rem; font-weight: bold; color: #d9534f; } /* Estilo para resaltar el lado */
     </style>
 </head>
 <body onload="window.print()">
@@ -31,7 +32,8 @@
         <p><strong>Cliente:</strong> <span th:text="${pedido.nombreCliente}"></span></p>
         <p><strong>Descripción:</strong> <span th:text="${pedido.descripcion}"></span></p>
         <p><strong>Medida Final:</strong> <span th:text="${pedido.ancho + 'm x ' + pedido.altura + 'm'}"></span></p>
-        <p><strong>Control:</strong> <span th:text="${pedido.tipoControl}"></span></p>
+        <p><strong>Sistema:</strong> <span th:text="${pedido.tipoControl}"></span></p>
+        <p><strong>Lado Control:</strong> <span class="lado-control" th:text="${pedido.ladoControl}"></span></p>
         <p><strong>Cuerda:</strong> <span class="destacado" th:text="${pedido.medidaCuerda}"></span></p>
     </div>
 
