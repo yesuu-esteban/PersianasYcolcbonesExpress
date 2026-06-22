@@ -27,7 +27,10 @@ public class Pedido {
     private String rolloParaCortar;
     private String tuboRecomendado;
     
+    // --- IMPORTANTE: Definimos la columna explícitamente para persistencia ---
+    @Column(name = "usa_cabezal", nullable = false)
     private Boolean usaCabezal = false; 
+
     private Boolean telaCortada = false;
     private Boolean perfileriaCortada = false;
     private Boolean ensamblado = false;
@@ -64,7 +67,9 @@ public class Pedido {
     }
 
     // --- MÉTODOS DE CÁLCULO ---
-    @Transient
+    // NOTA: Estos métodos deben llamarse ANTES de hacer el pedidoRepository.save(p) 
+    // para que los valores de rolloParaCortar y tipoControl se guarden en la BD.
+    
     public void calcularFichaTecnica() {
         this.tipoControl = (this.ancho > 1.50) ? "Control A" : "Control B";
         this.tuboRecomendado = (this.ancho > 2.50 || this.altura > 2.50) ? "R24" : "R16";
@@ -76,7 +81,6 @@ public class Pedido {
         else this.rolloParaCortar = "Medida especial (Consultar)";
     }
 
-    @Transient
     public void calcularEstadoGeneral() {
         if (Boolean.TRUE.equals(ensamblado)) this.estado = "Listo para Despacho";
         else if (Boolean.TRUE.equals(telaCortada) && Boolean.TRUE.equals(perfileriaCortada)) this.estado = "Listo para Ensamblar";

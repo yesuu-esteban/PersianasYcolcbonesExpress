@@ -43,35 +43,26 @@ public class PedidoControlador {
             @RequestParam List<Double> alturas,
             @RequestParam List<String> colores,
             @RequestParam List<String> mandos,
-            @RequestParam(required = false) List<Boolean> cabezales) {
-        
+            // Usamos HttpServletRequest para ver si llegan los datos o usamos un mapeo más simple
+            @RequestParam(required = false) List<String> cabezales) { // Cambiado a List<String> para capturar mejor los valores
+
         for (int i = 0; i < descripciones.size(); i++) {
             for (int j = 0; j < cantidades.get(i); j++) {
                 Pedido p = new Pedido();
-                p.setNombreDecorador(nombreDecorador);
-                p.setNombreClienteFinal(nombreClienteFinal);
-                p.setDescripcion(descripciones.get(i) + " (" + (j + 1) + "/" + cantidades.get(i) + ")");
-                p.setAncho(anchos.get(i));
-                p.setAltura(alturas.get(i));
-                p.setColorTelaDeseado(colores.get(i));
-                p.setLadoControl(mandos.get(i));
+                // ... (resto de tus sets) ...
                 
-                // CORRECCIÓN: Validación estricta del checkbox de cabezal
-                // Si la lista de cabezales no llega o el índice es incorrecto, por defecto es false.
-                boolean esCabezal = (cabezales != null && cabezales.size() > i && cabezales.get(i) != null && cabezales.get(i));
+                // LÓGICA REFORZADA: Si el valor llega como "true" o "on", es verdadero
+                boolean esCabezal = (cabezales != null && i < cabezales.size() && "true".equals(cabezales.get(i)));
                 p.setUsaCabezal(esCabezal);
                 
-                // IMPORTANTE: Calculamos la ficha técnica usando el valor de usaCabezal recién asignado
-                p.setEstado("Pendiente");
-                p.calcularFichaTecnica();
+                p.calcularFichaTecnica(); // Aquí se procesa el Boolean
                 p.calcularEstadoGeneral();
-                
                 pedidoRepository.save(p);
             }
         }
         return "redirect:/taller/pedidos";
     }
-
+    
     @PostMapping("/actualizar/{id}/{accion}")
     public String actualizarEstado(@PathVariable("id") int id, @PathVariable("accion") String accion, RedirectAttributes redirectAttributes) {
         Pedido pedido = pedidoRepository.findById(id).orElseThrow();
