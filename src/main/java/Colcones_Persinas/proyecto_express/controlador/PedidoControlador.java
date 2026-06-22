@@ -34,7 +34,7 @@ public class PedidoControlador {
         return "nuevo_pedido"; 
     }
 
-    @PostMapping("/guardar-lista")
+   @PostMapping("/guardar-lista")
     public String guardarListaPedidos(
             @RequestParam String nombreDecorador, 
             @RequestParam String nombreClienteFinal,
@@ -44,7 +44,6 @@ public class PedidoControlador {
             @RequestParam List<Double> alturas,
             @RequestParam List<String> colores,
             @RequestParam List<String> mandos,
-            // Recibimos todos los campos, incluyendo los checkboxes indexados
             @RequestParam Map<String, String> allParams) {
         
         for (int i = 0; i < descripciones.size(); i++) {
@@ -58,15 +57,18 @@ public class PedidoControlador {
                 p.setColorTelaDeseado(colores.get(i));
                 p.setLadoControl(mandos.get(i));
                 
-                // CAPTURA SEGURA: Buscamos el checkbox por índice dinámico
+                // 1. ASIGNAR VALOR PRIMERO
                 String valorCabezal = allParams.get("cabezales[" + i + "]");
-                p.setUsaCabezal("true".equals(valorCabezal));
+                boolean esCabezal = "true".equals(valorCabezal);
+                p.setUsaCabezal(esCabezal);
                 
-                // Procesamiento obligatorio antes de guardar
+                // 2. EJECUTAR LÓGICA DE CÁLCULO
+                // Ahora, dentro de estas funciones, el if(this.usaCabezal) funcionará correctamente
                 p.setEstado("Pendiente");
                 p.calcularFichaTecnica();
                 p.calcularEstadoGeneral();
                 
+                // 3. GUARDAR EN BD
                 pedidoRepository.save(p);
             }
         }
