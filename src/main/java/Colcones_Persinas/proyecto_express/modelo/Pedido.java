@@ -32,32 +32,30 @@ public class Pedido {
     private Boolean perfileriaCortada = false;
     private Boolean ensamblado = false;
 
-    // --- FÓRMULAS DE CORTE ACTUALIZADAS ---
+    // --- FÓRMULAS DE CORTE ---
 
     @Transient 
     public double getCorteTelaAncho() { 
-        // Si tiene cabezal: quitar 3.5cm | Si no: quitar 3cm
-        double desc = Boolean.TRUE.equals(usaCabezal) ? 0.035 : 0.03;
+        // Con Cabezal: -3.5cm | Sin Cabezal: -3cm
+        double desc = Boolean.TRUE.equals(this.usaCabezal) ? 0.035 : 0.03;
         return Math.round((this.ancho - desc) * 1000.0) / 1000.0; 
     }
     
     @Transient 
     public double getCorteTelaAlto() { 
-        // Se aumenta 20cm en ambos casos
         return Math.round((this.altura + 0.20) * 1000.0) / 1000.0; 
     }
 
     @Transient 
     public double getCorteTuberia() { 
-        // Si tiene cabezal: quitar 3cm | Si no: quitar 2.5cm
-        double desc = Boolean.TRUE.equals(usaCabezal) ? 0.03 : 0.025;
+        // Con Cabezal: -3cm | Sin Cabezal: -2.5cm
+        double desc = Boolean.TRUE.equals(this.usaCabezal) ? 0.03 : 0.025;
         return Math.round((this.ancho - desc) * 1000.0) / 1000.0; 
     }
     
     @Transient
     public double getMedidaCabezal() {
-        // Cabezal: ancho original menos 0.5cm
-        return Boolean.TRUE.equals(usaCabezal) ? Math.round((this.ancho - 0.005) * 1000.0) / 1000.0 : 0.0;
+        return Boolean.TRUE.equals(this.usaCabezal) ? Math.round((this.ancho - 0.005) * 1000.0) / 1000.0 : 0.0;
     }
 
     @Transient

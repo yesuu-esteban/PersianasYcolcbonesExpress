@@ -20,7 +20,7 @@ public class PedidoControlador {
 
     @GetMapping("/pedidos")
     public String verProduccion(Model model) {
-        // Ordenamos por nombreDecorador
+        // Ordenamos por nombreDecorador para mantener la estructura visual
         model.addAttribute("pedidos", pedidoRepository.findAll(Sort.by("nombreDecorador")));
         return "pedidos";
     }
@@ -36,32 +36,36 @@ public class PedidoControlador {
     @PostMapping("/guardar-lista")
     public String guardarListaPedidos(
             @RequestParam String nombreDecorador, 
-            @RequestParam String nombreClienteFinal, // Nuevo parámetro
+            @RequestParam String nombreClienteFinal,
             @RequestParam List<String> descripciones,
             @RequestParam List<Integer> cantidades,
             @RequestParam List<Double> anchos,
             @RequestParam List<Double> alturas,
             @RequestParam List<String> colores,
-            @RequestParam List<String> mandos, // Este es el nombre que usaremos en la vista
+            @RequestParam List<String> mandos,
             @RequestParam(required = false) List<Boolean> cabezales) {
         
         for (int i = 0; i < descripciones.size(); i++) {
             for (int j = 0; j < cantidades.get(i); j++) {
                 Pedido p = new Pedido();
-                p.setNombreDecorador(nombreDecorador); // Nombre del Decorador/Distribuidor
-                p.setNombreClienteFinal(nombreClienteFinal); // Asignamos el valor
+                p.setNombreDecorador(nombreDecorador);
+                p.setNombreClienteFinal(nombreClienteFinal);
                 p.setDescripcion(descripciones.get(i) + " (" + (j + 1) + "/" + cantidades.get(i) + ")");
                 p.setAncho(anchos.get(i));
                 p.setAltura(alturas.get(i));
                 p.setColorTelaDeseado(colores.get(i));
-                p.setLadoControl(mandos.get(i)); // Aquí se asigna el Mando
+                p.setLadoControl(mandos.get(i));
                 
-                // Manejo seguro del checkbox
-                p.setUsaCabezal(cabezales != null && cabezales.size() > i && cabezales.get(i));
+                // CORRECCIÓN: Validación estricta del checkbox de cabezal
+                // Si la lista de cabezales no llega o el índice es incorrecto, por defecto es false.
+                boolean esCabezal = (cabezales != null && cabezales.size() > i && cabezales.get(i) != null && cabezales.get(i));
+                p.setUsaCabezal(esCabezal);
                 
+                // IMPORTANTE: Calculamos la ficha técnica usando el valor de usaCabezal recién asignado
                 p.setEstado("Pendiente");
                 p.calcularFichaTecnica();
                 p.calcularEstadoGeneral();
+                
                 pedidoRepository.save(p);
             }
         }
@@ -72,8 +76,12 @@ public class PedidoControlador {
     public String actualizarEstado(@PathVariable("id") int id, @PathVariable("accion") String accion, RedirectAttributes redirectAttributes) {
         Pedido pedido = pedidoRepository.findById(id).orElseThrow();
         switch(accion.toLowerCase()) {
-            case "tela": pedido.setTelaCortada(!pedido.getTelaCortada()); break;
-            case "perfileria": pedido.setPerfileriaCortada(!pedido.getPerfileriaCortada()); break;
+            case "tela": 
+                pedido.setTelaCortada(!pedido.getTelaCortada()); 
+                break;
+            case "perfileria": 
+                pedido.setPerfileriaCortada(!pedido.getPerfileriaCortada()); 
+                break;
             case "ensamblado":
                 if (Boolean.TRUE.equals(pedido.getTelaCortada()) && Boolean.TRUE.equals(pedido.getPerfileriaCortada())) {
                     pedido.setEnsamblado(!pedido.getEnsamblado());

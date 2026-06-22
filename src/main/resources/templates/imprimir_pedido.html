@@ -10,15 +10,13 @@
             padding: 15px; 
             margin-bottom: 15px; 
             width: 350px; 
-            word-wrap: break-word; 
-            overflow-wrap: break-word; 
             box-sizing: border-box; 
         }
         h3 { margin: 0 0 10px 0; border-bottom: 2px solid #333; font-size: 1.2rem; }
-        p { margin: 5px 0; font-size: 1rem; }
+        p { margin: 4px 0; font-size: 1rem; }
         .destacado { font-weight: bold; color: #000; }
         .lado-control { font-size: 1.2rem; font-weight: bold; color: #d9534f; }
-        .sistema-tipo { font-weight: bold; color: #333; text-transform: uppercase; }
+        .sistema-tipo { font-weight: bold; color: #000; text-transform: uppercase; }
     </style>
 </head>
 <body onload="window.print()">
@@ -43,7 +41,7 @@
         <p><strong>Cliente Final:</strong> <span th:text="${pedido.nombreClienteFinal}"></span></p>
         <p><strong>Descripción:</strong> <span th:text="${pedido.descripcion}"></span></p>
         <p><strong>Medida Final:</strong> <span th:text="${pedido.ancho + 'm x ' + pedido.altura + 'm'}"></span></p>
-        <p><strong>Tipo:</strong> <span class="sistema-tipo" th:text="${pedido.tipoSistema}"></span></p>
+        <p><strong>Sistema:</strong> <span class="sistema-tipo" th:text="${pedido.tipoSistema}"></span></p>
         <p><strong>Tipo de Control:</strong> <span th:text="${pedido.tipoControl}"></span></p>
         <p><strong>Mando:</strong> <span class="lado-control" th:text="${pedido.ladoControl}"></span></p>
         <p><strong>Cuerda:</strong> <span class="destacado" th:text="${pedido.medidaCuerda}"></span></p>
