@@ -7,33 +7,44 @@
 </head>
 <body class="bg-light p-4">
     <div class="container col-md-11">
-        <h2 class="mb-4">➕ Registrar Pedido del Cliente</h2>
+        <h2 class="mb-4">➕ Registrar Pedido</h2>
         
         <form th:action="@{/taller/guardar-lista}" method="post" class="bg-white p-4 shadow-sm border rounded">
             
-            <div class="mb-4">
-                <label class="form-label fw-bold">Nombre del Cliente</label>
-                <input type="text" name="nombreCliente" class="form-control" required>
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <label class="form-label fw-bold">Nombre del Distribuidor</label>
+                    <input type="text" name="nombreDecorador" class="form-control" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-bold">Nombre del Cliente Final</label>
+                    <input type="text" name="nombreClienteFinal" class="form-control" required>
+                </div>
             </div>
             
             <hr>
             <h6>Detalle de Productos:</h6>
             <div id="contenedor-productos">
-                <div class="row mb-2">
+                <div class="row mb-2 align-items-center">
                     <div class="col-md-3"><input type="text" name="descripciones" class="form-control" placeholder="Descripción" required></div>
                     <div class="col-md-1"><input type="number" name="cantidades" class="form-control" value="1" min="1" required></div>
-                    <div class="col-md-2"><input type="number" step="0.01" name="anchos" class="form-control" placeholder="Ancho (m)" required></div>
-                    <div class="col-md-2"><input type="number" step="0.01" name="alturas" class="form-control" placeholder="Alto (m)" required></div>
+                    <div class="col-md-1"><input type="number" step="0.01" name="anchos" class="form-control" placeholder="Ancho" required></div>
+                    <div class="col-md-1"><input type="number" step="0.01" name="alturas" class="form-control" placeholder="Alto" required></div>
                     <div class="col-md-2">
                         <select name="colores" class="form-select">
                             <option th:each="c : ${listaColores}" th:value="${c}" th:text="${c}"></option>
                         </select>
                     </div>
                     <div class="col-md-2">
-                        <select name="controles" class="form-select">
-                            <option value="Derecho">Control Derecho</option>
-                            <option value="Izquierdo">Control Izquierdo</option>
+                        <select name="mandos" class="form-select">
+                            <option value="Mando Derecho">Mando Derecho</option>
+                            <option value="Mando Izquierdo">Mando Izquierdo</option>
                         </select>
+                    </div>
+                    <div class="col-md-2 text-center">
+                        <label class="small fw-bold">Cabezal</label><br>
+                        <input type="hidden" name="cabezales" value="false">
+                        <input type="checkbox" name="cabezales" value="true" class="form-check-input">
                     </div>
                 </div>
             </div>
@@ -55,19 +66,23 @@
             let opcionesHTML = listaColores.map(c => `<option value="${c}">${c}</option>`).join("");
 
             const fila = `
-                <div class="row mb-2">
+                <div class="row mb-2 align-items-center">
                     <div class="col-md-3"><input type="text" name="descripciones" class="form-control" placeholder="Descripción" required></div>
                     <div class="col-md-1"><input type="number" name="cantidades" class="form-control" value="1" min="1" required></div>
-                    <div class="col-md-2"><input type="number" step="0.01" name="anchos" class="form-control" placeholder="Ancho (m)" required></div>
-                    <div class="col-md-2"><input type="number" step="0.01" name="alturas" class="form-control" placeholder="Alto (m)" required></div>
+                    <div class="col-md-1"><input type="number" step="0.01" name="anchos" class="form-control" placeholder="Ancho" required></div>
+                    <div class="col-md-1"><input type="number" step="0.01" name="alturas" class="form-control" placeholder="Alto" required></div>
                     <div class="col-md-2">
                         <select name="colores" class="form-select">${opcionesHTML}</select>
                     </div>
                     <div class="col-md-2">
-                        <select name="controles" class="form-select">
-                            <option value="Derecho">Control Derecho</option>
-                            <option value="Izquierdo">Control Izquierdo</option>
+                        <select name="mandos" class="form-select">
+                            <option value="Mando Derecho">Mando Derecho</option>
+                            <option value="Mando Izquierdo">Mando Izquierdo</option>
                         </select>
+                    </div>
+                    <div class="col-md-2 text-center">
+                        <input type="hidden" name="cabezales" value="false">
+                        <input type="checkbox" name="cabezales" value="true" class="form-check-input">
                     </div>
                     <div class="col-md-1">
                         <button type="button" class="btn btn-danger btn-sm" onclick="this.parentElement.parentElement.remove()">X</button>

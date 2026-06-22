@@ -11,7 +11,8 @@ public class Pedido {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private int id;
 
-    private String nombreCliente;
+    private String nombreDecorador;
+    private String nombreClienteFinal; 
     private String descripcion;
     private int cantidad;
     private double altura;
@@ -20,34 +21,40 @@ public class Pedido {
     
     private String estado;
     private String tipoControl; 
-    private String ladoControl; // <-- CAMPO QUE FALTABA
+    private String ladoControl;
     private String colorTelaDeseado;
 
     private String rolloParaCortar;
     private String tuboRecomendado;
+    
+    private Boolean usaCabezal = false; 
 
     private Boolean telaCortada = false;
     private Boolean perfileriaCortada = false;
     private Boolean ensamblado = false;
 
-    @Transient 
-    public double getCorteTelaAncho() { return Math.round((this.ancho - 0.03) * 1000.0) / 1000.0; }
-    
-    @Transient 
-    public double getCorteTelaAlto() { return Math.round((this.altura + 0.20) * 1000.0) / 1000.0; }
+    // --- FÓRMULAS DE CORTE ---
+    @Transient public double getCorteTelaAncho() { return Math.round((this.ancho - 0.035) * 1000.0) / 1000.0; }
+    @Transient public double getCorteTelaAlto() { return Math.round((this.altura + 0.20) * 1000.0) / 1000.0; }
+    @Transient public double getCorteTuberia() { return Math.round((this.ancho - 0.03) * 1000.0) / 1000.0; }
+    @Transient public double getMedidaCabezal() { return Boolean.TRUE.equals(usaCabezal) ? Math.round((this.ancho - 0.005) * 1000.0) / 1000.0 : 0.0; }
 
-    @Transient 
-    public double getCorteTuberia() { return Math.round((this.ancho - 0.025) * 1000.0) / 1000.0; }
-
+// En tu clase Pedido.java
+    public String getTipoSistema() {
+        // Si usaCabezal es TRUE, devuelve COBERLIG. Si es FALSE, devuelve BLACKOUT.
+        return (this.usaCabezal != null && this.usaCabezal) ? "COBERLIG (NORMAL)" : "BLACKOUT";
+    }
+    // --- LÓGICA DE NEGOCIO ---
     @Transient
     public void calcularFichaTecnica() {
         this.tipoControl = (this.ancho > 1.50) ? "Control A" : "Control B";
         this.tuboRecomendado = (this.ancho > 2.50 || this.altura > 2.50) ? "R24" : "R16";
         this.medidaCuerda = (this.altura <= 1.50) ? "3 metros" : "4 metros";
-        double ladoMenor = Math.min(this.ancho, this.altura);
-        if (ladoMenor <= 1.83) this.rolloParaCortar = "Rollo 1.83m";
-        else if (ladoMenor <= 2.50) this.rolloParaCortar = "Rollo 2.50m";
-        else if (ladoMenor <= 3.00) this.rolloParaCortar = "Rollo 3.00m";
+
+        double dimensionMayor = Math.max(this.ancho, this.altura);
+        if (dimensionMayor <= 1.83) this.rolloParaCortar = "Rollo 1.83m";
+        else if (dimensionMayor <= 2.50) this.rolloParaCortar = "Rollo 2.50m";
+        else if (dimensionMayor <= 3.00) this.rolloParaCortar = "Rollo 3.00m";
         else this.rolloParaCortar = "Medida especial (Consultar)";
     }
 

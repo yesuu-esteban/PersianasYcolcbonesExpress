@@ -20,7 +20,8 @@ public class PedidoControlador {
 
     @GetMapping("/pedidos")
     public String verProduccion(Model model) {
-        model.addAttribute("pedidos", pedidoRepository.findAll(Sort.by("nombreCliente")));
+        // Ordenamos por nombreDecorador
+        model.addAttribute("pedidos", pedidoRepository.findAll(Sort.by("nombreDecorador")));
         return "pedidos";
     }
 
@@ -34,27 +35,31 @@ public class PedidoControlador {
 
     @PostMapping("/guardar-lista")
     public String guardarListaPedidos(
-            @RequestParam String nombreCliente, 
-            @RequestParam("descripciones") List<String> descripciones,
-            @RequestParam("cantidades") List<Integer> cantidades,
-            @RequestParam("anchos") List<Double> anchos,
-            @RequestParam("alturas") List<Double> alturas,
-            @RequestParam("colores") List<String> colores,
-            @RequestParam("controles") List<String> controles) { // <--- PARAMETRO AGREGADO
+            @RequestParam String nombreDecorador, 
+            @RequestParam String nombreClienteFinal, // Nuevo parámetro
+            @RequestParam List<String> descripciones,
+            @RequestParam List<Integer> cantidades,
+            @RequestParam List<Double> anchos,
+            @RequestParam List<Double> alturas,
+            @RequestParam List<String> colores,
+            @RequestParam List<String> mandos, // Este es el nombre que usaremos en la vista
+            @RequestParam(required = false) List<Boolean> cabezales) {
         
         for (int i = 0; i < descripciones.size(); i++) {
-            int cantidad = cantidades.get(i);
-            
-            for (int j = 0; j < cantidad; j++) {
+            for (int j = 0; j < cantidades.get(i); j++) {
                 Pedido p = new Pedido();
-                p.setNombreCliente(nombreCliente);
-                p.setDescripcion(descripciones.get(i) + " (" + (j + 1) + "/" + cantidad + ")");
+                p.setNombreDecorador(nombreDecorador); // Nombre del Decorador/Distribuidor
+                p.setNombreClienteFinal(nombreClienteFinal); // Asignamos el valor
+                p.setDescripcion(descripciones.get(i) + " (" + (j + 1) + "/" + cantidades.get(i) + ")");
                 p.setAncho(anchos.get(i));
                 p.setAltura(alturas.get(i));
                 p.setColorTelaDeseado(colores.get(i));
-                p.setLadoControl(controles.get(i)); // <--- ASIGNACION AGREGADA
-                p.setEstado("Pendiente");
+                p.setLadoControl(mandos.get(i)); // Aquí se asigna el Mando
                 
+                // Manejo seguro del checkbox
+                p.setUsaCabezal(cabezales != null && cabezales.size() > i && cabezales.get(i));
+                
+                p.setEstado("Pendiente");
                 p.calcularFichaTecnica();
                 p.calcularEstadoGeneral();
                 pedidoRepository.save(p);
