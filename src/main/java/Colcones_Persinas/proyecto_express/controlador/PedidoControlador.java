@@ -11,16 +11,17 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 
 @Controller
 @RequestMapping("/taller")
 public class PedidoControlador {
 
-    @Autowired private PedidoRepository pedidoRepository;
+    @Autowired 
+    private PedidoRepository pedidoRepository;
 
     @GetMapping("/pedidos")
     public String verProduccion(Model model) {
-        // Ordenamos por nombreDecorador para mantener la estructura visual
         model.addAttribute("pedidos", pedidoRepository.findAll(Sort.by("nombreDecorador")));
         return "pedidos";
     }
@@ -43,26 +44,35 @@ public class PedidoControlador {
             @RequestParam List<Double> alturas,
             @RequestParam List<String> colores,
             @RequestParam List<String> mandos,
-            // Usamos HttpServletRequest para ver si llegan los datos o usamos un mapeo más simple
-            @RequestParam(required = false) List<String> cabezales) { // Cambiado a List<String> para capturar mejor los valores
-
+            // Recibimos todos los campos, incluyendo los checkboxes indexados
+            @RequestParam Map<String, String> allParams) {
+        
         for (int i = 0; i < descripciones.size(); i++) {
             for (int j = 0; j < cantidades.get(i); j++) {
                 Pedido p = new Pedido();
-                // ... (resto de tus sets) ...
+                p.setNombreDecorador(nombreDecorador);
+                p.setNombreClienteFinal(nombreClienteFinal);
+                p.setDescripcion(descripciones.get(i) + " (" + (j + 1) + "/" + cantidades.get(i) + ")");
+                p.setAncho(anchos.get(i));
+                p.setAltura(alturas.get(i));
+                p.setColorTelaDeseado(colores.get(i));
+                p.setLadoControl(mandos.get(i));
                 
-                // LÓGICA REFORZADA: Si el valor llega como "true" o "on", es verdadero
-                boolean esCabezal = (cabezales != null && i < cabezales.size() && "true".equals(cabezales.get(i)));
-                p.setUsaCabezal(esCabezal);
+                // CAPTURA SEGURA: Buscamos el checkbox por índice dinámico
+                String valorCabezal = allParams.get("cabezales[" + i + "]");
+                p.setUsaCabezal("true".equals(valorCabezal));
                 
-                p.calcularFichaTecnica(); // Aquí se procesa el Boolean
+                // Procesamiento obligatorio antes de guardar
+                p.setEstado("Pendiente");
+                p.calcularFichaTecnica();
                 p.calcularEstadoGeneral();
+                
                 pedidoRepository.save(p);
             }
         }
         return "redirect:/taller/pedidos";
     }
-    
+
     @PostMapping("/actualizar/{id}/{accion}")
     public String actualizarEstado(@PathVariable("id") int id, @PathVariable("accion") String accion, RedirectAttributes redirectAttributes) {
         Pedido pedido = pedidoRepository.findById(id).orElseThrow();
@@ -89,6 +99,8 @@ public class PedidoControlador {
     @GetMapping("/imprimir/{id}")
     public String imprimirPedido(@PathVariable("id") int id, Model model) {
         Pedido p = pedidoRepository.findById(id).orElseThrow();
+        // Aseguramos que los cálculos estén frescos antes de enviar a la vista
+        p.calcularFichaTecnica();
         model.addAttribute("pedido", p);
         return "imprimir_pedido";
     }

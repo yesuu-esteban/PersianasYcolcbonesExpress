@@ -27,7 +27,7 @@ public class Pedido {
     private String rolloParaCortar;
     private String tuboRecomendado;
     
-    // --- IMPORTANTE: Definimos la columna explícitamente para persistencia ---
+    // Persistencia forzada en base de datos
     @Column(name = "usa_cabezal", nullable = false)
     private Boolean usaCabezal = false; 
 
@@ -35,41 +35,7 @@ public class Pedido {
     private Boolean perfileriaCortada = false;
     private Boolean ensamblado = false;
 
-    // --- FÓRMULAS DE CORTE ---
-
-    @Transient 
-    public double getCorteTelaAncho() { 
-        // Con Cabezal: -3.5cm | Sin Cabezal: -3cm
-        double desc = Boolean.TRUE.equals(this.usaCabezal) ? 0.035 : 0.03;
-        return Math.round((this.ancho - desc) * 1000.0) / 1000.0; 
-    }
-    
-    @Transient 
-    public double getCorteTelaAlto() { 
-        return Math.round((this.altura + 0.20) * 1000.0) / 1000.0; 
-    }
-
-    @Transient 
-    public double getCorteTuberia() { 
-        // Con Cabezal: -3cm | Sin Cabezal: -2.5cm
-        double desc = Boolean.TRUE.equals(this.usaCabezal) ? 0.03 : 0.025;
-        return Math.round((this.ancho - desc) * 1000.0) / 1000.0; 
-    }
-    
-    @Transient
-    public double getMedidaCabezal() {
-        return Boolean.TRUE.equals(this.usaCabezal) ? Math.round((this.ancho - 0.005) * 1000.0) / 1000.0 : 0.0;
-    }
-
-    @Transient
-    public String getTipoSistema() {
-        return Boolean.TRUE.equals(this.usaCabezal) ? "COBERLIG (NORMAL)" : "BLACKOUT";
-    }
-
-    // --- MÉTODOS DE CÁLCULO ---
-    // NOTA: Estos métodos deben llamarse ANTES de hacer el pedidoRepository.save(p) 
-    // para que los valores de rolloParaCortar y tipoControl se guarden en la BD.
-    
+    // Métodos de cálculo persistidos (Sin @Transient para que se guarden en BD)
     public void calcularFichaTecnica() {
         this.tipoControl = (this.ancho > 1.50) ? "Control A" : "Control B";
         this.tuboRecomendado = (this.ancho > 2.50 || this.altura > 2.50) ? "R24" : "R16";
@@ -87,4 +53,11 @@ public class Pedido {
         else if (Boolean.TRUE.equals(telaCortada) || Boolean.TRUE.equals(perfileriaCortada)) this.estado = "En Proceso";
         else this.estado = "Pendiente";
     }
+
+    // Cálculos dinámicos
+    @Transient public double getCorteTelaAncho() { return Math.round((this.ancho - (Boolean.TRUE.equals(usaCabezal) ? 0.035 : 0.03)) * 1000.0) / 1000.0; }
+    @Transient public double getCorteTelaAlto() { return Math.round((this.altura + 0.20) * 1000.0) / 1000.0; }
+    @Transient public double getCorteTuberia() { return Math.round((this.ancho - (Boolean.TRUE.equals(usaCabezal) ? 0.03 : 0.025)) * 1000.0) / 1000.0; }
+    @Transient public double getMedidaCabezal() { return Boolean.TRUE.equals(usaCabezal) ? Math.round((this.ancho - 0.005) * 1000.0) / 1000.0 : 0.0; }
+    @Transient public String getTipoSistema() { return Boolean.TRUE.equals(this.usaCabezal) ? "COBERLIG (NORMAL)" : "BLACKOUT"; }
 }
