@@ -106,7 +106,6 @@ public class Pedido {
 
     /**
      * Medida del cabezal: solo aplica cuando usaCabezal = true.
-     * Es el mismo ancho menos un margen de 0.01 m a cada lado.
      */
     @Transient
     public double getMedidaCabezal() {
@@ -116,6 +115,24 @@ public class Pedido {
     @Transient
     public String getTipoSistema() {
         return Boolean.TRUE.equals(this.usaCabezal) ? "CON CABEZAL" : "SIN CABEZAL";
+    }
+
+    /**
+     * Determina el ancho de rollo de tela necesario según las medidas del pedido.
+     * Ambas medidas (ancho y altura) deben caber dentro del mismo rango de rollo;
+     * si cualquiera de las dos se sale del rango, se sube al siguiente rollo disponible.
+     * Si ambas superan 3.00 m, se asigna igualmente el rollo más grande disponible (3.00 m).
+     */
+    @Transient
+    public String getRolloTela() {
+        double mayor = Math.max(this.ancho, this.altura);
+        if (mayor <= 1.83) {
+            return "Rollo 1.83m";
+        } else if (mayor <= 2.50) {
+            return "Rollo 2.50m";
+        } else {
+            return "Rollo 3.00m";
+        }
     }
 
     // ─── LÓGICA DE NEGOCIO ─────────────────────────────────────────────────────
@@ -133,7 +150,8 @@ public class Pedido {
 
         // 4. Resumen de corte persistido (para la tabla de pedidos)
         this.rolloParaCortar = "Tela: " + getCorteTelaAncho() + " x " + getCorteTelaAlto()
-                             + " | Tubo: " + getCorteTuberia();
+                             + " | Tubo: " + getCorteTuberia()
+                             + " | " + getRolloTela();
     }
 
     public void calcularEstadoGeneral() {
