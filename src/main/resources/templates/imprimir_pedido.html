@@ -153,6 +153,13 @@
         <p><strong>Medida final:</strong> <span th:text="${#numbers.formatDecimal(pedido.ancho,1,2) + 'm  x  ' + #numbers.formatDecimal(pedido.altura,1,2) + 'm'}"></span></p>
         <p><strong>Mando:</strong> <span class="valor-mando" th:text="${pedido.ladoControl}"></span></p>
         <p><strong>Cuerda:</strong> <span th:text="${pedido.medidaCuerda}"></span></p>
+
+        <div class="fila-fecha">
+            <span>Creado: <span th:text="${pedido.fechaCreacionFormateada}"></span></span>
+            <span th:if="${pedido.fechaActualizacion != null and pedido.fechaCreacion != pedido.fechaActualizacion}">
+                &nbsp;|&nbsp; Actualizado: <span th:text="${pedido.fechaActualizacionFormateada}"></span>
+            </span>
+        </div>
     </div>
 
     <div class="no-print" style="margin-top:10px;">
