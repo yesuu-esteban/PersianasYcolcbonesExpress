@@ -23,6 +23,9 @@
             <h2>📋 Gestión de Órdenes de Fabricación</h2>
             <a href="/taller/nuevo" class="btn btn-primary">+ Registrar Nuevo Pedido</a>
         </div>
+
+        <div th:if="${mensaje}" class="alert alert-success" th:text="${mensaje}"></div>
+        <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
         
         <table class="table table-hover shadow-sm bg-white align-middle table-small">
             <thead class="table-dark">
@@ -94,6 +97,11 @@
                             <button type="submit" th:classappend="${p.ensamblado} ? 'btn-success' : 'btn-outline-success'" class="btn btn-sm">Ensamblado</button>
                         </form>
                         <a th:href="@{/taller/imprimir/{id}(id=${p.id})}" target="_blank" class="btn btn-sm btn-dark ms-2">🖨️</a>
+                        <a th:href="@{/taller/editar/{id}(id=${p.id})}" class="btn btn-sm btn-outline-primary ms-1">✏️</a>
+                        <form th:action="@{/taller/eliminar/{id}(id=${p.id})}" method="post" class="d-inline"
+                              onsubmit="return confirm('¿Seguro que deseas eliminar este pedido? Esta acción no se puede deshacer.');">
+                            <button type="submit" class="btn btn-sm btn-outline-danger ms-1">🗑️</button>
+                        </form>
                     </td>
                 </tr>
             </tbody>

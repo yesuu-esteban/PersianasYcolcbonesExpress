@@ -124,4 +124,59 @@ public class PedidoControlador {
         model.addAttribute("pedido", p);
         return "imprimir_pedido";
     }
+
+    // ─── EDITAR ────────────────────────────────────────────────────────────
+
+    @GetMapping("/editar/{id}")
+    public String mostrarFormularioEditar(@PathVariable("id") int id, Model model) {
+        Pedido pedido = pedidoRepository.findById(id).orElseThrow();
+        List<String> coloresDisponibles = Arrays.asList("Blanco", "Gris", "Fawn", "Vainilla");
+        model.addAttribute("pedido", pedido);
+        model.addAttribute("listaColores", coloresDisponibles);
+        return "editar_pedido";
+    }
+
+    @PostMapping("/editar/{id}")
+    public String guardarEdicion(
+            @PathVariable("id") int id,
+            @RequestParam String nombreDecorador,
+            @RequestParam String nombreClienteFinal,
+            @RequestParam String descripcion,
+            @RequestParam double ancho,
+            @RequestParam double altura,
+            @RequestParam String colorTelaDeseado,
+            @RequestParam String ladoControl,
+            @RequestParam(required = false, defaultValue = "false") boolean usaCabezal) {
+
+        Pedido pedido = pedidoRepository.findById(id).orElseThrow();
+
+        pedido.setNombreDecorador(nombreDecorador);
+        pedido.setNombreClienteFinal(nombreClienteFinal);
+        pedido.setDescripcion(descripcion);
+        pedido.setAncho(ancho);
+        pedido.setAltura(altura);
+        pedido.setColorTelaDeseado(colorTelaDeseado);
+        pedido.setLadoControl(ladoControl);
+        pedido.setUsaCabezal(usaCabezal);
+
+        // Recalcular ficha técnica con los nuevos valores
+        pedido.calcularFichaTecnica();
+        pedido.calcularEstadoGeneral();
+
+        pedidoRepository.save(pedido);
+        return "redirect:/taller/pedidos";
+    }
+
+    // ─── ELIMINAR ──────────────────────────────────────────────────────────
+
+    @PostMapping("/eliminar/{id}")
+    public String eliminarPedido(@PathVariable("id") int id, RedirectAttributes redirectAttributes) {
+        try {
+            pedidoRepository.deleteById(id);
+            redirectAttributes.addFlashAttribute("mensaje", "Pedido eliminado correctamente.");
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("error", "No se pudo eliminar el pedido: " + e.getMessage());
+        }
+        return "redirect:/taller/pedidos";
+    }
 }
