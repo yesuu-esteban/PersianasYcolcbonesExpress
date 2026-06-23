@@ -64,6 +64,13 @@
             display: inline-block;
             min-width: 120px;
         }
+        .fila-fecha {
+            margin-top: 8px;
+            padding-top: 6px;
+            border-top: 1px dashed #999;
+            font-size: 0.8rem;
+            color: #555;
+        }
         @media print {
             body { padding: 0; }
             .no-print { display: none; }
@@ -90,6 +97,13 @@
         <p><strong>Mando:</strong>   <span class="valor-mando" th:text="${pedido.ladoControl}"></span></p>
         <p><strong>Cuerda:</strong>  <span th:text="${pedido.medidaCuerda}"></span></p>
         <p><strong>Control:</strong> <span th:text="${pedido.tipoControl}"></span></p>
+
+        <div class="fila-fecha">
+            <span>Creado: <span th:text="${pedido.fechaCreacionFormateada}"></span></span>
+            <span th:if="${pedido.fechaActualizacion != null and pedido.fechaCreacion != pedido.fechaActualizacion}">
+                &nbsp;|&nbsp; Actualizado: <span th:text="${pedido.fechaActualizacionFormateada}"></span>
+            </span>
+        </div>
     </div>
 
     <!-- ETIQUETA 2: Corte de tela -->

@@ -37,6 +37,7 @@
                     <th>Mando</th>
                     <th>Medida Final</th>
                     <th>Ficha Técnica</th>
+                    <th>Creado</th>
                     <th>Estado</th>
                     <th>Acciones</th>
                 </tr>
@@ -79,6 +80,14 @@
                         </div>
                     </td>
                     
+                    <td class="text-center">
+                        <small class="text-muted" th:text="${p.fechaCreacionFormateada}"></small>
+                        <br>
+                        <small class="text-muted fst-italic"
+                               th:if="${p.fechaActualizacion != null and p.fechaCreacion != p.fechaActualizacion}"
+                               th:text="'Act: ' + ${p.fechaActualizacionFormateada}"></small>
+                    </td>
+
                     <td>
                         <span class="badge" 
                               th:classappend="${p.estado == 'Listo para Despacho' ? 'bg-success' : (p.estado == 'En Proceso' ? 'bg-warning text-dark' : 'bg-secondary')}"

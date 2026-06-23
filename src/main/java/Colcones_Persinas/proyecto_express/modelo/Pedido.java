@@ -3,6 +3,9 @@ package Colcones_Persinas.proyecto_express.modelo;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+
 @Entity
 @Table(name = "pedido")
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
@@ -42,6 +45,45 @@ public class Pedido {
 
     @Column(nullable = false)
     private Boolean ensamblado = false;
+
+    // ─── TRAZABILIDAD DE FECHAS ─────────────────────────────────────────────
+
+    @Column(name = "fecha_creacion")
+    private LocalDateTime fechaCreacion;
+
+    @Column(name = "fecha_actualizacion")
+    private LocalDateTime fechaActualizacion;
+
+    /**
+     * Se ejecuta automáticamente una sola vez, justo antes del primer guardado (INSERT).
+     * Así no hay que recordar asignar la fecha manualmente en el controlador.
+     */
+    @PrePersist
+    protected void alCrear() {
+        LocalDateTime ahora = LocalDateTime.now();
+        this.fechaCreacion = ahora;
+        this.fechaActualizacion = ahora;
+    }
+
+    /**
+     * Se ejecuta automáticamente cada vez que se actualiza un registro existente (UPDATE).
+     */
+    @PreUpdate
+    protected void alActualizar() {
+        this.fechaActualizacion = LocalDateTime.now();
+    }
+
+    private static final DateTimeFormatter FORMATO_FECHA = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+
+    @Transient
+    public String getFechaCreacionFormateada() {
+        return this.fechaCreacion != null ? this.fechaCreacion.format(FORMATO_FECHA) : "";
+    }
+
+    @Transient
+    public String getFechaActualizacionFormateada() {
+        return this.fechaActualizacion != null ? this.fechaActualizacion.format(FORMATO_FECHA) : "";
+    }
 
     // ─── CÁLCULOS TRANSIENT (visibles por Thymeleaf vía getters) ───────────────
 
