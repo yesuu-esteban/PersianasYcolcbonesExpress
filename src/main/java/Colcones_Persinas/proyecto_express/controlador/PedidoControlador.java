@@ -34,7 +34,7 @@ public class PedidoControlador {
         return "nuevo_pedido"; 
     }
 
-   @PostMapping("/guardar-lista")
+    @PostMapping("/guardar-lista")
     public String guardarListaPedidos(
             @RequestParam String nombreDecorador, 
             @RequestParam String nombreClienteFinal,
@@ -56,25 +56,21 @@ public class PedidoControlador {
                 p.setAltura(alturas.get(i));
                 p.setColorTelaDeseado(colores.get(i));
                 p.setLadoControl(mandos.get(i));
+                p.setCantidad(1);
                 
-                // 1. ASIGNAR VALOR PRIMERO
-                String valorCabezal = allParams.get("cabezales[" + i + "]");
-                boolean esCabezal = "true".equals(valorCabezal);
-                p.setUsaCabezal(esCabezal);
+                // CONVERSIÓN EXPLÍCITA A BOOLEAN
+                String valorCabezalStr = allParams.get("cabezales[" + i + "]");
+                p.setUsaCabezal(Boolean.parseBoolean(valorCabezalStr));
                 
-                // 2. EJECUTAR LÓGICA DE CÁLCULO
-                // Ahora, dentro de estas funciones, el if(this.usaCabezal) funcionará correctamente
                 p.setEstado("Pendiente");
                 p.calcularFichaTecnica();
                 p.calcularEstadoGeneral();
                 
-                // 3. GUARDAR EN BD
                 pedidoRepository.save(p);
             }
         }
         return "redirect:/taller/pedidos";
     }
-
     @PostMapping("/actualizar/{id}/{accion}")
     public String actualizarEstado(@PathVariable("id") int id, @PathVariable("accion") String accion, RedirectAttributes redirectAttributes) {
         Pedido pedido = pedidoRepository.findById(id).orElseThrow();
