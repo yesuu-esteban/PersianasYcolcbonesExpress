@@ -122,7 +122,7 @@ public class Pedido {
 
     public void calcularFichaTecnica() {
         // 1. Tipo de control según ancho
-        this.tipoControl = (this.ancho > 1.50) ? "Control A" : "Control B";
+        this.tipoControl = (this.ancho > 1.50) ? "Control R16" : "Control R8 B ";
 
         // 2. Tubo según peso/tamaño (el cabezal siempre exige tubo más robusto)
         boolean esPesado = (this.ancho > 2.50 || this.altura > 2.50 || Boolean.TRUE.equals(this.usaCabezal));
