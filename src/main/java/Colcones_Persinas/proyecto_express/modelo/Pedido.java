@@ -110,7 +110,7 @@ public class Pedido {
      */
     @Transient
     public double getMedidaCabezal() {
-        return Math.round((this.ancho - 0.05) * 1000.0) / 1000.0;
+        return Math.round((this.ancho - 0.005) * 1000.0) / 1000.0;
     }
 
     @Transient
