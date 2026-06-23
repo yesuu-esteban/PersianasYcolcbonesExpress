@@ -22,9 +22,16 @@ public class PedidoControlador {
 
     @GetMapping("/pedidos")
     public String verProduccion(Model model) {
-        model.addAttribute("pedidos", pedidoRepository.findAll(Sort.by("nombreDecorador")));
+        try {
+            // Obtenemos los pedidos y, si está vacío, simplemente devolvemos una lista vacía
+            List<Pedido> pedidos = pedidoRepository.findAll(Sort.by("nombreDecorador"));
+            model.addAttribute("pedidos", pedidos != null ? pedidos : new java.util.ArrayList<Pedido>());
+        } catch (Exception e) {
+            System.err.println("Error al cargar pedidos: " + e.getMessage());
+            model.addAttribute("pedidos", new java.util.ArrayList<Pedido>());
+        }
         return "pedidos";
-    }
+}
 
     @GetMapping("/nuevo")
     public String mostrarFormularioNuevo(Model model) {

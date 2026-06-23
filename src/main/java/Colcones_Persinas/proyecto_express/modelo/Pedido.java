@@ -11,33 +11,45 @@ public class Pedido {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private int id;
 
-    private String nombreDecorador;
-    private String nombreClienteFinal; 
-    private String descripcion;
-    private int cantidad;
-    private double altura;
-    private double ancho;
-    private String medidaCuerda; 
+    private String nombreDecorador = "";
+    private String nombreClienteFinal = ""; 
+    private String descripcion = "";
     
-    private String estado;
-    private String tipoControl; 
-    private String ladoControl;
-    private String colorTelaDeseado;
+    // Valores por defecto para evitar cálculos con nulos
+    private int cantidad = 1;
+    private double altura = 0.0;
+    private double ancho = 0.0;
+    
+    private String medidaCuerda = "0 metros"; 
+    private String estado = "Pendiente";
+    private String tipoControl = ""; 
+    private String ladoControl = "";
+    private String colorTelaDeseado = "";
 
-    private String rolloParaCortar;
-    private String tuboRecomendado;
+    private String rolloParaCortar = "";
+    private String tuboRecomendado = "";
     
     @Column(name = "usa_cabezal", nullable = false)
     private Boolean usaCabezal = false; 
 
+    @Column(nullable = false)
     private Boolean telaCortada = false;
+    
+    @Column(nullable = false)
     private Boolean perfileriaCortada = false;
+    
+    @Column(nullable = false)
     private Boolean ensamblado = false;
 
-    // Lógica simplificada: usa el valor booleano 'usaCabezal' para decidir el camino
+    // --- CÁLCULOS PROTEGIDOS ---
     @Transient
     public double getCorteTelaAncho() {
         return Math.round((this.ancho - (Boolean.TRUE.equals(usaCabezal) ? 0.035 : 0.03)) * 1000.0) / 1000.0;
+    }
+
+    @Transient
+    public double getCorteTelaAlto() {
+        return Math.round((this.altura + 0.20) * 1000.0) / 1000.0;
     }
 
     @Transient
