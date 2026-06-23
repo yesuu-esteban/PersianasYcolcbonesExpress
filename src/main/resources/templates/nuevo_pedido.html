@@ -43,8 +43,8 @@
                     </div>
                     <div class="col-md-2 text-center">
                         <label class="small fw-bold">Cabezal</label><br>
-                        <input type="hidden" name="cabezales" value="false">
-                        <input type="checkbox" name="cabezales" value="true" class="form-check-input">
+                        <input type="hidden" name="cabezales[0]" value="false">
+                        <input type="checkbox" name="cabezales[0]" value="true" class="form-check-input">
                     </div>
                 </div>
             </div>
@@ -60,6 +60,7 @@
 
     <script th:inline="javascript">
         const listaColores = /*[[${listaColores}]]*/ [];
+        let filaIndex = 1; // Contador global para las nuevas filas
 
         function agregarFila() {
             const contenedor = document.getElementById('contenedor-productos');
@@ -81,14 +82,15 @@
                         </select>
                     </div>
                     <div class="col-md-2 text-center">
-                        <input type="hidden" name="cabezales" value="false">
-                        <input type="checkbox" name="cabezales" value="true" class="form-check-input">
+                        <input type="hidden" name="cabezales[${filaIndex}]" value="false">
+                        <input type="checkbox" name="cabezales[${filaIndex}]" value="true" class="form-check-input">
                     </div>
                     <div class="col-md-1">
                         <button type="button" class="btn btn-danger btn-sm" onclick="this.parentElement.parentElement.remove()">X</button>
                     </div>
                 </div>`;
             contenedor.insertAdjacentHTML('beforeend', fila);
+            filaIndex++; // Incrementamos el índice para la próxima fila
         }
     </script>
 </body>

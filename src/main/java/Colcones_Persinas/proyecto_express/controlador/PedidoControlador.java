@@ -50,8 +50,9 @@ public class PedidoControlador {
             @RequestParam List<Double> alturas,
             @RequestParam List<String> colores,
             @RequestParam List<String> mandos,
-            // Recibe los cabezales como una lista de String
-            @RequestParam(required = false) List<String> cabezales) { 
+            @RequestParam Map<String, String> allParams) { // Recibe todos los parámetros, incluidos los indexados
+        
+        int cabezalCount = 0; // Este índice rastrea cada checkbox enviado
         
         for (int i = 0; i < descripciones.size(); i++) {
             for (int j = 0; j < cantidades.get(i); j++) {
@@ -63,21 +64,24 @@ public class PedidoControlador {
                 p.setAltura(alturas.get(i));
                 p.setColorTelaDeseado(colores.get(i));
                 p.setLadoControl(mandos.get(i));
-                p.setCantidad(1);
-
-                // LOGICA MEJORADA:
-                // Si la lista de cabezales no es nula, intentamos obtener el valor por índice
-                if (cabezales != null && i < cabezales.size()) {
-                    p.setUsaCabezal(Boolean.parseBoolean(cabezales.get(i)));
-                } else {
-                    p.setUsaCabezal(false);
-                }
+                p.setCantidad(1); // Cada iteración j es un pedido individual
+                
+                // BUSCAMOS EL VALOR POR SU ÍNDICE EXACTO EN EL MAPA
+                // allParams.get("cabezales[0]") buscará el valor del checkbox en la fila 0
+                String valor = allParams.get("cabezales[" + cabezalCount + "]");
+                
+                // "true".equals(valor) devolverá true si está marcado, y false si es null o "false"
+                p.setUsaCabezal("true".equals(valor));
                 
                 p.setEstado("Pendiente");
-                p.calcularFichaTecnica(); // Ahora calcularFichaTecnica usa el valor de usaCabezal ya seteado
+                // Los cálculos ahora usarán el valor de usaCabezal recién asignado
+                p.calcularFichaTecnica(); 
                 p.calcularEstadoGeneral();
                 
                 pedidoRepository.save(p);
+                
+                // Incrementamos el contador para la siguiente fila/iteración
+                cabezalCount++;
             }
         }
         return "redirect:/taller/pedidos";
