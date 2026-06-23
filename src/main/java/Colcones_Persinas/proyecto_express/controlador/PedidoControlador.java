@@ -22,13 +22,48 @@ public class PedidoControlador {
     private PedidoRepository pedidoRepository;
 
     @GetMapping("/pedidos")
-    public String verProduccion(Model model) {
+    public String verProduccion(
+            @RequestParam(name = "estado", required = false) String estado,
+            Model model) {
         try {
-            List<Pedido> pedidos = pedidoRepository.findAll(Sort.by("nombreDecorador"));
-            model.addAttribute("pedidos", pedidos != null ? pedidos : new java.util.ArrayList<Pedido>());
+            List<Pedido> todos = pedidoRepository.findAll(Sort.by("nombreDecorador"));
+            if (todos == null) {
+                todos = new java.util.ArrayList<>();
+            }
+
+            // Contadores para mostrar en cada pestaña, calculados siempre sobre el total
+            long totalTodos = todos.size();
+            long totalPendiente = todos.stream().filter(p -> "Pendiente".equals(p.getEstado())).count();
+            long totalEnProceso = todos.stream().filter(p -> "En Proceso".equals(p.getEstado())).count();
+            long totalListoEnsamblar = todos.stream().filter(p -> "Listo para Ensamblar".equals(p.getEstado())).count();
+            long totalListoDespacho = todos.stream().filter(p -> "Listo para Despacho".equals(p.getEstado())).count();
+
+            model.addAttribute("totalTodos", totalTodos);
+            model.addAttribute("totalPendiente", totalPendiente);
+            model.addAttribute("totalEnProceso", totalEnProceso);
+            model.addAttribute("totalListoEnsamblar", totalListoEnsamblar);
+            model.addAttribute("totalListoDespacho", totalListoDespacho);
+
+            // Filtrado: si no se pasa estado (o es "Todos"), se muestran todos los pedidos
+            final String estadoFiltro = (estado == null || estado.isBlank() || "Todos".equalsIgnoreCase(estado))
+                    ? "Todos"
+                    : estado;
+
+            List<Pedido> pedidos;
+            if ("Todos".equals(estadoFiltro)) {
+                pedidos = todos;
+            } else {
+                pedidos = todos.stream()
+                        .filter(p -> estadoFiltro.equals(p.getEstado()))
+                        .collect(Collectors.toList());
+            }
+
+            model.addAttribute("pedidos", pedidos);
+            model.addAttribute("estadoActivo", estadoFiltro);
         } catch (Exception e) {
             System.err.println("Error al cargar pedidos: " + e.getMessage());
             model.addAttribute("pedidos", new java.util.ArrayList<Pedido>());
+            model.addAttribute("estadoActivo", "Todos");
         }
         return "pedidos";
     }

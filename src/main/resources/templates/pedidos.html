@@ -15,6 +15,18 @@
         }
         .cliente-group-border { border-top: 4px solid #343a40 !important; }
         .badge-sistema { font-size: 0.75rem; }
+        .nav-pills .nav-link {
+            color: #343a40;
+            background-color: #e9ecef;
+            margin-right: 6px;
+        }
+        .nav-pills .nav-link.active {
+            background-color: #343a40;
+            color: #fff;
+        }
+        .nav-pills .nav-link .badge {
+            font-weight: 700;
+        }
     </style>
 </head>
 <body class="bg-light p-4">
@@ -26,7 +38,40 @@
 
         <div th:if="${mensaje}" class="alert alert-success" th:text="${mensaje}"></div>
         <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
-        
+
+        <ul class="nav nav-pills mb-3">
+            <li class="nav-item">
+                <a class="nav-link" th:classappend="${estadoActivo == 'Todos'} ? 'active'"
+                   th:href="@{/taller/pedidos(estado='Todos')}">
+                    Todos <span class="badge bg-light text-dark ms-1" th:text="${totalTodos}"></span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" th:classappend="${estadoActivo == 'Pendiente'} ? 'active'"
+                   th:href="@{/taller/pedidos(estado='Pendiente')}">
+                    Pendiente <span class="badge bg-light text-dark ms-1" th:text="${totalPendiente}"></span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" th:classappend="${estadoActivo == 'En Proceso'} ? 'active'"
+                   th:href="@{/taller/pedidos(estado='En Proceso')}">
+                    En Proceso <span class="badge bg-light text-dark ms-1" th:text="${totalEnProceso}"></span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" th:classappend="${estadoActivo == 'Listo para Ensamblar'} ? 'active'"
+                   th:href="@{/taller/pedidos(estado='Listo para Ensamblar')}">
+                    Listo para Ensamblar <span class="badge bg-light text-dark ms-1" th:text="${totalListoEnsamblar}"></span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" th:classappend="${estadoActivo == 'Listo para Despacho'} ? 'active'"
+                   th:href="@{/taller/pedidos(estado='Listo para Despacho')}">
+                    Listo para Despacho <span class="badge bg-light text-dark ms-1" th:text="${totalListoDespacho}"></span>
+                </a>
+            </li>
+        </ul>
+
         <table class="table table-hover shadow-sm bg-white align-middle table-small">
             <thead class="table-dark">
                 <tr>
@@ -116,6 +161,10 @@
                 </tr>
             </tbody>
         </table>
+
+        <div th:if="${#lists.isEmpty(pedidos)}" class="alert alert-light border text-center text-muted">
+            No hay pedidos en esta categoría.
+        </div>
     </div>
 
     <!-- Modal de confirmación para eliminar -->

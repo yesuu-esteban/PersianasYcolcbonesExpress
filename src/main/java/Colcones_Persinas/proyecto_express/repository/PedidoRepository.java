@@ -1,10 +1,12 @@
 package Colcones_Persinas.proyecto_express.repository;
 
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.stereotype.Repository;
 import Colcones_Persinas.proyecto_express.modelo.Pedido;
+import org.springframework.data.jpa.repository.JpaRepository;
 
-@Repository
+import java.util.List;
+
 public interface PedidoRepository extends JpaRepository<Pedido, Integer> {
-    // Spring Data JPA implementa automáticamente todos los métodos (findAll, findById, save)
+
+    List<Pedido> findByEstadoOrderByNombreDecorador(String estado);
+
 }
