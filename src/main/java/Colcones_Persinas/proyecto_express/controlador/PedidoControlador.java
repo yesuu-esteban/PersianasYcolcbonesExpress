@@ -40,7 +40,6 @@ public class PedidoControlador {
         model.addAttribute("listaColores", coloresDisponibles);
         return "nuevo_pedido"; 
     }
-
     @PostMapping("/guardar-lista")
     public String guardarListaPedidos(
             @RequestParam String nombreDecorador, 
@@ -51,7 +50,8 @@ public class PedidoControlador {
             @RequestParam List<Double> alturas,
             @RequestParam List<String> colores,
             @RequestParam List<String> mandos,
-            @RequestParam Map<String, String> allParams) {
+            // Recibe los cabezales como una lista de String
+            @RequestParam(required = false) List<String> cabezales) { 
         
         for (int i = 0; i < descripciones.size(); i++) {
             for (int j = 0; j < cantidades.get(i); j++) {
@@ -64,13 +64,17 @@ public class PedidoControlador {
                 p.setColorTelaDeseado(colores.get(i));
                 p.setLadoControl(mandos.get(i));
                 p.setCantidad(1);
-                
-                // CONVERSIÓN EXPLÍCITA A BOOLEAN
-                String valorCabezalStr = allParams.get("cabezales[" + i + "]");
-                p.setUsaCabezal(Boolean.parseBoolean(valorCabezalStr));
+
+                // LOGICA MEJORADA:
+                // Si la lista de cabezales no es nula, intentamos obtener el valor por índice
+                if (cabezales != null && i < cabezales.size()) {
+                    p.setUsaCabezal(Boolean.parseBoolean(cabezales.get(i)));
+                } else {
+                    p.setUsaCabezal(false);
+                }
                 
                 p.setEstado("Pendiente");
-                p.calcularFichaTecnica();
+                p.calcularFichaTecnica(); // Ahora calcularFichaTecnica usa el valor de usaCabezal ya seteado
                 p.calcularEstadoGeneral();
                 
                 pedidoRepository.save(p);
