@@ -12,18 +12,18 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Controller
 @RequestMapping("/taller")
 public class PedidoControlador {
 
-    @Autowired 
+    @Autowired
     private PedidoRepository pedidoRepository;
 
     @GetMapping("/pedidos")
     public String verProduccion(Model model) {
         try {
-            // Obtenemos los pedidos y, si está vacío, simplemente devolvemos una lista vacía
             List<Pedido> pedidos = pedidoRepository.findAll(Sort.by("nombreDecorador"));
             model.addAttribute("pedidos", pedidos != null ? pedidos : new java.util.ArrayList<Pedido>());
         } catch (Exception e) {
@@ -31,18 +31,19 @@ public class PedidoControlador {
             model.addAttribute("pedidos", new java.util.ArrayList<Pedido>());
         }
         return "pedidos";
-}
+    }
 
     @GetMapping("/nuevo")
     public String mostrarFormularioNuevo(Model model) {
-        List<String> coloresDisponibles = Arrays.asList("Blanco", "Gris", "fawn", "Vainilla");
+        List<String> coloresDisponibles = Arrays.asList("Blanco", "Gris", "Fawn", "Vainilla");
         model.addAttribute("pedido", new Pedido());
         model.addAttribute("listaColores", coloresDisponibles);
-        return "nuevo_pedido"; 
+        return "nuevo_pedido";
     }
+
     @PostMapping("/guardar-lista")
     public String guardarListaPedidos(
-            @RequestParam String nombreDecorador, 
+            @RequestParam String nombreDecorador,
             @RequestParam String nombreClienteFinal,
             @RequestParam List<String> descripciones,
             @RequestParam List<Integer> cantidades,
@@ -50,11 +51,24 @@ public class PedidoControlador {
             @RequestParam List<Double> alturas,
             @RequestParam List<String> colores,
             @RequestParam List<String> mandos,
-            @RequestParam Map<String, String> allParams) { // Recibe todos los parámetros, incluidos los indexados
-        
-        int cabezalCount = 0; // Este índice rastrea cada checkbox enviado
-        
+            @RequestParam Map<String, String> allParams) {
+
+        // LOG: imprime todos los parámetros recibidos para depuración
+        System.out.println("=== PARÁMETROS RECIBIDOS ===");
+        allParams.forEach((k, v) -> System.out.println("  " + k + " = '" + v + "'"));
+        System.out.println("============================");
+
         for (int i = 0; i < descripciones.size(); i++) {
+
+            // El checkbox en el HTML tiene value="true".
+            // Si está MARCADO  → el navegador envía cabezales[i]=true  → getOrDefault devuelve "true"
+            // Si está DESMARCADO → el navegador NO envía la clave → getOrDefault devuelve "false"
+            String claveCabezal = "cabezales[" + i + "]";
+            String valorCabezal = allParams.getOrDefault(claveCabezal, "false");
+            boolean tieneCabezal = "true".equals(valorCabezal);
+
+            System.out.println("Fila " + i + " | " + claveCabezal + "='" + valorCabezal + "' | tieneCabezal=" + tieneCabezal);
+
             for (int j = 0; j < cantidades.get(i); j++) {
                 Pedido p = new Pedido();
                 p.setNombreDecorador(nombreDecorador);
@@ -64,37 +78,30 @@ public class PedidoControlador {
                 p.setAltura(alturas.get(i));
                 p.setColorTelaDeseado(colores.get(i));
                 p.setLadoControl(mandos.get(i));
-                p.setCantidad(1); // Cada iteración j es un pedido individual
-                
-                // BUSCAMOS EL VALOR POR SU ÍNDICE EXACTO EN EL MAPA
-                // allParams.get("cabezales[0]") buscará el valor del checkbox en la fila 0
-                String valor = allParams.get("cabezales[" + cabezalCount + "]");
-                
-                // "true".equals(valor) devolverá true si está marcado, y false si es null o "false"
-                p.setUsaCabezal("true".equals(valor));
-                
-                p.setEstado("Pendiente");
-                // Los cálculos ahora usarán el valor de usaCabezal recién asignado
-                p.calcularFichaTecnica(); 
+                p.setCantidad(1);
+                p.setUsaCabezal(tieneCabezal);
+                p.calcularFichaTecnica();
                 p.calcularEstadoGeneral();
-                
                 pedidoRepository.save(p);
-                
-                // Incrementamos el contador para la siguiente fila/iteración
-                cabezalCount++;
             }
         }
         return "redirect:/taller/pedidos";
     }
+
     @PostMapping("/actualizar/{id}/{accion}")
-    public String actualizarEstado(@PathVariable("id") int id, @PathVariable("accion") String accion, RedirectAttributes redirectAttributes) {
+    public String actualizarEstado(
+            @PathVariable("id") int id,
+            @PathVariable("accion") String accion,
+            RedirectAttributes redirectAttributes) {
+
         Pedido pedido = pedidoRepository.findById(id).orElseThrow();
-        switch(accion.toLowerCase()) {
-            case "tela": 
-                pedido.setTelaCortada(!pedido.getTelaCortada()); 
+
+        switch (accion.toLowerCase()) {
+            case "tela":
+                pedido.setTelaCortada(!pedido.getTelaCortada());
                 break;
-            case "perfileria": 
-                pedido.setPerfileriaCortada(!pedido.getPerfileriaCortada()); 
+            case "perfileria":
+                pedido.setPerfileriaCortada(!pedido.getPerfileriaCortada());
                 break;
             case "ensamblado":
                 if (Boolean.TRUE.equals(pedido.getTelaCortada()) && Boolean.TRUE.equals(pedido.getPerfileriaCortada())) {
@@ -104,6 +111,7 @@ public class PedidoControlador {
                 }
                 break;
         }
+
         pedido.calcularEstadoGeneral();
         pedidoRepository.save(pedido);
         return "redirect:/taller/pedidos";
@@ -112,7 +120,6 @@ public class PedidoControlador {
     @GetMapping("/imprimir/{id}")
     public String imprimirPedido(@PathVariable("id") int id, Model model) {
         Pedido p = pedidoRepository.findById(id).orElseThrow();
-        // Aseguramos que los cálculos estén frescos antes de enviar a la vista
         p.calcularFichaTecnica();
         model.addAttribute("pedido", p);
         return "imprimir_pedido";
