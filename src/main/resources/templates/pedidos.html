@@ -63,9 +63,9 @@
                             <strong>Tela:</strong> <span th:text="${#numbers.formatDecimal(p.corteTelaAncho, 1, 3) + ' x ' + #numbers.formatDecimal(p.corteTelaAlto, 1, 3)}"></span>m<br>
                             <strong>Tubo:</strong> <span th:text="${#numbers.formatDecimal(p.corteTuberia, 1, 3)}"></span>m<br>
                             
-                            <span th:if="${p.usaCabezal}">
+                            <div th:if="${p.usaCabezal}">
                                 <strong>Cabezal:</strong> <span th:text="${#numbers.formatDecimal(p.medidaCabezal, 1, 3)}"></span>m<br>
-                            </span>
+                            </div>
                             
                             <strong>Control:</strong> <span th:text="${p.tipoControl}"></span>
                         </div>
