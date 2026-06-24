@@ -5,90 +5,358 @@
     <title>Editar Pedido</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        .col-cabezal { display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .previsualizacion {
+            background-color: #f8f9fa;
+            border: 1px dashed #adb5bd;
+            border-radius: 4px;
+            padding: 10px 14px;
+            font-size: 0.80rem;
+            margin-top: 8px;
+        }
+        .previsualizacion.ok    { border-color: #198754; background-color: #f0fbf4; }
+        .previsualizacion.falta { border-color: #dc3545; background-color: #fdf2f3; color: #842029; }
+        .previsualizacion .cargando { color: #888; }
+        .seccion-manual {
+            background: #fffbea;
+            border: 1px solid #ffe082;
+            border-radius: 5px;
+            padding: 10px 14px;
+            margin-top: 10px;
+        }
+        .seccion-manual .form-label { font-size: 0.80rem; }
+        .toggle-manual {
+            font-size: 0.80rem;
+            cursor: pointer;
+            color: #856404;
+            text-decoration: underline;
+            background: none;
+            border: none;
+            padding: 0;
+        }
     </style>
 </head>
 <body class="bg-light p-4">
-    <div class="container col-md-8">
-        <h2 class="mb-1">✏️ Editar Pedido #<span th:text="${pedido.id}"></span></h2>
-        <p class="text-muted mb-4">
-            <small>
-                Creado: <span th:text="${pedido.fechaCreacionFormateada}"></span>
-                <span th:if="${pedido.fechaActualizacion != null and pedido.fechaCreacion != pedido.fechaActualizacion}">
-                    &nbsp;|&nbsp; Última actualización: <span th:text="${pedido.fechaActualizacionFormateada}"></span>
-                </span>
-            </small>
-        </p>
+<div class="container col-md-7">
+    <h2 class="mb-4">✏️ Editar Pedido</h2>
 
-        <form th:action="@{/taller/editar/{id}(id=${pedido.id})}" method="post" class="bg-white p-4 shadow-sm border rounded">
+    <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
 
-            <div class="row mb-4">
-                <div class="col-md-6">
-                    <label class="form-label fw-bold">Nombre del Distribuidor</label>
-                    <input type="text" name="nombreDecorador" class="form-control"
-                           th:value="${pedido.nombreDecorador}" required>
-                </div>
-                <div class="col-md-6">
-                    <label class="form-label fw-bold">Nombre del Cliente Final</label>
-                    <input type="text" name="nombreClienteFinal" class="form-control"
-                           th:value="${pedido.nombreClienteFinal}" required>
+    <form th:action="@{/taller/editar/{id}(id=${pedido.id})}" method="post"
+          class="bg-white p-4 shadow-sm border rounded">
+        <input type="hidden" name="id" th:value="${pedido.id}">
+
+        <div class="row g-3 mb-3">
+            <div class="col-md-6">
+                <label class="form-label fw-bold">Distribuidor</label>
+                <input type="text" name="nombreDecorador" class="form-control" th:value="${pedido.nombreDecorador}" required>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label fw-bold">Cliente Final</label>
+                <input type="text" name="nombreClienteFinal" class="form-control" th:value="${pedido.nombreClienteFinal}" required>
+            </div>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label fw-bold">Descripción</label>
+            <input type="text" name="descripcion" class="form-control" th:value="${pedido.descripcion}">
+        </div>
+
+        <div class="row g-3 mb-3">
+            <div class="col-md-6">
+                <label class="form-label fw-bold">Ancho (m)</label>
+                <input type="number" step="0.01" name="ancho" id="campoAncho"
+                       class="form-control" th:value="${pedido.ancho}" required>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label fw-bold">Alto (m)</label>
+                <input type="number" step="0.01" name="altura" id="campoAltura"
+                       class="form-control" th:value="${pedido.altura}" required>
+            </div>
+        </div>
+
+        <div class="row g-3 mb-3">
+            <div class="col-md-6">
+                <label class="form-label fw-bold">Color de tela</label>
+                <select name="colorTelaDeseado" id="campoColor" class="form-select">
+                    <option th:each="c : ${listaColores}" th:value="${c}" th:text="${c}"
+                            th:selected="${c == pedido.colorTelaDeseado}"></option>
+                </select>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label fw-bold">Mando</label>
+                <select name="ladoControl" class="form-select">
+                    <option th:value="'Mando Derecho'"   th:selected="${pedido.ladoControl == 'Mando Derecho'}">Mando Derecho</option>
+                    <option th:value="'Mando Izquierdo'" th:selected="${pedido.ladoControl == 'Mando Izquierdo'}">Mando Izquierdo</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label fw-bold">Estado</label>
+            <select name="estado" class="form-select">
+                <option th:value="'Pendiente'"            th:selected="${pedido.estado == 'Pendiente'}">Pendiente</option>
+                <option th:value="'En Proceso'"           th:selected="${pedido.estado == 'En Proceso'}">En Proceso</option>
+                <option th:value="'Listo para Ensamblar'" th:selected="${pedido.estado == 'Listo para Ensamblar'}">Listo para Ensamblar</option>
+                <option th:value="'Listo para Despacho'"  th:selected="${pedido.estado == 'Listo para Despacho'}">Listo para Despacho</option>
+            </select>
+        </div>
+
+        <!-- Materiales opcionales -->
+        <div class="card mb-3 border-secondary-subtle">
+            <div class="card-body pb-2">
+                <p class="fw-bold mb-2">Materiales opcionales</p>
+                <div class="d-flex gap-4 flex-wrap">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="ckCabezal"
+                               name="usaCabezal" value="true" th:checked="${pedido.usaCabezal}">
+                        <label class="form-check-label" for="ckCabezal">🪟 Con cabezal</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="ckPitillo"
+                               name="usaPitilloPesa" value="true" th:checked="${pedido.usaPitilloPesa}">
+                        <label class="form-check-label" for="ckPitillo">🪡 Pitillo</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="ckConector"
+                               name="usaConectorTope" value="true" th:checked="${pedido.usaConectorTope}">
+                        <label class="form-check-label" for="ckConector">🔗 Conector / Tope</label>
+                    </div>
                 </div>
             </div>
+        </div>
 
-            <div class="row mb-4">
-                <div class="col-md-12">
-                    <label class="form-label fw-bold">Descripción</label>
-                    <input type="text" name="descripcion" class="form-control"
-                           th:value="${pedido.descripcion}" required>
-                </div>
-            </div>
+        <!-- Previsualización -->
+        <div class="previsualizacion mb-3">
+            <span class="cargando">Cargando disponibilidad de material...</span>
+        </div>
 
-            <hr>
+        <!-- Toggle manual -->
+        <div class="mb-3">
+            <button type="button" class="toggle-manual" onclick="toggleManual(this)">
+                ⚙ Cambiar material manualmente (retazos, piezas específicas)
+            </button>
+        </div>
 
-            <div class="row mb-4 align-items-center">
-                <div class="col-md-2">
-                    <label class="form-label fw-bold">Ancho (m)</label>
-                    <input type="number" step="0.01" name="ancho" class="form-control"
-                           th:value="${pedido.ancho}" required>
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label fw-bold">Alto (m)</label>
-                    <input type="number" step="0.01" name="altura" class="form-control"
-                           th:value="${pedido.altura}" required>
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label fw-bold">Color</label>
-                    <select name="colorTelaDeseado" class="form-select">
-                        <option th:each="c : ${listaColores}"
-                                th:value="${c}"
-                                th:text="${c}"
-                                th:selected="${c == pedido.colorTelaDeseado}"></option>
+        <div class="seccion-manual" style="display:none;" id="panelManual">
+            <p class="fw-bold mb-2" style="font-size:0.83rem">
+                ⚙ Selección manual
+                <small class="text-muted">(deja "Automático" para que el sistema elija)</small>
+            </p>
+            <div class="row g-2">
+                <div class="col-md-6 col-lg-4">
+                    <label class="form-label">🧵 Rollo de tela</label>
+                    <select name="rolloManual" id="selectRollo" class="form-select form-select-sm">
+                        <option value="auto">⚡ Automático</option>
                     </select>
                 </div>
-                <div class="col-md-3">
-                    <label class="form-label fw-bold">Mando</label>
-                    <select name="ladoControl" class="form-select">
-                        <option value="Mando Derecho" th:selected="${pedido.ladoControl == 'Mando Derecho'}">Mando Derecho</option>
-                        <option value="Mando Izquierdo" th:selected="${pedido.ladoControl == 'Mando Izquierdo'}">Mando Izquierdo</option>
+                <div class="col-md-6 col-lg-4">
+                    <label class="form-label">🔩 Pieza de tubo</label>
+                    <select name="tuboManual" id="selectTubo" class="form-select form-select-sm">
+                        <option value="auto">⚡ Automático</option>
                     </select>
                 </div>
-                <div class="col-md-2 col-cabezal">
-                    <label class="form-label fw-bold">Cabezal</label>
-                    <!--
-                        Igual que en nuevo_pedido: value="true" es clave.
-                        Marcado    → envía usaCabezal=true
-                        Desmarcado → no envía nada → el controlador usa defaultValue="false"
-                    -->
-                    <input type="checkbox" name="usaCabezal" value="true" class="form-check-input fs-5"
-                           th:checked="${pedido.usaCabezal}">
+                <div class="col-md-6 col-lg-4" id="filaCabezalManual" style="display:none;">
+                    <label class="form-label">🪟 Pieza de cabezal</label>
+                    <select name="cabezalManual" id="selectCabezal" class="form-select form-select-sm">
+                        <option value="auto">⚡ Automático</option>
+                    </select>
+                </div>
+                <div class="col-md-6 col-lg-4">
+                    <label class="form-label">⚖ Pieza de pesa</label>
+                    <select name="pesaManual" id="selectPesa" class="form-select form-select-sm">
+                        <option value="auto">⚡ Automático</option>
+                    </select>
+                </div>
+                <div class="col-md-6 col-lg-4">
+                    <label class="form-label">🧶 Pieza de cuerda</label>
+                    <select name="cuerdaManual" id="selectCuerda" class="form-select form-select-sm">
+                        <option value="auto">⚡ Automático</option>
+                    </select>
+                </div>
+                <div class="col-md-6 col-lg-4" id="filaPitilloManual">
+                    <label class="form-label">🪡 Pieza de pitillo</label>
+                    <select name="pitilloManual" id="selectPitillo" class="form-select form-select-sm">
+                        <option value="auto">⚡ Automático</option>
+                    </select>
                 </div>
             </div>
+        </div>
 
-            <div class="mt-4">
-                <button type="submit" class="btn btn-success w-100">Guardar cambios</button>
-                <a href="/taller/pedidos" class="btn btn-secondary w-100 mt-2">Cancelar</a>
-            </div>
-        </form>
-    </div>
+        <div class="mt-4">
+            <button type="submit" class="btn btn-primary w-100">Guardar Cambios</button>
+            <a href="/taller/pedidos" class="btn btn-secondary w-100 mt-2">Cancelar</a>
+        </div>
+    </form>
+</div>
+
+<script th:inline="javascript">
+    /*<![CDATA[*/
+    const rollosDisponibles = /*[[${rollosDisponibles}]]*/ [];
+    const piezasDisponibles = /*[[${piezasDisponibles}]]*/ [];
+    /*]]>*/
+</script>
+
+<script>
+    const campoAncho  = document.getElementById('campoAncho');
+    const campoAltura = document.getElementById('campoAltura');
+    const campoColor  = document.getElementById('campoColor');
+    const ckCabezal   = document.getElementById('ckCabezal');
+    const ckPitillo   = document.getElementById('ckPitillo');
+    const ckConector  = document.getElementById('ckConector');
+    const caja        = document.querySelector('.previsualizacion');
+
+    const selectRollo   = document.getElementById('selectRollo');
+    const selectTubo    = document.getElementById('selectTubo');
+    const selectCabezal = document.getElementById('selectCabezal');
+    const selectPesa    = document.getElementById('selectPesa');
+    const selectCuerda  = document.getElementById('selectCuerda');
+    const selectPitillo = document.getElementById('selectPitillo');
+    const filaCabezal   = document.getElementById('filaCabezalManual');
+    const filaPitillo   = document.getElementById('filaPitilloManual');
+
+    function toggleManual(btn) {
+        const panel = document.getElementById('panelManual');
+        const vis = panel.style.display !== 'none';
+        panel.style.display = vis ? 'none' : '';
+        btn.textContent = vis
+            ? '⚙ Cambiar material manualmente (retazos, piezas específicas)'
+            : '✕ Cerrar selección manual';
+    }
+
+    function opcionesRollo(color) {
+        const filtrados = rollosDisponibles.filter(r => r.color && r.color.toLowerCase() === color.toLowerCase() && r.largoRestante > 0.001);
+        const retazos   = filtrados.filter(r => r.largoRestante < 3);
+        const normales  = filtrados.filter(r => r.largoRestante >= 3);
+        if (!filtrados.length) return '<option value="auto">– Sin rollos de ese color –</option>';
+        let html = '<option value="auto">⚡ Automático (sugerido)</option>';
+        if (normales.length) {
+            html += '<optgroup label="Disponibles">';
+            normales.forEach(r => { html += `<option value="${r.id}">Rollo #${r.id} · ${r.color} ${r.ancho}m · ${r.largoRestante.toFixed(2)} m</option>`; });
+            html += '</optgroup>';
+        }
+        if (retazos.length) {
+            html += '<optgroup label="⚠ Retazos (< 3m)">';
+            retazos.forEach(r => { html += `<option value="${r.id}">Retazo #${r.id} · ${r.color} ${r.ancho}m · ${r.largoRestante.toFixed(2)} m</option>`; });
+            html += '</optgroup>';
+        }
+        return html;
+    }
+
+    function opcionesPieza(nombreInsumo) {
+        const filtradas = piezasDisponibles.filter(p => {
+            const nombre = p.insumoNombre || (p.insumo && p.insumo.nombre) || '';
+            return nombre.toLowerCase() === nombreInsumo.toLowerCase() && p.largoRestante > 0.001;
+        });
+        if (!filtradas.length) return `<option value="auto">– Sin piezas de "${nombreInsumo}" –</option>`;
+        let html = '<option value="auto">⚡ Automático (sugerido)</option>';
+        filtradas.forEach(p => { html += `<option value="${p.id}">Pieza #${p.id} · ${p.largoRestante.toFixed(3)} m restantes</option>`; });
+        return html;
+    }
+
+    function actualizarSelectsManual() {
+        const color    = campoColor.value;
+        const ancho    = parseFloat(campoAncho.value) || 0;
+        const alto     = parseFloat(campoAltura.value) || 0;
+        const cabezal  = ckCabezal.checked;
+        const esPesado = ancho > 2.50 || alto > 2.50 || cabezal;
+        const nombreTubo = esPesado ? 'Tubo R24' : 'Tubo R16';
+        // CUERDA: siempre del insumo único "Cuerda"
+
+        selectRollo.innerHTML   = opcionesRollo(color);
+        selectTubo.innerHTML    = opcionesPieza(nombreTubo);
+        selectPesa.innerHTML    = opcionesPieza('Pesa');
+        selectCuerda.innerHTML  = opcionesPieza('Cuerda');
+        // PITILLO: el insumo en catálogo se llama "Pitillo" (NO "Pitillo Pesa")
+        selectPitillo.innerHTML = opcionesPieza('Pitillo');
+
+        // Cabezal: selector solo aparece si el checkbox está marcado
+        filaCabezal.style.display = cabezal ? '' : 'none';
+        selectCabezal.innerHTML = cabezal ? opcionesPieza('Cabezal') : '<option value="auto">⚡ Automático</option>';
+
+        // Pitillo: selector solo aparece si el checkbox está marcado
+        filaPitillo.style.display = ckPitillo.checked ? '' : 'none';
+    }
+
+    let timer = null;
+    function disparar() {
+        clearTimeout(timer);
+        timer = setTimeout(() => {
+            consultarPrevisualizacion();
+            actualizarSelectsManual();
+        }, 420);
+    }
+
+    async function consultarPrevisualizacion() {
+        const ancho    = campoAncho.value;
+        const alto     = campoAltura.value;
+        const color    = campoColor.value;
+        const cabezal  = ckCabezal.checked;
+        const pitillo  = ckPitillo.checked;
+        const conector = ckConector.checked;
+
+        if (!ancho || !alto) {
+            caja.className = 'previsualizacion';
+            caja.innerHTML = '<span class="cargando">Completa ancho y alto para ver disponibilidad.</span>';
+            return;
+        }
+        caja.className = 'previsualizacion';
+        caja.innerHTML = '<span class="cargando">🔍 Consultando inventario...</span>';
+
+        try {
+            const params = new URLSearchParams({ ancho, altura: alto, color, usaCabezal: cabezal, usaPitilloPesa: pitillo, usaConectorTope: conector });
+            const d = await fetch('/taller/previsualizar-material?' + params.toString()).then(r => r.json());
+
+            if (d.disponible) {
+                caja.className = 'previsualizacion ok';
+                const a = parseFloat(ancho), h = parseFloat(alto);
+                const descTela = cabezal ? 0.035 : 0.03;
+                const descTubo = cabezal ? 0.03  : 0.025;
+                const cAncho = (a - descTela).toFixed(3);
+                const cAlto  = (h + 0.20).toFixed(3);
+                const cTubo  = (a - descTubo).toFixed(3);
+
+                let html = '<strong>✓ Material disponible para esta configuración</strong>';
+                html += '<table style="width:100%;border-collapse:collapse;margin-top:7px">';
+                if (d.rolloSugerido)   html += fila2('🧵 Tela',         `${cAncho} m × ${cAlto} m`,     d.rolloSugerido);
+                if (d.tuboSugerido)    html += fila2('🔧 Tubo',          `${cTubo} m`,                   d.tuboSugerido);
+                if (d.cabezalSugerido) html += fila2('🪟 Cabezal',       `${(a - 0.005).toFixed(3)} m`,  d.cabezalSugerido);
+                if (d.pesaSugerida)    html += fila2('⚖ Pesa',           `${cTubo} m`,                   d.pesaSugerida);
+                if (d.cuerdaSugerida)  html += fila2('🧶 Cuerda',         h <= 1.50 ? '3 m' : '4 m',     d.cuerdaSugerida);
+                if (d.controlInfo)     html += fila2('🎛 Control',        '1 und.',                       d.controlInfo);
+                if (d.pitilloSugerido) html += fila2('🪡 Pitillo',       `${cAncho} m`,                  d.pitilloSugerido);
+                if (d.conectorInfo)    html += fila2('🔗 Conec./Tope',   '',                              d.conectorInfo);
+                html += '</table>';
+                caja.innerHTML = html;
+            } else {
+                caja.className = 'previsualizacion falta';
+                caja.innerHTML = '<strong>⚠ Falta material:</strong><br>' + d.faltantes.join('<br>');
+            }
+        } catch {
+            caja.className = 'previsualizacion falta';
+            caja.innerHTML = '<span>No se pudo consultar el inventario.</span>';
+        }
+    }
+
+    function fila2(material, medida, info) {
+        return `<tr style="border-top:1px solid #d6efdd">
+            <td style="padding:2px 4px;font-weight:600;white-space:nowrap">${material}</td>
+            <td style="padding:2px 6px;color:#555;white-space:nowrap">${medida}</td>
+            <td style="padding:2px 4px;color:#1a6b3a">${info}</td>
+        </tr>`;
+    }
+
+    campoAncho.addEventListener('input', disparar);
+    campoAltura.addEventListener('input', disparar);
+    campoColor.addEventListener('change', disparar);
+    ckCabezal.addEventListener('change', disparar);
+    ckPitillo.addEventListener('change', () => { actualizarSelectsManual(); disparar(); });
+    ckConector.addEventListener('change', disparar);
+
+    document.addEventListener('DOMContentLoaded', () => {
+        actualizarSelectsManual();
+        consultarPrevisualizacion();
+    });
+</script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

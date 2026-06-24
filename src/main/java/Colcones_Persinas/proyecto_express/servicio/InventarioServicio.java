@@ -1,0 +1,536 @@
+package Colcones_Persinas.proyecto_express.servicio;
+
+import Colcones_Persinas.proyecto_express.modelo.*;
+import Colcones_Persinas.proyecto_express.repository.*;
+import org.springframework.stereotype.Service;
+
+import java.util.ArrayList;
+import java.util.List;
+
+@Service
+public class InventarioServicio {
+
+    private final RolloTelaRepository rolloTelaRepository;
+    private final InsumoRepository insumoRepository;
+    private final PiezaInsumoRepository piezaInsumoRepository;
+    private final MaterialUsadoRepository materialUsadoRepository;
+    private final RetazoTelaRepository retazoTelaRepository;
+
+    public InventarioServicio(RolloTelaRepository rolloTelaRepository,
+                               InsumoRepository insumoRepository,
+                               PiezaInsumoRepository piezaInsumoRepository,
+                               MaterialUsadoRepository materialUsadoRepository,
+                               RetazoTelaRepository retazoTelaRepository) {
+        this.rolloTelaRepository = rolloTelaRepository;
+        this.insumoRepository = insumoRepository;
+        this.piezaInsumoRepository = piezaInsumoRepository;
+        this.materialUsadoRepository = materialUsadoRepository;
+        this.retazoTelaRepository = retazoTelaRepository;
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // CLASES DE APOYO
+    // ═══════════════════════════════════════════════════════════════
+
+    public static class MaterialInsuficienteException extends RuntimeException {
+        public MaterialInsuficienteException(String mensaje) { super(mensaje); }
+    }
+
+    public static class SeleccionManual {
+        public Integer rolloTelaId;
+        public Integer retazoTelaId;   // nuevo: si viene, se usa retazo en lugar de rollo
+        public Integer piezaTuboId;
+        public Integer piezaCabezalId;
+        public Integer piezaPesaId;
+        public Integer piezaCuerdaId;
+        public Integer piezaPitilloId;
+    }
+
+    public static class PrevisualizacionMaterial {
+        public boolean disponible = true;
+        public String rolloSugerido;
+        public String retazoSugerido;  // nuevo: descripción del retazo sugerido (si aplica)
+        public String tuboSugerido;
+        public String cabezalSugerido;
+        public String pesaSugerida;
+        public String cuerdaSugerida;
+        public String controlInfo;
+        public String pitilloSugerido;
+        public String conectorInfo;
+        public List<String> faltantes = new ArrayList<>();
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // BÚSQUEDA DE RETAZO
+    // ═══════════════════════════════════════════════════════════════
+
+    /**
+     * Busca el retazo más ajustado (menor alto sobrante) que sirva para el pedido.
+     * Retorna null si no hay ninguno — en ese caso se usa rollo normal.
+     */
+    public RetazoTela buscarMejorRetazo(String color, double anchoNecesario, double altoNecesario) {
+        List<RetazoTela> candidatos = retazoTelaRepository
+                .findByColorAndAnchoGreaterThanEqualAndAltoGreaterThanEqualOrderByAltoAsc(
+                        color, anchoNecesario, altoNecesario);
+        return candidatos.isEmpty() ? null : candidatos.get(0);
+    }
+
+    public RetazoTela obtenerRetazoPorId(int id) {
+        return retazoTelaRepository.findById(id)
+                .orElseThrow(() -> new MaterialInsuficienteException("El retazo #" + id + " ya no existe."));
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // BÚSQUEDA DE ROLLO / PIEZA
+    // ═══════════════════════════════════════════════════════════════
+
+    public RolloTela buscarMejorRollo(String color, double ancho, double metrosNecesarios) {
+        List<RolloTela> candidatos = rolloTelaRepository
+                .findByColorAndAnchoAndLargoRestanteGreaterThanOrderByLargoRestanteAsc(color, ancho, 0.0);
+        for (RolloTela r : candidatos) {
+            if (r.getLargoRestante() >= metrosNecesarios - 0.001) return r;
+        }
+        throw new MaterialInsuficienteException(
+                "No hay tela de color " + color + " (" + ancho + " m de ancho) con "
+                + metrosNecesarios + " m disponibles.");
+    }
+
+    public RolloTela obtenerRolloPorId(int id) {
+        return rolloTelaRepository.findById(id)
+                .orElseThrow(() -> new MaterialInsuficienteException("El rollo #" + id + " ya no existe."));
+    }
+
+    public Insumo obtenerInsumoPorNombre(String nombre) {
+        return insumoRepository.findByNombreIgnoreCase(nombre)
+                .orElseThrow(() -> new MaterialInsuficienteException(
+                        "No existe el insumo \"" + nombre + "\" en el catálogo."));
+    }
+
+    public PiezaInsumo buscarMejorPieza(Insumo insumo, double metrosNecesarios) {
+        List<PiezaInsumo> candidatas = piezaInsumoRepository
+                .findByInsumoIdAndLargoRestanteGreaterThanOrderByLargoRestanteAsc(insumo.getId(), 0.0);
+        for (PiezaInsumo p : candidatas) {
+            if (p.getLargoRestante() >= metrosNecesarios - 0.001) return p;
+        }
+        throw new MaterialInsuficienteException(
+                "No hay suficiente \"" + insumo.getNombre() + "\". Se necesitan "
+                + redondear(metrosNecesarios) + " m y no hay ninguna pieza disponible.");
+    }
+
+    public PiezaInsumo obtenerPiezaPorId(int id) {
+        return piezaInsumoRepository.findById(id)
+                .orElseThrow(() -> new MaterialInsuficienteException("La pieza #" + id + " ya no existe."));
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // DESCUENTOS UNITARIOS
+    // ═══════════════════════════════════════════════════════════════
+
+    /**
+     * Descuenta de un retazo. El alto se reduce por el corteTelaAlto del pedido.
+     * Si el sobrante es <= 0.05 m se elimina el retazo directamente.
+     */
+    public MaterialUsado descontarRetazo(Pedido pedido, RetazoTela retazo, boolean manual) {
+        double altoUsado = pedido.getCorteTelaAlto();
+        if (retazo.getAlto() < altoUsado - 0.001) {
+            throw new MaterialInsuficienteException(
+                    "Retazo #" + retazo.getId() + " no tiene alto suficiente ("
+                    + retazo.getAlto() + " m disponibles, " + altoUsado + " m necesarios).");
+        }
+        double sobrante = redondear(retazo.getAlto() - altoUsado);
+        if (sobrante <= 0.05) {
+            retazoTelaRepository.delete(retazo);
+        } else {
+            retazo.setAlto(sobrante);
+            retazoTelaRepository.save(retazo);
+        }
+        MaterialUsado r = new MaterialUsado();
+        r.setPedidoId(pedido.getId());
+        r.setTipoMaterial("RETAZO");
+        r.setFuenteDescripcion("Retazo " + retazo.getColor() + " " + retazo.getAncho()
+                + "m × " + retazo.getAlto() + "m (#" + retazo.getId() + ")");
+        r.setMetrosUsados(altoUsado);
+        r.setMetrosSobrantes(sobrante);
+        r.setSeleccionManual(manual);
+        return materialUsadoRepository.save(r);
+    }
+
+    public MaterialUsado descontarTela(Pedido pedido, RolloTela rollo, double metros, boolean manual) {
+        if (rollo.getLargoRestante() < metros - 0.001) {
+            throw new MaterialInsuficienteException(
+                    "Rollo #" + rollo.getId() + " no tiene suficiente material ("
+                    + rollo.getLargoRestante() + " m disponibles, " + metros + " m necesarios).");
+        }
+        rollo.setLargoRestante(redondear(rollo.getLargoRestante() - metros));
+        rolloTelaRepository.save(rollo);
+        MaterialUsado r = new MaterialUsado();
+        r.setPedidoId(pedido.getId());
+        r.setTipoMaterial("TELA");
+        r.setRolloTelaId(rollo.getId());
+        r.setFuenteDescripcion("Rollo " + rollo.getColor() + " " + rollo.getAncho() + "m (#" + rollo.getId() + ")");
+        r.setMetrosUsados(metros);
+        r.setMetrosSobrantes(rollo.getLargoRestante());
+        r.setSeleccionManual(manual);
+        return materialUsadoRepository.save(r);
+    }
+
+    public MaterialUsado descontarInsumoConMedida(Pedido pedido, PiezaInsumo pieza, double metros, boolean manual) {
+        if (pieza.getLargoRestante() < metros - 0.001) {
+            throw new MaterialInsuficienteException(
+                    "Pieza #" + pieza.getId() + " (" + pieza.getInsumo().getNombre() + ") no tiene suficiente material ("
+                    + pieza.getLargoRestante() + " m disponibles, " + metros + " m necesarios).");
+        }
+        pieza.setLargoRestante(redondear(pieza.getLargoRestante() - metros));
+        piezaInsumoRepository.save(pieza);
+        MaterialUsado r = new MaterialUsado();
+        r.setPedidoId(pedido.getId());
+        r.setTipoMaterial(pieza.getInsumo().getNombre().toUpperCase().replace(" ", "_"));
+        r.setPiezaInsumoId(pieza.getId());
+        r.setFuenteDescripcion(pieza.getInsumo().getNombre() + " (#" + pieza.getId() + ")");
+        r.setMetrosUsados(metros);
+        r.setMetrosSobrantes(pieza.getLargoRestante());
+        r.setSeleccionManual(manual);
+        return materialUsadoRepository.save(r);
+    }
+
+    public MaterialUsado descontarInsumoPorUnidad(Pedido pedido, String nombreInsumo, int unidades) {
+        Insumo insumo = obtenerInsumoPorNombre(nombreInsumo);
+        int disponible = insumo.getStockUnidades() != null ? insumo.getStockUnidades() : 0;
+        if (disponible < unidades) {
+            throw new MaterialInsuficienteException(
+                    "No hay suficiente \"" + insumo.getNombre() + "\". Disponible: "
+                    + disponible + " unidad(es), necesario: " + unidades + ".");
+        }
+        insumo.setStockUnidades(disponible - unidades);
+        insumoRepository.save(insumo);
+        MaterialUsado r = new MaterialUsado();
+        r.setPedidoId(pedido.getId());
+        r.setTipoMaterial(insumo.getNombre().toUpperCase().replace(" ", "_"));
+        r.setFuenteDescripcion(insumo.getNombre() + " (unidad)");
+        r.setMetrosUsados(unidades);
+        r.setMetrosSobrantes(insumo.getStockUnidades());
+        r.setSeleccionManual(false);
+        return materialUsadoRepository.save(r);
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // VERIFICACIÓN PREVIA (sin descontar nada)
+    // ═══════════════════════════════════════════════════════════════
+
+    public void verificarDisponibilidad(Pedido pedido) {
+        // 1. Tela: primero busca retazo, si no hay busca rollo
+        RetazoTela retazo = buscarMejorRetazo(
+                pedido.getColorTelaDeseado(),
+                pedido.getCorteTelaAncho(),
+                pedido.getCorteTelaAlto());
+        if (retazo == null) {
+            buscarMejorRollo(pedido.getColorTelaDeseado(), anchoComercialDe(pedido), pedido.getCorteTelaAncho());
+        }
+
+        // 2. Tubo
+        Insumo tubo = obtenerInsumoPorNombre("Tubo " + pedido.getTuboRecomendado());
+        buscarMejorPieza(tubo, pedido.getCorteTuberia());
+
+        // 3. Cabezal
+        if (Boolean.TRUE.equals(pedido.getUsaCabezal())) {
+            Insumo cabezal = obtenerInsumoPorNombre("Cabezal");
+            buscarMejorPieza(cabezal, pedido.getMedidaCabezal());
+        }
+
+        // 4. Pesa
+        Insumo pesa = obtenerInsumoPorNombre("Pesa");
+        buscarMejorPieza(pesa, pedido.getCorteTuberia());
+
+        // 5. Cuerda
+        Insumo cuerda = obtenerInsumoPorNombre("Cuerda");
+        buscarMejorPieza(cuerda, pedido.getMetrosCuerda());
+
+        // 6. Control
+        Insumo control = obtenerInsumoPorNombre(pedido.getTipoControl().trim());
+        int stockControl = control.getStockUnidades() != null ? control.getStockUnidades() : 0;
+        if (stockControl < 1) {
+            throw new MaterialInsuficienteException(
+                    "No hay stock de \"" + control.getNombre() + "\". Disponible: 0 unidades.");
+        }
+
+        // 7. Pitillo
+        if (Boolean.TRUE.equals(pedido.getUsaPitilloPesa())) {
+            Insumo pitillo = obtenerInsumoPorNombre("Pitillo");
+            buscarMejorPieza(pitillo, pedido.getCortePitilloPesa());
+        }
+
+        // 8. Conector + Tope
+        if (Boolean.TRUE.equals(pedido.getUsaConectorTope())) {
+            Insumo conector = obtenerInsumoPorNombre("Conector");
+            int stockConector = conector.getStockUnidades() != null ? conector.getStockUnidades() : 0;
+            int necesarioConector = pedido.getCantidadConectores();
+            if (stockConector < necesarioConector) {
+                throw new MaterialInsuficienteException(
+                        "No hay suficiente \"Conector\". Disponible: " + stockConector
+                        + " unidad(es), necesario: " + necesarioConector + ".");
+            }
+            if (pedido.getCantidadTopes() > 0) {
+                Insumo tope = obtenerInsumoPorNombre("Tope Control");
+                int stockTope = tope.getStockUnidades() != null ? tope.getStockUnidades() : 0;
+                if (stockTope < pedido.getCantidadTopes()) {
+                    throw new MaterialInsuficienteException(
+                            "No hay suficiente \"Tope Control\". Disponible: " + stockTope
+                            + " unidad(es), necesario: " + pedido.getCantidadTopes() + ".");
+                }
+            }
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // DESCUENTO REAL
+    // ═══════════════════════════════════════════════════════════════
+
+    public void descontarMaterialDe(Pedido pedido) {
+        descontarMaterialDe(pedido, null);
+    }
+
+    public void descontarMaterialDe(Pedido pedido, SeleccionManual sel) {
+
+        // 1. Tela: prioridad retazo → rollo
+        if (sel != null && sel.retazoTelaId != null) {
+            // Jefe eligió retazo manualmente
+            RetazoTela retazo = obtenerRetazoPorId(sel.retazoTelaId);
+            descontarRetazo(pedido, retazo, true);
+        } else if (sel != null && sel.rolloTelaId != null) {
+            // Jefe eligió rollo manualmente
+            RolloTela rollo = obtenerRolloPorId(sel.rolloTelaId);
+            descontarTela(pedido, rollo, pedido.getCorteTelaAncho(), true);
+        } else {
+            // Automático: retazo primero, si no hay, rollo
+            RetazoTela retazo = buscarMejorRetazo(
+                    pedido.getColorTelaDeseado(),
+                    pedido.getCorteTelaAncho(),
+                    pedido.getCorteTelaAlto());
+            if (retazo != null) {
+                descontarRetazo(pedido, retazo, false);
+            } else {
+                RolloTela rollo = buscarMejorRollo(
+                        pedido.getColorTelaDeseado(), anchoComercialDe(pedido), pedido.getCorteTelaAncho());
+                descontarTela(pedido, rollo, pedido.getCorteTelaAncho(), false);
+            }
+        }
+
+        // 2. Tubo
+        Insumo tubo = obtenerInsumoPorNombre("Tubo " + pedido.getTuboRecomendado());
+        PiezaInsumo piezaTubo = (sel != null && sel.piezaTuboId != null)
+                ? obtenerPiezaPorId(sel.piezaTuboId)
+                : buscarMejorPieza(tubo, pedido.getCorteTuberia());
+        descontarInsumoConMedida(pedido, piezaTubo, pedido.getCorteTuberia(), sel != null && sel.piezaTuboId != null);
+
+        // 3. Cabezal
+        if (Boolean.TRUE.equals(pedido.getUsaCabezal())) {
+            Insumo cabezal = obtenerInsumoPorNombre("Cabezal");
+            PiezaInsumo piezaCabezal = (sel != null && sel.piezaCabezalId != null)
+                    ? obtenerPiezaPorId(sel.piezaCabezalId)
+                    : buscarMejorPieza(cabezal, pedido.getMedidaCabezal());
+            descontarInsumoConMedida(pedido, piezaCabezal, pedido.getMedidaCabezal(),
+                    sel != null && sel.piezaCabezalId != null);
+        }
+
+        // 4. Pesa
+        Insumo pesa = obtenerInsumoPorNombre("Pesa");
+        PiezaInsumo piezaPesa = (sel != null && sel.piezaPesaId != null)
+                ? obtenerPiezaPorId(sel.piezaPesaId)
+                : buscarMejorPieza(pesa, pedido.getCorteTuberia());
+        descontarInsumoConMedida(pedido, piezaPesa, pedido.getCorteTuberia(), sel != null && sel.piezaPesaId != null);
+
+        // 5. Cuerda
+        Insumo cuerda = obtenerInsumoPorNombre("Cuerda");
+        PiezaInsumo piezaCuerda = (sel != null && sel.piezaCuerdaId != null)
+                ? obtenerPiezaPorId(sel.piezaCuerdaId)
+                : buscarMejorPieza(cuerda, pedido.getMetrosCuerda());
+        descontarInsumoConMedida(pedido, piezaCuerda, pedido.getMetrosCuerda(),
+                sel != null && sel.piezaCuerdaId != null);
+
+        // 6. Control
+        descontarInsumoPorUnidad(pedido, pedido.getTipoControl().trim(), 1);
+
+        // 7. Pitillo
+        if (Boolean.TRUE.equals(pedido.getUsaPitilloPesa())) {
+            Insumo pitillo = obtenerInsumoPorNombre("Pitillo");
+            PiezaInsumo piezaPitillo = (sel != null && sel.piezaPitilloId != null)
+                    ? obtenerPiezaPorId(sel.piezaPitilloId)
+                    : buscarMejorPieza(pitillo, pedido.getCortePitilloPesa());
+            descontarInsumoConMedida(pedido, piezaPitillo, pedido.getCortePitilloPesa(),
+                    sel != null && sel.piezaPitilloId != null);
+        }
+
+        // 8. Conector + Tope
+        if (Boolean.TRUE.equals(pedido.getUsaConectorTope())) {
+            descontarInsumoPorUnidad(pedido, "Conector", pedido.getCantidadConectores());
+            if (pedido.getCantidadTopes() > 0) {
+                descontarInsumoPorUnidad(pedido, "Tope Control", pedido.getCantidadTopes());
+            }
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // PROCESAMIENTO DE LOTE
+    // ═══════════════════════════════════════════════════════════════
+
+    public void procesarLoteCompleto(List<Pedido> pedidos) {
+        for (Pedido p : pedidos) verificarDisponibilidad(p);
+        for (Pedido p : pedidos) descontarMaterialDe(p);
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // PREVISUALIZACIÓN EN VIVO
+    // ═══════════════════════════════════════════════════════════════
+
+    public PrevisualizacionMaterial previsualizar(Pedido pedido) {
+        PrevisualizacionMaterial res = new PrevisualizacionMaterial();
+
+        // 1. Tela: retazo primero, si no hay, rollo
+        intentar(res, () -> {
+            RetazoTela retazo = buscarMejorRetazo(
+                    pedido.getColorTelaDeseado(),
+                    pedido.getCorteTelaAncho(),
+                    pedido.getCorteTelaAlto());
+            if (retazo != null) {
+                double sobrante = redondear(retazo.getAlto() - pedido.getCorteTelaAlto());
+                res.retazoSugerido = "✂ Retazo " + retazo.getColor() + " " + retazo.getAncho()
+                        + "m × " + retazo.getAlto() + "m (#" + retazo.getId()
+                        + ") · quedarían " + sobrante + " m de alto";
+            } else {
+                RolloTela r = buscarMejorRollo(
+                        pedido.getColorTelaDeseado(), anchoComercialDe(pedido), pedido.getCorteTelaAncho());
+                res.rolloSugerido = "Rollo " + r.getColor() + " " + r.getAncho() + "m (#" + r.getId()
+                        + ") · quedarían " + redondear(r.getLargoRestante() - pedido.getCorteTelaAncho()) + " m";
+            }
+        });
+
+        // 2. Tubo
+        intentar(res, () -> {
+            Insumo tubo = obtenerInsumoPorNombre("Tubo " + pedido.getTuboRecomendado());
+            PiezaInsumo p = buscarMejorPieza(tubo, pedido.getCorteTuberia());
+            res.tuboSugerido = tubo.getNombre() + " (#" + p.getId() + ") · quedarían "
+                    + redondear(p.getLargoRestante() - pedido.getCorteTuberia()) + " m";
+        });
+
+        // 3. Cabezal
+        if (Boolean.TRUE.equals(pedido.getUsaCabezal())) {
+            intentar(res, () -> {
+                Insumo cab = obtenerInsumoPorNombre("Cabezal");
+                PiezaInsumo p = buscarMejorPieza(cab, pedido.getMedidaCabezal());
+                res.cabezalSugerido = "Cabezal (#" + p.getId() + ") · quedarían "
+                        + redondear(p.getLargoRestante() - pedido.getMedidaCabezal()) + " m";
+            });
+        }
+
+        // 4. Pesa
+        intentar(res, () -> {
+            Insumo pesa = obtenerInsumoPorNombre("Pesa");
+            PiezaInsumo p = buscarMejorPieza(pesa, pedido.getCorteTuberia());
+            res.pesaSugerida = "Pesa (#" + p.getId() + ") · quedarían "
+                    + redondear(p.getLargoRestante() - pedido.getCorteTuberia()) + " m";
+        });
+
+        // 5. Cuerda
+        intentar(res, () -> {
+            Insumo cuerda = obtenerInsumoPorNombre("Cuerda");
+            PiezaInsumo p = buscarMejorPieza(cuerda, pedido.getMetrosCuerda());
+            res.cuerdaSugerida = "Cuerda (#" + p.getId() + ") · quedarían "
+                    + redondear(p.getLargoRestante() - pedido.getMetrosCuerda()) + " m";
+        });
+
+        // 6. Control
+        intentar(res, () -> {
+            Insumo control = obtenerInsumoPorNombre(pedido.getTipoControl().trim());
+            int stock = control.getStockUnidades() != null ? control.getStockUnidades() : 0;
+            if (stock < 1) throw new MaterialInsuficienteException("Sin stock de \"" + control.getNombre() + "\".");
+            res.controlInfo = control.getNombre() + " · quedarían " + (stock - 1) + " unidad(es)";
+        });
+
+        // 7. Pitillo
+        if (Boolean.TRUE.equals(pedido.getUsaPitilloPesa())) {
+            intentar(res, () -> {
+                Insumo pitillo = obtenerInsumoPorNombre("Pitillo");
+                PiezaInsumo p = buscarMejorPieza(pitillo, pedido.getCortePitilloPesa());
+                res.pitilloSugerido = "Pitillo (#" + p.getId() + ") · quedarían "
+                        + redondear(p.getLargoRestante() - pedido.getCortePitilloPesa()) + " m";
+            });
+        }
+
+        // 8. Conector + Tope
+        if (Boolean.TRUE.equals(pedido.getUsaConectorTope())) {
+            intentar(res, () -> {
+                Insumo conector = obtenerInsumoPorNombre("Conector");
+                int stockConector = conector.getStockUnidades() != null ? conector.getStockUnidades() : 0;
+                int necesario = pedido.getCantidadConectores();
+                if (stockConector < necesario) {
+                    throw new MaterialInsuficienteException("Sin stock suficiente de \"Conector\".");
+                }
+                String info = "Conector ×" + necesario + " · quedarían " + (stockConector - necesario);
+                if (pedido.getCantidadTopes() > 0) {
+                    Insumo tope = obtenerInsumoPorNombre("Tope Control");
+                    int stockTope = tope.getStockUnidades() != null ? tope.getStockUnidades() : 0;
+                    if (stockTope < pedido.getCantidadTopes()) {
+                        throw new MaterialInsuficienteException("Sin stock suficiente de \"Tope Control\".");
+                    }
+                    info += " | Tope ×" + pedido.getCantidadTopes() + " · quedarían "
+                            + (stockTope - pedido.getCantidadTopes());
+                }
+                res.conectorInfo = info;
+            });
+        }
+
+        return res;
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // AUXILIARES
+    // ═══════════════════════════════════════════════════════════════
+
+    private void intentar(PrevisualizacionMaterial res, Runnable accion) {
+        try {
+            accion.run();
+        } catch (MaterialInsuficienteException e) {
+            res.disponible = false;
+            res.faltantes.add(e.getMessage());
+        }
+    }
+
+    public double anchoComercialDe(Pedido pedido) {
+        double mayor = Math.max(pedido.getAncho(), pedido.getAltura());
+        if (mayor <= 1.83) return 1.83;
+        if (mayor <= 2.50) return 2.50;
+        return 3.00;
+    }
+
+    private double redondear(double v) {
+        return Math.round(v * 1000.0) / 1000.0;
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // MÉTODOS DE CONSULTA
+    // ═══════════════════════════════════════════════════════════════
+
+    public List<RolloTela> getTodosLosRollos() {
+        return rolloTelaRepository.findAllByOrderByColorAscAnchoAscLargoRestanteAsc();
+    }
+
+    public List<Insumo> getTodosLosInsumos() {
+        return insumoRepository.findAllByOrderByNombreAsc();
+    }
+
+    public List<PiezaInsumo> getPiezasDeInsumo(int insumoId) {
+        return piezaInsumoRepository.findByInsumoIdOrderByLargoRestanteAsc(insumoId);
+    }
+
+    public List<MaterialUsado> getHistorialDePedido(int pedidoId) {
+        return materialUsadoRepository.findByPedidoIdOrderByFechaAsc(pedidoId);
+    }
+
+    public List<PiezaInsumo> getTodasLasPiezas() {
+        return piezaInsumoRepository.findAll();
+    }
+
+    public List<RetazoTela> getTodosLosRetazos() {
+        return retazoTelaRepository.findAllByOrderByColorAscAnchoAscAltoAsc();
+    }
+}

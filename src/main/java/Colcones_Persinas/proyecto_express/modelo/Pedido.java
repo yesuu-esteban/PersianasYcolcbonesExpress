@@ -46,6 +46,12 @@ public class Pedido {
     @Column(nullable = false)
     private Boolean ensamblado = false;
 
+    @Column(name = "usa_pitillo_pesa", nullable = false)
+    private Boolean usaPitilloPesa = true;
+
+    @Column(name = "usa_conector_tope", nullable = false)
+    private Boolean usaConectorTope = true;
+
     // ─── TRAZABILIDAD DE FECHAS ─────────────────────────────────────────────
 
     @Column(name = "fecha_creacion")
@@ -54,10 +60,6 @@ public class Pedido {
     @Column(name = "fecha_actualizacion")
     private LocalDateTime fechaActualizacion;
 
-    /**
-     * Se ejecuta automáticamente una sola vez, justo antes del primer guardado (INSERT).
-     * Así no hay que recordar asignar la fecha manualmente en el controlador.
-     */
     @PrePersist
     protected void alCrear() {
         LocalDateTime ahora = LocalDateTime.now();
@@ -65,9 +67,6 @@ public class Pedido {
         this.fechaActualizacion = ahora;
     }
 
-    /**
-     * Se ejecuta automáticamente cada vez que se actualiza un registro existente (UPDATE).
-     */
     @PreUpdate
     protected void alActualizar() {
         this.fechaActualizacion = LocalDateTime.now();
@@ -85,7 +84,7 @@ public class Pedido {
         return this.fechaActualizacion != null ? this.fechaActualizacion.format(FORMATO_FECHA) : "";
     }
 
-    // ─── CÁLCULOS TRANSIENT (visibles por Thymeleaf vía getters) ───────────────
+    // ─── CÁLCULOS TRANSIENT ─────────────────────────────────────────────────
 
     @Transient
     public double getCorteTelaAncho() {
@@ -104,12 +103,20 @@ public class Pedido {
         return Math.round((this.ancho - descuento) * 1000.0) / 1000.0;
     }
 
-    /**
-     * Medida del cabezal: solo aplica cuando usaCabezal = true.
-     */
     @Transient
     public double getMedidaCabezal() {
         return Math.round((this.ancho - 0.005) * 1000.0) / 1000.0;
+    }
+
+    /**
+     * Metros numéricos de cuerda según la altura del pedido.
+     * 3.0 m si altura <= 1.50 m, 4.0 m si es mayor.
+     * Usado por InventarioServicio para buscar/descontar la pieza correcta
+     * del insumo único "Cuerda".
+     */
+    @Transient
+    public double getMetrosCuerda() {
+        return this.altura <= 1.50 ? 3.0 : 4.0;
     }
 
     @Transient
@@ -117,38 +124,47 @@ public class Pedido {
         return Boolean.TRUE.equals(this.usaCabezal) ? "CON CABEZAL" : "SIN CABEZAL";
     }
 
-    /**
-     * Determina el ancho de rollo de tela necesario según las medidas del pedido.
-     * Ambas medidas (ancho y altura) deben caber dentro del mismo rango de rollo;
-     * si cualquiera de las dos se sale del rango, se sube al siguiente rollo disponible.
-     * Si ambas superan 3.00 m, se asigna igualmente el rollo más grande disponible (3.00 m).
-     */
     @Transient
     public String getRolloTela() {
         double mayor = Math.max(this.ancho, this.altura);
-        if (mayor <= 1.83) {
-            return "Rollo 1.83m";
-        } else if (mayor <= 2.50) {
-            return "Rollo 2.50m";
-        } else {
-            return "Rollo 3.00m";
-        }
+        if (mayor <= 1.83) return "Rollo 1.83m";
+        if (mayor <= 2.50) return "Rollo 2.50m";
+        return "Rollo 3.00m";
     }
 
-    // ─── LÓGICA DE NEGOCIO ─────────────────────────────────────────────────────
+    @Transient
+    public double getCortePitilloPesa() {
+        return getCorteTelaAncho();
+    }
+
+    @Transient
+    public int getCantidadConectores() {
+        return esControlR16() ? 2 : 1;
+    }
+
+    @Transient
+    public int getCantidadTopes() {
+        return esControlR16() ? 0 : 1;
+    }
+
+    private boolean esControlR16() {
+        return this.tipoControl != null && this.tipoControl.trim().startsWith("Control R16");
+    }
+
+    // ─── LÓGICA DE NEGOCIO ──────────────────────────────────────────────────
 
     public void calcularFichaTecnica() {
         // 1. Tipo de control según ancho
-        this.tipoControl = (this.ancho > 1.50) ? "Control R16" : "Control R8 B ";
+        this.tipoControl = (this.ancho > 1.50) ? "Control R16" : "Control R8 B";
 
-        // 2. Tubo según peso/tamaño (el cabezal siempre exige tubo más robusto)
+        // 2. Tubo según peso/tamaño
         boolean esPesado = (this.ancho > 2.50 || this.altura > 2.50 || Boolean.TRUE.equals(this.usaCabezal));
         this.tuboRecomendado = esPesado ? "R24" : "R16";
 
-        // 3. Longitud de cuerda
+        // 3. Medida de cuerda como texto (para mostrar en ficha y etiquetas)
         this.medidaCuerda = (this.altura <= 1.50) ? "3 metros" : "4 metros";
 
-        // 4. Resumen de corte persistido (para la tabla de pedidos)
+        // 4. Resumen persistido
         this.rolloParaCortar = "Tela: " + getCorteTelaAncho() + " x " + getCorteTelaAlto()
                              + " | Tubo: " + getCorteTuberia()
                              + " | " + getRolloTela();

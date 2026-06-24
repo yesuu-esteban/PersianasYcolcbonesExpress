@@ -33,7 +33,10 @@
     <div class="container-fluid">
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h2>📋 Gestión de Órdenes de Fabricación</h2>
-            <a href="/taller/nuevo" class="btn btn-primary">+ Registrar Nuevo Pedido</a>
+            <div>
+                <a href="/inventario" class="btn btn-outline-dark me-2">📦 Inventario</a>
+                <a href="/taller/nuevo" class="btn btn-primary">+ Registrar Nuevo Pedido</a>
+            </div>
         </div>
 
         <div th:if="${mensaje}" class="alert alert-success" th:text="${mensaje}"></div>

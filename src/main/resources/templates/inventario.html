@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Inventario de Materiales</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .table-small { font-size: 0.88rem; }
+        .fila-retazo { background-color: #fff8e1 !important; }
+        .fila-agotado { background-color: #f8d7da !important; opacity: 0.7; }
+        .badge-retazo { background-color: #ffc107; color: #000; }
+        .seccion-card {
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,.08);
+            margin-bottom: 28px;
+        }
+        .seccion-header {
+            background-color: #343a40;
+            color: #fff;
+            padding: 12px 18px;
+            border-radius: 8px 8px 0 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .resumen-pill {
+            background: #e9ecef;
+            border-radius: 20px;
+            padding: 6px 16px;
+            font-size: 0.85rem;
+            margin-right: 8px;
+            display: inline-block;
+        }
+    </style>
+</head>
+<body class="bg-light p-4">
+    <div class="container-fluid">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h2>📦 Inventario de Materiales</h2>
+            <a href="/taller/pedidos" class="btn btn-outline-secondary">← Volver a Pedidos</a>
+        </div>
+
+        <div th:if="${mensaje}" class="alert alert-success" th:text="${mensaje}"></div>
+        <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
+
+        <div class="mb-4">
+            <span class="resumen-pill">Rollos totales: <strong th:text="${#lists.size(rollos)}"></strong></span>
+            <span class="resumen-pill">Retazos de rollo (&lt; 3m): <strong th:text="${rollosRetazo}"></strong></span>
+            <span class="resumen-pill">Agotados: <strong th:text="${rollosAgotados}"></strong></span>
+            <span class="resumen-pill">✂ Retazos registrados: <strong th:text="${#lists.size(retazos)}"></strong></span>
+        </div>
+
+        <!-- ───────────── ROLLOS DE TELA ───────────── -->
+        <div class="seccion-card">
+            <div class="seccion-header">
+                <h5 class="mb-0">🧵 Rollos de Tela</h5>
+                <a href="/inventario/rollo/nuevo" class="btn btn-sm btn-light">+ Agregar Rollo</a>
+            </div>
+            <table class="table table-hover align-middle table-small mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Color</th>
+                        <th>Ancho</th>
+                        <th>Largo restante</th>
+                        <th>Estado</th>
+                        <th>Ingreso</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="r : ${rollos}"
+                        th:classappend="${r.agotado} ? 'fila-agotado' : (${r.retazo} ? 'fila-retazo' : '')">
+                        <td th:text="${r.color}"></td>
+                        <td th:text="${r.ancho + 'm'}"></td>
+                        <td><strong th:text="${#numbers.formatDecimal(r.largoRestante, 1, 2) + ' / ' + #numbers.formatDecimal(r.largoInicial, 1, 0) + ' m'}"></strong></td>
+                        <td>
+                            <span th:if="${r.agotado}" class="badge bg-danger">Agotado</span>
+                            <span th:if="${r.retazo}" class="badge badge-retazo">Retazo</span>
+                            <span th:if="${!r.agotado and !r.retazo}" class="badge bg-success">Disponible</span>
+                        </td>
+                        <td><small th:text="${#temporals.format(r.fechaIngreso, 'dd/MM/yyyy HH:mm')}"></small></td>
+                        <td>
+                            <form th:action="@{/inventario/rollo/eliminar/{id}(id=${r.id})}" method="post" class="d-inline"
+                                  onsubmit="return confirm('¿Eliminar este rollo del inventario?');">
+                                <button type="submit" class="btn btn-sm btn-outline-danger">🗑️</button>
+                            </form>
+                        </td>
+                    </tr>
+                    <tr th:if="${#lists.isEmpty(rollos)}">
+                        <td colspan="6" class="text-center text-muted py-3">No hay rollos registrados todavía.</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- ───────────── RETAZOS DE TELA ───────────── -->
+        <div class="seccion-card">
+            <div class="seccion-header">
+                <h5 class="mb-0">✂ Retazos de Tela</h5>
+            </div>
+
+            <!-- Formulario para registrar un retazo nuevo -->
+            <div class="p-3 border-bottom" style="background:#fffbea;">
+                <form th:action="@{/inventario/retazo/nuevo}" method="post" class="row g-2 align-items-end">
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold mb-1" style="font-size:0.83rem">Color</label>
+                        <select name="color" class="form-select form-select-sm">
+                            <option th:each="c : ${colores}" th:value="${c}" th:text="${c}"></option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold mb-1" style="font-size:0.83rem">Ancho (m)</label>
+                        <select name="ancho" class="form-select form-select-sm">
+                            <option th:each="a : ${anchos}" th:value="${a}" th:text="${a + ' m'}"></option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold mb-1" style="font-size:0.83rem">Alto disponible (m)</label>
+                        <input type="number" step="0.01" name="alto" class="form-control form-control-sm" placeholder="ej: 1.50" required min="0.01">
+                    </div>
+                    <div class="col-md-3">
+                        <button type="submit" class="btn btn-sm btn-warning w-100">✂ Registrar Retazo</button>
+                    </div>
+                </form>
+            </div>
+
+            <table class="table table-hover align-middle table-small mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>#</th>
+                        <th>Color</th>
+                        <th>Ancho</th>
+                        <th>Alto disponible</th>
+                        <th>Estado</th>
+                        <th>Ingreso</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="rt : ${retazos}" th:classappend="${rt.agotado} ? 'fila-agotado' : 'fila-retazo'">
+                        <td th:text="${rt.id}"></td>
+                        <td th:text="${rt.color}"></td>
+                        <td th:text="${rt.ancho + ' m'}"></td>
+                        <td><strong th:text="${#numbers.formatDecimal(rt.alto, 1, 2) + ' m'}"></strong></td>
+                        <td>
+                            <span th:if="${rt.agotado}" class="badge bg-danger">Agotado</span>
+                            <span th:unless="${rt.agotado}" class="badge badge-retazo">Disponible</span>
+                        </td>
+                        <td><small th:text="${rt.fechaIngresoFormateada}"></small></td>
+                        <td>
+                            <form th:action="@{/inventario/retazo/eliminar/{id}(id=${rt.id})}" method="post" class="d-inline"
+                                  onsubmit="return confirm('¿Eliminar este retazo?');">
+                                <button type="submit" class="btn btn-sm btn-outline-danger">🗑️</button>
+                            </form>
+                        </td>
+                    </tr>
+                    <tr th:if="${#lists.isEmpty(retazos)}">
+                        <td colspan="7" class="text-center text-muted py-3">No hay retazos registrados. Usa el formulario de arriba para agregar uno.</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- ───────────── INSUMOS ───────────── -->
+        <div class="seccion-card">
+            <div class="seccion-header">
+                <h5 class="mb-0">🔧 Insumos</h5>
+                <a href="/inventario/insumo/nuevo" class="btn btn-sm btn-light">+ Crear Insumo Nuevo</a>
+            </div>
+            <table class="table table-hover align-middle table-small mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Nombre</th>
+                        <th>Tipo</th>
+                        <th>Stock</th>
+                        <th>Descripción</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="ins : ${insumos}">
+                        <td class="fw-bold" th:text="${ins.nombre}"></td>
+                        <td>
+                            <span th:if="${ins.tieneMedida}" class="badge bg-info text-dark">Por medida</span>
+                            <span th:unless="${ins.tieneMedida}" class="badge bg-secondary">Por unidad</span>
+                        </td>
+                        <td>
+                            <span th:if="${!ins.tieneMedida}">
+                                <strong th:text="${ins.stockUnidades}"></strong> unidad(es)
+                            </span>
+                            <span th:if="${ins.tieneMedida}">
+                                <strong th:text="${piezasPorInsumo.get(ins.id) != null ? #lists.size(piezasPorInsumo.get(ins.id)) : 0}"></strong> pieza(s)
+                            </span>
+                        </td>
+                        <td><small class="text-muted" th:text="${ins.descripcion}"></small></td>
+                        <td>
+                            <a th:href="@{/inventario/insumo/{id}/cargar(id=${ins.id})}" class="btn btn-sm btn-outline-primary">+ Cargar stock</a>
+                        </td>
+                    </tr>
+                    <tr th:if="${#lists.isEmpty(insumos)}">
+                        <td colspan="5" class="text-center text-muted py-3">No hay insumos registrados todavía.</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- ───────────── PIEZAS DE INSUMOS CON MEDIDA (detalle) ───────────── -->
+        <div class="seccion-card" th:if="${!#lists.isEmpty(piezas)}">
+            <div class="seccion-header">
+                <h5 class="mb-0">📐 Detalle de piezas (tubo, cuerda, cabezal, pesa...)</h5>
+            </div>
+            <table class="table table-hover align-middle table-small mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Insumo</th>
+                        <th>Largo restante</th>
+                        <th>Estado</th>
+                        <th>Ingreso</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="pz : ${piezas}" th:classappend="${pz.agotada} ? 'fila-agotado' : ''">
+                        <td th:text="${pz.insumo.nombre}"></td>
+                        <td><strong th:text="${#numbers.formatDecimal(pz.largoRestante, 1, 2) + ' / ' + #numbers.formatDecimal(pz.largoInicial, 1, 2) + ' m'}"></strong></td>
+                        <td>
+                            <span th:if="${pz.agotada}" class="badge bg-danger">Agotada</span>
+                            <span th:unless="${pz.agotada}" class="badge bg-success">Disponible</span>
+                        </td>
+                        <td><small th:text="${#temporals.format(pz.fechaIngreso, 'dd/MM/yyyy HH:mm')}"></small></td>
+                        <td>
+                            <form th:action="@{/inventario/insumo/pieza/eliminar/{id}(id=${pz.id})}" method="post" class="d-inline"
+                                  onsubmit="return confirm('¿Eliminar esta pieza del inventario?');">
+                                <button type="submit" class="btn btn-sm btn-outline-danger">🗑️</button>
+                            </form>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+    </div>
+</body>
+</html>

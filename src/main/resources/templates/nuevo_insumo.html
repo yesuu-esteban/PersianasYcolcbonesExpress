@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Crear Insumos Nuevos</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .col-medida { display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .campo-extra { display: none; }
+        .campo-extra.activo { display: flex; }
+    </style>
+</head>
+<body class="bg-light p-4">
+    <div class="container col-md-11">
+        <h2 class="mb-2">🔧 Crear Insumos Nuevos</h2>
+        <p class="text-muted">Usa esto solo si llegó un material que no es Tubo, Cuerda, Pesa o Control (esos ya existen en el sistema). Puedes registrar varios insumos distintos a la vez.</p>
+
+        <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
+
+        <form th:action="@{/inventario/insumo/nuevo}" method="post" class="bg-white p-4 shadow-sm border rounded">
+
+            <!-- Cabecera de columnas -->
+            <div class="row mb-1 px-1">
+                <div class="col-md-3"><small class="fw-bold text-muted">Nombre del insumo</small></div>
+                <div class="col-md-2 text-center"><small class="fw-bold text-muted">¿Se mide?</small></div>
+                <div class="col-md-2"><small class="fw-bold text-muted">Medida (m) / Unidades</small></div>
+                <div class="col-md-1"><small class="fw-bold text-muted">Cant. piezas</small></div>
+                <div class="col-md-3"><small class="fw-bold text-muted">Descripción</small></div>
+                <div class="col-md-1"></div>
+            </div>
+
+            <div id="contenedor-insumos">
+                <!-- Fila 0: índice fijo = 0 -->
+                <div class="row mb-2 align-items-center fila-insumo" data-indice="0">
+                    <div class="col-md-3">
+                        <input type="text" name="nombres" class="form-control" placeholder="Ej: Tubo R24" required>
+                    </div>
+                    <div class="col-md-2 col-medida">
+                        <!--
+                            value="true" sigue el mismo patrón que "cabezales[i]" en nuevo_pedido:
+                            Marcado    → envía tieneMedida[0]=true  → el controlador lee "true"
+                            Desmarcado → no envía nada              → el controlador lee "false" (por defecto)
+                        -->
+                        <div class="form-check">
+                            <input class="form-check-input campo-tiene-medida" type="checkbox" name="tieneMedida[0]" value="true" id="medida0">
+                            <label class="form-check-label small" for="medida0">Por longitud</label>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <input type="number" step="0.01" name="largoInicial[0]" class="form-control campo-largo campo-extra" placeholder="Largo en m">
+                        <input type="number" name="unidadesIniciales[0]" class="form-control campo-unidades" placeholder="Unidades" value="0">
+                    </div>
+                    <div class="col-md-1">
+                        <input type="number" name="cantidadPiezas[0]" class="form-control campo-piezas campo-extra" placeholder="Piezas" value="1" min="1">
+                    </div>
+                    <div class="col-md-3">
+                        <input type="text" name="descripciones" class="form-control" placeholder="Notas (opcional)">
+                    </div>
+                    <div class="col-md-1"></div>
+                </div>
+            </div>
+
+            <button type="button" class="btn btn-info btn-sm mt-2" onclick="agregarFila()">+ Agregar otro insumo</button>
+
+            <div class="mt-4">
+                <button type="submit" class="btn btn-success w-100">Crear insumos</button>
+                <a href="/inventario" class="btn btn-secondary w-100 mt-2">Cancelar</a>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        let filaIndex = 1;
+
+        function agregarFila() {
+            const contenedor = document.getElementById('contenedor-insumos');
+            const idx = filaIndex;
+
+            const fila = `
+                <div class="row mb-2 align-items-center fila-insumo" data-indice="${idx}">
+                    <div class="col-md-3">
+                        <input type="text" name="nombres" class="form-control" placeholder="Ej: Tubo R24" required>
+                    </div>
+                    <div class="col-md-2 col-medida">
+                        <div class="form-check">
+                            <input class="form-check-input campo-tiene-medida" type="checkbox" name="tieneMedida[${idx}]" value="true" id="medida${idx}">
+                            <label class="form-check-label small" for="medida${idx}">Por longitud</label>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <input type="number" step="0.01" name="largoInicial[${idx}]" class="form-control campo-largo campo-extra" placeholder="Largo en m">
+                        <input type="number" name="unidadesIniciales[${idx}]" class="form-control campo-unidades" placeholder="Unidades" value="0">
+                    </div>
+                    <div class="col-md-1">
+                        <input type="number" name="cantidadPiezas[${idx}]" class="form-control campo-piezas campo-extra" placeholder="Piezas" value="1" min="1">
+                    </div>
+                    <div class="col-md-3">
+                        <input type="text" name="descripciones" class="form-control" placeholder="Notas (opcional)">
+                    </div>
+                    <div class="col-md-1">
+                        <button type="button" class="btn btn-danger btn-sm"
+                                onclick="this.closest('.fila-insumo').remove()">✕</button>
+                    </div>
+                </div>`;
+
+            contenedor.insertAdjacentHTML('beforeend', fila);
+            filaIndex++;
+            engancharEventosFila(contenedor.lastElementChild);
+        }
+
+        // Alterna entre mostrar "largo + cant. piezas" (con medida) o "unidades" (sin medida)
+        function engancharEventosFila(fila) {
+            const checkbox = fila.querySelector('.campo-tiene-medida');
+            const campoLargo = fila.querySelector('.campo-largo');
+            const campoPiezas = fila.querySelector('.campo-piezas');
+            const campoUnidades = fila.querySelector('.campo-unidades');
+
+            const actualizar = () => {
+                if (checkbox.checked) {
+                    campoLargo.classList.add('activo');
+                    campoPiezas.classList.add('activo');
+                    campoUnidades.style.display = 'none';
+                } else {
+                    campoLargo.classList.remove('activo');
+                    campoPiezas.classList.remove('activo');
+                    campoUnidades.style.display = 'block';
+                }
+            };
+
+            checkbox.addEventListener('change', actualizar);
+            actualizar();
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            document.querySelectorAll('.fila-insumo').forEach(engancharEventosFila);
+        });
+    </script>
+</body>
+</html>
