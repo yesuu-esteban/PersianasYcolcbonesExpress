@@ -138,7 +138,7 @@ public class Pedido {
         } else {
             return "Rollo 3.00m";
         }
-}
+    }
     @Transient
     public double getCortePitilloPesa() {
         return getCorteTelaAncho();

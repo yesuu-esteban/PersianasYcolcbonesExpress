@@ -65,14 +65,30 @@ public class InventarioServicio {
     // ═══════════════════════════════════════════════════════════════
 
     /**
-     * Busca el retazo más ajustado (menor alto sobrante) que sirva para el pedido.
+     * Busca el retazo más ajustado (menor alto sobrante) que sirva para el pedido,
+     * probando AMBAS orientaciones: la pieza puede entrar tal cual (ancho×alto) o
+     * rotada (alto×ancho), igual que se hace con los rollos. Se queda con la mejor
+     * opción entre las dos orientaciones (la de menor sobrante).
      * Retorna null si no hay ninguno — en ese caso se usa rollo normal.
      */
     public RetazoTela buscarMejorRetazo(String color, double anchoNecesario, double altoNecesario) {
-        List<RetazoTela> candidatos = retazoTelaRepository
+        List<RetazoTela> directos = retazoTelaRepository
                 .findByColorAndAnchoGreaterThanEqualAndAltoGreaterThanEqualOrderByAltoAsc(
                         color, anchoNecesario, altoNecesario);
-        return candidatos.isEmpty() ? null : candidatos.get(0);
+        RetazoTela mejorDirecto = directos.isEmpty() ? null : directos.get(0);
+
+        List<RetazoTela> rotados = retazoTelaRepository
+                .findByColorAndAnchoGreaterThanEqualAndAltoGreaterThanEqualOrderByAltoAsc(
+                        color, altoNecesario, anchoNecesario);
+        RetazoTela mejorRotado = rotados.isEmpty() ? null : rotados.get(0);
+
+        if (mejorDirecto == null) return mejorRotado;
+        if (mejorRotado == null) return mejorDirecto;
+
+        // Se queda con el que deje menos sobrante "de alto" usado en cada orientación
+        double sobranteDirecto = mejorDirecto.getAlto() - altoNecesario;
+        double sobranteRotado = mejorRotado.getAlto() - anchoNecesario;
+        return (sobranteDirecto <= sobranteRotado) ? mejorDirecto : mejorRotado;
     }
 
     public RetazoTela obtenerRetazoPorId(int id) {
@@ -127,16 +143,32 @@ public class InventarioServicio {
     // ═══════════════════════════════════════════════════════════════
 
     /**
-     * Descuenta de un retazo. El alto se reduce por el corteTelaAlto del pedido.
-     * Si el sobrante es <= 0.05 m se elimina el retazo directamente.
+     * Descuenta de un retazo. Detecta automáticamente la orientación: si el retazo
+     * entra "directo" (ancho>=corteTelaAncho y alto>=corteTelaAlto) descuenta del alto;
+     * si solo entra "rotado" (ancho>=corteTelaAlto y alto>=corteTelaAncho) descuenta
+     * igual del alto pero comparando contra el corte rotado. En ambos casos lo que se
+     * reduce es el campo "alto" del retazo porque es la dimensión que se va consumiendo
+     * al cortar tiras de la pieza.
      */
     public MaterialUsado descontarRetazo(Pedido pedido, RetazoTela retazo, boolean manual) {
-        double altoUsado = pedido.getCorteTelaAlto();
-        if (retazo.getAlto() < altoUsado - 0.001) {
+        double corteAncho = pedido.getCorteTelaAncho();
+        double corteAlto = pedido.getCorteTelaAlto();
+
+        boolean entraDirecto = retazo.getAncho() >= corteAncho - 0.001 && retazo.getAlto() >= corteAlto - 0.001;
+        boolean entraRotado = retazo.getAncho() >= corteAlto - 0.001 && retazo.getAlto() >= corteAncho - 0.001;
+
+        double altoUsado;
+        if (entraDirecto && (!entraRotado || retazo.getAlto() - corteAlto <= retazo.getAlto() - corteAncho)) {
+            altoUsado = corteAlto;
+        } else if (entraRotado) {
+            altoUsado = corteAncho;
+        } else {
             throw new MaterialInsuficienteException(
-                    "Retazo #" + retazo.getId() + " no tiene alto suficiente ("
-                    + retazo.getAlto() + " m disponibles, " + altoUsado + " m necesarios).");
+                    "Retazo #" + retazo.getId() + " no tiene medidas suficientes ("
+                    + retazo.getAncho() + "m × " + retazo.getAlto() + "m disponibles, se necesitan "
+                    + corteAncho + "m × " + corteAlto + "m, en cualquier orientación).");
         }
+
         double sobrante = redondear(retazo.getAlto() - altoUsado);
         if (sobrante <= 0.05) {
             retazoTelaRepository.delete(retazo);
@@ -224,7 +256,7 @@ public class InventarioServicio {
                 pedido.getCorteTelaAncho(),
                 pedido.getCorteTelaAlto());
         if (retazo == null) {
-            buscarMejorRollo(pedido.getColorTelaDeseado(), anchoComercialDe(pedido), pedido.getCorteTelaAncho());
+            buscarMejorRollo(pedido.getColorTelaDeseado(), anchoComercialDe(pedido), metrosADescontarDeRollo(pedido));
         }
 
         // 2. Tubo
@@ -299,7 +331,7 @@ public class InventarioServicio {
         } else if (sel != null && sel.rolloTelaId != null) {
             // Jefe eligió rollo manualmente
             RolloTela rollo = obtenerRolloPorId(sel.rolloTelaId);
-            descontarTela(pedido, rollo, pedido.getCorteTelaAncho(), true);
+            descontarTela(pedido, rollo, metrosADescontarDeRollo(pedido), true);
         } else {
             // Automático: retazo primero, si no hay, rollo
             RetazoTela retazo = buscarMejorRetazo(
@@ -310,8 +342,8 @@ public class InventarioServicio {
                 descontarRetazo(pedido, retazo, false);
             } else {
                 RolloTela rollo = buscarMejorRollo(
-                        pedido.getColorTelaDeseado(), anchoComercialDe(pedido), pedido.getCorteTelaAncho());
-                descontarTela(pedido, rollo, pedido.getCorteTelaAncho(), false);
+                        pedido.getColorTelaDeseado(), anchoComercialDe(pedido), metrosADescontarDeRollo(pedido));
+                descontarTela(pedido, rollo, metrosADescontarDeRollo(pedido), false);
             }
         }
 
@@ -398,9 +430,9 @@ public class InventarioServicio {
                         + ") · quedarían " + sobrante + " m de alto";
             } else {
                 RolloTela r = buscarMejorRollo(
-                        pedido.getColorTelaDeseado(), anchoComercialDe(pedido), pedido.getCorteTelaAncho());
+                        pedido.getColorTelaDeseado(), anchoComercialDe(pedido), metrosADescontarDeRollo(pedido));
                 res.rolloSugerido = "Rollo " + r.getColor() + " " + r.getAncho() + "m (#" + r.getId()
-                        + ") · quedarían " + redondear(r.getLargoRestante() - pedido.getCorteTelaAncho()) + " m";
+                        + ") · quedarían " + redondear(r.getLargoRestante() - metrosADescontarDeRollo(pedido)) + " m";
             }
         });
 
@@ -495,11 +527,26 @@ public class InventarioServicio {
         }
     }
 
+    /**
+     * Ancho COMERCIAL del rollo necesario (1.83 / 2.50 / 3.00).
+     * Se basa en el lado MENOR del corte de tela, porque la pieza se puede
+     * rotar: el lado menor es el que se acomoda dentro del ancho del rollo,
+     * y el lado mayor es el que se va "desenrollando" a lo largo del rollo.
+     */
     public double anchoComercialDe(Pedido pedido) {
-        double mayor = Math.max(pedido.getAncho(), pedido.getAltura());
-        if (mayor <= 1.83) return 1.83;
-        if (mayor <= 2.50) return 2.50;
+        double menor = Math.min(pedido.getCorteTelaAncho(), pedido.getCorteTelaAlto());
+        if (menor <= 1.83) return 1.83;
+        if (menor <= 2.50) return 2.50;
         return 3.00;
+    }
+
+    /**
+     * Cuántos metros de LARGO del rollo se consumen realmente al cortar esta
+     * pieza. Es el lado MAYOR del corte de tela (el que se desenrolla),
+     * complementario a anchoComercialDe().
+     */
+    public double metrosADescontarDeRollo(Pedido pedido) {
+        return Math.max(pedido.getCorteTelaAncho(), pedido.getCorteTelaAlto());
     }
 
     private double redondear(double v) {
