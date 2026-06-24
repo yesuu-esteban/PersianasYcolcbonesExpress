@@ -4,17 +4,24 @@
     <meta charset="UTF-8">
     <title>Cargar Stock</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .fila-pieza-agotada { background-color: #f8d7da !important; }
+        .badge-tipo-medida { background-color: #0dcaf0; color: #000; }
+        .input-corregir { max-width: 110px; }
+    </style>
 </head>
 <body class="bg-light p-4">
-    <div class="container col-md-6">
+    <div class="container col-md-7">
         <div class="d-flex justify-content-between align-items-start mb-1">
             <h2 class="mb-0">+ Cargar Stock</h2>
             <a th:href="@{/inventario/insumo/{id}/editar(id=${insumo.id})}" class="btn btn-sm btn-outline-secondary">✏️ Editar insumo</a>
         </div>
         <p class="text-muted mb-4">Insumo: <strong th:text="${insumo.nombre}"></strong></p>
 
+        <div th:if="${mensaje}" class="alert alert-success" th:text="${mensaje}"></div>
         <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
 
+        <!-- ───────── Formulario para AGREGAR stock nuevo ───────── -->
         <form th:action="@{/inventario/insumo/{id}/cargar(id=${insumo.id})}" method="post" class="bg-white p-4 shadow-sm border rounded">
 
             <!-- Caso: insumo CON medida (tubo, cuerda, pesa) -->
@@ -44,6 +51,71 @@
                 <a href="/inventario" class="btn btn-secondary w-100 mt-2">Cancelar</a>
             </div>
         </form>
+
+        <!-- ═══════════ Zona de CORRECCIÓN de stock existente ═══════════ -->
+
+        <!-- Caso: insumo SIN medida → corregir el número directo de unidades -->
+        <div th:unless="${insumo.tieneMedida}" class="mt-4 p-3 border rounded bg-white shadow-sm">
+            <p class="mb-2 fw-bold">🔧 Corregir stock actual</p>
+            <p class="text-muted mb-2" style="font-size:0.85rem;">
+                Usa esto si el número en sistema no coincide con la realidad (por ejemplo, si se agotó y quieres ponerlo en 0).
+                A diferencia del formulario de arriba, esto <strong>reemplaza</strong> el stock, no lo suma.
+            </p>
+            <form th:action="@{/inventario/insumo/{id}/corregir-stock(id=${insumo.id})}" method="post" class="d-flex gap-2 align-items-center">
+                <input type="number" name="stockUnidades" class="form-control input-corregir" min="0"
+                       th:value="${insumo.stockUnidades}" required>
+                <span class="text-muted">unidad(es)</span>
+                <button type="submit" class="btn btn-outline-primary ms-auto">Corregir a este valor</button>
+            </form>
+        </div>
+
+        <!-- Caso: insumo CON medida → corregir/agotar piezas individuales -->
+        <div th:if="${insumo.tieneMedida}" class="mt-4 p-3 border rounded bg-white shadow-sm">
+            <p class="mb-2 fw-bold">🔧 Corregir piezas existentes</p>
+            <p class="text-muted mb-3" style="font-size:0.85rem;">
+                Ajusta el largo restante real de cada pieza, o márcala como agotada poniendo el largo en 0.
+            </p>
+
+            <table class="table table-sm align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Largo inicial</th>
+                        <th>Largo restante actual</th>
+                        <th>Corregir a</th>
+                        <th>Ingreso</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="pz : ${piezasDelInsumo}" th:classappend="${pz.agotada} ? 'fila-pieza-agotada' : ''">
+                        <td th:text="${#numbers.formatDecimal(pz.largoInicial, 1, 2) + ' m'}"></td>
+                        <td>
+                            <strong th:text="${#numbers.formatDecimal(pz.largoRestante, 1, 2) + ' m'}"></strong>
+                            <span th:if="${pz.agotada}" class="badge bg-danger ms-1">Agotada</span>
+                        </td>
+                        <td>
+                            <form th:action="@{/inventario/insumo/pieza/{id}/corregir(id=${pz.id})}" method="post"
+                                  class="d-flex gap-2 align-items-center">
+                                <input type="number" step="0.01" name="largoRestante" class="form-control input-corregir form-control-sm"
+                                       min="0" th:max="${pz.largoInicial}" th:value="${#numbers.formatDecimal(pz.largoRestante, 1, 2)}" required>
+                                <button type="submit" class="btn btn-sm btn-outline-primary">Guardar</button>
+                                <button type="submit" formnovalidate
+                                        th:formaction="@{/inventario/insumo/pieza/{id}/corregir(id=${pz.id})}"
+                                        class="btn btn-sm btn-outline-danger btn-marcar-agotada"
+                                        th:if="${!pz.agotada}">
+                                    Marcar agotada
+                                </button>
+                            </form>
+                        </td>
+                        <td><small th:text="${#temporals.format(pz.fechaIngreso, 'dd/MM/yyyy')}"></small></td>
+                        <td></td>
+                    </tr>
+                    <tr th:if="${#lists.isEmpty(piezasDelInsumo)}">
+                        <td colspan="4" class="text-center text-muted py-3">Este insumo todavía no tiene piezas registradas.</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
 
         <!-- ───────── Zona de eliminación, separada para evitar clics accidentales ───────── -->
         <div class="mt-4 p-3 border border-danger-subtle rounded" style="background:#fff5f5;">
@@ -91,6 +163,22 @@
                 if (!window.confirm(mensaje)) {
                     e.preventDefault();
                 }
+            });
+        })();
+
+        // Botón "Marcar agotada": pone el input de largo en 0 antes de enviar,
+        // y pide una confirmación rápida ya que es una acción irreversible visualmente.
+        (function () {
+            document.querySelectorAll('.btn-marcar-agotada').forEach(function (btn) {
+                btn.addEventListener('click', function (e) {
+                    const form = btn.closest('form');
+                    const input = form.querySelector('input[name="largoRestante"]');
+                    if (!window.confirm('¿Marcar esta pieza como agotada (largo restante = 0)?')) {
+                        e.preventDefault();
+                        return;
+                    }
+                    if (input) input.value = '0';
+                });
             });
         })();
     </script>

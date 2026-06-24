@@ -240,6 +240,12 @@ public class InventarioControlador {
     public String mostrarFormularioCargarInsumo(@PathVariable("id") int id, Model model) {
         Insumo insumo = insumoRepository.findById(id).orElseThrow();
         model.addAttribute("insumo", insumo);
+
+        if (Boolean.TRUE.equals(insumo.getTieneMedida())) {
+            List<PiezaInsumo> piezasDelInsumo = piezaInsumoRepository.findByInsumoIdOrderByLargoRestanteAsc(id);
+            model.addAttribute("piezasDelInsumo", piezasDelInsumo);
+        }
+
         return "cargar_insumo";
     }
 
@@ -353,5 +359,80 @@ public class InventarioControlador {
         redirectAttributes.addFlashAttribute("mensaje", "Insumo actualizado correctamente.");
 
         return "redirect:/inventario";
+    }
+
+    /**
+     * Corrige directamente el stock de un insumo SIN medida (por unidad).
+     * Útil cuando el stock real no coincide con el sistema (ej: se agotó,
+     * se dañó, o se contó mal) y se necesita poner el número exacto,
+     * a diferencia de "/cargar" que solo suma unidades nuevas.
+     */
+    @PostMapping("/insumo/{id}/corregir-stock")
+    public String corregirStockInsumo(
+            @PathVariable("id") int id,
+            @RequestParam int stockUnidades,
+            RedirectAttributes redirectAttributes) {
+
+        try {
+            Insumo insumo = insumoRepository.findById(id).orElseThrow();
+
+            if (!Boolean.TRUE.equals(insumo.getTieneMedida())) {
+                if (stockUnidades < 0) {
+                    redirectAttributes.addFlashAttribute("error", "El stock no puede ser negativo.");
+                    return "redirect:/inventario/insumo/" + id + "/cargar";
+                }
+                insumo.setStockUnidades(stockUnidades);
+                insumoRepository.save(insumo);
+                redirectAttributes.addFlashAttribute("mensaje",
+                        "Stock de \"" + insumo.getNombre() + "\" corregido a " + stockUnidades + " unidad(es).");
+            } else {
+                redirectAttributes.addFlashAttribute("error",
+                        "Este insumo se gestiona por piezas, no por stock de unidades.");
+            }
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("error", "No se pudo corregir el stock: " + e.getMessage());
+        }
+
+        return "redirect:/inventario/insumo/" + id + "/cargar";
+    }
+
+    /**
+     * Corrige el largo restante de una pieza individual de un insumo CON medida
+     * (ej: tubo, cuerda). Permite poner el largo real (incluyendo 0 para marcarla
+     * como agotada) sin pasar por el flujo normal de corte por pedido.
+     */
+    @PostMapping("/insumo/pieza/{id}/corregir")
+    public String corregirPieza(
+            @PathVariable("id") int id,
+            @RequestParam double largoRestante,
+            RedirectAttributes redirectAttributes) {
+
+        try {
+            PiezaInsumo pieza = piezaInsumoRepository.findById(id).orElseThrow();
+
+            if (largoRestante < 0) {
+                redirectAttributes.addFlashAttribute("error", "El largo restante no puede ser negativo.");
+                return "redirect:/inventario/insumo/" + pieza.getInsumo().getId() + "/cargar";
+            }
+            if (largoRestante > pieza.getLargoInicial()) {
+                redirectAttributes.addFlashAttribute("error",
+                        "El largo restante no puede ser mayor al largo inicial de la pieza ("
+                        + pieza.getLargoInicial() + " m).");
+                return "redirect:/inventario/insumo/" + pieza.getInsumo().getId() + "/cargar";
+            }
+
+            pieza.setLargoRestante(largoRestante);
+            piezaInsumoRepository.save(pieza);
+
+            String estado = largoRestante == 0 ? " (marcada como agotada)" : "";
+            redirectAttributes.addFlashAttribute("mensaje",
+                    "Pieza de \"" + pieza.getInsumo().getNombre() + "\" corregida a "
+                    + largoRestante + " m restante(s)" + estado + ".");
+
+            return "redirect:/inventario/insumo/" + pieza.getInsumo().getId() + "/cargar";
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("error", "No se pudo corregir la pieza: " + e.getMessage());
+            return "redirect:/inventario";
+        }
     }
 }
