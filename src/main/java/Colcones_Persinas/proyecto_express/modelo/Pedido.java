@@ -126,12 +126,19 @@ public class Pedido {
 
     @Transient
     public String getRolloTela() {
-        double mayor = Math.max(this.ancho, this.altura);
-        if (mayor <= 1.83) return "Rollo 1.83m";
-        if (mayor <= 2.50) return "Rollo 2.50m";
-        return "Rollo 3.00m";
-    }
-
+        double ladoMenor = Math.min(this.ancho, this.altura);
+        
+        // AGREGA ESTO PARA DEBUGEAR
+        System.out.println("DEBUG: Ancho=" + this.ancho + " Alto=" + this.altura + " LadoMenor=" + ladoMenor);
+        
+        if (ladoMenor <= 1.83) {
+            return "Rollo 1.83m";
+        } else if (ladoMenor <= 2.50) {
+            return "Rollo 2.50m";
+        } else {
+            return "Rollo 3.00m";
+        }
+}
     @Transient
     public double getCortePitilloPesa() {
         return getCorteTelaAncho();
