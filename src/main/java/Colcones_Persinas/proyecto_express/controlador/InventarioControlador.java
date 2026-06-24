@@ -17,6 +17,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Controller
@@ -290,6 +291,67 @@ public class InventarioControlador {
         } catch (Exception e) {
             redirectAttributes.addFlashAttribute("error", "No se pudo eliminar la pieza: " + e.getMessage());
         }
+        return "redirect:/inventario";
+    }
+
+    // ─── NUEVO: eliminar y editar insumo ────────────────────────────────────
+
+    @PostMapping("/insumo/eliminar/{id}")
+    public String eliminarInsumo(@PathVariable("id") int id, RedirectAttributes redirectAttributes) {
+        try {
+            Insumo insumo = insumoRepository.findById(id).orElseThrow();
+
+            // Si tiene piezas asociadas (insumos por medida), se eliminan primero
+            // para no romper la relación de clave foránea.
+            if (Boolean.TRUE.equals(insumo.getTieneMedida())) {
+                List<PiezaInsumo> piezas = piezaInsumoRepository.findByInsumoIdOrderByLargoRestanteAsc(id);
+                piezaInsumoRepository.deleteAll(piezas);
+            }
+
+            insumoRepository.deleteById(id);
+            redirectAttributes.addFlashAttribute("mensaje",
+                    "Insumo \"" + insumo.getNombre() + "\" eliminado del inventario.");
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("error", "No se pudo eliminar el insumo: " + e.getMessage());
+        }
+        return "redirect:/inventario";
+    }
+
+    @GetMapping("/insumo/{id}/editar")
+    public String mostrarFormularioEditarInsumo(@PathVariable("id") int id, Model model) {
+        Insumo insumo = insumoRepository.findById(id).orElseThrow();
+        model.addAttribute("insumo", insumo);
+        return "editar_insumo";
+    }
+
+    @PostMapping("/insumo/{id}/editar")
+    public String guardarEdicionInsumo(
+            @PathVariable("id") int id,
+            @RequestParam String nombre,
+            @RequestParam(required = false) String descripcion,
+            RedirectAttributes redirectAttributes) {
+
+        Insumo insumo = insumoRepository.findById(id).orElseThrow();
+        String nombreLimpio = nombre.trim();
+
+        if (nombreLimpio.isEmpty()) {
+            redirectAttributes.addFlashAttribute("error", "El nombre del insumo no puede estar vacío.");
+            return "redirect:/inventario/insumo/" + id + "/editar";
+        }
+
+        // Si cambió el nombre, verificar que no choque con otro insumo existente
+        Optional<Insumo> existente = insumoRepository.findByNombreIgnoreCase(nombreLimpio);
+        if (existente.isPresent() && existente.get().getId() != id) {
+            redirectAttributes.addFlashAttribute("error",
+                    "Ya existe otro insumo llamado \"" + nombreLimpio + "\".");
+            return "redirect:/inventario/insumo/" + id + "/editar";
+        }
+
+        insumo.setNombre(nombreLimpio);
+        insumo.setDescripcion(descripcion != null ? descripcion : "");
+        insumoRepository.save(insumo);
+        redirectAttributes.addFlashAttribute("mensaje", "Insumo actualizado correctamente.");
+
         return "redirect:/inventario";
     }
 }

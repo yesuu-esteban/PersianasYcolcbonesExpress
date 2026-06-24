@@ -7,7 +7,10 @@
 </head>
 <body class="bg-light p-4">
     <div class="container col-md-6">
-        <h2 class="mb-1">+ Cargar Stock</h2>
+        <div class="d-flex justify-content-between align-items-start mb-1">
+            <h2 class="mb-0">+ Cargar Stock</h2>
+            <a th:href="@{/inventario/insumo/{id}/editar(id=${insumo.id})}" class="btn btn-sm btn-outline-secondary">✏️ Editar insumo</a>
+        </div>
         <p class="text-muted mb-4">Insumo: <strong th:text="${insumo.nombre}"></strong></p>
 
         <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
@@ -41,6 +44,55 @@
                 <a href="/inventario" class="btn btn-secondary w-100 mt-2">Cancelar</a>
             </div>
         </form>
+
+        <!-- ───────── Zona de eliminación, separada para evitar clics accidentales ───────── -->
+        <div class="mt-4 p-3 border border-danger-subtle rounded" style="background:#fff5f5;">
+            <p class="mb-2 fw-bold text-danger">Eliminar insumo</p>
+            <p class="text-muted mb-2" style="font-size:0.85rem;">
+                Esto borra <strong th:text="${insumo.nombre}"></strong> del catálogo de insumos
+                <span th:if="${insumo.tieneMedida}">junto con todas sus piezas registradas</span>
+                de forma permanente.
+            </p>
+            <form th:action="@{/inventario/insumo/eliminar/{id}(id=${insumo.id})}" method="post"
+                  th:data-tiene-medida="${insumo.tieneMedida}"
+                  th:data-nombre="${insumo.nombre}"
+                  th:data-stock="${insumo.stockUnidades}"
+                  id="formEliminarInsumo">
+                <button type="submit" class="btn btn-outline-danger w-100">🗑️ Eliminar insumo permanentemente</button>
+            </form>
+        </div>
     </div>
+
+    <script>
+        // Confirmación reforzada: si el insumo tiene piezas o stock cargado,
+        // se avisa explícitamente antes de permitir el borrado (se permite siempre,
+        // pero se asegura de que quien borra sepa que hay datos asociados).
+        (function () {
+            const form = document.getElementById('formEliminarInsumo');
+            if (!form) return;
+
+            form.addEventListener('submit', function (e) {
+                const nombre = form.dataset.nombre || 'este insumo';
+                const tieneMedida = form.dataset.tieneMedida === 'true';
+                const stock = parseInt(form.dataset.stock || '0', 10);
+
+                let mensaje = `¿Eliminar "${nombre}" del inventario? Esta acción no se puede deshacer.`;
+
+                if (tieneMedida) {
+                    mensaje = `⚠ "${nombre}" puede tener piezas registradas.\n` +
+                              `Si lo eliminas, también se borrarán TODAS sus piezas asociadas.\n\n` +
+                              `¿Deseas continuar?`;
+                } else if (stock > 0) {
+                    mensaje = `⚠ "${nombre}" todavía tiene ${stock} unidad(es) en stock.\n` +
+                              `Si lo eliminas, se perderá ese registro de stock.\n\n` +
+                              `¿Deseas continuar?`;
+                }
+
+                if (!window.confirm(mensaje)) {
+                    e.preventDefault();
+                }
+            });
+        })();
+    </script>
 </body>
 </html>
