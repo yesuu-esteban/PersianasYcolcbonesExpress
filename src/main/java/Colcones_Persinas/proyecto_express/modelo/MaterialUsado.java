@@ -32,7 +32,7 @@ public class MaterialUsado {
     @Column(name = "pedido_id", nullable = false)
     private int pedidoId;
 
-    /** Tipo de material: "TELA", "TUBO", "CUERDA", "PESA", "CONTROL", etc. */
+    /** Tipo de material: "TELA", "RETAZO", "TUBO", "CUERDA", "PESA", "CONTROL", etc. */
     private String tipoMaterial = "";
 
     /** Si salió de un RolloTela, aquí queda el id de ese rollo. Null si fue de un insumo. */
@@ -47,11 +47,19 @@ public class MaterialUsado {
     @Column(name = "fuente_descripcion")
     private String fuenteDescripcion = "";
 
-    /** Cuántos metros se cortaron de esa pieza/rollo para este pedido. */
+    /** Cuántos metros (lineales) se cortaron de esa pieza/rollo para este pedido. */
     private double metrosUsados = 0.0;
 
     /** Cuánto quedó disponible en esa pieza/rollo después de este corte. */
     private double metrosSobrantes = 0.0;
+
+    /**
+     * Solo aplica cuando tipoMaterial es "TELA" o "RETAZO": área real de tela
+     * consumida en este pedido, en metros cuadrados (ancho de corte x alto de
+     * corte). Null para el resto de materiales (tubo, cuerda, pesa, etc.).
+     */
+    @Column(name = "metros_cuadrados")
+    private Double metrosCuadrados;
 
     /** True si el jefe eligió manualmente esta fuente (por ejemplo, un retazo) en vez de la sugerida por el algoritmo. */
     @Column(name = "seleccion_manual")

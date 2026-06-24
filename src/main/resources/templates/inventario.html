@@ -62,7 +62,7 @@
                     <tr>
                         <th>Color</th>
                         <th>Ancho</th>
-                        <th>Largo restante</th>
+                        <th>Área restante</th>
                         <th>Estado</th>
                         <th>Ingreso</th>
                         <th>Acciones</th>
@@ -73,7 +73,11 @@
                         th:classappend="${r.agotado} ? 'fila-agotado' : (${r.retazo} ? 'fila-retazo' : '')">
                         <td th:text="${r.color}"></td>
                         <td th:text="${r.ancho + 'm'}"></td>
-                        <td><strong th:text="${#numbers.formatDecimal(r.largoRestante, 1, 2) + ' / ' + #numbers.formatDecimal(r.largoInicial, 1, 0) + ' m'}"></strong></td>
+                        <td>
+                            <strong th:text="${#numbers.formatDecimal(r.areaRestante, 1, 2) + ' m²'}"></strong>
+                            <br><small class="text-muted"
+                                th:text="${#numbers.formatDecimal(r.largoRestante, 1, 2) + ' / ' + #numbers.formatDecimal(r.largoInicial, 1, 0) + ' m lineales'}"></small>
+                        </td>
                         <td>
                             <span th:if="${r.agotado}" class="badge bg-danger">Agotado</span>
                             <span th:if="${r.retazo}" class="badge badge-retazo">Retazo</span>
@@ -100,7 +104,7 @@
                 <h5 class="mb-0">✂ Retazos de Tela</h5>
             </div>
 
-            <!-- Formulario para registrar un retazo nuevo -->
+            <!-- Formulario para registrar un retazo nuevo: ancho y alto son medidas variables (sobrantes) -->
             <div class="p-3 border-bottom" style="background:#fffbea;">
                 <form th:action="@{/inventario/retazo/nuevo}" method="post" class="row g-2 align-items-end">
                     <div class="col-md-3">
@@ -110,10 +114,9 @@
                         </select>
                     </div>
                     <div class="col-md-3">
-                        <label class="form-label fw-bold mb-1" style="font-size:0.83rem">Ancho (m)</label>
-                        <select name="ancho" class="form-select form-select-sm">
-                            <option th:each="a : ${anchos}" th:value="${a}" th:text="${a + ' m'}"></option>
-                        </select>
+                        <label class="form-label fw-bold mb-1" style="font-size:0.83rem">Ancho disponible (m)</label>
+                        <input type="number" step="0.01" name="ancho" class="form-control form-control-sm"
+                               placeholder="ej: 1.20" required min="0.01">
                     </div>
                     <div class="col-md-3">
                         <label class="form-label fw-bold mb-1" style="font-size:0.83rem">Alto disponible (m)</label>
@@ -132,6 +135,7 @@
                         <th>Color</th>
                         <th>Ancho</th>
                         <th>Alto disponible</th>
+                        <th>Área</th>
                         <th>Estado</th>
                         <th>Ingreso</th>
                         <th>Acciones</th>
@@ -143,6 +147,7 @@
                         <td th:text="${rt.color}"></td>
                         <td th:text="${rt.ancho + ' m'}"></td>
                         <td><strong th:text="${#numbers.formatDecimal(rt.alto, 1, 2) + ' m'}"></strong></td>
+                        <td><span th:text="${#numbers.formatDecimal(rt.area, 1, 2) + ' m²'}"></span></td>
                         <td>
                             <span th:if="${rt.agotado}" class="badge bg-danger">Agotado</span>
                             <span th:unless="${rt.agotado}" class="badge badge-retazo">Disponible</span>
@@ -156,7 +161,7 @@
                         </td>
                     </tr>
                     <tr th:if="${#lists.isEmpty(retazos)}">
-                        <td colspan="7" class="text-center text-muted py-3">No hay retazos registrados. Usa el formulario de arriba para agregar uno.</td>
+                        <td colspan="8" class="text-center text-muted py-3">No hay retazos registrados. Usa el formulario de arriba para agregar uno.</td>
                     </tr>
                 </tbody>
             </table>
@@ -208,7 +213,7 @@
         <!-- ───────────── PIEZAS DE INSUMOS CON MEDIDA (detalle) ───────────── -->
         <div class="seccion-card" th:if="${!#lists.isEmpty(piezas)}">
             <div class="seccion-header">
-                <h5 class="mb-0">📐 Detalle de piezas (tubo, cuerda, cabezal, pesa...)</h5>
+                <h5 class="mb-0">📐 Detalle de piezas (tubo, cuerda, cabezal, pesa, pitillo...)</h5>
             </div>
             <table class="table table-hover align-middle table-small mb-0">
                 <thead class="table-light">

@@ -113,7 +113,7 @@
         <p><strong>Control:</strong> <span th:text="${pedido.tipoControl}"></span></p>
     </div>
 
-    <!-- ETIQUETA 2: Corte de tela -->
+    <!-- ETIQUETA 2: Corte de tela (siempre en metros lineales) -->
     <div class="etiqueta">
         <h3>✂️ Corte de Tela</h3>
         <p><strong>Color:</strong> <span th:text="${pedido.colorTelaDeseado}"></span></p>
@@ -128,6 +128,8 @@
          Con cabezal  → medida = ancho - 0.030 m  |  pesa = R24
          Sin cabezal  → medida = ancho - 0.025 m  |  pesa según tamaño (R16 o R24)
          Medida cabezal (solo si aplica) = ancho - 0.020 m
+         Soportes: siempre 2, con o sin cabezal.
+         Tapas: 2, solo si usa cabezal.
     -->
     <div class="etiqueta">
         <h3>📐 Perfilería</h3>
@@ -149,6 +151,18 @@
         <div class="fila-cabezal" th:if="${pedido.usaCabezal}">
             <strong>Medida cabezal:</strong>
             <span th:text="${#numbers.formatDecimal(pedido.medidaCabezal,1,3) + ' m'}"></span>
+        </div>
+
+        <!-- Soportes: siempre 2, con o sin cabezal -->
+        <p style="margin-top:6px;">
+            <strong>Soportes:</strong>
+            <span>2 unidad(es)</span>
+        </p>
+
+        <!-- Tapas: SOLO si el pedido lleva cabezal -->
+        <div class="fila-cabezal" th:if="${pedido.usaCabezal}">
+            <strong>Tapas:</strong>
+            <span>2 unidad(es)</span>
         </div>
     </div>
 
@@ -173,7 +187,8 @@
                 <tr>
                     <th>Material</th>
                     <th>Fuente</th>
-                    <th>Usado</th>
+                    <th>Usado (lineal)</th>
+                    <th>Área (m²)</th>
                     <th>Sobrante</th>
                     <th>Selección</th>
                 </tr>
@@ -183,6 +198,7 @@
                     <td th:text="${m.tipoMaterial}"></td>
                     <td th:text="${m.fuenteDescripcion}"></td>
                     <td th:text="${m.metrosUsados} + ' m'"></td>
+                    <td th:text="${m.metrosCuadrados != null ? m.metrosCuadrados + ' m²' : '—'}"></td>
                     <td th:text="${m.metrosSobrantes} + ' m'"></td>
                     <td th:text="${m.seleccionManual} ? 'Manual' : 'Automática'"></td>
                 </tr>

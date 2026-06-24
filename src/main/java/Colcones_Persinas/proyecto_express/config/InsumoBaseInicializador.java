@@ -7,10 +7,10 @@ import org.springframework.stereotype.Component;
 
 /**
  * Crea los insumos básicos que el sistema necesita para poder verificar
- * material en cada pedido (tubo, cuerda, pesa, control), únicamente si
- * todavía no existen. El jefe luego entra a la pantalla de inventario
- * para cargarles cantidad/medida real; aquí solo se crea el "renglón"
- * con stock en cero para que no falte el catálogo base.
+ * material en cada pedido (tubo, cuerda, pesa, control, soportes, tapas),
+ * únicamente si todavía no existen. El jefe luego entra a la pantalla de
+ * inventario para cargarles cantidad/medida real; aquí solo se crea el
+ * "renglón" con stock en cero para que no falte el catálogo base.
  */
 @Component
 public class InsumoBaseInicializador implements CommandLineRunner {
@@ -30,6 +30,8 @@ public class InsumoBaseInicializador implements CommandLineRunner {
         crearSiNoExiste("Pesa", true, "Pesa inferior, se corta a la misma medida que el tubo.");
         crearSiNoExiste("Control R16", false, "Control para pedidos con ancho > 1.50 m. Se maneja por unidad.");
         crearSiNoExiste("Control R8 B", false, "Control para pedidos con ancho <= 1.50 m. Se maneja por unidad.");
+        crearSiNoExiste("Soporte", false, "Soporte de instalación. Se usan 2 en todo pedido, con o sin cabezal.");
+        crearSiNoExiste("Tapa", false, "Tapa de cabezal. Se usan 2 únicamente en pedidos CON cabezal.");
     }
 
     private void crearSiNoExiste(String nombre, boolean tieneMedida, String descripcion) {

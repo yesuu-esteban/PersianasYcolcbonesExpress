@@ -6,6 +6,11 @@ import lombok.*;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
+/**
+ * Retazo de tela suelto. A diferencia de un rollo, tanto el ancho como el
+ * alto son medidas variables: son sobrantes de cortes anteriores y pueden
+ * llegar en cualquier tamaño, no solo en los anchos comerciales (1.83 / 2.50 / 3.00).
+ */
 @Entity
 @Table(name = "retazo_tela")
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
@@ -16,7 +21,7 @@ public class RetazoTela {
 
     private String color = "";
 
-    /** Ancho del retazo en metros */
+    /** Ancho disponible del retazo en metros (medida variable, no comercial). */
     private double ancho = 0.0;
 
     /** Alto disponible del retazo en metros */
@@ -42,5 +47,11 @@ public class RetazoTela {
     @Transient
     public boolean isAgotado() {
         return this.alto <= 0.001;
+    }
+
+    /** Área disponible del retazo en metros cuadrados (ancho x alto). */
+    @Transient
+    public double getArea() {
+        return Math.round(this.ancho * this.alto * 1000.0) / 1000.0;
     }
 }

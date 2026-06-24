@@ -18,6 +18,9 @@ public class InventarioServicio {
     private final MaterialUsadoRepository materialUsadoRepository;
     private final RetazoTelaRepository retazoTelaRepository;
 
+    /** Umbral de descarte para pitillo: por debajo de esto, una pieza ya no sirve para nada y se elimina del inventario. */
+    private static final double UMBRAL_DESCARTE_PITILLO = 0.05;
+
     public InventarioServicio(RolloTelaRepository rolloTelaRepository,
                                InsumoRepository insumoRepository,
                                PiezaInsumoRepository piezaInsumoRepository,
@@ -59,12 +62,15 @@ public class InventarioServicio {
         public String controlInfo;
         public String pitilloSugerido;
         public String conectorInfo;
+        public String soporteInfo;   // nuevo
+        public String tapaInfo;      // nuevo
         public List<String> faltantes = new ArrayList<>();
     }
 
     public static class ResumenMaterial {
         public String tipoMaterial;
         public double totalUsado;
+        public String unidad;          // "m²", "m" o "unidad(es)"
         public int vecesUsado;
         public List<MaterialUsado> detalle;
     }
@@ -148,6 +154,80 @@ public class InventarioServicio {
     }
 
     // ═══════════════════════════════════════════════════════════════
+    // PITILLO: combinación de retazos pequeños
+    // ═══════════════════════════════════════════════════════════════
+
+    /**
+     * Resuelve cómo cubrir la medida de pitillo necesaria:
+     * 1) Si una sola pieza alcanza, se usa esa (la más pequeña que sirva).
+     * 2) Si ninguna sola alcanza, combina varias piezas pequeñas (de menor a
+     *    mayor) hasta sumar la medida necesaria, para no desperdiciar los
+     *    retazos sueltos que ya quedaron de otros pedidos.
+     * Lanza MaterialInsuficienteException si ni combinando todo lo disponible alcanza.
+     */
+    public List<PiezaInsumo> resolverPitillo(Insumo pitillo, double necesario) {
+        List<PiezaInsumo> candidatas = piezaInsumoRepository
+                .findByInsumoIdAndLargoRestanteGreaterThanOrderByLargoRestanteAsc(pitillo.getId(), 0.0);
+
+        for (PiezaInsumo p : candidatas) {
+            if (p.getLargoRestante() >= necesario - 0.001) {
+                return List.of(p);
+            }
+        }
+
+        List<PiezaInsumo> combinacion = new ArrayList<>();
+        double acumulado = 0.0;
+        for (PiezaInsumo p : candidatas) {
+            combinacion.add(p);
+            acumulado += p.getLargoRestante();
+            if (acumulado >= necesario - 0.001) {
+                return combinacion;
+            }
+        }
+
+        throw new MaterialInsuficienteException(
+                "No hay suficiente \"" + pitillo.getNombre() + "\" ni combinando los retazos sueltos. Se necesitan "
+                + redondear(necesario) + " m y solo hay " + redondear(acumulado) + " m disponibles en total.");
+    }
+
+    /**
+     * Descuenta una pieza de pitillo. Si el sobrante después del corte es
+     * menor o igual al umbral de descarte, no queda como pieza reutilizable:
+     * se elimina directamente del inventario en vez de guardarse como un
+     * retazo inservible.
+     */
+    public MaterialUsado descontarPiezaPitillo(Pedido pedido, PiezaInsumo pieza, double metros,
+                                                boolean manual, boolean combinado) {
+        if (pieza.getLargoRestante() < metros - 0.001) {
+            throw new MaterialInsuficienteException(
+                    "Pieza #" + pieza.getId() + " (" + pieza.getInsumo().getNombre() + ") no tiene suficiente material ("
+                    + pieza.getLargoRestante() + " m disponibles, " + metros + " m necesarios).");
+        }
+
+        double sobrante = redondear(pieza.getLargoRestante() - metros);
+
+        MaterialUsado r = new MaterialUsado();
+        r.setPedidoId(pedido.getId());
+        r.setTipoMaterial(pieza.getInsumo().getNombre().toUpperCase().replace(" ", "_"));
+        r.setPiezaInsumoId(pieza.getId());
+        r.setFuenteDescripcion(pieza.getInsumo().getNombre() + " (#" + pieza.getId() + ")"
+                + (combinado ? " [combinado con otra(s) pieza(s)]" : ""));
+        r.setMetrosUsados(metros);
+        r.setSeleccionManual(manual);
+
+        if (sobrante <= UMBRAL_DESCARTE_PITILLO) {
+            r.setMetrosSobrantes(0.0);
+            piezaInsumoRepository.delete(pieza);
+        } else {
+            pieza.setLargoRestante(sobrante);
+            piezaInsumoRepository.save(pieza);
+            r.setMetrosSobrantes(sobrante);
+        }
+
+        return materialUsadoRepository.save(r);
+    }
+
+    // ═══════════════════════════════════════════════════════════════
     // DESCUENTOS UNITARIOS
     // ═══════════════════════════════════════════════════════════════
 
@@ -192,6 +272,7 @@ public class InventarioServicio {
                 + "m × " + retazo.getAlto() + "m (#" + retazo.getId() + ")");
         r.setMetrosUsados(altoUsado);
         r.setMetrosSobrantes(sobrante);
+        r.setMetrosCuadrados(redondear(pedido.getCorteTelaAncho() * pedido.getCorteTelaAlto()));
         r.setSeleccionManual(manual);
         return materialUsadoRepository.save(r);
     }
@@ -211,6 +292,7 @@ public class InventarioServicio {
         r.setFuenteDescripcion("Rollo " + rollo.getColor() + " " + rollo.getAncho() + "m (#" + rollo.getId() + ")");
         r.setMetrosUsados(metros);
         r.setMetrosSobrantes(rollo.getLargoRestante());
+        r.setMetrosCuadrados(redondear(pedido.getCorteTelaAncho() * pedido.getCorteTelaAlto()));
         r.setSeleccionManual(manual);
         return materialUsadoRepository.save(r);
     }
@@ -294,10 +376,10 @@ public class InventarioServicio {
                     "No hay stock de \"" + control.getNombre() + "\". Disponible: 0 unidades.");
         }
 
-        // 7. Pitillo
+        // 7. Pitillo (puede combinar retazos pequeños si ninguna pieza sola alcanza)
         if (Boolean.TRUE.equals(pedido.getUsaPitilloPesa())) {
             Insumo pitillo = obtenerInsumoPorNombre("Pitillo");
-            buscarMejorPieza(pitillo, pedido.getCortePitilloPesa());
+            resolverPitillo(pitillo, pedido.getCortePitilloPesa());
         }
 
         // 8. Conector + Tope
@@ -318,6 +400,26 @@ public class InventarioServicio {
                             "No hay suficiente \"Tope Control\". Disponible: " + stockTope
                             + " unidad(es), necesario: " + pedido.getCantidadTopes() + ".");
                 }
+            }
+        }
+
+        // 9. Soportes (siempre 2, con o sin cabezal)
+        Insumo soporte = obtenerInsumoPorNombre("Soporte");
+        int stockSoporte = soporte.getStockUnidades() != null ? soporte.getStockUnidades() : 0;
+        if (stockSoporte < pedido.getCantidadSoportes()) {
+            throw new MaterialInsuficienteException(
+                    "No hay suficiente \"Soporte\". Disponible: " + stockSoporte
+                    + " unidad(es), necesario: " + pedido.getCantidadSoportes() + ".");
+        }
+
+        // 10. Tapas (solo si usa cabezal)
+        if (Boolean.TRUE.equals(pedido.getUsaCabezal())) {
+            Insumo tapa = obtenerInsumoPorNombre("Tapa");
+            int stockTapa = tapa.getStockUnidades() != null ? tapa.getStockUnidades() : 0;
+            if (stockTapa < pedido.getCantidadTapas()) {
+                throw new MaterialInsuficienteException(
+                        "No hay suficiente \"Tapa\". Disponible: " + stockTapa
+                        + " unidad(es), necesario: " + pedido.getCantidadTapas() + ".");
             }
         }
     }
@@ -394,11 +496,21 @@ public class InventarioServicio {
         // 7. Pitillo
         if (Boolean.TRUE.equals(pedido.getUsaPitilloPesa())) {
             Insumo pitillo = obtenerInsumoPorNombre("Pitillo");
-            PiezaInsumo piezaPitillo = (sel != null && sel.piezaPitilloId != null)
-                    ? obtenerPiezaPorId(sel.piezaPitilloId)
-                    : buscarMejorPieza(pitillo, pedido.getCortePitilloPesa());
-            descontarInsumoConMedida(pedido, piezaPitillo, pedido.getCortePitilloPesa(),
-                    sel != null && sel.piezaPitilloId != null);
+            if (sel != null && sel.piezaPitilloId != null) {
+                PiezaInsumo piezaManual = obtenerPiezaPorId(sel.piezaPitilloId);
+                descontarPiezaPitillo(pedido, piezaManual, pedido.getCortePitilloPesa(), true, false);
+            } else {
+                List<PiezaInsumo> piezasPitillo = resolverPitillo(pitillo, pedido.getCortePitilloPesa());
+                boolean combinado = piezasPitillo.size() > 1;
+                double restante = pedido.getCortePitilloPesa();
+                for (int i = 0; i < piezasPitillo.size(); i++) {
+                    PiezaInsumo p = piezasPitillo.get(i);
+                    boolean esUltima = (i == piezasPitillo.size() - 1);
+                    double aUsar = esUltima ? restante : p.getLargoRestante();
+                    descontarPiezaPitillo(pedido, p, aUsar, false, combinado);
+                    restante -= aUsar;
+                }
+            }
         }
 
         // 8. Conector + Tope
@@ -407,6 +519,14 @@ public class InventarioServicio {
             if (pedido.getCantidadTopes() > 0) {
                 descontarInsumoPorUnidad(pedido, "Tope Control", pedido.getCantidadTopes());
             }
+        }
+
+        // 9. Soportes (siempre 2)
+        descontarInsumoPorUnidad(pedido, "Soporte", pedido.getCantidadSoportes());
+
+        // 10. Tapas (solo si usa cabezal)
+        if (Boolean.TRUE.equals(pedido.getUsaCabezal())) {
+            descontarInsumoPorUnidad(pedido, "Tapa", pedido.getCantidadTapas());
         }
     }
 
@@ -487,13 +607,20 @@ public class InventarioServicio {
             res.controlInfo = control.getNombre() + " · quedarían " + (stock - 1) + " unidad(es)";
         });
 
-        // 7. Pitillo
+        // 7. Pitillo (puede combinar retazos pequeños)
         if (Boolean.TRUE.equals(pedido.getUsaPitilloPesa())) {
             intentar(res, () -> {
                 Insumo pitillo = obtenerInsumoPorNombre("Pitillo");
-                PiezaInsumo p = buscarMejorPieza(pitillo, pedido.getCortePitilloPesa());
-                res.pitilloSugerido = "Pitillo (#" + p.getId() + ") · quedarían "
-                        + redondear(p.getLargoRestante() - pedido.getCortePitilloPesa()) + " m";
+                List<PiezaInsumo> piezas = resolverPitillo(pitillo, pedido.getCortePitilloPesa());
+                if (piezas.size() == 1) {
+                    PiezaInsumo p = piezas.get(0);
+                    res.pitilloSugerido = "Pitillo (#" + p.getId() + ") · quedarían "
+                            + redondear(p.getLargoRestante() - pedido.getCortePitilloPesa()) + " m";
+                } else {
+                    String ids = piezas.stream().map(p -> "#" + p.getId())
+                            .collect(java.util.stream.Collectors.joining(" + "));
+                    res.pitilloSugerido = "Pitillo combinando " + piezas.size() + " retazos (" + ids + ")";
+                }
             });
         }
 
@@ -517,6 +644,26 @@ public class InventarioServicio {
                             + (stockTope - pedido.getCantidadTopes());
                 }
                 res.conectorInfo = info;
+            });
+        }
+
+        // 9. Soportes (siempre 2)
+        intentar(res, () -> {
+            Insumo soporte = obtenerInsumoPorNombre("Soporte");
+            int stock = soporte.getStockUnidades() != null ? soporte.getStockUnidades() : 0;
+            int necesario = pedido.getCantidadSoportes();
+            if (stock < necesario) throw new MaterialInsuficienteException("Sin stock suficiente de \"Soporte\".");
+            res.soporteInfo = "Soporte ×" + necesario + " · quedarían " + (stock - necesario);
+        });
+
+        // 10. Tapas (solo si usa cabezal)
+        if (Boolean.TRUE.equals(pedido.getUsaCabezal())) {
+            intentar(res, () -> {
+                Insumo tapa = obtenerInsumoPorNombre("Tapa");
+                int stock = tapa.getStockUnidades() != null ? tapa.getStockUnidades() : 0;
+                int necesario = pedido.getCantidadTapas();
+                if (stock < necesario) throw new MaterialInsuficienteException("Sin stock suficiente de \"Tapa\".");
+                res.tapaInfo = "Tapa ×" + necesario + " · quedarían " + (stock - necesario);
             });
         }
 
@@ -591,27 +738,38 @@ public class InventarioServicio {
     }
 
     public List<ResumenMaterial> obtenerResumenConsumo(LocalDateTime desde, LocalDateTime hasta) {
-    List<MaterialUsado> registros = (desde != null && hasta != null)
-            ? materialUsadoRepository.findByFechaBetweenOrderByFechaAsc(desde, hasta)
-            : materialUsadoRepository.findAll();
+        List<MaterialUsado> registros = (desde != null && hasta != null)
+                ? materialUsadoRepository.findByFechaBetweenOrderByFechaAsc(desde, hasta)
+                : materialUsadoRepository.findAll();
 
-    Map<String, List<MaterialUsado>> agrupado = registros.stream()
-            .collect(java.util.stream.Collectors.groupingBy(MaterialUsado::getTipoMaterial));
+        Map<String, List<MaterialUsado>> agrupado = registros.stream()
+                .collect(java.util.stream.Collectors.groupingBy(MaterialUsado::getTipoMaterial));
 
-    List<ResumenMaterial> resumen = new ArrayList<>();
-    for (Map.Entry<String, List<MaterialUsado>> entry : agrupado.entrySet()) {
-        ResumenMaterial r = new ResumenMaterial();
-        r.tipoMaterial = entry.getKey();
-        r.detalle = entry.getValue().stream()
-                .sorted((a, b) -> a.getFecha().compareTo(b.getFecha()))
-                .collect(java.util.stream.Collectors.toList());
-        r.vecesUsado = r.detalle.size();
-        r.totalUsado = Math.round(
-            r.detalle.stream().mapToDouble(MaterialUsado::getMetrosUsados).sum() * 1000.0
-        ) / 1000.0;
-        resumen.add(r);
+        List<ResumenMaterial> resumen = new ArrayList<>();
+        for (Map.Entry<String, List<MaterialUsado>> entry : agrupado.entrySet()) {
+            ResumenMaterial r = new ResumenMaterial();
+            r.tipoMaterial = entry.getKey();
+            r.detalle = entry.getValue().stream()
+                    .sorted((a, b) -> a.getFecha().compareTo(b.getFecha()))
+                    .collect(java.util.stream.Collectors.toList());
+            r.vecesUsado = r.detalle.size();
+
+            if ("TELA".equals(r.tipoMaterial) || "RETAZO".equals(r.tipoMaterial)) {
+                r.unidad = "m²";
+                r.totalUsado = redondear(r.detalle.stream()
+                        .mapToDouble(m -> m.getMetrosCuadrados() != null ? m.getMetrosCuadrados() : 0.0)
+                        .sum());
+            } else if (r.detalle.get(0).getPiezaInsumoId() != null) {
+                r.unidad = "m";
+                r.totalUsado = redondear(r.detalle.stream().mapToDouble(MaterialUsado::getMetrosUsados).sum());
+            } else {
+                r.unidad = "unidad(es)";
+                r.totalUsado = redondear(r.detalle.stream().mapToDouble(MaterialUsado::getMetrosUsados).sum());
+            }
+
+            resumen.add(r);
+        }
+        resumen.sort((a, b) -> a.tipoMaterial.compareTo(b.tipoMaterial));
+        return resumen;
     }
-    resumen.sort((a, b) -> a.tipoMaterial.compareTo(b.tipoMaterial));
-    return resumen;
-}
 }

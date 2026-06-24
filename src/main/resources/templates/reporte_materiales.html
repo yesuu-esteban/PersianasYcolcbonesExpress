@@ -40,14 +40,14 @@
   <thead>
     <tr>
       <th>Material</th>
-      <th>Total usado (m / unidades)</th>
+      <th>Total usado</th>
       <th>N° de usos</th>
     </tr>
   </thead>
   <tbody>
     <tr th:each="r : ${resumen}">
       <td th:text="${r.tipoMaterial}"></td>
-      <td th:text="${r.totalUsado}"></td>
+      <td th:text="${r.totalUsado} + ' ' + ${r.unidad}"></td>
       <td th:text="${r.vecesUsado}"></td>
     </tr>
   </tbody>
@@ -57,13 +57,14 @@
 <h2>Detalle por material</h2>
 <div th:each="r : ${resumen}">
   <details>
-    <summary th:text="${r.tipoMaterial} + ' (' + ${r.vecesUsado} + ' registros · ' + ${r.totalUsado} + ' m/u total)'"></summary>
+    <summary th:text="${r.tipoMaterial} + ' (' + ${r.vecesUsado} + ' registros · ' + ${r.totalUsado} + ' ' + ${r.unidad} + ' total)'"></summary>
     <table>
       <thead>
         <tr>
           <th>Pedido #</th>
           <th>Fuente</th>
-          <th>Cantidad usada</th>
+          <th th:text="${r.unidad == 'm²'} ? 'Usado (lineal)' : 'Cantidad usada'"></th>
+          <th th:if="${r.unidad == 'm²'}">Área (m²)</th>
           <th>Sobrante después</th>
           <th>Selección</th>
           <th>Fecha</th>
@@ -74,6 +75,7 @@
           <td th:text="${m.pedidoId}"></td>
           <td th:text="${m.fuenteDescripcion}"></td>
           <td th:text="${m.metrosUsados}"></td>
+          <td th:if="${r.unidad == 'm²'}" th:text="${m.metrosCuadrados}"></td>
           <td th:text="${m.metrosSobrantes}"></td>
           <td th:text="${m.seleccionManual} ? 'Manual' : 'Automática'"></td>
           <td th:text="${#temporals.format(m.fecha, 'dd/MM/yyyy HH:mm')}"></td>

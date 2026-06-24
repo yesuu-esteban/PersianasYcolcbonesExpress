@@ -127,10 +127,10 @@ public class Pedido {
     @Transient
     public String getRolloTela() {
         double ladoMenor = Math.min(this.ancho, this.altura);
-        
+
         // AGREGA ESTO PARA DEBUGEAR
         System.out.println("DEBUG: Ancho=" + this.ancho + " Alto=" + this.altura + " LadoMenor=" + ladoMenor);
-        
+
         if (ladoMenor <= 1.83) {
             return "Rollo 1.83m";
         } else if (ladoMenor <= 2.50) {
@@ -152,6 +152,24 @@ public class Pedido {
     @Transient
     public int getCantidadTopes() {
         return esControlR16() ? 0 : 1;
+    }
+
+    /**
+     * Tapas de cabezal: siempre 2 unidades, pero SOLO si el pedido lleva cabezal.
+     * Sin cabezal no se usan tapas.
+     */
+    @Transient
+    public int getCantidadTapas() {
+        return Boolean.TRUE.equals(usaCabezal) ? 2 : 0;
+    }
+
+    /**
+     * Soportes de instalación: siempre 2, con o sin cabezal (incluye los
+     * blackout sin cabezal, que solo necesitan los 2 soportes).
+     */
+    @Transient
+    public int getCantidadSoportes() {
+        return 2;
     }
 
     private boolean esControlR16() {

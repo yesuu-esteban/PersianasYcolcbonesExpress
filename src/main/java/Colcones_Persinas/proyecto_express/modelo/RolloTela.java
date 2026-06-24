@@ -60,4 +60,16 @@ public class RolloTela {
     public boolean isRetazo() {
         return !isAgotado() && this.largoRestante < 3.0;
     }
+
+    /** Área disponible del rollo en metros cuadrados (ancho x largo restante). */
+    @Transient
+    public double getAreaRestante() {
+        return Math.round(this.ancho * this.largoRestante * 1000.0) / 1000.0;
+    }
+
+    /** Área total con la que ingresó el rollo, en metros cuadrados. */
+    @Transient
+    public double getAreaInicial() {
+        return Math.round(this.ancho * this.largoInicial * 1000.0) / 1000.0;
+    }
 }
