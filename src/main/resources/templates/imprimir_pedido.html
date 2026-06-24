@@ -64,6 +64,27 @@
             display: inline-block;
             min-width: 120px;
         }
+        .etiqueta-ancha {
+            width: 100%;
+            max-width: 740px;
+        }
+        .tabla-material {
+            border-collapse: collapse;
+            width: 100%;
+            font-size: 0.85rem;
+        }
+        .tabla-material th, .tabla-material td {
+            border: 1px solid #ccc;
+            padding: 5px 8px;
+            text-align: left;
+        }
+        .tabla-material th {
+            background: #f0f0f0;
+        }
+        .sin-material {
+            color: #888;
+            font-style: italic;
+        }
         @media print {
             body { padding: 0; }
             .no-print { display: none; }
@@ -139,6 +160,34 @@
         <p><strong>Medida final:</strong> <span th:text="${#numbers.formatDecimal(pedido.ancho,1,2) + 'm  x  ' + #numbers.formatDecimal(pedido.altura,1,2) + 'm'}"></span></p>
         <p><strong>Mando:</strong> <span class="valor-mando" th:text="${pedido.ladoControl}"></span></p>
         <p><strong>Cuerda:</strong> <span th:text="${pedido.medidaCuerda}"></span></p>
+    </div>
+
+    <!-- ETIQUETA 5: Material real utilizado (desde MaterialUsado) -->
+    <div class="etiqueta etiqueta-ancha">
+        <h3>📋 Material utilizado (registro real)</h3>
+        <div th:if="${historialMaterial == null or historialMaterial.isEmpty()}">
+            <p class="sin-material">Sin registros de material (pedido creado antes del sistema de trazabilidad).</p>
+        </div>
+        <table th:if="${historialMaterial != null and !historialMaterial.isEmpty()}" class="tabla-material">
+            <thead>
+                <tr>
+                    <th>Material</th>
+                    <th>Fuente</th>
+                    <th>Usado</th>
+                    <th>Sobrante</th>
+                    <th>Selección</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:each="m : ${historialMaterial}">
+                    <td th:text="${m.tipoMaterial}"></td>
+                    <td th:text="${m.fuenteDescripcion}"></td>
+                    <td th:text="${m.metrosUsados} + ' m'"></td>
+                    <td th:text="${m.metrosSobrantes} + ' m'"></td>
+                    <td th:text="${m.seleccionManual} ? 'Manual' : 'Automática'"></td>
+                </tr>
+            </tbody>
+        </table>
     </div>
 
     <div class="no-print" style="margin-top:10px;">

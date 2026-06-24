@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <title>Reporte de consumo de materiales</title>
+  <link rel="stylesheet" th:href="@{/css/styles.css}">
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; }
+    table { border-collapse: collapse; width: 100%; margin-bottom: 24px; }
+    th, td { border: 1px solid #ccc; padding: 8px 12px; text-align: left; }
+    th { background: #f0f0f0; }
+    h2 { margin-top: 32px; }
+    .filtros { margin-bottom: 24px; display: flex; gap: 16px; align-items: flex-end; flex-wrap: wrap; }
+    .filtros label { display: flex; flex-direction: column; gap: 4px; font-size: 14px; }
+    .filtros input { padding: 6px; border: 1px solid #ccc; border-radius: 4px; }
+    .filtros button { padding: 7px 18px; background: #333; color: white; border: none; border-radius: 4px; cursor: pointer; }
+    .sin-datos { color: #888; font-style: italic; }
+    details summary { cursor: pointer; color: #1a6aab; font-weight: bold; margin: 8px 0 4px; }
+  </style>
+</head>
+<body>
+
+<h1>Reporte de consumo de materiales</h1>
+
+<form method="get" th:action="@{/taller/reporte-materiales}" class="filtros">
+  <label>Desde
+    <input type="date" name="desde" th:value="${desde}">
+  </label>
+  <label>Hasta
+    <input type="date" name="hasta" th:value="${hasta}">
+  </label>
+  <button type="submit">Filtrar</button>
+  <a th:href="@{/taller/reporte-materiales}" style="align-self:center; font-size:13px;">Ver todo</a>
+</form>
+
+<!-- Resumen por tipo de material -->
+<h2>Resumen por material</h2>
+<div th:if="${resumen.isEmpty()}" class="sin-datos">No hay registros de consumo en el período seleccionado.</div>
+<table th:if="${!resumen.isEmpty()}">
+  <thead>
+    <tr>
+      <th>Material</th>
+      <th>Total usado (m / unidades)</th>
+      <th>N° de usos</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr th:each="r : ${resumen}">
+      <td th:text="${r.tipoMaterial}"></td>
+      <td th:text="${r.totalUsado}"></td>
+      <td th:text="${r.vecesUsado}"></td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- Detalle completo, medida por medida -->
+<h2>Detalle por material</h2>
+<div th:each="r : ${resumen}">
+  <details>
+    <summary th:text="${r.tipoMaterial} + ' (' + ${r.vecesUsado} + ' registros · ' + ${r.totalUsado} + ' m/u total)'"></summary>
+    <table>
+      <thead>
+        <tr>
+          <th>Pedido #</th>
+          <th>Fuente</th>
+          <th>Cantidad usada</th>
+          <th>Sobrante después</th>
+          <th>Selección</th>
+          <th>Fecha</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr th:each="m : ${r.detalle}">
+          <td th:text="${m.pedidoId}"></td>
+          <td th:text="${m.fuenteDescripcion}"></td>
+          <td th:text="${m.metrosUsados}"></td>
+          <td th:text="${m.metrosSobrantes}"></td>
+          <td th:text="${m.seleccionManual} ? 'Manual' : 'Automática'"></td>
+          <td th:text="${#temporals.format(m.fecha, 'dd/MM/yyyy HH:mm')}"></td>
+        </tr>
+      </tbody>
+    </table>
+  </details>
+</div>
+
+<br>
+<a th:href="@{/taller/pedidos}">← Volver a pedidos</a>
+
+</body>
+</html>

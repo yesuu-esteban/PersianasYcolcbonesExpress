@@ -4,8 +4,10 @@ import Colcones_Persinas.proyecto_express.modelo.*;
 import Colcones_Persinas.proyecto_express.repository.*;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class InventarioServicio {
@@ -58,6 +60,13 @@ public class InventarioServicio {
         public String pitilloSugerido;
         public String conectorInfo;
         public List<String> faltantes = new ArrayList<>();
+    }
+
+    public static class ResumenMaterial {
+        public String tipoMaterial;
+        public double totalUsado;
+        public int vecesUsado;
+        public List<MaterialUsado> detalle;
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -580,4 +589,29 @@ public class InventarioServicio {
     public List<RetazoTela> getTodosLosRetazos() {
         return retazoTelaRepository.findAllByOrderByColorAscAnchoAscAltoAsc();
     }
+
+    public List<ResumenMaterial> obtenerResumenConsumo(LocalDateTime desde, LocalDateTime hasta) {
+    List<MaterialUsado> registros = (desde != null && hasta != null)
+            ? materialUsadoRepository.findByFechaBetweenOrderByFechaAsc(desde, hasta)
+            : materialUsadoRepository.findAll();
+
+    Map<String, List<MaterialUsado>> agrupado = registros.stream()
+            .collect(java.util.stream.Collectors.groupingBy(MaterialUsado::getTipoMaterial));
+
+    List<ResumenMaterial> resumen = new ArrayList<>();
+    for (Map.Entry<String, List<MaterialUsado>> entry : agrupado.entrySet()) {
+        ResumenMaterial r = new ResumenMaterial();
+        r.tipoMaterial = entry.getKey();
+        r.detalle = entry.getValue().stream()
+                .sorted((a, b) -> a.getFecha().compareTo(b.getFecha()))
+                .collect(java.util.stream.Collectors.toList());
+        r.vecesUsado = r.detalle.size();
+        r.totalUsado = Math.round(
+            r.detalle.stream().mapToDouble(MaterialUsado::getMetrosUsados).sum() * 1000.0
+        ) / 1000.0;
+        resumen.add(r);
+    }
+    resumen.sort((a, b) -> a.tipoMaterial.compareTo(b.tipoMaterial));
+    return resumen;
+}
 }

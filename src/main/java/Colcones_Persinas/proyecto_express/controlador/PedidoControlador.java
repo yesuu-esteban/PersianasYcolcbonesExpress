@@ -10,6 +10,7 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
+import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -218,11 +219,13 @@ public class PedidoControlador {
         return "redirect:/taller/pedidos";
     }
 
+    // ─── Imprimir pedido (incluye historial real de material usado) ───
     @GetMapping("/imprimir/{id}")
     public String imprimirPedido(@PathVariable("id") int id, Model model) {
         Pedido p = pedidoRepository.findById(id).orElseThrow();
         p.calcularFichaTecnica();
         model.addAttribute("pedido", p);
+        model.addAttribute("historialMaterial", inventarioServicio.getHistorialDePedido(id));
         return "imprimir_pedido";
     }
 
@@ -281,5 +284,26 @@ public class PedidoControlador {
             redirectAttributes.addFlashAttribute("error", "No se pudo eliminar el pedido: " + e.getMessage());
         }
         return "redirect:/taller/pedidos";
+    }
+
+    // ─── Reporte global de consumo ────────────────────────────────────
+    @GetMapping("/reporte-materiales")
+    public String reporteMateriales(
+            @RequestParam(required = false) String desde,
+            @RequestParam(required = false) String hasta,
+            Model model) {
+
+        LocalDateTime fechaDesde = (desde != null && !desde.isBlank())
+                ? LocalDateTime.parse(desde + "T00:00:00") : null;
+        LocalDateTime fechaHasta = (hasta != null && !hasta.isBlank())
+                ? LocalDateTime.parse(hasta + "T23:59:59") : null;
+
+        List<InventarioServicio.ResumenMaterial> resumen =
+                inventarioServicio.obtenerResumenConsumo(fechaDesde, fechaHasta);
+
+        model.addAttribute("resumen", resumen);
+        model.addAttribute("desde", desde != null ? desde : "");
+        model.addAttribute("hasta", hasta != null ? hasta : "");
+        return "reporte_materiales";
     }
 }
