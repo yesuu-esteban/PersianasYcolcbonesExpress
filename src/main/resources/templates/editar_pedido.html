@@ -260,20 +260,16 @@
         const cabezal  = ckCabezal.checked;
         const esPesado = ancho > 2.50 || alto > 2.50 || cabezal;
         const nombreTubo = esPesado ? 'Tubo R24' : 'Tubo R16';
-        // CUERDA: siempre del insumo único "Cuerda"
 
         selectRollo.innerHTML   = opcionesRollo(color);
         selectTubo.innerHTML    = opcionesPieza(nombreTubo);
         selectPesa.innerHTML    = opcionesPieza('Pesa');
         selectCuerda.innerHTML  = opcionesPieza('Cuerda');
-        // PITILLO: el insumo en catálogo se llama "Pitillo" (NO "Pitillo Pesa")
         selectPitillo.innerHTML = opcionesPieza('Pitillo');
 
-        // Cabezal: selector solo aparece si el checkbox está marcado
         filaCabezal.style.display = cabezal ? '' : 'none';
         selectCabezal.innerHTML = cabezal ? opcionesPieza('Cabezal') : '<option value="auto">⚡ Automático</option>';
 
-        // Pitillo: selector solo aparece si el checkbox está marcado
         filaPitillo.style.display = ckPitillo.checked ? '' : 'none';
     }
 
@@ -317,16 +313,19 @@
 
                 let html = '<strong>✓ Material disponible para esta configuración</strong>';
                 html += '<table style="width:100%;border-collapse:collapse;margin-top:7px">';
-                if (d.rolloSugerido)   html += fila2('🧵 Tela',         `${cAncho} m × ${cAlto} m`,     d.rolloSugerido);
-                if (d.tuboSugerido)    html += fila2('🔧 Tubo',          `${cTubo} m`,                   d.tuboSugerido);
-                if (d.cabezalSugerido) html += fila2('🪟 Cabezal',       `${(a - 0.005).toFixed(3)} m`,  d.cabezalSugerido);
-                if (d.pesaSugerida)    html += fila2('⚖ Pesa',           `${cTubo} m`,                   d.pesaSugerida);
-                if (d.cuerdaSugerida)  html += fila2('🧶 Cuerda',         h <= 1.50 ? '3 m' : '4 m',     d.cuerdaSugerida);
-                if (d.controlInfo)     html += fila2('🎛 Control',        '1 und.',                       d.controlInfo);
-                if (d.pitilloSugerido) html += fila2('🪡 Pitillo',       `${cAncho} m`,                  d.pitilloSugerido);
-                if (d.conectorInfo)    html += fila2('🔗 Conec./Tope',   '',                              d.conectorInfo);
-                if (d.soporteInfo)     html += fila2('🔩 Soporte',        '2 und.',                        d.soporteInfo);
-                if (d.tapaInfo)        html += fila2('🧢 Tapa',           '2 und.',                        d.tapaInfo);
+                if (d.rolloSugerido)             html += fila2('🧵 Tela',            `${cAncho} m × ${cAlto} m`,     d.rolloSugerido);
+                if (d.tuboSugerido)              html += fila2('🔧 Tubo',             `${cTubo} m`,                   d.tuboSugerido);
+                if (d.cabezalSugerido)           html += fila2('🪟 Cabezal',          `${(a - 0.005).toFixed(3)} m`,  d.cabezalSugerido);
+                if (d.pesaSugerida)              html += fila2('⚖ Pesa',             `${cTubo} m`,                   d.pesaSugerida);
+                if (d.cuerdaSugerida)            html += fila2('🧶 Cuerda',            h <= 1.50 ? '3 m' : '4 m',     d.cuerdaSugerida);
+                if (d.controlInfo)               html += fila2('🎛 Control',           '1 und.',                       d.controlInfo);
+                if (d.pitilloSugerido)           html += fila2('🪡 Pitillo',          `${cAncho} m`,                  d.pitilloSugerido);
+                if (d.conectorInfo)              html += fila2('🔗 Conec./Tope',      '',                              d.conectorInfo);
+                if (d.soporteInfo)               html += fila2('🔩 Soporte',           '2 und.',                       d.soporteInfo);
+                if (d.tapaInfo)                  html += fila2('🧢 Tapa',             '2 und.',                       d.tapaInfo);
+                if (d.topePesaInfo)              html += fila2('🔵 Tope Pesa',        '2 und.',                       d.topePesaInfo);
+                if (d.tornilloInfo)              html += fila2('🔨 Tornillo',         cabezal ? '8 und.' : '2 und.',  d.tornilloInfo);
+                if (d.tornilloPerforanteInfo)    html += fila2('🔧 T. Perforante',    '4 und.',                       d.tornilloPerforanteInfo);
                 html += '</table>';
                 caja.innerHTML = html;
             } else {

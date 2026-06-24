@@ -111,8 +111,6 @@ public class Pedido {
     /**
      * Metros numéricos de cuerda según la altura del pedido.
      * 3.0 m si altura <= 1.50 m, 4.0 m si es mayor.
-     * Usado por InventarioServicio para buscar/descontar la pieza correcta
-     * del insumo único "Cuerda".
      */
     @Transient
     public double getMetrosCuerda() {
@@ -128,7 +126,6 @@ public class Pedido {
     public String getRolloTela() {
         double ladoMenor = Math.min(this.ancho, this.altura);
 
-        // AGREGA ESTO PARA DEBUGEAR
         System.out.println("DEBUG: Ancho=" + this.ancho + " Alto=" + this.altura + " LadoMenor=" + ladoMenor);
 
         if (ladoMenor <= 1.83) {
@@ -139,6 +136,7 @@ public class Pedido {
             return "Rollo 3.00m";
         }
     }
+
     @Transient
     public double getCortePitilloPesa() {
         return getCorteTelaAncho();
@@ -156,7 +154,6 @@ public class Pedido {
 
     /**
      * Tapas de cabezal: siempre 2 unidades, pero SOLO si el pedido lleva cabezal.
-     * Sin cabezal no se usan tapas.
      */
     @Transient
     public int getCantidadTapas() {
@@ -164,12 +161,39 @@ public class Pedido {
     }
 
     /**
-     * Soportes de instalación: siempre 2, con o sin cabezal (incluye los
-     * blackout sin cabezal, que solo necesitan los 2 soportes).
+     * Soportes de instalación: siempre 2, con o sin cabezal.
      */
     @Transient
     public int getCantidadSoportes() {
         return 2;
+    }
+
+    /**
+     * Tope de pesa: siempre 2 unidades, obligatorio en todo pedido.
+     */
+    @Transient
+    public int getCantidadTopePesa() {
+        return 2;
+    }
+
+    /**
+     * Tornillos normales:
+     *   Sin cabezal → 2 (para los 2 soportes)
+     *   Con cabezal → 8 (2 soportes + 6 para las 2 tapas)
+     */
+    @Transient
+    public int getCantidadTornillos() {
+        return Boolean.TRUE.equals(usaCabezal) ? 8 : 2;
+    }
+
+    /**
+     * Tornillos perforantes:
+     *   Sin cabezal → 0
+     *   Con cabezal → 4
+     */
+    @Transient
+    public int getCantidadTornillosPerforantes() {
+        return Boolean.TRUE.equals(usaCabezal) ? 4 : 0;
     }
 
     private boolean esControlR16() {
@@ -186,7 +210,7 @@ public class Pedido {
         boolean esPesado = (this.ancho > 2.50 || this.altura > 2.50 || Boolean.TRUE.equals(this.usaCabezal));
         this.tuboRecomendado = esPesado ? "R24" : "R16";
 
-        // 3. Medida de cuerda como texto (para mostrar en ficha y etiquetas)
+        // 3. Medida de cuerda como texto
         this.medidaCuerda = (this.altura <= 1.50) ? "3 metros" : "4 metros";
 
         // 4. Resumen persistido
