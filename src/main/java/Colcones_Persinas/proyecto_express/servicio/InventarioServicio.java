@@ -6,8 +6,11 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+
+
 
 @Service
 public class InventarioServicio {
@@ -20,6 +23,8 @@ public class InventarioServicio {
 
     /** Umbral de descarte para pitillo: por debajo de esto, una pieza ya no sirve. */
     private static final double UMBRAL_DESCARTE_PITILLO = 0.05;
+    private static final List<Double> ANCHOS_COMERCIALES = Arrays.asList(1.83, 2.50, 3.00);
+
 
     public InventarioServicio(RolloTelaRepository rolloTelaRepository,
                                InsumoRepository insumoRepository,
@@ -49,6 +54,12 @@ public class InventarioServicio {
         public Integer piezaPesaId;
         public Integer piezaCuerdaId;
         public Integer piezaPitilloId;
+    }
+
+    public static class RolloEncontrado {
+        public RolloTela rollo;
+        public boolean esSustituto;       // true si no era el ancho que realmente se necesitaba
+        public double anchoSolicitado;    // el ancho que el pedido necesitaba originalmente
     }
 
     public static class PrevisualizacionMaterial {
@@ -124,6 +135,30 @@ public class InventarioServicio {
     public RolloTela obtenerRolloPorId(int id) {
         return rolloTelaRepository.findById(id)
                 .orElseThrow(() -> new MaterialInsuficienteException("El rollo #" + id + " ya no existe."));
+    }
+
+    public RolloEncontrado buscarMejorRolloConSustituto(String color, double anchoNecesario, double metrosNecesarios) {
+    List<Double> candidatos = ANCHOS_COMERCIALES.stream()
+            .filter(a -> a >= anchoNecesario - 0.001)
+            .sorted()
+            .collect(java.util.stream.Collectors.toList());
+
+    for (double anchoProbado : candidatos) {
+        try {
+            RolloTela rollo = buscarMejorRollo(color, anchoProbado, metrosNecesarios);
+            RolloEncontrado res = new RolloEncontrado();
+            res.rollo = rollo;
+            res.esSustituto = anchoProbado > anchoNecesario + 0.001;
+            res.anchoSolicitado = anchoNecesario;
+            return res;
+        } catch (MaterialInsuficienteException ignorada) {
+            // probar el siguiente ancho comercial
+        }
+    }
+
+    throw new MaterialInsuficienteException(
+            "No hay tela de color " + color + " disponible en ningún ancho comercial igual o mayor a "
+            + anchoNecesario + " m, con " + metrosNecesarios + " m disponibles.");
     }
 
     public Insumo obtenerInsumoPorNombre(String nombre) {
@@ -251,6 +286,11 @@ public class InventarioServicio {
     }
 
     public MaterialUsado descontarTela(Pedido pedido, RolloTela rollo, double metros, boolean manual) {
+        return descontarTela(pedido, rollo, metros, manual, false, 0.0);
+    }
+
+    public MaterialUsado descontarTela(Pedido pedido, RolloTela rollo, double metros, boolean manual,
+                                        boolean esSustituto, double anchoOriginalNecesario) {
         if (rollo.getLargoRestante() < metros - 0.001) {
             throw new MaterialInsuficienteException(
                     "Rollo #" + rollo.getId() + " no tiene suficiente material ("
@@ -258,17 +298,25 @@ public class InventarioServicio {
         }
         rollo.setLargoRestante(redondear(rollo.getLargoRestante() - metros));
         rolloTelaRepository.save(rollo);
+
+        String fuente = "Rollo " + rollo.getColor() + " " + rollo.getAncho() + "m (#" + rollo.getId() + ")";
+        if (esSustituto) {
+            fuente += " ⚠ SUSTITUTO: se necesitaba ancho " + anchoOriginalNecesario
+                    + "m pero no había stock; se usó " + rollo.getAncho() + "m en su lugar.";
+        }
+
         MaterialUsado r = new MaterialUsado();
         r.setPedidoId(pedido.getId());
         r.setTipoMaterial("TELA");
         r.setRolloTelaId(rollo.getId());
-        r.setFuenteDescripcion("Rollo " + rollo.getColor() + " " + rollo.getAncho() + "m (#" + rollo.getId() + ")");
+        r.setFuenteDescripcion(fuente);
         r.setMetrosUsados(metros);
         r.setMetrosSobrantes(rollo.getLargoRestante());
         r.setMetrosCuadrados(redondear(pedido.getCorteTelaAncho() * pedido.getCorteTelaAlto()));
         r.setSeleccionManual(manual);
         return materialUsadoRepository.save(r);
     }
+
 
     public MaterialUsado descontarInsumoConMedida(Pedido pedido, PiezaInsumo pieza, double metros, boolean manual) {
         if (pieza.getLargoRestante() < metros - 0.001) {
@@ -457,9 +505,10 @@ public class InventarioServicio {
             if (retazo != null) {
                 descontarRetazo(pedido, retazo, false);
             } else {
-                RolloTela rollo = buscarMejorRollo(
+                RolloEncontrado encontrado = buscarMejorRolloConSustituto(
                         pedido.getColorTelaDeseado(), anchoComercialDe(pedido), metrosADescontarDeRollo(pedido));
-                descontarTela(pedido, rollo, metrosADescontarDeRollo(pedido), false);
+                descontarTela(pedido, encontrado.rollo, metrosADescontarDeRollo(pedido), false,
+                        encontrado.esSustituto, anchoComercialDe(pedido));
             }
         }
 
@@ -574,11 +623,18 @@ public class InventarioServicio {
                         + "m × " + retazo.getAlto() + "m (#" + retazo.getId()
                         + ") · quedarían " + sobrante + " m de alto";
             } else {
-                RolloTela r = buscarMejorRollo(
-                        pedido.getColorTelaDeseado(), anchoComercialDe(pedido), metrosADescontarDeRollo(pedido));
-                res.rolloSugerido = "Rollo " + r.getColor() + " " + r.getAncho() + "m (#" + r.getId()
+                double anchoNecesario = anchoComercialDe(pedido);
+                RolloEncontrado encontrado = buscarMejorRolloConSustituto(
+                        pedido.getColorTelaDeseado(), anchoNecesario, metrosADescontarDeRollo(pedido));
+                RolloTela r = encontrado.rollo;
+                String texto = "Rollo " + r.getColor() + " " + r.getAncho() + "m (#" + r.getId()
                         + ") · quedarían " + redondear(r.getLargoRestante() - metrosADescontarDeRollo(pedido)) + " m";
+                if (encontrado.esSustituto) {
+                    texto += " ⚠ Se necesitaba " + anchoNecesario + "m pero no hay stock; se usará uno más ancho.";
+                }
+                res.rolloSugerido = texto;
             }
+            
         });
 
         // 2. Tubo
