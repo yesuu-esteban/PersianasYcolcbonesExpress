@@ -52,6 +52,10 @@ public class Pedido {
     @Column(name = "usa_conector_tope", nullable = false)
     private Boolean usaConectorTope = true;
 
+    /** Si el jefe elige el tubo manualmente (R8, R16, R24). Null o "AUTO" = automático. */
+    @Column(name = "tubo_manual_elegido")
+    private String tuboManualElegido;
+
     // ─── TRAZABILIDAD DE FECHAS ─────────────────────────────────────────────
 
     @Column(name = "fecha_creacion")
@@ -203,20 +207,29 @@ public class Pedido {
     // ─── LÓGICA DE NEGOCIO ──────────────────────────────────────────────────
 
     public void calcularFichaTecnica() {
-        // 1. Tipo de control según ancho
-        this.tipoControl = (this.ancho > 1.50) ? "Control R16" : "Control R8 B";
+        // 1. Tubo: manual si el jefe lo eligió explícitamente, si no, automático por peso/tamaño
+        if (this.tuboManualElegido != null && !this.tuboManualElegido.isBlank()
+                && !"auto".equalsIgnoreCase(this.tuboManualElegido.trim())) {
+            this.tuboRecomendado = this.tuboManualElegido.trim().toUpperCase();
+        } else {
+            boolean esPesado = (this.ancho > 2.50 || this.altura > 2.50 || Boolean.TRUE.equals(this.usaCabezal));
+            this.tuboRecomendado = esPesado ? "R24" : "R16";
+        }
 
-        // 2. Tubo según peso/tamaño
-        boolean esPesado = (this.ancho > 2.50 || this.altura > 2.50 || Boolean.TRUE.equals(this.usaCabezal));
-        this.tuboRecomendado = esPesado ? "R24" : "R16";
+        // 2. Tipo de control según ancho... excepto si el tubo elegido es R8 → siempre Control R8 A
+        if ("R8".equalsIgnoreCase(this.tuboRecomendado)) {
+            this.tipoControl = "Control R8 A";
+        } else {
+            this.tipoControl = (this.ancho > 1.50) ? "Control R16" : "Control R8 B";
+        }
 
         // 3. Medida de cuerda como texto
         this.medidaCuerda = (this.altura <= 1.50) ? "3 metros" : "4 metros";
 
         // 4. Resumen persistido
         this.rolloParaCortar = "Tela: " + getCorteTelaAncho() + " x " + getCorteTelaAlto()
-                             + " | Tubo: " + getCorteTuberia()
-                             + " | " + getRolloTela();
+                            + " | Tubo: " + getCorteTuberia()
+                            + " | " + getRolloTela();
     }
 
     public void calcularEstadoGeneral() {

@@ -70,7 +70,6 @@
         <hr>
 
         <div id="contenedor-productos">
-            <!-- FILA 0 -->
             <div class="fila-producto" data-indice="0">
                 <div class="row align-items-end g-2 mb-1">
                     <div class="col-md-3">
@@ -138,6 +137,15 @@
                             </select>
                         </div>
                         <div class="col-md-6 col-lg-4">
+                            <label class="form-label">📏 Tipo de tubo</label>
+                            <select name="tipoTuboManual[0]" class="form-select form-select-sm select-tipo-tubo">
+                                <option value="auto">⚡ Automático (según medida)</option>
+                                <option value="R8">Tubo R8</option>
+                                <option value="R16">Tubo R16</option>
+                                <option value="R24">Tubo R24</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 col-lg-4">
                             <label class="form-label">🔩 Pieza de tubo</label>
                             <select name="tuboManual[0]" class="form-select form-select-sm select-tubo">
                                 <option value="auto">⚡ Automático</option>
@@ -193,7 +201,6 @@
 <script>
     let filaIndex = 1;
 
-    // ─── Opciones de retazos filtrados por color ─────────────────
     function opcionesRetazo(color, anchoNecesario, altoNecesario) {
         const candidatos = retazosDisponibles.filter(r =>
             r.color && r.color.toLowerCase() === color.toLowerCase() &&
@@ -211,7 +218,6 @@
         return html;
     }
 
-    // ─── Opciones de rollos filtradas por color ──────────────────
     function opcionesRollo(color) {
         const todos    = rollosDisponibles.filter(r => r.color && r.color.toLowerCase() === color.toLowerCase() && r.largoRestante > 0.001);
         const normales = todos.filter(r => r.largoRestante >= 3);
@@ -231,7 +237,6 @@
         return html;
     }
 
-    // ─── Opciones de piezas filtradas por nombre de insumo ───────
     function opcionesPieza(nombreInsumo) {
         const filtradas = piezasDisponibles.filter(p => {
             const nombre = p.insumoNombre || (p.insumo && p.insumo.nombre) || '';
@@ -243,7 +248,6 @@
         return html;
     }
 
-    // ─── Actualizar selects manuales de una fila ─────────────────
     function actualizarSelectsManualFila(fila) {
         const color      = fila.querySelector('.campo-color').value;
         const ancho      = parseFloat(fila.querySelector('.campo-ancho').value) || 0;
@@ -251,10 +255,15 @@
         const cabezal    = fila.querySelector('.campo-cabezal').checked;
         const usaPitillo = fila.querySelector('.campo-pitillo').checked;
 
-        const esPesado   = ancho > 2.50 || alto > 2.50 || cabezal;
-        const nombreTubo = esPesado ? 'Tubo R24' : 'Tubo R16';
+        const tipoTuboOverride = fila.querySelector('.select-tipo-tubo').value;
+        let nombreTubo;
+        if (tipoTuboOverride && tipoTuboOverride !== 'auto') {
+            nombreTubo = 'Tubo ' + tipoTuboOverride;
+        } else {
+            const esPesado = ancho > 2.50 || alto > 2.50 || cabezal;
+            nombreTubo = esPesado ? 'Tubo R24' : 'Tubo R16';
+        }
 
-        // Cortes para filtrar retazos
         const descTela = cabezal ? 0.035 : 0.03;
         const anchoCorte = ancho > 0 ? ancho - descTela : 0;
         const altoCorte  = alto  > 0 ? alto  + 0.20    : 0;
@@ -297,6 +306,7 @@
         fila.querySelector('.campo-cabezal').addEventListener('change', disparar);
         fila.querySelector('.campo-pitillo').addEventListener('change', () => { actualizarSelectsManualFila(fila); disparar(); });
         fila.querySelector('.campo-conector').addEventListener('change', disparar);
+        fila.querySelector('.select-tipo-tubo').addEventListener('change', () => { actualizarSelectsManualFila(fila); disparar(); });
     }
 
     function htmlFila(idx) {
@@ -368,6 +378,15 @@
                         </select>
                     </div>
                     <div class="col-md-6 col-lg-4">
+                        <label class="form-label">📏 Tipo de tubo</label>
+                        <select name="tipoTuboManual[${idx}]" class="form-select form-select-sm select-tipo-tubo">
+                            <option value="auto">⚡ Automático (según medida)</option>
+                            <option value="R8">Tubo R8</option>
+                            <option value="R16">Tubo R16</option>
+                            <option value="R24">Tubo R24</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6 col-lg-4">
                         <label class="form-label">🔩 Pieza de tubo</label>
                         <select name="tuboManual[${idx}]" class="form-select form-select-sm select-tubo">
                             <option value="auto">⚡ Automático</option>
@@ -411,7 +430,6 @@
         actualizarSelectsManualFila(nueva);
     }
 
-    // ─── Previsualización AJAX ───────────────────────────────────
     async function consultarPrevisualizacion(fila) {
         const caja     = fila.querySelector('.previsualizacion');
         const ancho    = fila.querySelector('.campo-ancho').value;
@@ -420,6 +438,7 @@
         const cabezal  = fila.querySelector('.campo-cabezal').checked;
         const pitillo  = fila.querySelector('.campo-pitillo').checked;
         const conector = fila.querySelector('.campo-conector').checked;
+        const tipoTuboManual = fila.querySelector('.select-tipo-tubo').value;
 
         if (!ancho || !alto) {
             caja.className = 'previsualizacion';
@@ -430,7 +449,7 @@
         caja.innerHTML = '<span class="cargando">🔍 Consultando inventario...</span>';
 
         try {
-            const params = new URLSearchParams({ ancho, altura: alto, color, usaCabezal: cabezal, usaPitilloPesa: pitillo, usaConectorTope: conector });
+            const params = new URLSearchParams({ ancho, altura: alto, color, usaCabezal: cabezal, usaPitilloPesa: pitillo, usaConectorTope: conector, tipoTuboManual });
             const d = await fetch('/taller/previsualizar-material?' + params).then(r => r.json());
 
             if (d.disponible) {
@@ -443,7 +462,6 @@
                 const cTubo  = (a - descTubo).toFixed(3);
                 let html = '<strong>✓ Material disponible</strong>';
                 html += '<table style="width:100%;border-collapse:collapse;margin-top:6px">';
-                // Retazo sugerido tiene prioridad sobre rollo
                 if (d.retazoSugerido)  html += tr('✂ Retazo',       `${cAncho} m × ${cAlto} m`, d.retazoSugerido);
                 else if (d.rolloSugerido) html += tr('🧵 Tela',      `${cAncho} m × ${cAlto} m`, d.rolloSugerido);
                 if (d.tuboSugerido)    html += tr('🔧 Tubo',          `${cTubo} m`,               d.tuboSugerido);

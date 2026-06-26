@@ -22,10 +22,10 @@ public class InsumoBaseInicializador implements CommandLineRunner {
     public void run(String... args) {
         crearSiNoExiste("Tubo R16",              true,  "Tubo recomendado para pedidos livianos. Se carga por barras con medida.");
         crearSiNoExiste("Tubo R24",              true,  "Tubo recomendado para pedidos pesados o con cabezal. Se carga por barras con medida.");
-        crearSiNoExiste("Cuerda 3 metros",       true,  "Cuerda para pedidos con altura <= 1.50 m.");
-        crearSiNoExiste("Cuerda 4 metros",       true,  "Cuerda para pedidos con altura > 1.50 m.");
+        crearSiNoExiste("Tubo R8",    true,  "Tubo pequeño. Se carga por barras con medida.");
         crearSiNoExiste("Pesa",                  true,  "Pesa inferior, se corta a la misma medida que el tubo.");
         crearSiNoExiste("Control R16",           false, "Control para pedidos con ancho > 1.50 m. Se maneja por unidad.");
+        crearSiNoExiste("Control R8 A", false, "Control para pedidos con Tubo R8. Se maneja por unidad.");
         crearSiNoExiste("Control R8 B",          false, "Control para pedidos con ancho <= 1.50 m. Se maneja por unidad.");
         crearSiNoExiste("Soporte",               false, "Soporte de instalación. Se usan 2 en todo pedido, con o sin cabezal.");
         crearSiNoExiste("Tapa",                  false, "Tapa de cabezal. Se usan 2 únicamente en pedidos CON cabezal.");

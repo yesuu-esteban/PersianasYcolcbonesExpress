@@ -85,7 +85,8 @@ public class PedidoControlador {
             @RequestParam String color,
             @RequestParam(required = false, defaultValue = "false") boolean usaCabezal,
             @RequestParam(required = false, defaultValue = "true")  boolean usaPitilloPesa,
-            @RequestParam(required = false, defaultValue = "true")  boolean usaConectorTope) {
+            @RequestParam(required = false, defaultValue = "true")  boolean usaConectorTope,
+            @RequestParam(required = false) String tipoTuboManual) { // ← nuevo
 
         Pedido p = new Pedido();
         p.setAncho(ancho);
@@ -94,6 +95,7 @@ public class PedidoControlador {
         p.setUsaCabezal(usaCabezal);
         p.setUsaPitilloPesa(usaPitilloPesa);
         p.setUsaConectorTope(usaConectorTope);
+        p.setTuboManualElegido(tipoTuboManual); // ← nuevo
         p.calcularFichaTecnica();
 
         return inventarioServicio.previsualizar(p);
@@ -138,6 +140,7 @@ public class PedidoControlador {
             boolean tieneCabezal    = leerBooleanoFila(allParams, "cabezales",       i, false);
             boolean usaPitilloPesa  = leerBooleanoFila(allParams, "usaPitilloPesa",  i, true);
             boolean usaConectorTope = leerBooleanoFila(allParams, "usaConectorTope", i, true);
+            String tipoTuboManual   = leerTextoOpcionalFila(allParams, "tipoTuboManual", i); // ← nuevo
 
             InventarioServicio.SeleccionManual seleccion = new InventarioServicio.SeleccionManual();
             seleccion.rolloTelaId   = leerIdOpcionalFila(allParams, "rolloManual",   i);
@@ -163,6 +166,7 @@ public class PedidoControlador {
                 p.setUsaCabezal(tieneCabezal);
                 p.setUsaPitilloPesa(usaPitilloPesa);
                 p.setUsaConectorTope(usaConectorTope);
+                p.setTuboManualElegido(tipoTuboManual); // ← nuevo
                 p.calcularFichaTecnica();
                 p.calcularEstadoGeneral();
                 pedidosDelLote.add(p);
@@ -203,6 +207,13 @@ public class PedidoControlador {
         String clave = nombreCampo + "[" + indice + "]";
         if (!allParams.containsKey(clave)) return porDefecto;
         return "true".equals(allParams.get(clave));
+    }
+
+    private String leerTextoOpcionalFila(Map<String, String> allParams, String nombreCampo, int indice) {
+        String clave = nombreCampo + "[" + indice + "]";
+        String texto = allParams.get(clave);
+        if (texto == null || texto.isBlank() || "auto".equalsIgnoreCase(texto)) return null;
+        return texto.trim();
     }
 
     private Integer leerIdOpcionalFila(Map<String, String> allParams, String nombreCampo, int indice) {
@@ -285,7 +296,8 @@ public class PedidoControlador {
             @RequestParam String estado,
             @RequestParam(required = false, defaultValue = "false") boolean usaCabezal,
             @RequestParam(required = false, defaultValue = "true")  boolean usaPitilloPesa,
-            @RequestParam(required = false, defaultValue = "true")  boolean usaConectorTope) {
+            @RequestParam(required = false, defaultValue = "true")  boolean usaConectorTope,
+            @RequestParam(required = false) String tipoTuboManual) { // ← nuevo
 
         Pedido pedido = pedidoRepository.findById(id).orElseThrow();
 
@@ -299,6 +311,7 @@ public class PedidoControlador {
         pedido.setUsaCabezal(usaCabezal);
         pedido.setUsaPitilloPesa(usaPitilloPesa);
         pedido.setUsaConectorTope(usaConectorTope);
+        pedido.setTuboManualElegido(tipoTuboManual); // ← nuevo
 
         pedido.calcularFichaTecnica();
 

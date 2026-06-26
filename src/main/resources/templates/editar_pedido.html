@@ -101,7 +101,16 @@
             </select>
         </div>
 
-        <!-- Materiales opcionales -->
+        <div class="mb-3">
+            <label class="form-label fw-bold">Tipo de tubo</label>
+            <select name="tipoTuboManual" id="selectTipoTubo" class="form-select">
+                <option value="auto" th:selected="${pedido.tuboManualElegido == null}">⚡ Automático (según medida)</option>
+                <option value="R8"  th:selected="${pedido.tuboManualElegido == 'R8'}">Tubo R8</option>
+                <option value="R16" th:selected="${pedido.tuboManualElegido == 'R16'}">Tubo R16</option>
+                <option value="R24" th:selected="${pedido.tuboManualElegido == 'R24'}">Tubo R24</option>
+            </select>
+        </div>
+
         <div class="card mb-3 border-secondary-subtle">
             <div class="card-body pb-2">
                 <p class="fw-bold mb-2">Materiales opcionales</p>
@@ -125,12 +134,10 @@
             </div>
         </div>
 
-        <!-- Previsualización -->
         <div class="previsualizacion mb-3">
             <span class="cargando">Cargando disponibilidad de material...</span>
         </div>
 
-        <!-- Toggle manual -->
         <div class="mb-3">
             <button type="button" class="toggle-manual" onclick="toggleManual(this)">
                 ⚙ Cambiar material manualmente (retazos, piezas específicas)
@@ -197,13 +204,14 @@
 </script>
 
 <script>
-    const campoAncho  = document.getElementById('campoAncho');
-    const campoAltura = document.getElementById('campoAltura');
-    const campoColor  = document.getElementById('campoColor');
-    const ckCabezal   = document.getElementById('ckCabezal');
-    const ckPitillo   = document.getElementById('ckPitillo');
-    const ckConector  = document.getElementById('ckConector');
-    const caja        = document.querySelector('.previsualizacion');
+    const campoAncho   = document.getElementById('campoAncho');
+    const campoAltura  = document.getElementById('campoAltura');
+    const campoColor   = document.getElementById('campoColor');
+    const ckCabezal    = document.getElementById('ckCabezal');
+    const ckPitillo    = document.getElementById('ckPitillo');
+    const ckConector   = document.getElementById('ckConector');
+    const selectTipoTubo = document.getElementById('selectTipoTubo');
+    const caja         = document.querySelector('.previsualizacion');
 
     const selectRollo   = document.getElementById('selectRollo');
     const selectTubo    = document.getElementById('selectTubo');
@@ -258,8 +266,15 @@
         const ancho    = parseFloat(campoAncho.value) || 0;
         const alto     = parseFloat(campoAltura.value) || 0;
         const cabezal  = ckCabezal.checked;
-        const esPesado = ancho > 2.50 || alto > 2.50 || cabezal;
-        const nombreTubo = esPesado ? 'Tubo R24' : 'Tubo R16';
+
+        const tipoTuboOverride = selectTipoTubo.value;
+        let nombreTubo;
+        if (tipoTuboOverride && tipoTuboOverride !== 'auto') {
+            nombreTubo = 'Tubo ' + tipoTuboOverride;
+        } else {
+            const esPesado = ancho > 2.50 || alto > 2.50 || cabezal;
+            nombreTubo = esPesado ? 'Tubo R24' : 'Tubo R16';
+        }
 
         selectRollo.innerHTML   = opcionesRollo(color);
         selectTubo.innerHTML    = opcionesPieza(nombreTubo);
@@ -289,6 +304,7 @@
         const cabezal  = ckCabezal.checked;
         const pitillo  = ckPitillo.checked;
         const conector = ckConector.checked;
+        const tipoTuboManual = selectTipoTubo.value;
 
         if (!ancho || !alto) {
             caja.className = 'previsualizacion';
@@ -299,7 +315,7 @@
         caja.innerHTML = '<span class="cargando">🔍 Consultando inventario...</span>';
 
         try {
-            const params = new URLSearchParams({ ancho, altura: alto, color, usaCabezal: cabezal, usaPitilloPesa: pitillo, usaConectorTope: conector });
+            const params = new URLSearchParams({ ancho, altura: alto, color, usaCabezal: cabezal, usaPitilloPesa: pitillo, usaConectorTope: conector, tipoTuboManual });
             const d = await fetch('/taller/previsualizar-material?' + params.toString()).then(r => r.json());
 
             if (d.disponible) {
@@ -352,6 +368,7 @@
     ckCabezal.addEventListener('change', disparar);
     ckPitillo.addEventListener('change', () => { actualizarSelectsManual(); disparar(); });
     ckConector.addEventListener('change', disparar);
+    selectTipoTubo.addEventListener('change', disparar);
 
     document.addEventListener('DOMContentLoaded', () => {
         actualizarSelectsManual();
