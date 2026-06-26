@@ -28,30 +28,37 @@ public class PedidoControlador {
 
     // ─── Ver lista de pedidos ─────────────────────────────────────────────
     @GetMapping("/pedidos")
-    public String verProduccion(@RequestParam(name = "estado", required = false) String estado, Model model) {
+    public String verProduccion(
+            @RequestParam(name = "estado", required = false) String estado,
+            Model model) {
         try {
             List<Pedido> todos = pedidoRepository.findAll(Sort.by("nombreDecorador"));
             if (todos == null) todos = new java.util.ArrayList<>();
 
-            long totalTodos = todos.size();
-            long totalPendiente = todos.stream().filter(p -> "Pendiente".equals(p.getEstado())).count();
-            long totalEnProceso = todos.stream().filter(p -> "En Proceso".equals(p.getEstado())).count();
+            long totalTodos          = todos.size();
+            long totalPendiente      = todos.stream().filter(p -> "Pendiente".equals(p.getEstado())).count();
+            long totalEnProceso      = todos.stream().filter(p -> "En Proceso".equals(p.getEstado())).count();
             long totalListoEnsamblar = todos.stream().filter(p -> "Listo para Ensamblar".equals(p.getEstado())).count();
-            long totalListoDespacho = todos.stream().filter(p -> "Listo para Despacho".equals(p.getEstado())).count();
+            long totalListoDespacho  = todos.stream().filter(p -> "Listo para Despacho".equals(p.getEstado())).count();
 
-            model.addAttribute("totalTodos", totalTodos);
-            model.addAttribute("totalPendiente", totalPendiente);
-            model.addAttribute("totalEnProceso", totalEnProceso);
+            model.addAttribute("totalTodos",          totalTodos);
+            model.addAttribute("totalPendiente",      totalPendiente);
+            model.addAttribute("totalEnProceso",      totalEnProceso);
             model.addAttribute("totalListoEnsamblar", totalListoEnsamblar);
-            model.addAttribute("totalListoDespacho", totalListoDespacho);
+            model.addAttribute("totalListoDespacho",  totalListoDespacho);
 
-            final String estadoFiltro = (estado == null || estado.isBlank() || "Todos".equalsIgnoreCase(estado)) ? "Todos" : estado;
-            List<Pedido> pedidos = "Todos".equals(estadoFiltro) ? todos : todos.stream().filter(p -> estadoFiltro.equals(p.getEstado())).collect(Collectors.toList());
+            final String estadoFiltro = (estado == null || estado.isBlank() || "Todos".equalsIgnoreCase(estado))
+                    ? "Todos" : estado;
 
-            model.addAttribute("pedidos", pedidos);
+            List<Pedido> pedidos = "Todos".equals(estadoFiltro) ? todos : todos.stream()
+                    .filter(p -> estadoFiltro.equals(p.getEstado())).collect(Collectors.toList());
+
+            model.addAttribute("pedidos",      pedidos);
             model.addAttribute("estadoActivo", estadoFiltro);
+
         } catch (Exception e) {
-            model.addAttribute("pedidos", new java.util.ArrayList<Pedido>());
+            System.err.println("Error al cargar pedidos: " + e.getMessage());
+            model.addAttribute("pedidos",      new java.util.ArrayList<Pedido>());
             model.addAttribute("estadoActivo", "Todos");
         }
         return "pedidos";
@@ -61,18 +68,26 @@ public class PedidoControlador {
     @GetMapping("/nuevo")
     public String mostrarFormularioNuevo(Model model) {
         List<String> coloresDisponibles = Arrays.asList("Blanco", "Gris", "Fawn", "Vainilla");
-        model.addAttribute("pedido", new Pedido());
-        model.addAttribute("listaColores", coloresDisponibles);
-        model.addAttribute("rollosDisponibles", inventarioServicio.getTodosLosRollos());
-        model.addAttribute("piezasDisponibles", inventarioServicio.getTodasLasPiezas());
-        model.addAttribute("retazosDisponibles", inventarioServicio.getTodosLosRetazos());
+        model.addAttribute("pedido",             new Pedido());
+        model.addAttribute("listaColores",        coloresDisponibles);
+        model.addAttribute("rollosDisponibles",   inventarioServicio.getTodosLosRollos());
+        model.addAttribute("piezasDisponibles",   inventarioServicio.getTodasLasPiezas());
+        model.addAttribute("retazosDisponibles",  inventarioServicio.getTodosLosRetazos());
         return "nuevo_pedido";
     }
 
     // ─── Previsualización AJAX ────────────────────────────────────────────
     @GetMapping("/previsualizar-material")
     @ResponseBody
-    public InventarioServicio.PrevisualizacionMaterial previsualizarMaterial(@RequestParam double ancho, @RequestParam double altura, @RequestParam String color, @RequestParam(required = false, defaultValue = "false") boolean usaCabezal, @RequestParam(required = false, defaultValue = "true") boolean usaPitilloPesa, @RequestParam(required = false, defaultValue = "true") boolean usaConectorTope, @RequestParam(required = false) String tipoTuboManual) {
+    public InventarioServicio.PrevisualizacionMaterial previsualizarMaterial(
+            @RequestParam double ancho,
+            @RequestParam double altura,
+            @RequestParam String color,
+            @RequestParam(required = false, defaultValue = "false") boolean usaCabezal,
+            @RequestParam(required = false, defaultValue = "true")  boolean usaPitilloPesa,
+            @RequestParam(required = false, defaultValue = "true")  boolean usaConectorTope,
+            @RequestParam(required = false) String tipoTuboManual) {
+
         Pedido p = new Pedido();
         p.setAncho(ancho);
         p.setAltura(altura);
@@ -82,40 +97,66 @@ public class PedidoControlador {
         p.setUsaConectorTope(usaConectorTope);
         p.setTuboManualElegido(tipoTuboManual);
         p.calcularFichaTecnica();
+
         return inventarioServicio.previsualizar(p);
     }
 
     // ─── Guardar lista de pedidos ─────────────────────────────────────────
     @PostMapping("/guardar-lista")
     @org.springframework.transaction.annotation.Transactional
-    public String guardarListaPedidos(@RequestParam String nombreDecorador, @RequestParam String nombreClienteFinal, @RequestParam List<String> descripciones, @RequestParam List<Integer> cantidades, @RequestParam List<Double> anchos, @RequestParam List<Double> alturas, @RequestParam List<String> colores, @RequestParam List<String> mandos, @RequestParam Map<String, String> allParams, RedirectAttributes redirectAttributes) {
+    public String guardarListaPedidos(
+            @RequestParam String nombreDecorador,
+            @RequestParam String nombreClienteFinal,
+            @RequestParam List<String> descripciones,
+            @RequestParam List<Integer> cantidades,
+            @RequestParam List<Double> anchos,
+            @RequestParam List<Double> alturas,
+            @RequestParam List<String> colores,
+            @RequestParam List<String> mandos,
+            @RequestParam Map<String, String> allParams,
+            RedirectAttributes redirectAttributes) {
+
         int n = anchos.size();
+        if (cantidades.size() != n || alturas.size() != n ||
+            colores.size()   != n || mandos.size()   != n ||
+            descripciones.size() != n) {
+
+            redirectAttributes.addFlashAttribute("error",
+                "Error al leer el formulario: verifica que todos los campos estén completos.");
+            return "redirect:/taller/nuevo";
+        }
+
         List<Pedido> pedidosDelLote = new java.util.ArrayList<>();
         List<InventarioServicio.SeleccionManual> seleccionesDelLote = new java.util.ArrayList<>();
 
         for (int i = 0; i < n; i++) {
-            boolean tieneCabezal = leerBooleanoFila(allParams, "cabezales", i, false);
-            boolean usaPitilloPesa = leerBooleanoFila(allParams, "usaPitilloPesa", i, true);
+            boolean tieneCabezal    = leerBooleanoFila(allParams, "cabezales",       i, false);
+            boolean usaPitilloPesa  = leerBooleanoFila(allParams, "usaPitilloPesa",  i, true);
             boolean usaConectorTope = leerBooleanoFila(allParams, "usaConectorTope", i, true);
-            String tipoTuboManual = leerTextoOpcionalFila(allParams, "tipoTuboManual", i);
+            String tipoTuboManual   = leerTextoOpcionalFila(allParams, "tipoTuboManual", i);
 
             InventarioServicio.SeleccionManual seleccion = new InventarioServicio.SeleccionManual();
-            seleccion.rolloTelaId = leerIdOpcionalFila(allParams, "rolloManual", i);
-            seleccion.retazoTelaId = leerIdOpcionalFila(allParams, "retazoManual", i);
-            
-            if (seleccion.rolloTelaId != null && seleccion.retazoTelaId != null) seleccion.retazoTelaId = null;
-
-            seleccion.piezaTuboId = leerIdOpcionalFila(allParams, "tuboManual", i);
-            seleccion.piezaPesaId = leerIdOpcionalFila(allParams, "pesaManual", i);
-            seleccion.piezaCuerdaId = leerIdOpcionalFila(allParams, "cuerdaManual", i);
+            seleccion.rolloTelaId    = leerIdOpcionalFila(allParams, "rolloManual",   i);
+            seleccion.retazoTelaId   = leerIdOpcionalFila(allParams, "retazoManual",  i);
+            seleccion.piezaTuboId    = leerIdOpcionalFila(allParams, "tuboManual",    i);
+            seleccion.piezaPesaId    = leerIdOpcionalFila(allParams, "pesaManual",    i);
+            seleccion.piezaCuerdaId  = leerIdOpcionalFila(allParams, "cuerdaManual",  i);
             seleccion.piezaPitilloId = leerIdOpcionalFila(allParams, "pitilloManual", i);
+
+            // Si el jefe eligió un rollo específico Y también hay retazo seleccionado,
+            // el rollo manual tiene prioridad (limpiamos retazoTelaId).
+            if (seleccion.rolloTelaId != null && seleccion.retazoTelaId != null) {
+                seleccion.retazoTelaId = null;
+            }
 
             int cantidad = cantidades.get(i);
             for (int j = 0; j < cantidad; j++) {
                 Pedido p = new Pedido();
                 p.setNombreDecorador(nombreDecorador);
                 p.setNombreClienteFinal(nombreClienteFinal);
-                p.setDescripcion(cantidad > 1 ? descripciones.get(i) + " (" + (j + 1) + "/" + cantidad + ")" : descripciones.get(i));
+                p.setDescripcion(cantidad > 1
+                    ? descripciones.get(i) + " (" + (j + 1) + "/" + cantidad + ")"
+                    : descripciones.get(i));
                 p.setAncho(anchos.get(i));
                 p.setAltura(alturas.get(i));
                 p.setColorTelaDeseado(colores.get(i));
@@ -132,10 +173,18 @@ public class PedidoControlador {
             }
         }
 
+        // ── Verificación previa respetando selección manual ──────────────
         try {
             for (int i = 0; i < pedidosDelLote.size(); i++) {
                 inventarioServicio.verificarDisponibilidad(pedidosDelLote.get(i), seleccionesDelLote.get(i));
             }
+        } catch (InventarioServicio.MaterialInsuficienteException e) {
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
+            return "redirect:/taller/nuevo";
+        }
+
+        // ── Guardado y descuento real ─────────────────────────────────────
+        try {
             for (int i = 0; i < pedidosDelLote.size(); i++) {
                 Pedido p = pedidosDelLote.get(i);
                 pedidoRepository.save(p);
@@ -146,16 +195,102 @@ public class PedidoControlador {
             return "redirect:/taller/nuevo";
         }
 
-        redirectAttributes.addFlashAttribute("mensaje", pedidosDelLote.size() + " pedido(s) creados correctamente.");
+        redirectAttributes.addFlashAttribute("mensaje",
+            pedidosDelLote.size() + " pedido(s) creados correctamente.");
         return "redirect:/taller/pedidos";
     }
 
-    // ─── Edición de Pedido ───────────────────────────────────────────────
+    // ─── Helpers ─────────────────────────────────────────────────────────
+    private boolean leerBooleanoFila(Map<String, String> allParams, String nombreCampo, int indice, boolean porDefecto) {
+        String clave = nombreCampo + "[" + indice + "]";
+        if (!allParams.containsKey(clave)) return porDefecto;
+        return "true".equals(allParams.get(clave));
+    }
+
+    private String leerTextoOpcionalFila(Map<String, String> allParams, String nombreCampo, int indice) {
+        String clave = nombreCampo + "[" + indice + "]";
+        String texto = allParams.get(clave);
+        if (texto == null || texto.isBlank() || "auto".equalsIgnoreCase(texto)) return null;
+        return texto.trim();
+    }
+
+    private Integer leerIdOpcionalFila(Map<String, String> allParams, String nombreCampo, int indice) {
+        String clave = nombreCampo + "[" + indice + "]";
+        String texto = allParams.get(clave);
+        if (texto == null || texto.isBlank() || "auto".equalsIgnoreCase(texto)) return null;
+        try { return Integer.parseInt(texto.trim()); } catch (NumberFormatException e) { return null; }
+    }
+
+    // ─── Actualizar estado ────────────────────────────────────────────────
+    @PostMapping("/actualizar/{id}/{accion}")
+    public String actualizarEstado(@PathVariable("id") int id, @PathVariable("accion") String accion, RedirectAttributes redirectAttributes) {
+        Pedido pedido = pedidoRepository.findById(id).orElseThrow();
+        switch (accion.toLowerCase()) {
+            case "tela": pedido.setTelaCortada(!pedido.getTelaCortada()); break;
+            case "perfileria": pedido.setPerfileriaCortada(!pedido.getPerfileriaCortada()); break;
+            case "ensamblado":
+                if (Boolean.TRUE.equals(pedido.getTelaCortada()) && Boolean.TRUE.equals(pedido.getPerfileriaCortada())) {
+                    pedido.setEnsamblado(!pedido.getEnsamblado());
+                } else { redirectAttributes.addFlashAttribute("error", "¡Error! Primero debes cortar la tela y los perfiles."); }
+                break;
+        }
+        pedido.calcularEstadoGeneral();
+        pedidoRepository.save(pedido);
+        return "redirect:/taller/pedidos";
+    }
+
+    // ─── Imprimir ─────────────────────────────────────────────────────────
+    @GetMapping("/imprimir/{id}")
+    public String imprimirPedido(@PathVariable("id") int id, Model model) {
+        Pedido p = pedidoRepository.findById(id).orElseThrow();
+        p.calcularFichaTecnica();
+        model.addAttribute("pedido", p);
+        model.addAttribute("historialMaterial", inventarioServicio.getHistorialDePedido(id));
+        return "imprimir_pedido";
+    }
+
+    // ─── Formulario editar ────────────────────────────────────────────────
+    @GetMapping("/editar/{id}")
+    public String mostrarFormularioEditar(@PathVariable("id") int id, Model model) {
+        Pedido pedido = pedidoRepository.findById(id).orElseThrow();
+        model.addAttribute("pedido", pedido);
+        model.addAttribute("listaColores", Arrays.asList("Blanco", "Gris", "Fawn", "Vainilla"));
+        model.addAttribute("rollosDisponibles", inventarioServicio.getTodosLosRollos());
+        model.addAttribute("piezasDisponibles", inventarioServicio.getTodasLasPiezas());
+        model.addAttribute("retazosDisponibles", inventarioServicio.getTodosLosRetazos());
+        return "editar_pedido";
+    }
+
+    // ─── Guardar edición — con reversión de material y nuevo descuento ────
     @PostMapping("/editar/{id}")
     @org.springframework.transaction.annotation.Transactional
-    public String guardarEdicion(@PathVariable("id") int id, @RequestParam String nombreDecorador, @RequestParam String nombreClienteFinal, @RequestParam String descripcion, @RequestParam double ancho, @RequestParam double altura, @RequestParam String colorTelaDeseado, @RequestParam String ladoControl, @RequestParam String estado, @RequestParam(required = false, defaultValue = "false") boolean usaCabezal, @RequestParam(required = false, defaultValue = "true") boolean usaPitilloPesa, @RequestParam(required = false, defaultValue = "true") boolean usaConectorTope, @RequestParam(required = false) String tipoTuboManual, @RequestParam(required = false) String rolloManual, @RequestParam(required = false) String retazoManual, @RequestParam(required = false) String tuboManual, @RequestParam(required = false) String cabezalManual, @RequestParam(required = false) String pesaManual, @RequestParam(required = false) String cuerdaManual, @RequestParam(required = false) String pitilloManual, RedirectAttributes redirectAttributes) {
+    public String guardarEdicion(
+            @PathVariable("id") int id,
+            @RequestParam String nombreDecorador,
+            @RequestParam String nombreClienteFinal,
+            @RequestParam String descripcion,
+            @RequestParam double ancho,
+            @RequestParam double altura,
+            @RequestParam String colorTelaDeseado,
+            @RequestParam String ladoControl,
+            @RequestParam String estado,
+            @RequestParam(required = false, defaultValue = "false") boolean usaCabezal,
+            @RequestParam(required = false, defaultValue = "true")  boolean usaPitilloPesa,
+            @RequestParam(required = false, defaultValue = "true")  boolean usaConectorTope,
+            @RequestParam(required = false) String tipoTuboManual,
+            // Selecciones manuales de material (antes se ignoraban completamente)
+            @RequestParam(required = false) String rolloManual,
+            @RequestParam(required = false) String retazoManual,
+            @RequestParam(required = false) String tuboManual,
+            @RequestParam(required = false) String cabezalManual,
+            @RequestParam(required = false) String pesaManual,
+            @RequestParam(required = false) String cuerdaManual,
+            @RequestParam(required = false) String pitilloManual,
+            RedirectAttributes redirectAttributes) {
 
         Pedido pedido = pedidoRepository.findById(id).orElseThrow();
+
+        // 1. Actualizar datos del pedido con la nueva configuración
         pedido.setNombreDecorador(nombreDecorador);
         pedido.setNombreClienteFinal(nombreClienteFinal);
         pedido.setDescripcion(descripcion);
@@ -168,106 +303,84 @@ public class PedidoControlador {
         pedido.setUsaConectorTope(usaConectorTope);
         pedido.setTuboManualElegido(tipoTuboManual);
         pedido.calcularFichaTecnica();
+        if (estado != null && !estado.isBlank()) {
+            pedido.setEstado(estado);
+        } else {
+            pedido.calcularEstadoGeneral();
+        }
 
-        if (estado != null && !estado.isBlank()) pedido.setEstado(estado); else pedido.calcularEstadoGeneral();
-
+        // 2. Construir la selección manual de material del jefe
         InventarioServicio.SeleccionManual seleccion = new InventarioServicio.SeleccionManual();
-        seleccion.rolloTelaId = parsearIdManual(rolloManual);
-        seleccion.retazoTelaId = parsearIdManual(retazoManual);
-        seleccion.piezaTuboId = parsearIdManual(tuboManual);
+        seleccion.rolloTelaId    = parsearIdManual(rolloManual);
+        seleccion.retazoTelaId   = parsearIdManual(retazoManual);
+        seleccion.piezaTuboId    = parsearIdManual(tuboManual);
         seleccion.piezaCabezalId = parsearIdManual(cabezalManual);
-        seleccion.piezaPesaId = parsearIdManual(pesaManual);
-        seleccion.piezaCuerdaId = parsearIdManual(cuerdaManual);
+        seleccion.piezaPesaId    = parsearIdManual(pesaManual);
+        seleccion.piezaCuerdaId  = parsearIdManual(cuerdaManual);
         seleccion.piezaPitilloId = parsearIdManual(pitilloManual);
 
-        if (seleccion.rolloTelaId != null && seleccion.retazoTelaId != null) seleccion.retazoTelaId = null;
+        // Si eligió rollo Y retazo a la vez, el rollo tiene prioridad
+        if (seleccion.rolloTelaId != null && seleccion.retazoTelaId != null) {
+            seleccion.retazoTelaId = null;
+        }
 
+        // 3. Revertir el material descontado originalmente (devuelve metros/unidades al inventario)
         try {
             inventarioServicio.revertirMaterialDe(id);
-            inventarioServicio.verificarDisponibilidad(pedido, seleccion);
-            pedidoRepository.save(pedido);
-            inventarioServicio.descontarMaterialDe(pedido, seleccion);
         } catch (Exception e) {
-            redirectAttributes.addFlashAttribute("error", "Error al actualizar inventario: " + e.getMessage());
+            redirectAttributes.addFlashAttribute("error",
+                    "No se pudo revertir el material del pedido: " + e.getMessage());
             return "redirect:/taller/editar/" + id;
         }
 
-        redirectAttributes.addFlashAttribute("mensaje", "Pedido actualizado y reajustado.");
+        // 4. Verificar que hay material para la nueva configuración
+        try {
+            inventarioServicio.verificarDisponibilidad(pedido, seleccion);
+        } catch (InventarioServicio.MaterialInsuficienteException e) {
+            // El @Transactional revierte la reversión del paso 3 si salimos con error
+            redirectAttributes.addFlashAttribute("error",
+                    "No hay suficiente material para la nueva configuración: " + e.getMessage());
+            return "redirect:/taller/editar/" + id;
+        }
+
+        // 5. Guardar el pedido con los datos nuevos
+        pedidoRepository.save(pedido);
+
+        // 6. Descontar el material con la nueva configuración
+        try {
+            inventarioServicio.descontarMaterialDe(pedido, seleccion);
+        } catch (InventarioServicio.MaterialInsuficienteException e) {
+            redirectAttributes.addFlashAttribute("error",
+                    "Error al descontar material: " + e.getMessage());
+            return "redirect:/taller/editar/" + id;
+        }
+
+        redirectAttributes.addFlashAttribute("mensaje", "Pedido actualizado. Inventario reajustado correctamente.");
         return "redirect:/taller/pedidos";
     }
 
+    /** Convierte "auto", null o vacío en null; cualquier número en su Integer. */
     private Integer parsearIdManual(String valor) {
         if (valor == null || valor.isBlank() || "auto".equalsIgnoreCase(valor.trim())) return null;
         try { return Integer.parseInt(valor.trim()); } catch (NumberFormatException e) { return null; }
     }
 
-    // ─── Helpers, Actualizar, Imprimir, Eliminar, Reporte (Mantenidos igual) ───
-    private boolean leerBooleanoFila(Map<String, String> allParams, String nombreCampo, int indice, boolean porDefecto) {
-        String clave = nombreCampo + "[" + indice + "]";
-        return allParams.containsKey(clave) ? "true".equals(allParams.get(clave)) : porDefecto;
-    }
-
-    private String leerTextoOpcionalFila(Map<String, String> allParams, String nombreCampo, int indice) {
-        String clave = nombreCampo + "[" + indice + "]";
-        String texto = allParams.get(clave);
-        return (texto == null || texto.isBlank() || "auto".equalsIgnoreCase(texto)) ? null : texto.trim();
-    }
-
-    private Integer leerIdOpcionalFila(Map<String, String> allParams, String nombreCampo, int indice) {
-        String clave = nombreCampo + "[" + indice + "]";
-        String texto = allParams.get(clave);
-        if (texto == null || texto.isBlank() || "auto".equalsIgnoreCase(texto)) return null;
-        try { return Integer.parseInt(texto.trim()); } catch (NumberFormatException e) { return null; }
-    }
-
-    @PostMapping("/actualizar/{id}/{accion}")
-    public String actualizarEstado(@PathVariable("id") int id, @PathVariable("accion") String accion, RedirectAttributes redirectAttributes) {
-        Pedido pedido = pedidoRepository.findById(id).orElseThrow();
-        switch (accion.toLowerCase()) {
-            case "tela": pedido.setTelaCortada(!pedido.getTelaCortada()); break;
-            case "perfileria": pedido.setPerfileriaCortada(!pedido.getPerfileriaCortada()); break;
-            case "ensamblado": 
-                if (Boolean.TRUE.equals(pedido.getTelaCortada()) && Boolean.TRUE.equals(pedido.getPerfileriaCortada())) pedido.setEnsamblado(!pedido.getEnsamblado());
-                else redirectAttributes.addFlashAttribute("error", "¡Error! Primero debes cortar la tela y los perfiles."); 
-                break;
-        }
-        pedido.calcularEstadoGeneral();
-        pedidoRepository.save(pedido);
-        return "redirect:/taller/pedidos";
-    }
-
-    @GetMapping("/imprimir/{id}")
-    public String imprimirPedido(@PathVariable("id") int id, Model model) {
-        Pedido p = pedidoRepository.findById(id).orElseThrow();
-        p.calcularFichaTecnica();
-        model.addAttribute("pedido", p);
-        model.addAttribute("historialMaterial", inventarioServicio.getHistorialDePedido(id));
-        return "imprimir_pedido";
-    }
-
-    @GetMapping("/editar/{id}")
-    public String mostrarFormularioEditar(@PathVariable("id") int id, Model model) {
-        Pedido pedido = pedidoRepository.findById(id).orElseThrow();
-        model.addAttribute("pedido", pedido);
-        model.addAttribute("listaColores", Arrays.asList("Blanco", "Gris", "Fawn", "Vainilla"));
-        model.addAttribute("rollosDisponibles", inventarioServicio.getTodosLosRollos());
-        model.addAttribute("piezasDisponibles", inventarioServicio.getTodasLasPiezas());
-        model.addAttribute("retazosDisponibles", inventarioServicio.getTodosLosRetazos());
-        return "editar_pedido";
-    }
-
+    // ─── Eliminar pedido ──────────────────────────────────────────────────
     @PostMapping("/eliminar/{id}")
     public String eliminarPedido(@PathVariable("id") int id, RedirectAttributes redirectAttributes) {
         try { pedidoRepository.deleteById(id); redirectAttributes.addFlashAttribute("mensaje", "Pedido eliminado correctamente."); }
-        catch (Exception e) { redirectAttributes.addFlashAttribute("error", "Error: " + e.getMessage()); }
+        catch (Exception e) { redirectAttributes.addFlashAttribute("error", "No se pudo eliminar el pedido: " + e.getMessage()); }
         return "redirect:/taller/pedidos";
     }
 
+    // ─── Reporte de materiales ────────────────────────────────────────────
     @GetMapping("/reporte-materiales")
     public String reporteMateriales(@RequestParam(required = false) String desde, @RequestParam(required = false) String hasta, Model model) {
         LocalDateTime fechaDesde = (desde != null && !desde.isBlank()) ? LocalDateTime.parse(desde + "T00:00:00") : null;
         LocalDateTime fechaHasta = (hasta != null && !hasta.isBlank()) ? LocalDateTime.parse(hasta + "T23:59:59") : null;
         model.addAttribute("resumen", inventarioServicio.obtenerResumenConsumo(fechaDesde, fechaHasta));
+        model.addAttribute("desde", desde != null ? desde : "");
+        model.addAttribute("hasta", hasta != null ? hasta : "");
         return "reporte_materiales";
     }
 }
