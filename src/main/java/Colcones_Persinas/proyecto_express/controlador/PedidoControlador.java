@@ -138,6 +138,12 @@ public class PedidoControlador {
             InventarioServicio.SeleccionManual seleccion = new InventarioServicio.SeleccionManual();
             seleccion.rolloTelaId   = leerIdOpcionalFila(allParams, "rolloManual",   i);
             seleccion.retazoTelaId  = leerIdOpcionalFila(allParams, "retazoManual",  i);
+            
+            // Protección anti-conflicto: Si llegan ambos, el rollo manual tiene prioridad absoluta
+            if (seleccion.rolloTelaId != null && seleccion.retazoTelaId != null) {
+                seleccion.retazoTelaId = null;
+            }
+
             seleccion.piezaTuboId   = leerIdOpcionalFila(allParams, "tuboManual",    i);
             seleccion.piezaPesaId   = leerIdOpcionalFila(allParams, "pesaManual",    i);
             seleccion.piezaCuerdaId = leerIdOpcionalFila(allParams, "cuerdaManual",  i);
@@ -194,7 +200,7 @@ public class PedidoControlador {
         return "redirect:/taller/pedidos";
     }
 
-    // ─── Helpers, Actualizar, Imprimir, Editar, Eliminar, Reporte (sin cambios) ───
+    // ─── Helpers, Actualizar, Imprimir, Editar, Eliminar, Reporte ───
     private boolean leerBooleanoFila(Map<String, String> allParams, String nombreCampo, int indice, boolean porDefecto) {
         String clave = nombreCampo + "[" + indice + "]";
         if (!allParams.containsKey(clave)) return porDefecto;

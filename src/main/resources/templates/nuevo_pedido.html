@@ -190,12 +190,10 @@
 </div>
 
 <script th:inline="javascript">
-    /*<![CDATA[*/
     const listaColores        = /*[[${listaColores}]]*/        [];
     const rollosDisponibles   = /*[[${rollosDisponibles}]]*/   [];
     const piezasDisponibles   = /*[[${piezasDisponibles}]]*/   [];
     const retazosDisponibles  = /*[[${retazosDisponibles}]]*/  [];
-    /*]]>*/
 </script>
 
 <script>
@@ -268,8 +266,17 @@
         const anchoCorte = ancho > 0 ? ancho - descTela : 0;
         const altoCorte  = alto  > 0 ? alto  + 0.20    : 0;
 
+        // Mantenemos valor previo si es manual para no perderlo al refrescar opciones
+        const retazoVal = fila.querySelector('.select-retazo').value;
+        const rolloVal  = fila.querySelector('.select-rollo').value;
+
         fila.querySelector('.select-retazo').innerHTML  = opcionesRetazo(color, anchoCorte, altoCorte);
         fila.querySelector('.select-rollo').innerHTML   = opcionesRollo(color);
+        
+        // Restauramos el valor si existía
+        if (retazoVal !== 'auto') fila.querySelector('.select-retazo').value = retazoVal;
+        if (rolloVal !== 'auto') fila.querySelector('.select-rollo').value = rolloVal;
+
         fila.querySelector('.select-tubo').innerHTML    = opcionesPieza(nombreTubo);
         fila.querySelector('.select-pesa').innerHTML    = opcionesPieza('Pesa');
         fila.querySelector('.select-cuerda').innerHTML  = opcionesPieza('Cuerda');
@@ -307,6 +314,16 @@
         fila.querySelector('.campo-pitillo').addEventListener('change', () => { actualizarSelectsManualFila(fila); disparar(); });
         fila.querySelector('.campo-conector').addEventListener('change', disparar);
         fila.querySelector('.select-tipo-tubo').addEventListener('change', () => { actualizarSelectsManualFila(fila); disparar(); });
+        
+        // Exclusión mutua entre selects de tela
+        fila.querySelector('.select-retazo').addEventListener('change', function() {
+            if (this.value !== 'auto') fila.querySelector('.select-rollo').value = 'auto';
+            disparar();
+        });
+        fila.querySelector('.select-rollo').addEventListener('change', function() {
+            if (this.value !== 'auto') fila.querySelector('.select-retazo').value = 'auto';
+            disparar();
+        });
     }
 
     function htmlFila(idx) {
