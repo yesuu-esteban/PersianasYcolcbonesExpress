@@ -227,6 +227,11 @@
     <!-- ETIQUETA 5: Material real utilizado -->
     <div class="etiqueta etiqueta-ancha">
         <h3>📋 Material utilizado (registro real)</h3>
+        <div style="display:flex; gap:24px; margin-bottom:10px; font-size:0.85rem; background:#f8f9fa; border-radius:4px; padding:6px 10px;">
+            <span><strong>Distribuidor:</strong> <span th:text="${pedido.nombreDecorador}"></span></span>
+            <span><strong>Cliente:</strong> <span th:text="${pedido.nombreClienteFinal}"></span></span>
+            <span><strong>Descripción:</strong> <span th:text="${pedido.descripcion}"></span></span>
+        </div>
         <div th:if="${historialMaterial == null or historialMaterial.isEmpty()}">
             <p class="sin-material">Sin registros de material (pedido creado antes del sistema de trazabilidad).</p>
         </div>
