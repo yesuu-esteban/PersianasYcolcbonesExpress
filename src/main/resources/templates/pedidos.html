@@ -156,12 +156,15 @@
                     
                     <td>
                         <form th:action="@{/taller/actualizar/{id}/tela(id=${p.id})}" method="post" class="d-inline">
+                            <input type="hidden" name="estadoFiltro" th:value="${estadoActivo}">
                             <button type="submit" th:classappend="${p.telaCortada} ? 'btn-info' : 'btn-outline-info'" class="btn btn-sm">Tela</button>
                         </form>
                         <form th:action="@{/taller/actualizar/{id}/perfileria(id=${p.id})}" method="post" class="d-inline">
+                            <input type="hidden" name="estadoFiltro" th:value="${estadoActivo}">
                             <button type="submit" th:classappend="${p.perfileriaCortada} ? 'btn-warning' : 'btn-outline-warning'" class="btn btn-sm">Perfiles</button>
                         </form>
                         <form th:action="@{/taller/actualizar/{id}/ensamblado(id=${p.id})}" method="post" class="d-inline">
+                            <input type="hidden" name="estadoFiltro" th:value="${estadoActivo}">
                             <button type="submit" th:classappend="${p.ensamblado} ? 'btn-success' : 'btn-outline-success'" class="btn btn-sm">Ensamblado</button>
                         </form>
                         <a th:href="@{/taller/imprimir/{id}(id=${p.id})}" target="_blank" class="btn btn-sm btn-dark ms-2">🖨️</a>

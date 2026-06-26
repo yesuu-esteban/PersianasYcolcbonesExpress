@@ -231,7 +231,11 @@ public class PedidoControlador {
 
     // ─── Actualizar estado ────────────────────────────────────────────────
     @PostMapping("/actualizar/{id}/{accion}")
-    public String actualizarEstado(@PathVariable("id") int id, @PathVariable("accion") String accion, RedirectAttributes redirectAttributes) {
+    public String actualizarEstado(
+            @PathVariable("id") int id,
+            @PathVariable("accion") String accion,
+            @RequestParam(required = false, defaultValue = "Todos") String estadoFiltro,
+            RedirectAttributes redirectAttributes) {
         Pedido pedido = pedidoRepository.findById(id).orElseThrow();
         switch (accion.toLowerCase()) {
             case "tela": pedido.setTelaCortada(!pedido.getTelaCortada()); break;
@@ -244,7 +248,7 @@ public class PedidoControlador {
         }
         pedido.calcularEstadoGeneral();
         pedidoRepository.save(pedido);
-        return "redirect:/taller/pedidos";
+        return "redirect:/taller/pedidos?estado=" + estadoFiltro;
     }
 
     // ─── Imprimir ─────────────────────────────────────────────────────────
