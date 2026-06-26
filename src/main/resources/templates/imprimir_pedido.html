@@ -10,6 +10,42 @@
             padding: 16px;
             background: #fff;
         }
+
+        /* ── Encabezado del reporte ─────────────────────────────── */
+        .encabezado-reporte {
+            border: 2px solid #212529;
+            border-radius: 6px;
+            padding: 10px 16px;
+            margin-bottom: 18px;
+            width: 100%;
+            max-width: 740px;
+            background: #212529;
+            color: #fff;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+        }
+        .encabezado-reporte .titulo {
+            font-size: 1rem;
+            font-weight: 700;
+            letter-spacing: 0.03em;
+        }
+        .encabezado-reporte .partes {
+            display: flex;
+            gap: 24px;
+            font-size: 0.88rem;
+        }
+        .encabezado-reporte .partes span strong {
+            display: block;
+            font-size: 0.72rem;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            opacity: 0.7;
+            margin-bottom: 1px;
+        }
+
+        /* ── Etiquetas ──────────────────────────────────────────── */
         .etiqueta {
             border: 2px solid #000;
             border-radius: 6px;
@@ -93,6 +129,21 @@
 </head>
 <body>
 
+    <!-- ── Encabezado del reporte ────────────────────────────────── -->
+    <div class="encabezado-reporte no-print-hide">
+        <span class="titulo">📄 Orden de Fabricación</span>
+        <div class="partes">
+            <span>
+                <strong>Distribuidor</strong>
+                <span th:text="${pedido.nombreDecorador}"></span>
+            </span>
+            <span>
+                <strong>Cliente final</strong>
+                <span th:text="${pedido.nombreClienteFinal}"></span>
+            </span>
+        </div>
+    </div>
+
     <!-- ETIQUETA 1: Identificación -->
     <div class="etiqueta">
         <h3>📦 Identificación</h3>
@@ -135,51 +186,41 @@
             <strong>Pesa:</strong>
             <span th:text="${#numbers.formatDecimal(pedido.corteTuberia,1,3) + ' m'}"></span>
         </p>
-
-        <!-- Tope pesa: siempre 2 -->
         <p>
             <strong>Tope Pesa:</strong>
             <span>2 unidad(es)</span>
         </p>
-
-        <!-- Cabezal: solo si aplica -->
         <div class="fila-cabezal" th:if="${pedido.usaCabezal}">
             <strong>Medida cabezal:</strong>
             <span th:text="${#numbers.formatDecimal(pedido.medidaCabezal,1,3) + ' m'}"></span>
         </div>
-
-        <!-- Soportes: siempre 2 -->
         <p style="margin-top:6px;">
             <strong>Soportes:</strong>
             <span>2 unidad(es)</span>
         </p>
-
-        <!-- Tapas: solo con cabezal -->
         <div class="fila-cabezal" th:if="${pedido.usaCabezal}">
             <strong>Tapas:</strong>
             <span>2 unidad(es)</span>
         </div>
-
-        <!-- Tornillos normales: 2 sin cabezal / 8 con cabezal -->
         <p style="margin-top:6px;">
             <strong>Tornillos:</strong>
             <span th:text="${pedido.usaCabezal ? '8 unidad(es)' : '2 unidad(es)'}"></span>
         </p>
-
-        <!-- Tornillos perforantes: solo con cabezal (4) -->
         <div class="fila-cabezal" th:if="${pedido.usaCabezal}">
             <strong>T. Perforantes:</strong>
             <span>4 unidad(es)</span>
         </div>
     </div>
 
-    <!-- ETIQUETA CLIENTE FINAL -->
+    <!-- ETIQUETA 4: Cliente final -->
     <div class="etiqueta">
-        <h3>🏠  Cliente</h3>
-        <p><strong>Cliente:</strong> <span th:text="${pedido.nombreClienteFinal}"></span></p>
-        <p><strong>Descripción:</strong> <span th:text="${pedido.descripcion}"></span></p>
-        <p><strong>Medida final:</strong> <span th:text="${#numbers.formatDecimal(pedido.ancho,1,2) + 'm  x  ' + #numbers.formatDecimal(pedido.altura,1,2) + 'm'}"></span></p>
-        <p><strong>Mando:</strong> <span class="valor-mando" th:text="${pedido.ladoControl}"></span></p>
+        <h3>🏠 Cliente</h3>
+        <p><strong>Cliente:</strong>      <span th:text="${pedido.nombreClienteFinal}"></span></p>
+        <p><strong>Descripción:</strong>  <span th:text="${pedido.descripcion}"></span></p>
+        <p><strong>Medida final:</strong>
+            <span th:text="${#numbers.formatDecimal(pedido.ancho,1,2) + 'm  x  ' + #numbers.formatDecimal(pedido.altura,1,2) + 'm'}"></span>
+        </p>
+        <p><strong>Mando:</strong>  <span class="valor-mando" th:text="${pedido.ladoControl}"></span></p>
         <p><strong>Cuerda:</strong> <span th:text="${pedido.medidaCuerda}"></span></p>
     </div>
 
@@ -206,7 +247,6 @@
                     <td th:text="${m.tipoMaterial}"></td>
                     <td th:text="${m.fuenteDescripcion}"></td>
                     <td th:text="${m.metrosUsados}"></td>
-                    <!-- Si tiene piezaInsumoId es insumo con medida (metros); si no, es por unidad -->
                     <td th:text="${m.piezaInsumoId != null ? 'm' : (m.metrosCuadrados != null ? 'm²' : 'und.')}"></td>
                     <td th:text="${m.metrosCuadrados != null ? m.metrosCuadrados + ' m²' : '—'}"></td>
                     <td th:text="${m.metrosSobrantes}"></td>

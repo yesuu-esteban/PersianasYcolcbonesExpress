@@ -134,58 +134,75 @@
             </div>
         </div>
 
-        <div class="previsualizacion mb-3">
+        <!-- Previsualización de material -->
+        <div class="previsualizacion mb-3" id="cajaPrevisualizacion">
             <span class="cargando">Cargando disponibilidad de material...</span>
         </div>
 
+        <!-- Botón para abrir selección manual -->
         <div class="mb-3">
             <button type="button" class="toggle-manual" onclick="toggleManual(this)">
                 ⚙ Cambiar material manualmente (retazos, piezas específicas)
             </button>
         </div>
 
+        <!-- Panel de selección manual -->
         <div class="seccion-manual" style="display:none;" id="panelManual">
             <p class="fw-bold mb-2" style="font-size:0.83rem">
                 ⚙ Selección manual
                 <small class="text-muted">(deja "Automático" para que el sistema elija)</small>
             </p>
             <div class="row g-2">
+
+                <!-- Tela: retazo + rollo, igual que nuevo_pedido -->
                 <div class="col-md-6 col-lg-4">
-                    <label class="form-label">🧵 Rollo de tela</label>
-                    <select name="rolloManual" id="selectRollo" class="form-select form-select-sm">
-                        <option value="auto">⚡ Automático</option>
+                    <label class="form-label">🧵 Tela (rollo o retazo)</label>
+                    <select name="retazoManual" id="selectRetazo" class="form-select form-select-sm">
+                        <option value="auto">⚡ Automático (retazo si hay, si no rollo)</option>
+                    </select>
+                    <select name="rolloManual" id="selectRollo" class="form-select form-select-sm mt-1">
+                        <option value="auto">⚡ Automático (rollo)</option>
                     </select>
                 </div>
+
+                <!-- Tipo de tubo ya está arriba, pero el select de pieza de tubo va aquí -->
                 <div class="col-md-6 col-lg-4">
                     <label class="form-label">🔩 Pieza de tubo</label>
                     <select name="tuboManual" id="selectTubo" class="form-select form-select-sm">
                         <option value="auto">⚡ Automático</option>
                     </select>
                 </div>
+
+                <!-- Cabezal: solo visible si ckCabezal está marcado -->
                 <div class="col-md-6 col-lg-4" id="filaCabezalManual" style="display:none;">
                     <label class="form-label">🪟 Pieza de cabezal</label>
                     <select name="cabezalManual" id="selectCabezal" class="form-select form-select-sm">
                         <option value="auto">⚡ Automático</option>
                     </select>
                 </div>
+
                 <div class="col-md-6 col-lg-4">
                     <label class="form-label">⚖ Pieza de pesa</label>
                     <select name="pesaManual" id="selectPesa" class="form-select form-select-sm">
                         <option value="auto">⚡ Automático</option>
                     </select>
                 </div>
+
                 <div class="col-md-6 col-lg-4">
                     <label class="form-label">🧶 Pieza de cuerda</label>
                     <select name="cuerdaManual" id="selectCuerda" class="form-select form-select-sm">
                         <option value="auto">⚡ Automático</option>
                     </select>
                 </div>
+
+                <!-- Pitillo: solo visible si ckPitillo está marcado -->
                 <div class="col-md-6 col-lg-4" id="filaPitilloManual">
                     <label class="form-label">🪡 Pieza de pitillo</label>
                     <select name="pitilloManual" id="selectPitillo" class="form-select form-select-sm">
                         <option value="auto">⚡ Automático</option>
                     </select>
                 </div>
+
             </div>
         </div>
 
@@ -196,23 +213,27 @@
     </form>
 </div>
 
+<!-- Variables del servidor inyectadas para el JS -->
 <script th:inline="javascript">
     /*<![CDATA[*/
-    const rollosDisponibles = /*[[${rollosDisponibles}]]*/ [];
-    const piezasDisponibles = /*[[${piezasDisponibles}]]*/ [];
+    const rollosDisponibles  = /*[[${rollosDisponibles}]]*/ [];
+    const piezasDisponibles  = /*[[${piezasDisponibles}]]*/ [];
+    const retazosDisponibles = /*[[${retazosDisponibles}]]*/ [];
     /*]]>*/
 </script>
 
 <script>
-    const campoAncho   = document.getElementById('campoAncho');
-    const campoAltura  = document.getElementById('campoAltura');
-    const campoColor   = document.getElementById('campoColor');
-    const ckCabezal    = document.getElementById('ckCabezal');
-    const ckPitillo    = document.getElementById('ckPitillo');
-    const ckConector   = document.getElementById('ckConector');
+    // ── Referencias DOM ───────────────────────────────────────────
+    const campoAncho     = document.getElementById('campoAncho');
+    const campoAltura    = document.getElementById('campoAltura');
+    const campoColor     = document.getElementById('campoColor');
+    const ckCabezal      = document.getElementById('ckCabezal');
+    const ckPitillo      = document.getElementById('ckPitillo');
+    const ckConector     = document.getElementById('ckConector');
     const selectTipoTubo = document.getElementById('selectTipoTubo');
-    const caja         = document.querySelector('.previsualizacion');
+    const caja           = document.getElementById('cajaPrevisualizacion');
 
+    const selectRetazo  = document.getElementById('selectRetazo');
     const selectRollo   = document.getElementById('selectRollo');
     const selectTubo    = document.getElementById('selectTubo');
     const selectCabezal = document.getElementById('selectCabezal');
@@ -222,6 +243,7 @@
     const filaCabezal   = document.getElementById('filaCabezalManual');
     const filaPitillo   = document.getElementById('filaPitilloManual');
 
+    // ── Toggle del panel manual ───────────────────────────────────
     function toggleManual(btn) {
         const panel = document.getElementById('panelManual');
         const vis = panel.style.display !== 'none';
@@ -231,19 +253,38 @@
             : '✕ Cerrar selección manual';
     }
 
+    // ── Generadores de opciones (igual lógica que nuevo_pedido) ───
+
+    function opcionesRetazo(color, anchoNecesario, altoNecesario) {
+        const candidatos = retazosDisponibles.filter(r =>
+            r.color && r.color.toLowerCase() === color.toLowerCase() &&
+            r.ancho >= (anchoNecesario - 0.001) &&
+            r.alto  >= (altoNecesario  - 0.001)
+        );
+        let html = '<option value="auto">⚡ Automático (retazo si hay, si no rollo)</option>';
+        if (candidatos.length) {
+            html += '<optgroup label="✂ Retazos disponibles">';
+            candidatos.forEach(r => {
+                html += `<option value="${r.id}">Retazo #${r.id} · ${r.color} ${r.ancho}m × ${r.alto.toFixed(2)}m</option>`;
+            });
+            html += '</optgroup>';
+        }
+        return html;
+    }
+
     function opcionesRollo(color) {
-        const filtrados = rollosDisponibles.filter(r => r.color && r.color.toLowerCase() === color.toLowerCase() && r.largoRestante > 0.001);
-        const retazos   = filtrados.filter(r => r.largoRestante < 3);
-        const normales  = filtrados.filter(r => r.largoRestante >= 3);
-        if (!filtrados.length) return '<option value="auto">– Sin rollos de ese color –</option>';
-        let html = '<option value="auto">⚡ Automático (sugerido)</option>';
+        const todos    = rollosDisponibles.filter(r => r.color && r.color.toLowerCase() === color.toLowerCase() && r.largoRestante > 0.001);
+        const normales = todos.filter(r => r.largoRestante >= 3);
+        const retazos  = todos.filter(r => r.largoRestante <  3);
+        if (!todos.length) return '<option value="auto">– Sin rollos de ese color –</option>';
+        let html = '<option value="auto">⚡ Automático (rollo)</option>';
         if (normales.length) {
-            html += '<optgroup label="Disponibles">';
+            html += '<optgroup label="Rollos disponibles">';
             normales.forEach(r => { html += `<option value="${r.id}">Rollo #${r.id} · ${r.color} ${r.ancho}m · ${r.largoRestante.toFixed(2)} m</option>`; });
             html += '</optgroup>';
         }
         if (retazos.length) {
-            html += '<optgroup label="⚠ Retazos (< 3m)">';
+            html += '<optgroup label="⚠ Retazos de rollo (< 3m)">';
             retazos.forEach(r => { html += `<option value="${r.id}">Retazo #${r.id} · ${r.color} ${r.ancho}m · ${r.largoRestante.toFixed(2)} m</option>`; });
             html += '</optgroup>';
         }
@@ -261,11 +302,12 @@
         return html;
     }
 
+    // ── Actualiza todos los selects del panel manual ──────────────
     function actualizarSelectsManual() {
-        const color    = campoColor.value;
-        const ancho    = parseFloat(campoAncho.value) || 0;
-        const alto     = parseFloat(campoAltura.value) || 0;
-        const cabezal  = ckCabezal.checked;
+        const color   = campoColor.value;
+        const ancho   = parseFloat(campoAncho.value) || 0;
+        const alto    = parseFloat(campoAltura.value) || 0;
+        const cabezal = ckCabezal.checked;
 
         const tipoTuboOverride = selectTipoTubo.value;
         let nombreTubo;
@@ -276,18 +318,33 @@
             nombreTubo = esPesado ? 'Tubo R24' : 'Tubo R16';
         }
 
+        const descTela   = cabezal ? 0.035 : 0.03;
+        const anchoCorte = ancho > 0 ? ancho - descTela : 0;
+        const altoCorte  = alto  > 0 ? alto  + 0.20    : 0;
+
+        // Guardar selección previa para no perderla al refrescar
+        const retazoVal = selectRetazo.value;
+        const rolloVal  = selectRollo.value;
+
+        selectRetazo.innerHTML  = opcionesRetazo(color, anchoCorte, altoCorte);
         selectRollo.innerHTML   = opcionesRollo(color);
+
+        // Restaurar si el usuario ya había elegido algo
+        if (retazoVal !== 'auto') selectRetazo.value = retazoVal;
+        if (rolloVal  !== 'auto') selectRollo.value  = rolloVal;
+
         selectTubo.innerHTML    = opcionesPieza(nombreTubo);
         selectPesa.innerHTML    = opcionesPieza('Pesa');
         selectCuerda.innerHTML  = opcionesPieza('Cuerda');
         selectPitillo.innerHTML = opcionesPieza('Pitillo');
 
         filaCabezal.style.display = cabezal ? '' : 'none';
-        selectCabezal.innerHTML = cabezal ? opcionesPieza('Cabezal') : '<option value="auto">⚡ Automático</option>';
+        selectCabezal.innerHTML   = cabezal ? opcionesPieza('Cabezal') : '<option value="auto">⚡ Automático</option>';
 
         filaPitillo.style.display = ckPitillo.checked ? '' : 'none';
     }
 
+    // ── Debounce antes de consultar ───────────────────────────────
     let timer = null;
     function disparar() {
         clearTimeout(timer);
@@ -297,6 +354,7 @@
         }, 420);
     }
 
+    // ── Previsualización AJAX ─────────────────────────────────────
     async function consultarPrevisualizacion() {
         const ancho    = campoAncho.value;
         const alto     = campoAltura.value;
@@ -305,6 +363,10 @@
         const pitillo  = ckPitillo.checked;
         const conector = ckConector.checked;
         const tipoTuboManual = selectTipoTubo.value;
+
+        // Leer selección manual de tela para mostrarla en el resumen
+        const retazoManualId = selectRetazo.value !== 'auto' ? selectRetazo.value : null;
+        const rolloManualId  = selectRollo.value  !== 'auto' ? selectRollo.value  : null;
 
         if (!ancho || !alto) {
             caja.className = 'previsualizacion';
@@ -315,7 +377,13 @@
         caja.innerHTML = '<span class="cargando">🔍 Consultando inventario...</span>';
 
         try {
-            const params = new URLSearchParams({ ancho, altura: alto, color, usaCabezal: cabezal, usaPitilloPesa: pitillo, usaConectorTope: conector, tipoTuboManual });
+            const params = new URLSearchParams({
+                ancho, altura: alto, color,
+                usaCabezal: cabezal,
+                usaPitilloPesa: pitillo,
+                usaConectorTope: conector,
+                tipoTuboManual
+            });
             const d = await fetch('/taller/previsualizar-material?' + params.toString()).then(r => r.json());
 
             if (d.disponible) {
@@ -329,19 +397,41 @@
 
                 let html = '<strong>✓ Material disponible para esta configuración</strong>';
                 html += '<table style="width:100%;border-collapse:collapse;margin-top:7px">';
-                if (d.rolloSugerido)             html += fila2('🧵 Tela',            `${cAncho} m × ${cAlto} m`,     d.rolloSugerido);
-                if (d.tuboSugerido)              html += fila2('🔧 Tubo',             `${cTubo} m`,                   d.tuboSugerido);
-                if (d.cabezalSugerido)           html += fila2('🪟 Cabezal',          `${(a - 0.005).toFixed(3)} m`,  d.cabezalSugerido);
-                if (d.pesaSugerida)              html += fila2('⚖ Pesa',             `${cTubo} m`,                   d.pesaSugerida);
-                if (d.cuerdaSugerida)            html += fila2('🧶 Cuerda',            h <= 1.50 ? '3 m' : '4 m',     d.cuerdaSugerida);
-                if (d.controlInfo)               html += fila2('🎛 Control',           '1 und.',                       d.controlInfo);
-                if (d.pitilloSugerido)           html += fila2('🪡 Pitillo',          `${cAncho} m`,                  d.pitilloSugerido);
-                if (d.conectorInfo)              html += fila2('🔗 Conec./Tope',      '',                              d.conectorInfo);
-                if (d.soporteInfo)               html += fila2('🔩 Soporte',           '2 und.',                       d.soporteInfo);
-                if (d.tapaInfo)                  html += fila2('🧢 Tapa',             '2 und.',                       d.tapaInfo);
-                if (d.topePesaInfo)              html += fila2('🔵 Tope Pesa',        '2 und.',                       d.topePesaInfo);
-                if (d.tornilloInfo)              html += fila2('🔨 Tornillo',         cabezal ? '8 und.' : '2 und.',  d.tornilloInfo);
-                if (d.tornilloPerforanteInfo)    html += fila2('🔧 T. Perforante',    '4 und.',                       d.tornilloPerforanteInfo);
+
+                // ── Tela: primero revisar si el jefe eligió algo manualmente ──
+                if (retazoManualId) {
+                    const retazo = retazosDisponibles.find(r => String(r.id) === String(retazoManualId));
+                    if (retazo) {
+                        html += fila2('✂ Retazo', `${cAncho} m × ${cAlto} m`,
+                            `⭐ Retazo #${retazo.id} · ${retazo.color} ${retazo.ancho}m × ${retazo.alto.toFixed(2)}m (elegido por ti)`);
+                    }
+                } else if (rolloManualId) {
+                    const rollo = rollosDisponibles.find(r => String(r.id) === String(rolloManualId));
+                    if (rollo) {
+                        const mayor = Math.max(parseFloat(cAncho), parseFloat(cAlto));
+                        const sobrante = (rollo.largoRestante - mayor).toFixed(2);
+                        html += fila2('🧵 Tela', `${cAncho} m × ${cAlto} m`,
+                            `⭐ Rollo #${rollo.id} · ${rollo.color} ${rollo.ancho}m · quedarían aprox. ${sobrante} m (elegido por ti)`);
+                    }
+                } else {
+                    // Sin selección manual: mostrar lo que el servidor sugiere
+                    if (d.retazoSugerido)       html += fila2('✂ Retazo',  `${cAncho} m × ${cAlto} m`, d.retazoSugerido);
+                    else if (d.rolloSugerido)   html += fila2('🧵 Tela',   `${cAncho} m × ${cAlto} m`, d.rolloSugerido);
+                }
+
+                if (d.tuboSugerido)           html += fila2('🔧 Tubo',          `${cTubo} m`,                    d.tuboSugerido);
+                if (d.cabezalSugerido)        html += fila2('🪟 Cabezal',        `${(a - 0.005).toFixed(3)} m`,   d.cabezalSugerido);
+                if (d.pesaSugerida)           html += fila2('⚖ Pesa',           `${cTubo} m`,                    d.pesaSugerida);
+                if (d.cuerdaSugerida)         html += fila2('🧶 Cuerda',          h <= 1.50 ? '3 m' : '4 m',      d.cuerdaSugerida);
+                if (d.controlInfo)            html += fila2('🎛 Control',         '1 und.',                        d.controlInfo);
+                if (d.pitilloSugerido)        html += fila2('🪡 Pitillo',        `${cAncho} m`,                   d.pitilloSugerido);
+                if (d.conectorInfo)           html += fila2('🔗 Conec./Tope',    '',                               d.conectorInfo);
+                if (d.soporteInfo)            html += fila2('🔩 Soporte',         '2 und.',                        d.soporteInfo);
+                if (d.tapaInfo)               html += fila2('🧢 Tapa',            '2 und.',                        d.tapaInfo);
+                if (d.topePesaInfo)           html += fila2('🔵 Tope Pesa',      '2 und.',                        d.topePesaInfo);
+                if (d.tornilloInfo)           html += fila2('🔨 Tornillo',        cabezal ? '8 und.' : '2 und.',   d.tornilloInfo);
+                if (d.tornilloPerforanteInfo) html += fila2('🔧 T. Perforante',  '4 und.',                        d.tornilloPerforanteInfo);
+
                 html += '</table>';
                 caja.innerHTML = html;
             } else {
@@ -362,6 +452,17 @@
         </tr>`;
     }
 
+    // ── Exclusión mutua retazo ↔ rollo ────────────────────────────
+    selectRetazo.addEventListener('change', function () {
+        if (this.value !== 'auto') selectRollo.value = 'auto';
+        consultarPrevisualizacion();
+    });
+    selectRollo.addEventListener('change', function () {
+        if (this.value !== 'auto') selectRetazo.value = 'auto';
+        consultarPrevisualizacion();
+    });
+
+    // ── Listeners de campos ───────────────────────────────────────
     campoAncho.addEventListener('input', disparar);
     campoAltura.addEventListener('input', disparar);
     campoColor.addEventListener('change', disparar);
@@ -370,6 +471,7 @@
     ckConector.addEventListener('change', disparar);
     selectTipoTubo.addEventListener('change', disparar);
 
+    // ── Inicialización ────────────────────────────────────────────
     document.addEventListener('DOMContentLoaded', () => {
         actualizarSelectsManual();
         consultarPrevisualizacion();
