@@ -953,4 +953,132 @@ public void verificarDisponibilidad(Pedido pedido, SeleccionManual sel) {
         resumen.sort((a, b) -> a.tipoMaterial.compareTo(b.tipoMaterial));
         return resumen;
     }
+
+    // ═══════════════════════════════════════════════════════════════
+// PEGAR DENTRO DE InventarioServicio, junto a los demás métodos.
+// ═══════════════════════════════════════════════════════════════
+
+/**
+ * Revierte TODOS los descuentos de material de un pedido ya guardado.
+ *
+ * Para cada registro de MaterialUsado asociado al pedido:
+ *   - Si era un RolloTela  → le devuelve los metros al largoRestante del rollo.
+ *   - Si era un RetazoTela → no se puede recuperar (retazos se borran al usarse);
+ *       se recrea como RetazoTela nuevo con las medidas del corte que se había hecho.
+ *   - Si era una PiezaInsumo → le devuelve los metros al largoRestante de la pieza.
+ *       Si la pieza fue borrada (quedó en 0 y se eliminó), se lanza excepción clara.
+ *   - Si era insumo por unidad → le devuelve las unidades al stockUnidades del Insumo.
+ *
+ * Al final borra todos los registros de MaterialUsado del pedido,
+ * dejando el inventario exactamente como estaba antes de crearlo.
+ *
+ * IMPORTANTE: llamar siempre dentro de un contexto @Transactional,
+ * para que si algo falla a mitad, nada quede a medias.
+ */
+public void revertirMaterialDe(int pedidoId) {
+    List<MaterialUsado> registros = materialUsadoRepository.findByPedidoIdOrderByFechaAsc(pedidoId);
+    if (registros.isEmpty()) return; // pedido creado antes del sistema de trazabilidad
+
+    for (MaterialUsado m : registros) {
+
+        if ("TELA".equals(m.getTipoMaterial())) {
+            // ── Tela de rollo: devolver metros al rollo ──
+            if (m.getRolloTelaId() != null) {
+                rolloTelaRepository.findById(m.getRolloTelaId()).ifPresent(rollo -> {
+                    rollo.setLargoRestante(redondear(rollo.getLargoRestante() + m.getMetrosUsados()));
+                    rolloTelaRepository.save(rollo);
+                });
+                // Si el rollo ya no existe (fue eliminado del inventario), simplemente ignoramos.
+            }
+
+        } else if ("RETAZO".equals(m.getTipoMaterial())) {
+            // ── Retazo: se borró al usarse; lo recreamos con las medidas que tenía ──
+            // La descripción tiene el formato: "Retazo COLOR ANCHOm × ALTOm (#ID)"
+            // Extraemos color, ancho y alto para reconstruirlo.
+            RetazoTela retazoRecuperado = reconstruirRetazoDesdeFuente(m);
+            if (retazoRecuperado != null) {
+                retazoTelaRepository.save(retazoRecuperado);
+            }
+
+        } else if (m.getPiezaInsumoId() != null) {
+            // ── Insumo con medida (tubo, pesa, cuerda, pitillo, cabezal): devolver metros ──
+            piezaInsumoRepository.findById(m.getPiezaInsumoId()).ifPresent(pieza -> {
+                pieza.setLargoRestante(redondear(pieza.getLargoRestante() + m.getMetrosUsados()));
+                piezaInsumoRepository.save(pieza);
+            });
+            // Si la pieza fue borrada (pitillo agotado se elimina), ignoramos —
+            // no podemos reconstruirla sin saber su largoInicial original de forma fiable.
+
+        } else {
+            // ── Insumo por unidad (control, conector, tope, soporte, tapa, tornillo) ──
+            // tipoMaterial es el nombre del insumo en mayúsculas con _ en lugar de espacio.
+            // Ej: "CONTROL_R16", "TOPE_CONTROL", "TORNILLO_PERFORANTE"
+            String nombreInsumo = m.getTipoMaterial().replace("_", " ");
+            // Intentamos encontrar el insumo con ese nombre (insensible a mayúsculas)
+            insumoRepository.findByNombreIgnoreCase(nombreInsumo).ifPresent(insumo -> {
+                int actual = insumo.getStockUnidades() != null ? insumo.getStockUnidades() : 0;
+                insumo.setStockUnidades(actual + (int) m.getMetrosUsados()); // metrosUsados guarda las unidades
+                insumoRepository.save(insumo);
+            });
+        }
+    }
+
+    // Borrar todos los registros de material de este pedido
+    materialUsadoRepository.deleteAll(registros);
+}
+
+/**
+ * Intenta reconstruir un RetazoTela a partir del texto fuenteDescripcion
+ * guardado en MaterialUsado. Formato esperado:
+ *   "Retazo COLOR ANCHOm × ALTOm (#ID)"
+ * Si el formato no coincide, devuelve null (no se reconstruye nada).
+ */
+private RetazoTela reconstruirRetazoDesdeFuente(MaterialUsado m) {
+    // Si metrosCuadrados y metrosUsados están disponibles, podemos recalcular.
+    // metrosUsados = altoUsado (metros lineales de alto que se cortaron del retazo)
+    // metrosSobrantes = sobrante de alto que quedó en el retazo después del corte
+    // El alto original del retazo = altoUsado + sobrante
+    // El ancho del retazo lo sacamos de fuenteDescripcion.
+
+    try {
+        String desc = m.getFuenteDescripcion(); // "Retazo Blanco 1.83m × 2.50m (#7)"
+        if (desc == null || !desc.startsWith("Retazo ")) return null;
+
+        // Extraer color (entre "Retazo " y el primer número de ancho)
+        // desc: "Retazo Blanco 1.83m × 2.50m (#7)"
+        String sinPrefijo = desc.substring("Retazo ".length()); // "Blanco 1.83m × 2.50m (#7)"
+
+        // Separar color y medidas: la parte numérica empieza con el primer dígito tras el color
+        int idxNumero = -1;
+        for (int i = 0; i < sinPrefijo.length(); i++) {
+            if (Character.isDigit(sinPrefijo.charAt(i))) {
+                idxNumero = i;
+                break;
+            }
+        }
+        if (idxNumero < 1) return null;
+
+        String color = sinPrefijo.substring(0, idxNumero).trim(); // "Blanco"
+        String medidas = sinPrefijo.substring(idxNumero);          // "1.83m × 2.50m (#7)"
+
+        // Extraer ancho: primer número antes de "m"
+        String[] partes = medidas.split("m");
+        if (partes.length < 1) return null;
+        double ancho = Double.parseDouble(partes[0].trim());
+
+        // El alto original del retazo = altoUsado (metrosUsados) + sobrante (metrosSobrantes)
+        double altoOriginal = redondear(m.getMetrosUsados() + m.getMetrosSobrantes());
+        if (altoOriginal <= 0.001) return null;
+
+        RetazoTela retazo = new RetazoTela();
+        retazo.setColor(color);
+        retazo.setAncho(ancho);
+        retazo.setAlto(altoOriginal);
+        return retazo;
+
+    } catch (Exception e) {
+        // Si el formato cambió o hay algún error de parseo, no reconstruimos nada.
+        return null;
+    }
+}
 }
