@@ -318,11 +318,11 @@
         // Exclusión mutua entre selects de tela
         fila.querySelector('.select-retazo').addEventListener('change', function() {
             if (this.value !== 'auto') fila.querySelector('.select-rollo').value = 'auto';
-            disparar();
+            consultarPrevisualizacion(fila);
         });
         fila.querySelector('.select-rollo').addEventListener('change', function() {
             if (this.value !== 'auto') fila.querySelector('.select-retazo').value = 'auto';
-            disparar();
+            consultarPrevisualizacion(fila);
         });
     }
 
@@ -457,6 +457,12 @@
         const conector = fila.querySelector('.campo-conector').checked;
         const tipoTuboManual = fila.querySelector('.select-tipo-tubo').value;
 
+        // ── Leer selecciones manuales de tela ──
+        const selectRetazo = fila.querySelector('.select-retazo');
+        const selectRollo  = fila.querySelector('.select-rollo');
+        const retazoManualId = selectRetazo && selectRetazo.value !== 'auto' ? selectRetazo.value : null;
+        const rolloManualId  = selectRollo  && selectRollo.value  !== 'auto' ? selectRollo.value  : null;
+
         if (!ancho || !alto) {
             caja.className = 'previsualizacion';
             caja.innerHTML = '<span class="cargando">Completa ancho, alto y color para ver el material necesario.</span>';
@@ -479,8 +485,23 @@
                 const cTubo  = (a - descTubo).toFixed(3);
                 let html = '<strong>✓ Material disponible</strong>';
                 html += '<table style="width:100%;border-collapse:collapse;margin-top:6px">';
-                if (d.retazoSugerido)  html += tr('✂ Retazo',       `${cAncho} m × ${cAlto} m`, d.retazoSugerido);
-                else if (d.rolloSugerido) html += tr('🧵 Tela',      `${cAncho} m × ${cAlto} m`, d.rolloSugerido);
+                if (retazoManualId) {
+                    const retazo = retazosDisponibles.find(r => String(r.id) === String(retazoManualId));
+                    if (retazo) {
+                        html += tr('✂ Retazo', `${cAncho} m × ${cAlto} m`,
+                            `⭐ Retazo #${retazo.id} · ${retazo.color} ${retazo.ancho}m × ${retazo.alto.toFixed(2)}m (elegido por ti)`);
+                    }
+                } else if (rolloManualId) {
+                    const rollo = rollosDisponibles.find(r => String(r.id) === String(rolloManualId));
+                    if (rollo) {
+                        const sobrante = (rollo.largoRestante - parseFloat(cAlto > cAncho ? cAlto : cAncho)).toFixed(2);
+                        html += tr('🧵 Tela', `${cAncho} m × ${cAlto} m`,
+                            `⭐ Rollo #${rollo.id} · ${rollo.color} ${rollo.ancho}m · quedarían aprox. ${sobrante} m (elegido por ti)`);
+                    }
+                } else {
+                    if (d.retazoSugerido)  html += tr('✂ Retazo', `${cAncho} m × ${cAlto} m`, d.retazoSugerido);
+                    else if (d.rolloSugerido) html += tr('🧵 Tela', `${cAncho} m × ${cAlto} m`, d.rolloSugerido);
+                }
                 if (d.tuboSugerido)    html += tr('🔧 Tubo',          `${cTubo} m`,               d.tuboSugerido);
                 if (d.cabezalSugerido) html += tr('🪟 Cabezal',       `${(a - 0.005).toFixed(3)} m`, d.cabezalSugerido);
                 if (d.pesaSugerida)    html += tr('⚖ Pesa',           `${cTubo} m`,               d.pesaSugerida);
