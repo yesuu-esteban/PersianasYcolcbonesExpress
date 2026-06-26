@@ -12,6 +12,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.time.LocalDateTime;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -56,10 +57,21 @@ public class PedidoControlador {
             model.addAttribute("pedidos",      pedidos);
             model.addAttribute("estadoActivo", estadoFiltro);
 
+            // ── Tela real usada por pedido (rollo o retazo específico) ──────
+            Map<Integer, String> telaUsadaPorPedido = new HashMap<>();
+            for (Pedido p : pedidos) {
+                inventarioServicio.getHistorialDePedido(p.getId()).stream()
+                        .filter(m -> "TELA".equals(m.getTipoMaterial()) || "RETAZO".equals(m.getTipoMaterial()))
+                        .findFirst()
+                        .ifPresent(m -> telaUsadaPorPedido.put(p.getId(), m.getFuenteDescripcion()));
+            }
+            model.addAttribute("telaUsadaPorPedido", telaUsadaPorPedido);
+
         } catch (Exception e) {
             System.err.println("Error al cargar pedidos: " + e.getMessage());
-            model.addAttribute("pedidos",      new java.util.ArrayList<Pedido>());
-            model.addAttribute("estadoActivo", "Todos");
+            model.addAttribute("pedidos",            new java.util.ArrayList<Pedido>());
+            model.addAttribute("estadoActivo",       "Todos");
+            model.addAttribute("telaUsadaPorPedido", new HashMap<>());
         }
         return "pedidos";
     }
@@ -143,8 +155,6 @@ public class PedidoControlador {
             seleccion.piezaCuerdaId  = leerIdOpcionalFila(allParams, "cuerdaManual",  i);
             seleccion.piezaPitilloId = leerIdOpcionalFila(allParams, "pitilloManual", i);
 
-            // Si el jefe eligió un rollo específico Y también hay retazo seleccionado,
-            // el rollo manual tiene prioridad (limpiamos retazoTelaId).
             if (seleccion.rolloTelaId != null && seleccion.retazoTelaId != null) {
                 seleccion.retazoTelaId = null;
             }
@@ -173,7 +183,6 @@ public class PedidoControlador {
             }
         }
 
-        // ── Verificación previa respetando selección manual ──────────────
         try {
             for (int i = 0; i < pedidosDelLote.size(); i++) {
                 inventarioServicio.verificarDisponibilidad(pedidosDelLote.get(i), seleccionesDelLote.get(i));
@@ -183,7 +192,6 @@ public class PedidoControlador {
             return "redirect:/taller/nuevo";
         }
 
-        // ── Guardado y descuento real ─────────────────────────────────────
         try {
             for (int i = 0; i < pedidosDelLote.size(); i++) {
                 Pedido p = pedidosDelLote.get(i);
@@ -255,13 +263,13 @@ public class PedidoControlador {
         Pedido pedido = pedidoRepository.findById(id).orElseThrow();
         model.addAttribute("pedido", pedido);
         model.addAttribute("listaColores", Arrays.asList("Blanco", "Gris", "Fawn", "Vainilla"));
-        model.addAttribute("rollosDisponibles", inventarioServicio.getTodosLosRollos());
-        model.addAttribute("piezasDisponibles", inventarioServicio.getTodasLasPiezas());
+        model.addAttribute("rollosDisponibles",  inventarioServicio.getTodosLosRollos());
+        model.addAttribute("piezasDisponibles",  inventarioServicio.getTodasLasPiezas());
         model.addAttribute("retazosDisponibles", inventarioServicio.getTodosLosRetazos());
         return "editar_pedido";
     }
 
-    // ─── Guardar edición — con reversión de material y nuevo descuento ────
+    // ─── Guardar edición ──────────────────────────────────────────────────
     @PostMapping("/editar/{id}")
     @org.springframework.transaction.annotation.Transactional
     public String guardarEdicion(
@@ -278,7 +286,6 @@ public class PedidoControlador {
             @RequestParam(required = false, defaultValue = "true")  boolean usaPitilloPesa,
             @RequestParam(required = false, defaultValue = "true")  boolean usaConectorTope,
             @RequestParam(required = false) String tipoTuboManual,
-            // Selecciones manuales de material (antes se ignoraban completamente)
             @RequestParam(required = false) String rolloManual,
             @RequestParam(required = false) String retazoManual,
             @RequestParam(required = false) String tuboManual,
@@ -290,7 +297,6 @@ public class PedidoControlador {
 
         Pedido pedido = pedidoRepository.findById(id).orElseThrow();
 
-        // 1. Actualizar datos del pedido con la nueva configuración
         pedido.setNombreDecorador(nombreDecorador);
         pedido.setNombreClienteFinal(nombreClienteFinal);
         pedido.setDescripcion(descripcion);
@@ -309,7 +315,6 @@ public class PedidoControlador {
             pedido.calcularEstadoGeneral();
         }
 
-        // 2. Construir la selección manual de material del jefe
         InventarioServicio.SeleccionManual seleccion = new InventarioServicio.SeleccionManual();
         seleccion.rolloTelaId    = parsearIdManual(rolloManual);
         seleccion.retazoTelaId   = parsearIdManual(retazoManual);
@@ -319,12 +324,10 @@ public class PedidoControlador {
         seleccion.piezaCuerdaId  = parsearIdManual(cuerdaManual);
         seleccion.piezaPitilloId = parsearIdManual(pitilloManual);
 
-        // Si eligió rollo Y retazo a la vez, el rollo tiene prioridad
         if (seleccion.rolloTelaId != null && seleccion.retazoTelaId != null) {
             seleccion.retazoTelaId = null;
         }
 
-        // 3. Revertir el material descontado originalmente (devuelve metros/unidades al inventario)
         try {
             inventarioServicio.revertirMaterialDe(id);
         } catch (Exception e) {
@@ -333,20 +336,16 @@ public class PedidoControlador {
             return "redirect:/taller/editar/" + id;
         }
 
-        // 4. Verificar que hay material para la nueva configuración
         try {
             inventarioServicio.verificarDisponibilidad(pedido, seleccion);
         } catch (InventarioServicio.MaterialInsuficienteException e) {
-            // El @Transactional revierte la reversión del paso 3 si salimos con error
             redirectAttributes.addFlashAttribute("error",
                     "No hay suficiente material para la nueva configuración: " + e.getMessage());
             return "redirect:/taller/editar/" + id;
         }
 
-        // 5. Guardar el pedido con los datos nuevos
         pedidoRepository.save(pedido);
 
-        // 6. Descontar el material con la nueva configuración
         try {
             inventarioServicio.descontarMaterialDe(pedido, seleccion);
         } catch (InventarioServicio.MaterialInsuficienteException e) {
@@ -359,7 +358,6 @@ public class PedidoControlador {
         return "redirect:/taller/pedidos";
     }
 
-    /** Convierte "auto", null o vacío en null; cualquier número en su Integer. */
     private Integer parsearIdManual(String valor) {
         if (valor == null || valor.isBlank() || "auto".equalsIgnoreCase(valor.trim())) return null;
         try { return Integer.parseInt(valor.trim()); } catch (NumberFormatException e) { return null; }
