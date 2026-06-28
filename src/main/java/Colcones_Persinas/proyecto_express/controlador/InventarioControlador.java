@@ -8,6 +8,7 @@ import Colcones_Persinas.proyecto_express.repository.InsumoRepository;
 import Colcones_Persinas.proyecto_express.repository.PiezaInsumoRepository;
 import Colcones_Persinas.proyecto_express.repository.RetazoTelaRepository;
 import Colcones_Persinas.proyecto_express.repository.RolloTelaRepository;
+import Colcones_Persinas.proyecto_express.servicio.InventarioServicio;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -35,6 +36,9 @@ public class InventarioControlador {
 
     @Autowired
     private RetazoTelaRepository retazoTelaRepository;
+
+    @Autowired
+    private InventarioServicio inventarioServicio;
 
     private static final List<String> COLORES = Arrays.asList("Blanco", "Gris", "Fawn", "Vainilla");
     private static final List<Double> ANCHOS = Arrays.asList(1.83, 2.50, 3.00);
@@ -69,6 +73,10 @@ public class InventarioControlador {
         model.addAttribute("retazos", retazos);
         model.addAttribute("colores", COLORES);
         model.addAttribute("anchos", ANCHOS);
+
+        // ── Alertas de stock bajo (tela por color/ancho, insumos por unidad y por medida) ──
+        model.addAttribute("alertasInventario", inventarioServicio.obtenerAlertasInventario());
+
         return "inventario";
     }
 

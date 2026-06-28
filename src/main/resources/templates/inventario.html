@@ -131,6 +131,89 @@
             color: #6c757d;
             padding: 0 18px;
         }
+
+        /* ───────── Panel de alertas de stock bajo ───────── */
+        .panel-alertas {
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,.08);
+            margin-bottom: 24px;
+            overflow: hidden;
+        }
+        .panel-alertas-header {
+            padding: 12px 18px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            cursor: pointer;
+            user-select: none;
+            background-color: #212529;
+            color: #fff;
+        }
+        .panel-alertas-header .chevron {
+            transition: transform 0.2s ease;
+            font-size: 0.8rem;
+        }
+        .panel-alertas-header.abierto .chevron {
+            transform: rotate(90deg);
+        }
+        .panel-alertas-body {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.25s ease;
+        }
+        .panel-alertas-body.abierto {
+            max-height: 3000px;
+        }
+        .lista-alertas {
+            list-style: none;
+            margin: 0;
+            padding: 10px 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .item-alerta {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            padding: 10px 14px;
+            border-radius: 6px;
+            border-left: 5px solid transparent;
+        }
+        .item-alerta .icono-alerta {
+            font-size: 1.1rem;
+            line-height: 1.4;
+        }
+        .item-alerta .texto-alerta { flex: 1; }
+        .item-alerta .titulo-alerta {
+            font-weight: 700;
+            margin-right: 6px;
+        }
+        .item-alerta .mensaje-alerta {
+            color: #495057;
+            font-size: 0.92rem;
+        }
+        .item-alerta.nivel-agotado {
+            background-color: #2b2b2b;
+            border-left-color: #000;
+            color: #fff;
+        }
+        .item-alerta.nivel-agotado .mensaje-alerta { color: #d6d6d6; }
+        .item-alerta.nivel-critico {
+            background-color: #f8d7da;
+            border-left-color: #dc3545;
+        }
+        .item-alerta.nivel-advertencia {
+            background-color: #fff3cd;
+            border-left-color: #ffc107;
+        }
+        .sin-alertas {
+            padding: 18px;
+            text-align: center;
+            color: #198754;
+            font-weight: 600;
+        }
     </style>
 </head>
 <body class="bg-light p-4">
@@ -142,6 +225,37 @@
 
         <div th:if="${mensaje}" class="alert alert-success" th:text="${mensaje}"></div>
         <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
+
+        <!-- ───────────── PANEL DE ALERTAS DE STOCK BAJO ───────────── -->
+        <div class="panel-alertas">
+            <div class="panel-alertas-header abierto" id="panelAlertasHeader" role="button">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="chevron">▶</span>
+                    <strong>⚠️ Alertas de inventario</strong>
+                    <span th:if="${not #lists.isEmpty(alertasInventario)}"
+                          class="badge bg-danger ms-1"
+                          th:text="${#lists.size(alertasInventario)}"></span>
+                </div>
+                <span class="text-white-50" style="font-size:0.8rem;">Tela, tubos, pitillo y demás insumos con poco stock</span>
+            </div>
+            <div class="panel-alertas-body abierto" id="panelAlertasBody">
+                <ul class="lista-alertas" th:if="${not #lists.isEmpty(alertasInventario)}">
+                    <li th:each="a : ${alertasInventario}"
+                        class="item-alerta"
+                        th:classappend="${a.nivel.name() == 'AGOTADO'} ? 'nivel-agotado' : (${a.nivel.name() == 'CRITICO'} ? 'nivel-critico' : 'nivel-advertencia')">
+                        <span class="icono-alerta"
+                              th:text="${a.nivel.name() == 'AGOTADO'} ? '⛔' : (${a.nivel.name() == 'CRITICO'} ? '🔴' : '🟡')"></span>
+                        <span class="texto-alerta">
+                            <span class="titulo-alerta" th:text="${a.titulo}"></span>
+                            <span class="mensaje-alerta" th:text="${a.mensaje}"></span>
+                        </span>
+                    </li>
+                </ul>
+                <div class="sin-alertas" th:if="${#lists.isEmpty(alertasInventario)}">
+                    ✅ Todo el inventario está en niveles saludables. No hay alertas por ahora.
+                </div>
+            </div>
+        </div>
 
         <div class="mb-4">
             <span class="resumen-pill">Rollos totales: <strong th:text="${#lists.size(rollos)}"></strong></span>
@@ -405,6 +519,19 @@
             .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;');
     }
+
+    // ════════════════════════════════════════════════════════════
+    //  PANEL DE ALERTAS → acordeón simple, abierto por defecto
+    // ════════════════════════════════════════════════════════════
+    (function initPanelAlertas() {
+        const header = document.getElementById('panelAlertasHeader');
+        const body = document.getElementById('panelAlertasBody');
+        if (!header || !body) return;
+        header.addEventListener('click', () => {
+            header.classList.toggle('abierto');
+            body.classList.toggle('abierto');
+        });
+    })();
 
     // ════════════════════════════════════════════════════════════
     //  ROLLOS DE TELA → agrupados por Color + Ancho, en acordeón

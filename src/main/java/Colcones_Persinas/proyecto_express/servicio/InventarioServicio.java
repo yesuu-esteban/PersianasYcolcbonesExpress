@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 
@@ -84,6 +85,37 @@ public class InventarioServicio {
         public int vecesUsado;
         public List<MaterialUsado> detalle;
     }
+
+    /**
+     * Nivel de severidad de una alerta de inventario.
+     * ADVERTENCIA = amarillo (ya hay que pensar en pedir más).
+     * CRITICO     = rojo (pedir ya, riesgo real de quedarse sin material).
+     * AGOTADO     = gris/negro (ya no hay nada).
+     */
+    public enum NivelAlerta {
+        ADVERTENCIA, CRITICO, AGOTADO
+    }
+
+    public static class AlertaInventario {
+        public NivelAlerta nivel;
+        public String titulo;       // ej: "Tela Blanco 1.83m"
+        public String mensaje;      // ej: "Solo queda 1 rollo (12.5 m restantes)"
+        public String categoria;    // "TELA", "INSUMO_UNIDAD", "INSUMO_MEDIDA"
+
+        public AlertaInventario(NivelAlerta nivel, String titulo, String mensaje, String categoria) {
+            this.nivel = nivel;
+            this.titulo = titulo;
+            this.mensaje = mensaje;
+            this.categoria = categoria;
+        }
+    }
+
+    // ── Umbrales centralizados de alertas ───────────────────────
+    private static final int UMBRAL_UNIDAD_ADVERTENCIA = 50; // entre 6 y 50 -> advertencia
+    private static final int UMBRAL_UNIDAD_CRITICO = 5;      // <= 5 -> critico
+
+    private static final int UMBRAL_PIEZAS_ADVERTENCIA = 10; // entre 6 y 10 piezas -> advertencia
+    private static final int UMBRAL_PIEZAS_CRITICO = 5;      // <= 5 piezas -> critico
 
     // ═══════════════════════════════════════════════════════════════
     // BÚSQUEDA DE RETAZO
@@ -992,5 +1024,148 @@ public class InventarioServicio {
         }
         resumen.sort((a, b) -> a.tipoMaterial.compareTo(b.tipoMaterial));
         return resumen;
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // ALERTAS DE STOCK BAJO
+    // ═══════════════════════════════════════════════════════════════
+
+    /**
+     * Calcula todas las alertas de stock bajo del inventario actual:
+     * rollos de tela (agrupados por color+ancho), insumos por unidad,
+     * e insumos por medida (piezas). No descuenta ni modifica nada,
+     * solo lee el estado actual.
+     */
+    public List<AlertaInventario> obtenerAlertasInventario() {
+        List<AlertaInventario> alertas = new ArrayList<>();
+
+        alertas.addAll(alertasDeTela());
+        alertas.addAll(alertasDeInsumos());
+
+        // Orden: primero lo más urgente (AGOTADO/CRITICO), después advertencias
+        alertas.sort(Comparator.comparingInt(a -> nivelPrioridad(a.nivel)));
+        return alertas;
+    }
+
+    private int nivelPrioridad(NivelAlerta nivel) {
+        switch (nivel) {
+            case AGOTADO: return 0;
+            case CRITICO: return 1;
+            default: return 2;
+        }
+    }
+
+    // ── Alertas de tela (por color + ancho) ─────────────────────────
+
+    private List<AlertaInventario> alertasDeTela() {
+        List<AlertaInventario> alertas = new ArrayList<>();
+
+        List<RolloTela> rollos = rolloTelaRepository.findAllByOrderByColorAscAnchoAscLargoRestanteAsc();
+
+        // Agrupar por color + ancho exacto (ej: "Blanco|1.83")
+        Map<String, List<RolloTela>> agrupado = rollos.stream()
+                .collect(java.util.stream.Collectors.groupingBy(r -> r.getColor() + "|" + r.getAncho()));
+
+        for (Map.Entry<String, List<RolloTela>> entry : agrupado.entrySet()) {
+            List<RolloTela> grupo = entry.getValue();
+
+            // Solo nos importan los rollos que todavía tienen algo de material
+            List<RolloTela> conMaterial = grupo.stream()
+                    .filter(r -> !r.isAgotado())
+                    .collect(java.util.stream.Collectors.toList());
+
+            if (conMaterial.isEmpty()) continue; // ya se muestra como "Agotados" en el resumen general
+
+            String color = grupo.get(0).getColor();
+            double ancho = grupo.get(0).getAncho();
+            String titulo = "Tela " + color + " " + ancho + "m";
+
+            if (conMaterial.size() == 1) {
+                RolloTela unico = conMaterial.get(0);
+                boolean aLaMitad = unico.getLargoRestante() <= (unico.getLargoInicial() / 2.0) + 0.001;
+
+                if (aLaMitad) {
+                    alertas.add(new AlertaInventario(
+                            NivelAlerta.CRITICO,
+                            titulo,
+                            "Queda solo 1 rollo y ya está a la mitad o menos ("
+                                    + redondear(unico.getLargoRestante()) + " m de "
+                                    + redondear(unico.getLargoInicial()) + " m). Pedir pronto.",
+                            "TELA"));
+                } else {
+                    alertas.add(new AlertaInventario(
+                            NivelAlerta.ADVERTENCIA,
+                            titulo,
+                            "Queda solo 1 rollo disponible ("
+                                    + redondear(unico.getLargoRestante()) + " m restantes).",
+                            "TELA"));
+                }
+            }
+            // Si hay 2 o más rollos disponibles de ese color+ancho, no se alerta todavía.
+        }
+
+        return alertas;
+    }
+
+    // ── Alertas de insumos (por unidad y por medida/piezas) ─────────
+
+    private List<AlertaInventario> alertasDeInsumos() {
+        List<AlertaInventario> alertas = new ArrayList<>();
+
+        List<Insumo> insumos = insumoRepository.findAllByOrderByNombreAsc();
+
+        for (Insumo insumo : insumos) {
+            if (Boolean.TRUE.equals(insumo.getTieneMedida())) {
+                // ── Insumo por medida: contar piezas con material disponible ──
+                List<PiezaInsumo> piezas = piezaInsumoRepository.findByInsumoIdOrderByLargoRestanteAsc(insumo.getId());
+                long piezasDisponibles = piezas.stream().filter(p -> !p.isAgotada()).count();
+
+                if (piezasDisponibles == 0) {
+                    alertas.add(new AlertaInventario(
+                            NivelAlerta.AGOTADO,
+                            insumo.getNombre(),
+                            "No hay piezas disponibles de \"" + insumo.getNombre() + "\".",
+                            "INSUMO_MEDIDA"));
+                } else if (piezasDisponibles <= UMBRAL_PIEZAS_CRITICO) {
+                    alertas.add(new AlertaInventario(
+                            NivelAlerta.CRITICO,
+                            insumo.getNombre(),
+                            "Solo quedan " + piezasDisponibles + " pieza(s) de \"" + insumo.getNombre() + "\". Pedir ya.",
+                            "INSUMO_MEDIDA"));
+                } else if (piezasDisponibles <= UMBRAL_PIEZAS_ADVERTENCIA) {
+                    alertas.add(new AlertaInventario(
+                            NivelAlerta.ADVERTENCIA,
+                            insumo.getNombre(),
+                            "Quedan " + piezasDisponibles + " piezas de \"" + insumo.getNombre() + "\". Empezar a pensar en reponer.",
+                            "INSUMO_MEDIDA"));
+                }
+
+            } else {
+                // ── Insumo por unidad: comparar stock directo ──
+                int stock = insumo.getStockUnidades() != null ? insumo.getStockUnidades() : 0;
+
+                if (stock == 0) {
+                    alertas.add(new AlertaInventario(
+                            NivelAlerta.AGOTADO,
+                            insumo.getNombre(),
+                            "No hay stock de \"" + insumo.getNombre() + "\".",
+                            "INSUMO_UNIDAD"));
+                } else if (stock <= UMBRAL_UNIDAD_CRITICO) {
+                    alertas.add(new AlertaInventario(
+                            NivelAlerta.CRITICO,
+                            insumo.getNombre(),
+                            "Solo quedan " + stock + " unidad(es) de \"" + insumo.getNombre() + "\". Pedir ya.",
+                            "INSUMO_UNIDAD"));
+                } else if (stock <= UMBRAL_UNIDAD_ADVERTENCIA) {
+                    alertas.add(new AlertaInventario(
+                            NivelAlerta.ADVERTENCIA,
+                            insumo.getNombre(),
+                            "Quedan " + stock + " unidades de \"" + insumo.getNombre() + "\". Conviene reponer pronto.",
+                            "INSUMO_UNIDAD"));
+                }
+            }
+        }
+
+        return alertas;
     }
 }
