@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Reportes</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light p-4">
+    <div class="container">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2>📊 Reportes de Consumo e Inventario</h2>
+            <a href="/taller/pedidos" class="btn btn-outline-dark">← Volver a Pedidos</a>
+        </div>
+
+        <div class="row g-4">
+
+            <!-- Descargar por mes -->
+            <div class="col-md-6">
+                <div class="card shadow-sm h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">📅 Reporte mensual (Excel)</h5>
+                        <p class="card-text text-muted">
+                            Genera el reporte completo (resumen, detalle por pedido, inventario actual
+                            y pedidos del período) para un mes específico.
+                        </p>
+                        <form action="/reportes/descargar-mes" method="get">
+                            <div class="mb-3">
+                                <label for="mes" class="form-label">Mes</label>
+                                <input type="month" id="mes" name="mes" class="form-control"
+                                       th:value="${mesDefecto}" required>
+                            </div>
+                            <button type="submit" class="btn btn-success">⬇️ Descargar Excel del mes</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Descargar por rango -->
+            <div class="col-md-6">
+                <div class="card shadow-sm h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">🗓️ Reporte por rango de fechas (Excel)</h5>
+                        <p class="card-text text-muted">
+                            Igual que el anterior, pero eligiendo libremente la fecha de inicio y fin.
+                        </p>
+                        <form action="/reportes/descargar-rango" method="get">
+                            <div class="row">
+                                <div class="col-6 mb-3">
+                                    <label for="desde" class="form-label">Desde</label>
+                                    <input type="date" id="desde" name="desde" class="form-control" required>
+                                </div>
+                                <div class="col-6 mb-3">
+                                    <label for="hasta" class="form-label">Hasta</label>
+                                    <input type="date" id="hasta" name="hasta" class="form-control" required>
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-success">⬇️ Descargar Excel del rango</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Reporte en pantalla (HTML) -->
+            <div class="col-md-6">
+                <div class="card shadow-sm h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">📋 Ver resumen en pantalla</h5>
+                        <p class="card-text text-muted">
+                            Consulta rápida del consumo de materiales directamente en el navegador,
+                            sin descargar nada.
+                        </p>
+                        <a href="/taller/reporte-materiales" class="btn btn-outline-dark">Ver resumen en pantalla</a>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</body>
+</html>
