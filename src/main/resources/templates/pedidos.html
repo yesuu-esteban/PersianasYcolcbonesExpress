@@ -2,219 +2,63 @@
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <title>Taller de Producción</title>
+    <title>Taller | Gestión</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        .table-small { font-size: 0.85rem; }
-        .ficha-box { 
-            background-color: #f8f9fa; 
-            border-left: 4px solid #343a40; 
-            padding: 10px; 
-            min-width: 190px; 
-            display: block;
-        }
-        .cliente-group-border { border-top: 4px solid #343a40 !important; }
-        .badge-sistema { font-size: 0.75rem; }
-        .nav-pills .nav-link {
-            color: #343a40;
-            background-color: #e9ecef;
-            margin-right: 6px;
-        }
-        .nav-pills .nav-link.active {
-            background-color: #343a40;
-            color: #fff;
-        }
-        .nav-pills .nav-link .badge {
-            font-weight: 700;
-        }
-        /* Tela real: resalta sutilmente cuando viene del historial */
-        .tela-real { color: #0a5c30; font-style: italic; }
+        body { font-size: 0.8rem; }
+        .table-small { font-size: 0.75rem; }
+        .btn-xs { padding: 0.1rem 0.3rem; font-size: 0.7rem; }
+        .compact-box { padding: 2px 5px; border-left: 3px solid #6c757d; background: #fdfdfd; line-height: 1.1; }
+        .nav-link { padding: 0.3rem 0.6rem !important; font-size: 0.8rem; }
     </style>
 </head>
-<body class="bg-light p-4">
+<body class="bg-light p-2">
     <div class="container-fluid">
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <h2>📋 Gestión de Órdenes de Fabricación</h2>
-            <div>
-                <a href="/inventario" class="btn btn-outline-dark me-2">📦 Inventario</a>
-                <a href="/taller/nuevo" class="btn btn-primary">+ Registrar Nuevo Pedido</a>
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <h6 class="m-0 fw-bold">📋 Órdenes de Fabricación</h6>
+            <div class="d-flex gap-1">
+                <a href="/reportes" class="btn btn-xs btn-outline-success">📊 Reportes</a>
+                <a href="/inventario" class="btn btn-xs btn-outline-dark">📦 Inventario</a>
+                <a href="/taller/nuevo" class="btn btn-xs btn-primary">+ Nuevo</a>
             </div>
         </div>
 
-        <div th:if="${mensaje}" class="alert alert-success" th:text="${mensaje}"></div>
-        <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
-
-        <ul class="nav nav-pills mb-3">
-            <li class="nav-item">
-                <a class="nav-link" th:classappend="${estadoActivo == 'Todos'} ? 'active'"
-                   th:href="@{/taller/pedidos(estado='Todos')}">
-                    Todos <span class="badge bg-light text-dark ms-1" th:text="${totalTodos}"></span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" th:classappend="${estadoActivo == 'Pendiente'} ? 'active'"
-                   th:href="@{/taller/pedidos(estado='Pendiente')}">
-                    Pendiente <span class="badge bg-light text-dark ms-1" th:text="${totalPendiente}"></span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" th:classappend="${estadoActivo == 'En Proceso'} ? 'active'"
-                   th:href="@{/taller/pedidos(estado='En Proceso')}">
-                    En Proceso <span class="badge bg-light text-dark ms-1" th:text="${totalEnProceso}"></span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" th:classappend="${estadoActivo == 'Listo para Ensamblar'} ? 'active'"
-                   th:href="@{/taller/pedidos(estado='Listo para Ensamblar')}">
-                    Listo para Ensamblar <span class="badge bg-light text-dark ms-1" th:text="${totalListoEnsamblar}"></span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" th:classappend="${estadoActivo == 'Listo para Despacho'} ? 'active'"
-                   th:href="@{/taller/pedidos(estado='Listo para Despacho')}">
-                    Listo para Despacho <span class="badge bg-light text-dark ms-1" th:text="${totalListoDespacho}"></span>
-                </a>
-            </li>
-        </ul>
-
-        <table class="table table-hover shadow-sm bg-white align-middle table-small">
+        <table class="table table-bordered table-hover shadow-sm bg-white align-middle table-small m-0">
             <thead class="table-dark">
                 <tr>
-                    <th>Distribuidor</th>
                     <th>Cliente</th>
-                    <th>Descripción</th>
                     <th>Sistema</th>
-                    <th>Mando</th>
-                    <th>Medida Final</th>
+                    <th>Medidas</th>
                     <th>Ficha Técnica</th>
-                    <th>Creado</th>
                     <th>Estado</th>
-                    <th>Acciones</th>
+                    <th>Acción</th>
                 </tr>
             </thead>
             <tbody>
-                <tr th:each="p, iterStat : ${pedidos}" 
-                    th:classappend="${iterStat.index > 0 and p.nombreDecorador != pedidos[iterStat.index-1].nombreDecorador} ? 'cliente-group-border' : ''">
-                    
-                    <td class="fw-bold">
-                        <span th:if="${iterStat.index == 0 or p.nombreDecorador != pedidos[iterStat.index-1].nombreDecorador}" 
-                              th:text="${p.nombreDecorador}"></span>
-                    </td>
-                    <td th:text="${p.nombreClienteFinal}"></td>
-                    <td th:text="${p.descripcion}"></td>
-                    
-                    <td class="text-center">
-                        <span class="badge badge-sistema" 
-                              th:classappend="${p.usaCabezal} ? 'bg-success' : 'bg-dark'" 
-                              th:text="${p.tipoSistema}">
-                        </span>
-                    </td>
-
-                    <td class="text-center">
-                        <span class="badge bg-info text-dark" th:text="${p.ladoControl}"></span>
-                    </td>
-                    
-                    <td><strong th:text="${p.ancho + 'm x ' + p.altura + 'm'}"></strong></td>
-                    
+                <tr th:each="p : ${pedidos}">
+                    <td class="fw-bold" th:text="${p.nombreClienteFinal}"></td>
+                    <td><span class="badge bg-dark" th:text="${p.tipoSistema}"></span></td>
+                    <td><strong th:text="${p.ancho + 'x' + p.altura}"></strong></td>
                     <td>
-                        <div class="ficha-box">
-                            <strong>Cant:</strong> <span th:text="${p.cantidad}"></span><br>
-                            <strong>Color:</strong> <span th:text="${p.colorTelaDeseado}"></span><br>
-                            <strong>Tela:</strong> <span th:text="${#numbers.formatDecimal(p.corteTelaAncho, 1, 3) + ' x ' + #numbers.formatDecimal(p.corteTelaAlto, 1, 3)}"></span>m<br>
-
-                            <!-- ── Rollo/Retazo: muestra el real si existe en historial, si no el teórico ── -->
-                            <strong>Rollo:</strong>
-                            <span th:if="${telaUsadaPorPedido[p.id] != null}"
-                                  class="tela-real"
-                                  th:text="${telaUsadaPorPedido[p.id]}"></span>
-                            <span th:unless="${telaUsadaPorPedido[p.id] != null}"
-                                  th:text="${p.rolloTela}"></span><br>
-
-                            <strong>Tubo (<span th:text="${p.tuboRecomendado}"></span>):</strong> <span th:text="${#numbers.formatDecimal(p.corteTuberia, 1, 3)}"></span>m<br>
-                            <th:block th:if="${p.usaCabezal}">
-                                <strong>Cabezal:</strong> <span th:text="${#numbers.formatDecimal(p.medidaCabezal, 1, 3)}"></span>m<br>
-                            </th:block>
-                            <strong>Cuerda:</strong> <span th:text="${p.medidaCuerda}"></span><br>
-                            <strong>Control:</strong> <span th:text="${p.tipoControl}"></span>
+                        <div class="compact-box">
+                            Tela: <span th:text="${#numbers.formatDecimal(p.corteTelaAncho, 1, 2) + 'x' + #numbers.formatDecimal(p.corteTelaAlto, 1, 2)}"></span><br>
+                            Rollo: <span th:text="${p.rolloTela}"></span>
                         </div>
                     </td>
-                    
-                    <td class="text-center">
-                        <small class="text-muted" th:text="${p.fechaCreacionFormateada}"></small>
-                        <br>
-                        <small class="text-muted fst-italic"
-                               th:if="${p.fechaActualizacion != null and p.fechaCreacion != p.fechaActualizacion}"
-                               th:text="'Act: ' + ${p.fechaActualizacionFormateada}"></small>
-                    </td>
-
+                    <td><span class="badge bg-secondary" th:text="${p.estado}"></span></td>
                     <td>
-                        <span class="badge" 
-                              th:classappend="${p.estado == 'Listo para Despacho' ? 'bg-success' : (p.estado == 'En Proceso' ? 'bg-warning text-dark' : 'bg-secondary')}"
-                              th:text="${p.estado}">
-                        </span>
-                    </td>
-                    
-                    <td>
-                        <form th:action="@{/taller/actualizar/{id}/tela(id=${p.id})}" method="post" class="d-inline">
-                            <input type="hidden" name="estadoFiltro" th:value="${estadoActivo}">
-                            <button type="submit" th:classappend="${p.telaCortada} ? 'btn-info' : 'btn-outline-info'" class="btn btn-sm">Tela</button>
-                        </form>
-                        <form th:action="@{/taller/actualizar/{id}/perfileria(id=${p.id})}" method="post" class="d-inline">
-                            <input type="hidden" name="estadoFiltro" th:value="${estadoActivo}">
-                            <button type="submit" th:classappend="${p.perfileriaCortada} ? 'btn-warning' : 'btn-outline-warning'" class="btn btn-sm">Perfiles</button>
-                        </form>
-                        <form th:action="@{/taller/actualizar/{id}/ensamblado(id=${p.id})}" method="post" class="d-inline">
-                            <input type="hidden" name="estadoFiltro" th:value="${estadoActivo}">
-                            <button type="submit" th:classappend="${p.ensamblado} ? 'btn-success' : 'btn-outline-success'" class="btn btn-sm">Ensamblado</button>
-                        </form>
-                        <a th:href="@{/taller/imprimir/{id}(id=${p.id})}" target="_blank" class="btn btn-sm btn-dark ms-2">🖨️</a>
-                        <a th:href="@{/taller/editar/{id}(id=${p.id})}" class="btn btn-sm btn-outline-primary ms-1">✏️</a>
-                        <button type="button" class="btn btn-sm btn-outline-danger ms-1"
-                                data-bs-toggle="modal"
-                                data-bs-target="#modalEliminar"
-                                th:attr="data-id=${p.id}, data-desc=${p.nombreClienteFinal + ' - ' + p.descripcion}">🗑️</button>
+                        <div class="btn-group">
+                            <form th:action="@{/taller/actualizar/{id}/tela(id=${p.id})}" method="post">
+                                <button type="submit" class="btn btn-xs btn-outline-info">Tela</button>
+                            </form>
+                            <a th:href="@{/taller/imprimir/{id}(id=${p.id})}" target="_blank" class="btn btn-xs btn-dark">🖨️</a>
+                            <a th:href="@{/taller/editar/{id}(id=${p.id})}" class="btn btn-xs btn-outline-primary">✏️</a>
+                        </div>
                     </td>
                 </tr>
             </tbody>
         </table>
-
-        <div th:if="${#lists.isEmpty(pedidos)}" class="alert alert-light border text-center text-muted">
-            No hay pedidos en esta categoría.
-        </div>
     </div>
-
-    <!-- Modal de confirmación para eliminar -->
-    <div class="modal fade" id="modalEliminar" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">⚠️ Confirmar eliminación</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <p>¿Seguro que deseas eliminar el pedido de <strong id="modalEliminarDesc"></strong>?</p>
-                    <p class="text-danger mb-0">Esta acción no se puede deshacer.</p>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <form id="formEliminar" method="post" class="d-inline">
-                        <button type="submit" class="btn btn-danger">Sí, eliminar</button>
-                    </form>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        const modalEliminar = document.getElementById('modalEliminar');
-        modalEliminar.addEventListener('show.bs.modal', function (event) {
-            const boton = event.relatedTarget;
-            const id = boton.getAttribute('data-id');
-            const desc = boton.getAttribute('data-desc');
-            document.getElementById('modalEliminarDesc').textContent = desc;
-            document.getElementById('formEliminar').action = '/taller/eliminar/' + id;
-        });
-    </script>
 </body>
 </html>
