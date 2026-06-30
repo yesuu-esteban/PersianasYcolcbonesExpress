@@ -110,6 +110,21 @@ public class InventarioServicio {
         }
     }
 
+    /**
+     * Insumo agregado manualmente al pedido (fuera del cálculo automático),
+     * por ejemplo "2 Tornillos extra" o "1 Control de más" que el jefe
+     * agrega a discreción para una orden específica.
+     *
+     * insumoId != null  → existe en el catálogo, se descuenta del inventario real.
+     * insumoId == null  → nombre libre, no existe en catálogo; solo queda
+     *                      registrado en el reporte, no se descuenta nada.
+     */
+    public static class ExtraInsumo {
+        public Integer insumoId;
+        public String nombreLibre;
+        public double cantidad;
+    }
+
     // ── Umbrales centralizados de alertas ───────────────────────
     private static final int UMBRAL_UNIDAD_ADVERTENCIA = 50; // entre 6 y 50 -> advertencia
     private static final int UMBRAL_UNIDAD_CRITICO = 5;      // <= 5 -> critico
@@ -739,7 +754,7 @@ public class InventarioServicio {
                     pieza.setLargoRestante(redondear(pieza.getLargoRestante() + m.getMetrosUsados()));
                     piezaInsumoRepository.save(pieza);
                 });
-            } else {
+            } else if (!"EXTRA".equals(m.getTipoMaterial())) {
                 String nombreInsumo = m.getTipoMaterial().replace("_", " ");
                 insumoRepository.findByNombreIgnoreCase(nombreInsumo).ifPresent(insumo -> {
                     int actual = insumo.getStockUnidades() != null ? insumo.getStockUnidades() : 0;
@@ -747,6 +762,7 @@ public class InventarioServicio {
                     insumoRepository.save(insumo);
                 });
             }
+            // "EXTRA" puro (texto libre fuera de catálogo): no había nada que devolver.
         }
 
         materialUsadoRepository.deleteAll(registros);
@@ -1167,5 +1183,130 @@ public class InventarioServicio {
         }
 
         return alertas;
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // INSUMOS EXTRA (agregados manualmente al pedido)
+    // ═══════════════════════════════════════════════════════════════
+
+    /** Verifica que haya stock suficiente para TODOS los extras antes de guardar nada. */
+    public void verificarExtras(List<ExtraInsumo> extras) {
+        if (extras == null) return;
+        for (ExtraInsumo ex : extras) {
+            if (ex.cantidad <= 0) continue;
+            if (ex.insumoId == null) continue; // texto libre: no se valida contra inventario
+
+            Insumo insumo = insumoRepository.findById(ex.insumoId)
+                    .orElseThrow(() -> new MaterialInsuficienteException(
+                            "El insumo extra seleccionado ya no existe en el catálogo."));
+
+            if (Boolean.TRUE.equals(insumo.getTieneMedida())) {
+                double disponible = piezaInsumoRepository
+                        .findByInsumoIdOrderByLargoRestanteAsc(insumo.getId())
+                        .stream().mapToDouble(PiezaInsumo::getLargoRestante).sum();
+                if (disponible < ex.cantidad - 0.001) {
+                    throw new MaterialInsuficienteException(
+                            "No hay suficiente \"" + insumo.getNombre() + "\" para el insumo extra. Disponible: "
+                            + redondear(disponible) + " m, necesario: " + ex.cantidad + " m.");
+                }
+            } else {
+                int stock = insumo.getStockUnidades() != null ? insumo.getStockUnidades() : 0;
+                if (stock < ex.cantidad) {
+                    throw new MaterialInsuficienteException(
+                            "No hay suficiente \"" + insumo.getNombre() + "\" para el insumo extra. Disponible: "
+                            + stock + " unidad(es), necesario: " + (int) ex.cantidad + ".");
+                }
+            }
+        }
+    }
+
+    /**
+     * Descuenta del inventario real cada extra y deja el registro en MaterialUsado
+     * (así aparece en el reporte como gasto real). Llamar DESPUÉS de guardar el pedido,
+     * para ya tener su id.
+     *
+     * A los extras que SÍ están en catálogo se les pone como tipoMaterial el nombre
+     * del insumo (igual que el material automático), para que revertirMaterialDe()
+     * pueda devolver el stock correctamente al editar/eliminar, y para que el reporte
+     * los agrupe junto con el resto del consumo de ese mismo insumo. Se distinguen
+     * como "extra" solo por la fuenteDescripcion y seleccionManual=true.
+     */
+    public void procesarExtras(Pedido pedido, List<ExtraInsumo> extras) {
+        if (extras == null) return;
+        for (ExtraInsumo ex : extras) {
+            if (ex.cantidad <= 0) continue;
+
+            if (ex.insumoId == null) {
+                // No existe en el catálogo: queda registrado para el reporte,
+                // pero no hay de dónde descontarlo.
+                MaterialUsado r = new MaterialUsado();
+                r.setPedidoId(pedido.getId());
+                r.setTipoMaterial("EXTRA");
+                r.setFuenteDescripcion((ex.nombreLibre != null && !ex.nombreLibre.isBlank() ? ex.nombreLibre : "Insumo extra")
+                        + " (fuera de catálogo, no descontado del inventario)");
+                r.setMetrosUsados(ex.cantidad);
+                r.setMetrosSobrantes(0.0);
+                r.setSeleccionManual(true);
+                materialUsadoRepository.save(r);
+                continue;
+            }
+
+            Insumo insumo = insumoRepository.findById(ex.insumoId)
+                    .orElseThrow(() -> new MaterialInsuficienteException(
+                            "El insumo extra seleccionado ya no existe en el catálogo."));
+
+            if (Boolean.TRUE.equals(insumo.getTieneMedida())) {
+                List<PiezaInsumo> piezas = piezaInsumoRepository
+                        .findByInsumoIdAndLargoRestanteGreaterThanOrderByLargoRestanteAsc(insumo.getId(), 0.0);
+                double restante = ex.cantidad;
+                for (PiezaInsumo p : piezas) {
+                    if (restante <= 0.001) break;
+                    double aUsar = redondear(Math.min(p.getLargoRestante(), restante));
+
+                    MaterialUsado r = new MaterialUsado();
+                    r.setPedidoId(pedido.getId());
+                    r.setTipoMaterial(insumo.getNombre().toUpperCase().replace(" ", "_"));
+                    r.setPiezaInsumoId(p.getId());
+                    r.setFuenteDescripcion(insumo.getNombre() + " (#" + p.getId() + ") — extra agregado al pedido");
+                    r.setMetrosUsados(aUsar);
+                    r.setSeleccionManual(true);
+
+                    double sobrante = redondear(p.getLargoRestante() - aUsar);
+                    if (sobrante <= 0.001) {
+                        r.setMetrosSobrantes(0.0);
+                        piezaInsumoRepository.delete(p);
+                    } else {
+                        p.setLargoRestante(sobrante);
+                        piezaInsumoRepository.save(p);
+                        r.setMetrosSobrantes(sobrante);
+                    }
+                    materialUsadoRepository.save(r);
+                    restante -= aUsar;
+                }
+                if (restante > 0.001) {
+                    throw new MaterialInsuficienteException(
+                            "No hay suficiente \"" + insumo.getNombre() + "\" para completar el insumo extra.");
+                }
+            } else {
+                int disponible = insumo.getStockUnidades() != null ? insumo.getStockUnidades() : 0;
+                int necesario = (int) Math.round(ex.cantidad);
+                if (disponible < necesario) {
+                    throw new MaterialInsuficienteException(
+                            "No hay suficiente \"" + insumo.getNombre() + "\" para el insumo extra. Disponible: "
+                            + disponible + ", necesario: " + necesario + ".");
+                }
+                insumo.setStockUnidades(disponible - necesario);
+                insumoRepository.save(insumo);
+
+                MaterialUsado r = new MaterialUsado();
+                r.setPedidoId(pedido.getId());
+                r.setTipoMaterial(insumo.getNombre().toUpperCase().replace(" ", "_"));
+                r.setFuenteDescripcion(insumo.getNombre() + " (unidad) — extra agregado al pedido");
+                r.setMetrosUsados(necesario);
+                r.setMetrosSobrantes(insumo.getStockUnidades());
+                r.setSeleccionManual(true);
+                materialUsadoRepository.save(r);
+            }
+        }
     }
 }

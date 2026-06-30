@@ -44,6 +44,14 @@
         }
         .flags-row { display: flex; gap: 18px; align-items: center; flex-wrap: wrap; margin: 6px 0 4px; }
         .flags-row label { font-size: 0.82rem; display: flex; align-items: center; gap: 5px; cursor: pointer; }
+        .seccion-extras {
+            background: #fffbea;
+            border: 1px solid #ffe082;
+            border-radius: 6px;
+            padding: 14px 16px;
+            margin-bottom: 18px;
+        }
+        .fila-extra select, .fila-extra input { font-size: 0.85rem; }
     </style>
 </head>
 <body class="bg-light p-4">
@@ -182,6 +190,19 @@
 
         <button type="button" class="btn btn-info btn-sm mt-1" onclick="agregarFila()">+ Agregar otro producto</button>
 
+        <hr class="mt-4">
+
+        <!-- ═══════════ INSUMOS ADICIONALES (extras de toda la orden) ═══════════ -->
+        <div class="seccion-extras">
+            <p class="fw-bold mb-2">➕ Insumos adicionales (opcional)</p>
+            <p class="text-muted mb-2" style="font-size:0.82rem;">
+                Para cualquier material extra que se agregue a esta orden y que no entra en el cálculo automático
+                de cada producto. Se descuenta del inventario igual que el resto del material.
+            </p>
+            <div id="contenedorExtras"></div>
+            <button type="button" class="btn btn-sm btn-outline-dark mt-1" onclick="agregarFilaExtra()">+ Agregar insumo extra</button>
+        </div>
+
         <div class="mt-4">
             <button type="submit" class="btn btn-success w-100">Guardar todos los pedidos</button>
             <a href="/taller/pedidos" class="btn btn-secondary w-100 mt-2">Cancelar</a>
@@ -194,6 +215,7 @@
     const rollosDisponibles   = /*[[${rollosDisponibles}]]*/   [];
     const piezasDisponibles   = /*[[${piezasDisponibles}]]*/   [];
     const retazosDisponibles  = /*[[${retazosDisponibles}]]*/  [];
+    const catalogoInsumos     = /*[[${catalogoInsumos}]]*/     [];
 </script>
 
 <script>
@@ -529,6 +551,50 @@
             <td style="padding:2px 6px;color:#555;white-space:nowrap">${med}</td>
             <td style="padding:2px 4px;color:#1a6b3a">${info}</td>
         </tr>`;
+    }
+
+    // ════════════════════════════════════════════════════════════
+    //  INSUMOS ADICIONALES (extras de toda la orden)
+    // ════════════════════════════════════════════════════════════
+    let extraIndex = 0;
+
+    function opcionesCatalogo() {
+        let html = '<option value="libre">✏ Insumo fuera del catálogo (texto libre)</option>';
+        catalogoInsumos.forEach(ins => {
+            html += `<option value="${ins.id}">${ins.nombre}${ins.tieneMedida ? ' (por medida)' : ' (por unidad)'}</option>`;
+        });
+        return html;
+    }
+
+    function filaExtraHtml(idx) {
+        return `
+        <div class="row g-2 align-items-center mb-2 fila-extra" data-indice="${idx}">
+            <div class="col-md-5">
+                <select name="extraInsumoId" class="form-select form-select-sm select-extra-insumo" onchange="toggleLibre(this)">
+                    ${opcionesCatalogo()}
+                </select>
+            </div>
+            <div class="col-md-4 campo-libre-extra" style="display:none;">
+                <input type="text" name="extraNombreLibre" class="form-control form-control-sm" placeholder="Nombre del insumo">
+            </div>
+            <div class="col-md-2">
+                <input type="number" step="0.01" name="extraCantidad" class="form-control form-control-sm" placeholder="Cantidad" min="0">
+            </div>
+            <div class="col-md-1">
+                <button type="button" class="btn btn-sm btn-outline-danger" onclick="this.closest('.fila-extra').remove()">✕</button>
+            </div>
+        </div>`;
+    }
+
+    function toggleLibre(select) {
+        const fila = select.closest('.fila-extra');
+        const campoLibre = fila.querySelector('.campo-libre-extra');
+        campoLibre.style.display = select.value === 'libre' ? '' : 'none';
+    }
+
+    function agregarFilaExtra() {
+        const cont = document.getElementById('contenedorExtras');
+        cont.insertAdjacentHTML('beforeend', filaExtraHtml(extraIndex++));
     }
 
     document.addEventListener('DOMContentLoaded', () => {

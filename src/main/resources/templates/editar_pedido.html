@@ -33,6 +33,14 @@
             border: none;
             padding: 0;
         }
+        .seccion-extras {
+            background: #fffbea;
+            border: 1px solid #ffe082;
+            border-radius: 6px;
+            padding: 14px 16px;
+            margin: 18px 0;
+        }
+        .fila-extra select, .fila-extra input { font-size: 0.85rem; }
     </style>
 </head>
 <body class="bg-light p-4">
@@ -206,6 +214,17 @@
             </div>
         </div>
 
+        <!-- ═══════════ INSUMOS ADICIONALES (extras de toda la orden) ═══════════ -->
+        <div class="seccion-extras">
+            <p class="fw-bold mb-2">➕ Insumos adicionales (opcional)</p>
+            <p class="text-muted mb-2" style="font-size:0.82rem;">
+                Material extra que se agregó a esta orden, fuera del cálculo automático.
+                Se descuenta del inventario igual que el resto del material.
+            </p>
+            <div id="contenedorExtras"></div>
+            <button type="button" class="btn btn-sm btn-outline-dark mt-1" onclick="agregarFilaExtra()">+ Agregar insumo extra</button>
+        </div>
+
         <div class="mt-4">
             <button type="submit" class="btn btn-primary w-100">Guardar Cambios</button>
             <a href="/taller/pedidos" class="btn btn-secondary w-100 mt-2">Cancelar</a>
@@ -219,6 +238,8 @@
     const rollosDisponibles  = /*[[${rollosDisponibles}]]*/ [];
     const piezasDisponibles  = /*[[${piezasDisponibles}]]*/ [];
     const retazosDisponibles = /*[[${retazosDisponibles}]]*/ [];
+    const catalogoInsumos    = /*[[${catalogoInsumos}]]*/ [];
+    const extrasExistentes   = /*[[${extrasExistentes}]]*/ [];
     /*]]>*/
 </script>
 
@@ -471,10 +492,69 @@
     ckConector.addEventListener('change', disparar);
     selectTipoTubo.addEventListener('change', disparar);
 
+    // ════════════════════════════════════════════════════════════
+    //  INSUMOS ADICIONALES (extras de toda la orden)
+    // ════════════════════════════════════════════════════════════
+    let extraIndex = 0;
+
+    function opcionesCatalogo() {
+        let html = '<option value="libre">✏ Insumo fuera del catálogo (texto libre)</option>';
+        catalogoInsumos.forEach(ins => {
+            html += `<option value="${ins.id}">${ins.nombre}${ins.tieneMedida ? ' (por medida)' : ' (por unidad)'}</option>`;
+        });
+        return html;
+    }
+
+    function filaExtraHtml(idx) {
+        return `
+        <div class="row g-2 align-items-center mb-2 fila-extra" data-indice="${idx}">
+            <div class="col-md-5">
+                <select name="extraInsumoId" class="form-select form-select-sm select-extra-insumo" onchange="toggleLibre(this)">
+                    ${opcionesCatalogo()}
+                </select>
+            </div>
+            <div class="col-md-4 campo-libre-extra" style="display:none;">
+                <input type="text" name="extraNombreLibre" class="form-control form-control-sm" placeholder="Nombre del insumo">
+            </div>
+            <div class="col-md-2">
+                <input type="number" step="0.01" name="extraCantidad" class="form-control form-control-sm" placeholder="Cantidad" min="0">
+            </div>
+            <div class="col-md-1">
+                <button type="button" class="btn btn-sm btn-outline-danger" onclick="this.closest('.fila-extra').remove()">✕</button>
+            </div>
+        </div>`;
+    }
+
+    function toggleLibre(select) {
+        const fila = select.closest('.fila-extra');
+        const campoLibre = fila.querySelector('.campo-libre-extra');
+        campoLibre.style.display = select.value === 'libre' ? '' : 'none';
+    }
+
+    function agregarFilaExtra(valSelect, valLibre, valCant) {
+        const cont = document.getElementById('contenedorExtras');
+        cont.insertAdjacentHTML('beforeend', filaExtraHtml(extraIndex++));
+        const fila = cont.lastElementChild;
+        const sel = fila.querySelector('.select-extra-insumo');
+        if (valSelect) sel.value = valSelect;
+        if (valLibre) fila.querySelector('input[name="extraNombreLibre"]').value = valLibre;
+        if (valCant) fila.querySelector('input[name="extraCantidad"]').value = valCant;
+        toggleLibre(sel);
+    }
+
     // ── Inicialización ────────────────────────────────────────────
     document.addEventListener('DOMContentLoaded', () => {
         actualizarSelectsManual();
         consultarPrevisualizacion();
+
+        // Precarga de extras existentes: se muestran como "texto libre" con la
+        // descripción y cantidad que ya tenían, para que el jefe los revise y,
+        // si quiere, los vuelva a vincular al catálogo.
+        if (typeof extrasExistentes !== 'undefined' && extrasExistentes.length) {
+            extrasExistentes.forEach(ex => {
+                agregarFilaExtra('libre', ex.fuenteDescripcion, ex.metrosUsados);
+            });
+        }
     });
 </script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>

@@ -1,6 +1,7 @@
 package Colcones_Persinas.proyecto_express.controlador;
 
 import Colcones_Persinas.proyecto_express.modelo.Pedido;
+import Colcones_Persinas.proyecto_express.repository.InsumoRepository;
 import Colcones_Persinas.proyecto_express.repository.PedidoRepository;
 import Colcones_Persinas.proyecto_express.servicio.InventarioServicio;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,6 +27,9 @@ public class PedidoControlador {
 
     @Autowired
     private InventarioServicio inventarioServicio;
+
+    @Autowired
+    private InsumoRepository insumoRepository;
 
     // ─── Ver lista de pedidos ─────────────────────────────────────────────
     @GetMapping("/pedidos")
@@ -85,6 +89,7 @@ public class PedidoControlador {
         model.addAttribute("rollosDisponibles",   inventarioServicio.getTodosLosRollos());
         model.addAttribute("piezasDisponibles",   inventarioServicio.getTodasLasPiezas());
         model.addAttribute("retazosDisponibles",  inventarioServicio.getTodosLosRetazos());
+        model.addAttribute("catalogoInsumos",     insumoRepository.findAllByOrderByNombreAsc());
         return "nuevo_pedido";
     }
 
@@ -126,6 +131,9 @@ public class PedidoControlador {
             @RequestParam List<String> colores,
             @RequestParam List<String> mandos,
             @RequestParam Map<String, String> allParams,
+            @RequestParam(required = false) List<String> extraInsumoId,
+            @RequestParam(required = false) List<String> extraNombreLibre,
+            @RequestParam(required = false) List<String> extraCantidad,
             RedirectAttributes redirectAttributes) {
 
         int n = anchos.size();
@@ -183,10 +191,13 @@ public class PedidoControlador {
             }
         }
 
+        List<InventarioServicio.ExtraInsumo> extras = construirExtras(extraInsumoId, extraNombreLibre, extraCantidad);
+
         try {
             for (int i = 0; i < pedidosDelLote.size(); i++) {
                 inventarioServicio.verificarDisponibilidad(pedidosDelLote.get(i), seleccionesDelLote.get(i));
             }
+            inventarioServicio.verificarExtras(extras);
         } catch (InventarioServicio.MaterialInsuficienteException e) {
             redirectAttributes.addFlashAttribute("error", e.getMessage());
             return "redirect:/taller/nuevo";
@@ -197,6 +208,10 @@ public class PedidoControlador {
                 Pedido p = pedidosDelLote.get(i);
                 pedidoRepository.save(p);
                 inventarioServicio.descontarMaterialDe(p, seleccionesDelLote.get(i));
+            }
+            // Los extras se asocian al primer pedido del lote (representa la orden completa).
+            if (!extras.isEmpty() && !pedidosDelLote.isEmpty()) {
+                inventarioServicio.procesarExtras(pedidosDelLote.get(0), extras);
             }
         } catch (InventarioServicio.MaterialInsuficienteException e) {
             redirectAttributes.addFlashAttribute("error", e.getMessage());
@@ -227,6 +242,41 @@ public class PedidoControlador {
         String texto = allParams.get(clave);
         if (texto == null || texto.isBlank() || "auto".equalsIgnoreCase(texto)) return null;
         try { return Integer.parseInt(texto.trim()); } catch (NumberFormatException e) { return null; }
+    }
+
+    /**
+     * Convierte las 3 listas paralelas del formulario (id de catálogo, nombre libre,
+     * cantidad) en una lista de ExtraInsumo, ignorando filas vacías o sin cantidad.
+     */
+    private List<InventarioServicio.ExtraInsumo> construirExtras(
+            List<String> ids, List<String> nombresLibres, List<String> cantidades) {
+        List<InventarioServicio.ExtraInsumo> resultado = new java.util.ArrayList<>();
+        if (ids == null) return resultado;
+        for (int i = 0; i < ids.size(); i++) {
+            String idTexto = ids.get(i);
+            String cantTexto = (cantidades != null && i < cantidades.size()) ? cantidades.get(i) : null;
+            if (cantTexto == null || cantTexto.isBlank()) continue;
+
+            double cantidad;
+            try { cantidad = Double.parseDouble(cantTexto.trim()); } catch (NumberFormatException e) { continue; }
+            if (cantidad <= 0) continue;
+
+            InventarioServicio.ExtraInsumo ex = new InventarioServicio.ExtraInsumo();
+            if (idTexto != null && !idTexto.isBlank() && !"libre".equalsIgnoreCase(idTexto.trim())) {
+                try {
+                    ex.insumoId = Integer.parseInt(idTexto.trim());
+                } catch (NumberFormatException e) {
+                    continue;
+                }
+            } else {
+                String libre = (nombresLibres != null && i < nombresLibres.size()) ? nombresLibres.get(i) : null;
+                if (libre == null || libre.isBlank()) continue;
+                ex.nombreLibre = libre.trim();
+            }
+            ex.cantidad = cantidad;
+            resultado.add(ex);
+        }
+        return resultado;
     }
 
     // ─── Actualizar estado ────────────────────────────────────────────────
@@ -270,6 +320,18 @@ public class PedidoControlador {
         model.addAttribute("rollosDisponibles",  inventarioServicio.getTodosLosRollos());
         model.addAttribute("piezasDisponibles",  inventarioServicio.getTodasLasPiezas());
         model.addAttribute("retazosDisponibles", inventarioServicio.getTodosLosRetazos());
+        model.addAttribute("catalogoInsumos",    insumoRepository.findAllByOrderByNombreAsc());
+
+        // Extras que ya tenía este pedido (registrados con "extra agregado al pedido"
+        // en la fuente), para que se puedan precargar en el formulario de edición.
+        List<Colcones_Persinas.proyecto_express.modelo.MaterialUsado> extrasExistentes =
+                inventarioServicio.getHistorialDePedido(id).stream()
+                        .filter(m -> Boolean.TRUE.equals(m.getSeleccionManual())
+                                && m.getFuenteDescripcion() != null
+                                && m.getFuenteDescripcion().contains("extra agregado al pedido"))
+                        .collect(Collectors.toList());
+        model.addAttribute("extrasExistentes", extrasExistentes);
+
         return "editar_pedido";
     }
 
@@ -297,6 +359,9 @@ public class PedidoControlador {
             @RequestParam(required = false) String pesaManual,
             @RequestParam(required = false) String cuerdaManual,
             @RequestParam(required = false) String pitilloManual,
+            @RequestParam(required = false) List<String> extraInsumoId,
+            @RequestParam(required = false) List<String> extraNombreLibre,
+            @RequestParam(required = false) List<String> extraCantidad,
             RedirectAttributes redirectAttributes) {
 
         Pedido pedido = pedidoRepository.findById(id).orElseThrow();
@@ -332,6 +397,8 @@ public class PedidoControlador {
             seleccion.retazoTelaId = null;
         }
 
+        List<InventarioServicio.ExtraInsumo> extras = construirExtras(extraInsumoId, extraNombreLibre, extraCantidad);
+
         try {
             inventarioServicio.revertirMaterialDe(id);
         } catch (Exception e) {
@@ -342,6 +409,7 @@ public class PedidoControlador {
 
         try {
             inventarioServicio.verificarDisponibilidad(pedido, seleccion);
+            inventarioServicio.verificarExtras(extras);
         } catch (InventarioServicio.MaterialInsuficienteException e) {
             redirectAttributes.addFlashAttribute("error",
                     "No hay suficiente material para la nueva configuración: " + e.getMessage());
@@ -352,6 +420,7 @@ public class PedidoControlador {
 
         try {
             inventarioServicio.descontarMaterialDe(pedido, seleccion);
+            inventarioServicio.procesarExtras(pedido, extras);
         } catch (InventarioServicio.MaterialInsuficienteException e) {
             redirectAttributes.addFlashAttribute("error",
                     "Error al descontar material: " + e.getMessage());
