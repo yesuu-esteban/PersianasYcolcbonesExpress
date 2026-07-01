@@ -1,5 +1,6 @@
 package Colcones_Persinas.proyecto_express.controlador;
 
+import Colcones_Persinas.proyecto_express.modelo.MaterialUsado;
 import Colcones_Persinas.proyecto_express.modelo.Pedido;
 import Colcones_Persinas.proyecto_express.repository.InsumoRepository;
 import Colcones_Persinas.proyecto_express.repository.PedidoRepository;
@@ -16,6 +17,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Controller
@@ -307,7 +309,22 @@ public class PedidoControlador {
         Pedido p = pedidoRepository.findById(id).orElseThrow();
         p.calcularFichaTecnica();
         model.addAttribute("pedido", p);
-        model.addAttribute("historialMaterial", inventarioServicio.getHistorialDePedido(id));
+
+        List<MaterialUsado> historialMaterial = inventarioServicio.getHistorialDePedido(id);
+        model.addAttribute("historialMaterial", historialMaterial);
+
+        // ── Origen real de la tela usada en este pedido (rollo o retazo específico) ──
+        // Se resuelve aquí (y no en la plantilla) para poder mostrar con claridad si
+        // salió de un retazo o de un rollo nuevo, y si fue una selección manual
+        // (elegida a mano, por ejemplo por el jefe) o automática (FIFO del sistema).
+        Optional<MaterialUsado> materialTela = historialMaterial.stream()
+                .filter(m -> "TELA".equals(m.getTipoMaterial()) || "RETAZO".equals(m.getTipoMaterial()))
+                .findFirst();
+
+        model.addAttribute("materialTela", materialTela.orElse(null));
+        model.addAttribute("esRetazo",
+                materialTela.isPresent() && "RETAZO".equals(materialTela.get().getTipoMaterial()));
+
         return "imprimir_pedido";
     }
 
@@ -324,7 +341,7 @@ public class PedidoControlador {
 
         // Extras que ya tenía este pedido (registrados con "extra agregado al pedido"
         // en la fuente), para que se puedan precargar en el formulario de edición.
-        List<Colcones_Persinas.proyecto_express.modelo.MaterialUsado> extrasExistentes =
+        List<MaterialUsado> extrasExistentes =
                 inventarioServicio.getHistorialDePedido(id).stream()
                         .filter(m -> Boolean.TRUE.equals(m.getSeleccionManual())
                                 && m.getFuenteDescripcion() != null

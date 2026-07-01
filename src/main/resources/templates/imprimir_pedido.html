@@ -18,7 +18,7 @@
             padding: 10px 16px;
             margin-bottom: 18px;
             width: 100%;
-            max-width: 740px;
+            max-width: 754px;
             background: #212529;
             color: #fff;
             display: flex;
@@ -45,12 +45,19 @@
             margin-bottom: 1px;
         }
 
+        /* ── Contenedor de etiquetas: 2 columnas para aprovechar la hoja ── */
+        .contenedor-etiquetas {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 14px;
+            max-width: 754px;
+        }
+
         /* ── Etiquetas ──────────────────────────────────────────── */
         .etiqueta {
             border: 2px solid #000;
             border-radius: 6px;
             padding: 12px 16px;
-            margin-bottom: 14px;
             width: 360px;
             page-break-inside: avoid;
         }
@@ -102,7 +109,7 @@
         }
         .etiqueta-ancha {
             width: 100%;
-            max-width: 740px;
+            max-width: 754px;
         }
         .tabla-material {
             border-collapse: collapse;
@@ -117,10 +124,46 @@
         .tabla-material th {
             background: #f0f0f0;
         }
+        .tabla-material tr.fila-tela-rollo { background-color: #eaf2fd; }
+        .tabla-material tr.fila-tela-retazo { background-color: #fff8e1; }
         .sin-material {
             color: #888;
             font-style: italic;
         }
+
+        /* ── Origen real de la tela (rollo o retazo) dentro de "Corte de Tela" ── */
+        .fila-origen-tela {
+            margin-top: 10px;
+            padding: 8px 10px;
+            border-radius: 4px;
+            font-size: 0.88rem;
+        }
+        .fila-origen-tela p { margin-bottom: 3px; }
+        .fila-origen-tela p:last-child { margin-bottom: 0; }
+        .origen-rollo  { background-color: #eaf2fd; border-left: 3px solid #1976d2; }
+        .origen-retazo { background-color: #fff8e1; border-left: 3px solid #f57c00; }
+        .badge-origen {
+            display: inline-block;
+            padding: 1px 8px;
+            border-radius: 4px;
+            font-size: 0.68rem;
+            font-weight: 700;
+            margin-left: 6px;
+            color: #fff;
+            vertical-align: middle;
+        }
+        .badge-rollo-origen  { background-color: #1976d2; }
+        .badge-retazo-origen { background-color: #f57c00; }
+        .badge-seleccion {
+            display: inline-block;
+            padding: 1px 8px;
+            border-radius: 4px;
+            font-size: 0.72rem;
+            font-weight: 700;
+        }
+        .badge-seleccion-manual { background-color: #6f42c1; color: #fff; }
+        .badge-seleccion-auto   { background-color: #6c757d; color: #fff; }
+
         @media print {
             body { padding: 0; }
             .no-print { display: none; }
@@ -144,121 +187,166 @@
         </div>
     </div>
 
-    <!-- ETIQUETA 1: Identificación -->
-    <div class="etiqueta">
-        <h3>📦 Identificación</h3>
-        <p><strong>Distribuidor:</strong>  <span th:text="${pedido.nombreDecorador}"></span></p>
-        <p><strong>Cliente final:</strong> <span th:text="${pedido.nombreClienteFinal}"></span></p>
-        <p><strong>Descripción:</strong>   <span th:text="${pedido.descripcion}"></span></p>
-        <p><strong>Medida final:</strong>
-            <span th:text="${#numbers.formatDecimal(pedido.ancho,1,2) + 'm  x  ' + #numbers.formatDecimal(pedido.altura,1,2) + 'm'}"></span>
-        </p>
-        <p><strong>Sistema:</strong>
-            <span class="badge"
-                  th:classappend="${pedido.usaCabezal} ? 'badge-con' : 'badge-sin'"
-                  th:text="${pedido.tipoSistema}">
-            </span>
-        </p>
-        <p><strong>Mando:</strong>   <span class="valor-mando" th:text="${pedido.ladoControl}"></span></p>
-        <p><strong>Cuerda:</strong>  <span th:text="${pedido.medidaCuerda}"></span></p>
-        <p><strong>Control:</strong> <span th:text="${pedido.tipoControl}"></span></p>
-    </div>
+    <div class="contenedor-etiquetas">
 
-    <!-- ETIQUETA 2: Corte de tela -->
-    <div class="etiqueta">
-        <h3>✂️ Corte de Tela</h3>
-        <p><strong>Color:</strong> <span th:text="${pedido.colorTelaDeseado}"></span></p>
-        <p><strong>Medida corte:</strong>
-            <span th:text="${#numbers.formatDecimal(pedido.corteTelaAncho,1,3)
-                          + ' m  x  '
-                          + #numbers.formatDecimal(pedido.corteTelaAlto,1,3) + ' m'}"></span>
-        </p>
-    </div>
+        <!-- ETIQUETA 1: Identificación -->
+        <div class="etiqueta">
+            <h3>📦 Identificación</h3>
+            <p><strong>Distribuidor:</strong>  <span th:text="${pedido.nombreDecorador}"></span></p>
+            <p><strong>Cliente final:</strong> <span th:text="${pedido.nombreClienteFinal}"></span></p>
+            <p><strong>Descripción:</strong>   <span th:text="${pedido.descripcion}"></span></p>
+            <p><strong>Medida final:</strong>
+                <span th:text="${#numbers.formatDecimal(pedido.ancho,1,2) + 'm  x  ' + #numbers.formatDecimal(pedido.altura,1,2) + 'm'}"></span>
+            </p>
+            <p><strong>Sistema:</strong>
+                <span class="badge"
+                      th:classappend="${pedido.usaCabezal} ? 'badge-con' : 'badge-sin'"
+                      th:text="${pedido.tipoSistema}">
+                </span>
+            </p>
+            <p><strong>Mando:</strong>   <span class="valor-mando" th:text="${pedido.ladoControl}"></span></p>
+            <p><strong>Cuerda:</strong>  <span th:text="${pedido.medidaCuerda}"></span></p>
+            <p><strong>Control:</strong> <span th:text="${pedido.tipoControl}"></span></p>
+        </div>
 
-    <!-- ETIQUETA 3: Perfilería -->
-    <div class="etiqueta">
-        <h3>📐 Perfilería</h3>
-        <p>
-            <strong>Tubo (<span th:text="${pedido.tuboRecomendado}"></span>):</strong>
-            <span th:text="${#numbers.formatDecimal(pedido.corteTuberia,1,3) + ' m'}"></span>
-        </p>
-        <p>
-            <strong>Pesa:</strong>
-            <span th:text="${#numbers.formatDecimal(pedido.corteTuberia,1,3) + ' m'}"></span>
-        </p>
-        <p>
-            <strong>Tope Pesa:</strong>
-            <span>2 unidad(es)</span>
-        </p>
-        <div class="fila-cabezal" th:if="${pedido.usaCabezal}">
-            <strong>Medida cabezal:</strong>
-            <span th:text="${#numbers.formatDecimal(pedido.medidaCabezal,1,3) + ' m'}"></span>
-        </div>
-        <p style="margin-top:6px;">
-            <strong>Soportes:</strong>
-            <span>2 unidad(es)</span>
-        </p>
-        <div class="fila-cabezal" th:if="${pedido.usaCabezal}">
-            <strong>Tapas:</strong>
-            <span>2 unidad(es)</span>
-        </div>
-        <p style="margin-top:6px;">
-            <strong>Tornillos:</strong>
-            <span th:text="${pedido.usaCabezal ? '8 unidad(es)' : '2 unidad(es)'}"></span>
-        </p>
-        <div class="fila-cabezal" th:if="${pedido.usaCabezal}">
-            <strong>T. Perforantes:</strong>
-            <span>4 unidad(es)</span>
-        </div>
-    </div>
+        <!-- ETIQUETA 2: Corte de tela -->
+        <div class="etiqueta">
+            <h3>✂️ Corte de Tela</h3>
+            <p><strong>Color:</strong> <span th:text="${pedido.colorTelaDeseado}"></span></p>
+            <p><strong>Medida corte:</strong>
+                <span th:text="${#numbers.formatDecimal(pedido.corteTelaAncho,1,3)
+                              + ' m  x  '
+                              + #numbers.formatDecimal(pedido.corteTelaAlto,1,3) + ' m'}"></span>
+            </p>
 
-    <!-- ETIQUETA 4: Cliente final -->
-    <div class="etiqueta">
-        <h3>🏠 Cliente</h3>
-        <p><strong>Cliente:</strong>      <span th:text="${pedido.nombreClienteFinal}"></span></p>
-        <p><strong>Descripción:</strong>  <span th:text="${pedido.descripcion}"></span></p>
-        <p><strong>Medida final:</strong>
-            <span th:text="${#numbers.formatDecimal(pedido.ancho,1,2) + 'm  x  ' + #numbers.formatDecimal(pedido.altura,1,2) + 'm'}"></span>
-        </p>
-        <p><strong>Mando:</strong>  <span class="valor-mando" th:text="${pedido.ladoControl}"></span></p>
-        <p><strong>Cuerda:</strong> <span th:text="${pedido.medidaCuerda}"></span></p>
-    </div>
+            <!-- Origen real: de qué rollo o retazo específico toca sacar la tela,
+                 y si esa elección fue manual (por ejemplo, del jefe) o automática. -->
+            <div th:if="${materialTela != null}"
+                 class="fila-origen-tela"
+                 th:classappend="${esRetazo} ? 'origen-retazo' : 'origen-rollo'">
+                <p>
+                    <strong th:text="${esRetazo} ? 'Sacar de (Retazo):' : 'Sacar de (Rollo):'"></strong>
+                    <span th:text="${materialTela.fuenteDescripcion}"></span>
+                    <span class="badge-origen"
+                          th:classappend="${esRetazo} ? 'badge-retazo-origen' : 'badge-rollo-origen'"
+                          th:text="${esRetazo} ? '✂ RETAZO' : '🧵 ROLLO'"></span>
+                </p>
+                <p>
+                    <strong>Selección:</strong>
+                    <span class="badge-seleccion"
+                          th:classappend="${materialTela.seleccionManual} ? 'badge-seleccion-manual' : 'badge-seleccion-auto'"
+                          th:text="${materialTela.seleccionManual} ? '👤 Manual (jefe)' : '🤖 Automática'"></span>
+                </p>
+                <p th:if="${materialTela.metrosSobrantes != null}">
+                    <strong>Sobrante tras el corte:</strong>
+                    <span th:text="${materialTela.metrosSobrantes}"></span>
+                </p>
+            </div>
 
-    <!-- ETIQUETA 5: Material real utilizado -->
-    <div class="etiqueta etiqueta-ancha">
-        <h3>📋 Material utilizado (registro real)</h3>
-        <div style="display:flex; gap:24px; margin-bottom:10px; font-size:0.85rem; background:#f8f9fa; border-radius:4px; padding:6px 10px;">
-            <span><strong>Distribuidor:</strong> <span th:text="${pedido.nombreDecorador}"></span></span>
-            <span><strong>Cliente:</strong> <span th:text="${pedido.nombreClienteFinal}"></span></span>
-            <span><strong>Descripción:</strong> <span th:text="${pedido.descripcion}"></span></span>
+            <!-- Pedidos antiguos sin historial de trazabilidad: se cae al dato teórico -->
+            <div th:if="${materialTela == null}" class="fila-origen-tela origen-rollo">
+                <p th:if="${pedido.rolloTela != null and !#strings.isEmpty(pedido.rolloTela)}">
+                    <strong>Rollo asignado:</strong>
+                    <span th:text="${pedido.rolloTela}"></span>
+                    <span class="badge-origen badge-rollo-origen">🧵 TEÓRICO</span>
+                </p>
+                <p th:unless="${pedido.rolloTela != null and !#strings.isEmpty(pedido.rolloTela)}" class="sin-material">
+                    Sin registro de origen de tela (pedido anterior al sistema de trazabilidad).
+                </p>
+            </div>
         </div>
-        <div th:if="${historialMaterial == null or historialMaterial.isEmpty()}">
-            <p class="sin-material">Sin registros de material (pedido creado antes del sistema de trazabilidad).</p>
+
+        <!-- ETIQUETA 3: Perfilería -->
+        <div class="etiqueta">
+            <h3>📐 Perfilería</h3>
+            <p>
+                <strong>Tubo (<span th:text="${pedido.tuboRecomendado}"></span>):</strong>
+                <span th:text="${#numbers.formatDecimal(pedido.corteTuberia,1,3) + ' m'}"></span>
+            </p>
+            <p>
+                <strong>Pesa:</strong>
+                <span th:text="${#numbers.formatDecimal(pedido.corteTuberia,1,3) + ' m'}"></span>
+            </p>
+            <p>
+                <strong>Tope Pesa:</strong>
+                <span>2 unidad(es)</span>
+            </p>
+            <div class="fila-cabezal" th:if="${pedido.usaCabezal}">
+                <strong>Medida cabezal:</strong>
+                <span th:text="${#numbers.formatDecimal(pedido.medidaCabezal,1,3) + ' m'}"></span>
+            </div>
+            <p style="margin-top:6px;">
+                <strong>Soportes:</strong>
+                <span>2 unidad(es)</span>
+            </p>
+            <div class="fila-cabezal" th:if="${pedido.usaCabezal}">
+                <strong>Tapas:</strong>
+                <span>2 unidad(es)</span>
+            </div>
+            <p style="margin-top:6px;">
+                <strong>Tornillos:</strong>
+                <span th:text="${pedido.usaCabezal ? '8 unidad(es)' : '2 unidad(es)'}"></span>
+            </p>
+            <div class="fila-cabezal" th:if="${pedido.usaCabezal}">
+                <strong>T. Perforantes:</strong>
+                <span>4 unidad(es)</span>
+            </div>
         </div>
-        <table th:if="${historialMaterial != null and !historialMaterial.isEmpty()}" class="tabla-material">
-            <thead>
-                <tr>
-                    <th>Material</th>
-                    <th>Fuente</th>
-                    <th>Cantidad</th>
-                    <th>Unidad</th>
-                    <th>Área (m²)</th>
-                    <th>Sobrante</th>
-                    <th>Selección</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr th:each="m : ${historialMaterial}">
-                    <td th:text="${m.tipoMaterial}"></td>
-                    <td th:text="${m.fuenteDescripcion}"></td>
-                    <td th:text="${m.metrosUsados}"></td>
-                    <td th:text="${m.piezaInsumoId != null ? 'm' : (m.metrosCuadrados != null ? 'm²' : 'und.')}"></td>
-                    <td th:text="${m.metrosCuadrados != null ? m.metrosCuadrados + ' m²' : '—'}"></td>
-                    <td th:text="${m.metrosSobrantes}"></td>
-                    <td th:text="${m.seleccionManual} ? 'Manual' : 'Automática'"></td>
-                </tr>
-            </tbody>
-        </table>
+
+        <!-- ETIQUETA 4: Cliente final -->
+        <div class="etiqueta">
+            <h3>🏠 Cliente</h3>
+            <p><strong>Cliente:</strong>      <span th:text="${pedido.nombreClienteFinal}"></span></p>
+            <p><strong>Descripción:</strong>  <span th:text="${pedido.descripcion}"></span></p>
+            <p><strong>Medida final:</strong>
+                <span th:text="${#numbers.formatDecimal(pedido.ancho,1,2) + 'm  x  ' + #numbers.formatDecimal(pedido.altura,1,2) + 'm'}"></span>
+            </p>
+            <p><strong>Mando:</strong>  <span class="valor-mando" th:text="${pedido.ladoControl}"></span></p>
+            <p><strong>Cuerda:</strong> <span th:text="${pedido.medidaCuerda}"></span></p>
+        </div>
+
+        <!-- ETIQUETA 5: Material real utilizado -->
+        <div class="etiqueta etiqueta-ancha">
+            <h3>📋 Material utilizado (registro real)</h3>
+            <div style="display:flex; gap:24px; margin-bottom:10px; font-size:0.85rem; background:#f8f9fa; border-radius:4px; padding:6px 10px;">
+                <span><strong>Distribuidor:</strong> <span th:text="${pedido.nombreDecorador}"></span></span>
+                <span><strong>Cliente:</strong> <span th:text="${pedido.nombreClienteFinal}"></span></span>
+                <span><strong>Descripción:</strong> <span th:text="${pedido.descripcion}"></span></span>
+            </div>
+            <div th:if="${historialMaterial == null or historialMaterial.isEmpty()}">
+                <p class="sin-material">Sin registros de material (pedido creado antes del sistema de trazabilidad).</p>
+            </div>
+            <table th:if="${historialMaterial != null and !historialMaterial.isEmpty()}" class="tabla-material">
+                <thead>
+                    <tr>
+                        <th>Material</th>
+                        <th>Fuente</th>
+                        <th>Cantidad</th>
+                        <th>Unidad</th>
+                        <th>Área (m²)</th>
+                        <th>Sobrante</th>
+                        <th>Selección</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="m : ${historialMaterial}"
+                        th:classappend="${m.tipoMaterial == 'RETAZO'} ? 'fila-tela-retazo' : (${m.tipoMaterial == 'TELA'} ? 'fila-tela-rollo' : '')">
+                        <td th:text="${m.tipoMaterial}"></td>
+                        <td th:text="${m.fuenteDescripcion}"></td>
+                        <td th:text="${m.metrosUsados}"></td>
+                        <td th:text="${m.piezaInsumoId != null ? 'm' : (m.metrosCuadrados != null ? 'm²' : 'und.')}"></td>
+                        <td th:text="${m.metrosCuadrados != null ? m.metrosCuadrados + ' m²' : '—'}"></td>
+                        <td th:text="${m.metrosSobrantes}"></td>
+                        <td>
+                            <span class="badge-seleccion"
+                                  th:classappend="${m.seleccionManual} ? 'badge-seleccion-manual' : 'badge-seleccion-auto'"
+                                  th:text="${m.seleccionManual} ? 'Manual' : 'Automática'"></span>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
     </div>
 
     <div class="no-print" style="margin-top:10px;">
