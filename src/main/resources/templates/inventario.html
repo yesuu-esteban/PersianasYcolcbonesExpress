@@ -168,31 +168,40 @@
         .lista-alertas {
             list-style: none;
             margin: 0;
-            padding: 10px 14px;
+            padding: 8px 10px;
             display: flex;
             flex-direction: column;
-            gap: 8px;
+            gap: 5px;
         }
         .item-alerta {
             display: flex;
-            align-items: flex-start;
-            gap: 10px;
-            padding: 10px 14px;
-            border-radius: 6px;
-            border-left: 5px solid transparent;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 10px;
+            border-radius: 5px;
+            border-left: 4px solid transparent;
+            font-size: 0.82rem;
         }
         .item-alerta .icono-alerta {
-            font-size: 1.1rem;
-            line-height: 1.4;
+            font-size: 0.95rem;
+            line-height: 1;
+            flex-shrink: 0;
         }
-        .item-alerta .texto-alerta { flex: 1; }
+        .item-alerta .texto-alerta {
+            flex: 1;
+            display: flex;
+            align-items: baseline;
+            flex-wrap: wrap;
+            gap: 4px;
+            min-width: 0;
+        }
         .item-alerta .titulo-alerta {
             font-weight: 700;
-            margin-right: 6px;
+            font-size: 0.83rem;
         }
         .item-alerta .mensaje-alerta {
             color: #495057;
-            font-size: 0.92rem;
+            font-size: 0.79rem;
         }
         .item-alerta.nivel-agotado {
             background-color: #2b2b2b;
@@ -208,11 +217,40 @@
             background-color: #fff3cd;
             border-left-color: #ffc107;
         }
+        .btn-silenciar-alerta {
+            background: none;
+            border: none;
+            opacity: 0.55;
+            font-size: 0.85rem;
+            line-height: 1;
+            cursor: pointer;
+            padding: 3px 6px;
+            border-radius: 4px;
+            flex-shrink: 0;
+            color: inherit;
+        }
+        .btn-silenciar-alerta:hover {
+            opacity: 1;
+            background: rgba(0,0,0,.08);
+        }
+        .item-alerta.nivel-agotado .btn-silenciar-alerta:hover {
+            background: rgba(255,255,255,.15);
+        }
         .sin-alertas {
-            padding: 18px;
+            padding: 14px;
             text-align: center;
             color: #198754;
             font-weight: 600;
+            font-size: 0.9rem;
+        }
+        .alertas-silenciadas-info {
+            font-size: 0.74rem;
+            color: #6c757d;
+            padding: 0 10px 8px;
+            text-align: right;
+        }
+        .alertas-silenciadas-info a {
+            font-size: 0.74rem;
         }
     </style>
 </head>
@@ -232,27 +270,34 @@
                 <div class="d-flex align-items-center gap-2">
                     <span class="chevron">▶</span>
                     <strong>⚠️ Alertas de inventario</strong>
-                    <span th:if="${not #lists.isEmpty(alertasInventario)}"
+                    <span id="badgeConteoAlertas"
+                          th:if="${not #lists.isEmpty(alertasInventario)}"
                           class="badge bg-danger ms-1"
                           th:text="${#lists.size(alertasInventario)}"></span>
                 </div>
                 <span class="text-white-50" style="font-size:0.8rem;">Tela, tubos, pitillo y demás insumos con poco stock</span>
             </div>
             <div class="panel-alertas-body abierto" id="panelAlertasBody">
-                <ul class="lista-alertas" th:if="${not #lists.isEmpty(alertasInventario)}">
+                <ul class="lista-alertas" id="listaAlertas" th:if="${not #lists.isEmpty(alertasInventario)}">
                     <li th:each="a : ${alertasInventario}"
                         class="item-alerta"
-                        th:classappend="${a.nivel.name() == 'AGOTADO'} ? 'nivel-agotado' : (${a.nivel.name() == 'CRITICO'} ? 'nivel-critico' : 'nivel-advertencia')">
+                        th:classappend="${a.nivel.name() == 'AGOTADO'} ? 'nivel-agotado' : (${a.nivel.name() == 'CRITICO'} ? 'nivel-critico' : 'nivel-advertencia')"
+                        th:attr="data-alerta-key=|${a.titulo}::${a.mensaje}|">
                         <span class="icono-alerta"
                               th:text="${a.nivel.name() == 'AGOTADO'} ? '⛔' : (${a.nivel.name() == 'CRITICO'} ? '🔴' : '🟡')"></span>
                         <span class="texto-alerta">
                             <span class="titulo-alerta" th:text="${a.titulo}"></span>
                             <span class="mensaje-alerta" th:text="${a.mensaje}"></span>
                         </span>
+                        <button type="button" class="btn-silenciar-alerta" title="Silenciar esta alerta por 7 días">🔇</button>
                     </li>
                 </ul>
-                <div class="sin-alertas" th:if="${#lists.isEmpty(alertasInventario)}">
+                <div class="sin-alertas" id="sinAlertasMensaje" th:if="${#lists.isEmpty(alertasInventario)}">
                     ✅ Todo el inventario está en niveles saludables. No hay alertas por ahora.
+                </div>
+                <div class="alertas-silenciadas-info" id="alertasSilenciadasInfo" style="display:none;">
+                    <span id="alertasSilenciadasTexto"></span>
+                    <a href="#" id="btnMostrarSilenciadas">mostrar de nuevo</a>
                 </div>
             </div>
         </div>
@@ -382,47 +427,33 @@
                 <div>
                     <button id="btnLimpiarFiltroRetazo" type="button" class="btn btn-sm btn-link filtro-chip-clear">Limpiar filtros</button>
                 </div>
+                <div class="ms-auto d-flex gap-2">
+                    <button id="btnExpandirTodosRetazo" type="button" class="btn btn-sm btn-outline-secondary">Expandir todos</button>
+                    <button id="btnColapsarTodosRetazo" type="button" class="btn btn-sm btn-outline-secondary">Colapsar todos</button>
+                </div>
             </div>
 
             <div id="contadorRetazo" class="contador-resultados pt-2"></div>
 
-            <table class="table table-hover align-middle table-small mb-0">
-                <thead class="table-light">
-                    <tr>
-                        <th>#</th>
-                        <th>Color</th>
-                        <th>Ancho</th>
-                        <th>Alto disponible</th>
-                        <th>Área</th>
-                        <th>Estado</th>
-                        <th>Ingreso</th>
-                        <th>Acciones</th>
-                    </tr>
-                </thead>
-                <tbody id="tbodyRetazos">
+            <!-- Contenedor de grupos de retazos, agrupados por color (igual que los rollos) -->
+            <div id="gruposRetazosContainer"></div>
+
+            <div th:if="${#lists.isEmpty(retazos)}" class="text-center text-muted py-4">
+                No hay retazos registrados. Usa el formulario de arriba para agregar uno.
+            </div>
+
+            <!-- Datos crudos (ocultos); el JS los agrupa visualmente por color -->
+            <table id="datosRetazosRaw" style="display:none;">
+                <tbody>
                     <tr th:each="rt : ${retazos}"
-                        th:classappend="${rt.agotado} ? 'fila-agotado' : 'fila-retazo'"
+                        th:data-id="${rt.id}"
                         th:data-color="${rt.color}"
-                        th:data-agotado="${rt.agotado}">
-                        <td th:text="${rt.id}"></td>
-                        <td th:text="${rt.color}"></td>
-                        <td th:text="${rt.ancho + ' m'}"></td>
-                        <td><strong th:text="${#numbers.formatDecimal(rt.alto, 1, 2) + ' m'}"></strong></td>
-                        <td><span th:text="${#numbers.formatDecimal(rt.area, 1, 2) + ' m²'}"></span></td>
-                        <td>
-                            <span th:if="${rt.agotado}" class="badge bg-danger">Agotado</span>
-                            <span th:unless="${rt.agotado}" class="badge badge-retazo">Disponible</span>
-                        </td>
-                        <td><small th:text="${rt.fechaIngresoFormateada}"></small></td>
-                        <td>
-                            <form th:action="@{/inventario/retazo/eliminar/{id}(id=${rt.id})}" method="post" class="d-inline"
-                                  onsubmit="return confirm('¿Eliminar este retazo?');">
-                                <button type="submit" class="btn btn-sm btn-outline-danger">🗑️</button>
-                            </form>
-                        </td>
-                    </tr>
-                    <tr th:if="${#lists.isEmpty(retazos)}">
-                        <td colspan="8" class="text-center text-muted py-3">No hay retazos registrados. Usa el formulario de arriba para agregar uno.</td>
+                        th:data-ancho="${rt.ancho}"
+                        th:data-alto="${#numbers.formatDecimal(rt.alto, 1, 2)}"
+                        th:data-area="${#numbers.formatDecimal(rt.area, 1, 2)}"
+                        th:data-agotado="${rt.agotado}"
+                        th:data-fecha="${rt.fechaIngresoFormateada}"
+                        th:data-url-eliminar="@{/inventario/retazo/eliminar/{id}(id=${rt.id})}">
                     </tr>
                 </tbody>
             </table>
@@ -521,16 +552,130 @@
     }
 
     // ════════════════════════════════════════════════════════════
-    //  PANEL DE ALERTAS → acordeón simple, abierto por defecto
+    //  PANEL DE ALERTAS → acordeón + silenciar individualmente (7 días)
     // ════════════════════════════════════════════════════════════
     (function initPanelAlertas() {
         const header = document.getElementById('panelAlertasHeader');
         const body = document.getElementById('panelAlertasBody');
-        if (!header || !body) return;
-        header.addEventListener('click', () => {
-            header.classList.toggle('abierto');
-            body.classList.toggle('abierto');
+        if (header && body) {
+            header.addEventListener('click', (e) => {
+                header.classList.toggle('abierto');
+                body.classList.toggle('abierto');
+            });
+        }
+
+        const DIAS_SILENCIO = 7;
+        const MS_SILENCIO = DIAS_SILENCIO * 24 * 60 * 60 * 1000;
+        const PREFIJO_STORAGE = 'inventario_alerta_silenciada_';
+
+        function claveStorage(key) {
+            // Clave de storage a partir de la clave de la alerta (título+mensaje).
+            let hash = 0;
+            for (let i = 0; i < key.length; i++) {
+                hash = ((hash << 5) - hash + key.charCodeAt(i)) | 0;
+            }
+            return PREFIJO_STORAGE + hash;
+        }
+
+        function estaSilenciada(key) {
+            try {
+                const raw = localStorage.getItem(claveStorage(key));
+                if (!raw) return false;
+                const ts = parseInt(raw, 10);
+                if (isNaN(ts)) return false;
+                if (Date.now() - ts >= MS_SILENCIO) {
+                    localStorage.removeItem(claveStorage(key));
+                    return false;
+                }
+                return true;
+            } catch (e) {
+                return false;
+            }
+        }
+
+        function silenciar(key) {
+            try { localStorage.setItem(claveStorage(key), String(Date.now())); } catch (e) {}
+        }
+
+        function quitarTodosLosSilencios(keys) {
+            keys.forEach(k => {
+                try { localStorage.removeItem(claveStorage(k)); } catch (e) {}
+            });
+        }
+
+        const lista = document.getElementById('listaAlertas');
+        const todosLosItems = lista ? Array.from(lista.querySelectorAll('.item-alerta')) : [];
+        const sinAlertasMensaje = document.getElementById('sinAlertasMensaje');
+        const badgeConteo = document.getElementById('badgeConteoAlertas');
+        const infoSilenciadas = document.getElementById('alertasSilenciadasInfo');
+        const textoSilenciadas = document.getElementById('alertasSilenciadasTexto');
+        const btnMostrarSilenciadas = document.getElementById('btnMostrarSilenciadas');
+
+        function actualizarVisibilidad() {
+            let visibles = 0;
+            let silenciadas = 0;
+            const keysSilenciadas = [];
+
+            todosLosItems.forEach(li => {
+                const key = li.dataset.alertaKey || '';
+                if (estaSilenciada(key)) {
+                    li.classList.add('oculto-por-filtro');
+                    silenciadas++;
+                    keysSilenciadas.push(key);
+                } else {
+                    li.classList.remove('oculto-por-filtro');
+                    visibles++;
+                }
+            });
+
+            if (badgeConteo) {
+                if (visibles > 0) {
+                    badgeConteo.textContent = visibles;
+                    badgeConteo.style.display = '';
+                } else {
+                    badgeConteo.style.display = 'none';
+                }
+            }
+
+            if (sinAlertasMensaje) {
+                // Solo mostramos "todo saludable" si además no hay nada silenciado esperando.
+                sinAlertasMensaje.style.display = (visibles === 0 && silenciadas === 0) ? '' : 'none';
+            }
+
+            if (infoSilenciadas) {
+                if (silenciadas > 0) {
+                    infoSilenciadas.style.display = '';
+                    textoSilenciadas.textContent = silenciadas === 1
+                        ? '1 alerta silenciada —'
+                        : `${silenciadas} alertas silenciadas —`;
+                    infoSilenciadas.dataset.keys = JSON.stringify(keysSilenciadas);
+                } else {
+                    infoSilenciadas.style.display = 'none';
+                }
+            }
+        }
+
+        todosLosItems.forEach(li => {
+            const btn = li.querySelector('.btn-silenciar-alerta');
+            if (!btn) return;
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const key = li.dataset.alertaKey || '';
+                silenciar(key);
+                actualizarVisibilidad();
+            });
         });
+
+        if (btnMostrarSilenciadas) {
+            btnMostrarSilenciadas.addEventListener('click', (e) => {
+                e.preventDefault();
+                const keys = JSON.parse(infoSilenciadas.dataset.keys || '[]');
+                quitarTodosLosSilencios(keys);
+                actualizarVisibilidad();
+            });
+        }
+
+        actualizarVisibilidad();
     })();
 
     // ════════════════════════════════════════════════════════════
@@ -694,34 +839,124 @@
     })();
 
     // ════════════════════════════════════════════════════════════
-    //  RETAZOS DE TELA → filtro simple (no se agrupan, ya son únicos por naturaleza)
+    //  RETAZOS DE TELA → agrupados por Color, en acordeón (igual que rollos)
     // ════════════════════════════════════════════════════════════
     (function initRetazos() {
-        const filas = Array.from(document.querySelectorAll('#tbodyRetazos tr[data-color]'));
-        if (filas.length === 0) return;
+        const filas = Array.from(document.querySelectorAll('#datosRetazosRaw tbody tr'));
+        const contenedor = document.getElementById('gruposRetazosContainer');
+        if (!contenedor) return;
+
+        const retazos = filas.map(tr => ({
+            id: tr.dataset.id,
+            color: tr.dataset.color,
+            ancho: tr.dataset.ancho,
+            alto: tr.dataset.alto,
+            area: tr.dataset.area,
+            agotado: tr.dataset.agotado === 'true',
+            fecha: tr.dataset.fecha,
+            urlEliminar: tr.dataset.urlEliminar
+        }));
+
+        if (retazos.length === 0) return;
+
+        // Agrupar por color
+        const grupos = {};
+        retazos.forEach(r => {
+            if (!grupos[r.color]) grupos[r.color] = { color: r.color, items: [] };
+            grupos[r.color].items.push(r);
+        });
+
+        const clavesOrdenadas = Object.keys(grupos).sort((a, b) => grupos[a].color.localeCompare(grupos[b].color));
 
         function render() {
             const fColor = document.getElementById('filtroRetazoColor').value;
             const fEstado = document.getElementById('filtroRetazoEstado').value;
-            let visibles = 0;
 
-            filas.forEach(tr => {
-                const color = tr.dataset.color;
-                const agotado = tr.dataset.agotado === 'true';
-                const estado = agotado ? 'agotado' : 'disponible';
+            contenedor.innerHTML = '';
+            let totalVisible = 0;
+            let grupoCount = 0;
 
-                const pasaColor = !fColor || color === fColor;
-                const pasaEstado = !fEstado || estado === fEstado;
-                const visible = pasaColor && pasaEstado;
+            clavesOrdenadas.forEach(key => {
+                const g = grupos[key];
+                if (fColor && g.color !== fColor) return;
 
-                tr.classList.toggle('oculto-por-filtro', !visible);
-                if (visible) visibles++;
+                const itemsFiltrados = g.items.filter(r => {
+                    const estado = r.agotado ? 'agotado' : 'disponible';
+                    return !fEstado || estado === fEstado;
+                });
+                if (itemsFiltrados.length === 0) return;
+
+                grupoCount++;
+                totalVisible += itemsFiltrados.length;
+
+                const disponibles = itemsFiltrados.filter(r => !r.agotado).length;
+                const agotados = itemsFiltrados.filter(r => r.agotado).length;
+                const areaTotal = itemsFiltrados.reduce((sum, r) => sum + (parseFloat(r.area.replace(',', '.')) || 0), 0);
+
+                const div = document.createElement('div');
+                div.className = 'grupo-rollo';
+
+                const badges = [];
+                if (disponibles) badges.push(`<span class="badge badge-retazo">${disponibles} disponible(s)</span>`);
+                if (agotados) badges.push(`<span class="badge bg-danger">${agotados} agotado(s)</span>`);
+
+                let filasHtml = '';
+                itemsFiltrados.forEach(r => {
+                    const estClase = r.agotado ? 'fila-agotado' : 'fila-retazo';
+                    const estBadge = r.agotado
+                        ? '<span class="badge bg-danger">Agotado</span>'
+                        : '<span class="badge badge-retazo">Disponible</span>';
+
+                    filasHtml += `
+                        <tr class="${estClase}">
+                            <td>#${escapeHtml(r.id)}</td>
+                            <td>${escapeHtml(r.ancho)} m</td>
+                            <td><strong>${escapeHtml(r.alto)} m</strong></td>
+                            <td>${escapeHtml(r.area)} m²</td>
+                            <td>${estBadge}</td>
+                            <td><small>${escapeHtml(r.fecha)}</small></td>
+                            <td>
+                                <form action="${escapeHtml(r.urlEliminar)}" method="post" class="d-inline"
+                                      onsubmit="return confirm('¿Eliminar este retazo?');">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">🗑️</button>
+                                </form>
+                            </td>
+                        </tr>`;
+                });
+
+                div.innerHTML = `
+                    <div class="grupo-header" role="button">
+                        <div class="grupo-titulo">
+                            <span class="chevron">▶</span>
+                            <span class="swatch-color" style="background:${colorSwatch(g.color)};"></span>
+                            <span>${escapeHtml(g.color)}</span>
+                            <span class="grupo-meta">(${itemsFiltrados.length} retazo${itemsFiltrados.length !== 1 ? 's' : ''} · ${areaTotal.toFixed(2)} m² en total)</span>
+                        </div>
+                        <div class="grupo-resumen-badges d-flex gap-1">${badges.join(' ')}</div>
+                    </div>
+                    <div class="grupo-body">
+                        <table class="table table-hover align-middle table-small mb-0">
+                            <thead class="table-light">
+                                <tr><th>#</th><th>Ancho</th><th>Alto disponible</th><th>Área</th><th>Estado</th><th>Ingreso</th><th>Acciones</th></tr>
+                            </thead>
+                            <tbody>${filasHtml}</tbody>
+                        </table>
+                    </div>`;
+
+                const header = div.querySelector('.grupo-header');
+                const body = div.querySelector('.grupo-body');
+                header.addEventListener('click', () => {
+                    header.classList.toggle('abierto');
+                    body.classList.toggle('abierto');
+                });
+
+                contenedor.appendChild(div);
             });
 
             document.getElementById('contadorRetazo').textContent =
-                visibles === 0
+                grupoCount === 0
                     ? 'Ningún retazo coincide con los filtros seleccionados.'
-                    : `Mostrando ${visibles} retazo(s).`;
+                    : `Mostrando ${grupoCount} grupo(s) — ${totalVisible} retazo(s) en total.`;
         }
 
         document.getElementById('filtroRetazoColor').addEventListener('change', render);
@@ -730,6 +965,14 @@
             document.getElementById('filtroRetazoColor').value = '';
             document.getElementById('filtroRetazoEstado').value = '';
             render();
+        });
+        document.getElementById('btnExpandirTodosRetazo').addEventListener('click', () => {
+            document.querySelectorAll('#gruposRetazosContainer .grupo-header').forEach(h => h.classList.add('abierto'));
+            document.querySelectorAll('#gruposRetazosContainer .grupo-body').forEach(b => b.classList.add('abierto'));
+        });
+        document.getElementById('btnColapsarTodosRetazo').addEventListener('click', () => {
+            document.querySelectorAll('#gruposRetazosContainer .grupo-header').forEach(h => h.classList.remove('abierto'));
+            document.querySelectorAll('#gruposRetazosContainer .grupo-body').forEach(b => b.classList.remove('abierto'));
         });
 
         render();
