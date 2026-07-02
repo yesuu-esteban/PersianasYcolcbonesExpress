@@ -1,9 +1,13 @@
 package Colcones_Persinas.proyecto_express.controlador;
 
-import Colcones_Persinas.proyecto_express.modelo.MaterialUsado;
 import Colcones_Persinas.proyecto_express.modelo.Pedido;
+import Colcones_Persinas.proyecto_express.modelo.Insumo;
+import Colcones_Persinas.proyecto_express.modelo.MaterialUsado;
+import Colcones_Persinas.proyecto_express.modelo.PiezaInsumo;
 import Colcones_Persinas.proyecto_express.repository.InsumoRepository;
+import Colcones_Persinas.proyecto_express.repository.MaterialUsadoRepository;
 import Colcones_Persinas.proyecto_express.repository.PedidoRepository;
+import Colcones_Persinas.proyecto_express.repository.PiezaInsumoRepository;
 import Colcones_Persinas.proyecto_express.servicio.InventarioServicio;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Sort;
@@ -17,21 +21,17 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Controller
 @RequestMapping("/taller")
 public class PedidoControlador {
 
-    @Autowired
-    private PedidoRepository pedidoRepository;
-
-    @Autowired
-    private InventarioServicio inventarioServicio;
-
-    @Autowired
-    private InsumoRepository insumoRepository;
+    @Autowired private PedidoRepository pedidoRepository;
+    @Autowired private InventarioServicio inventarioServicio;
+    @Autowired private InsumoRepository insumoRepository;
+    @Autowired private MaterialUsadoRepository materialUsadoRepository;
+    @Autowired private PiezaInsumoRepository piezaInsumoRepository;
 
     // ─── Ver lista de pedidos ─────────────────────────────────────────────
     @GetMapping("/pedidos")
@@ -63,7 +63,6 @@ public class PedidoControlador {
             model.addAttribute("pedidos",      pedidos);
             model.addAttribute("estadoActivo", estadoFiltro);
 
-            // ── Tela real usada por pedido (rollo o retazo específico) ──────
             Map<Integer, String> telaUsadaPorPedido = new HashMap<>();
             for (Pedido p : pedidos) {
                 inventarioServicio.getHistorialDePedido(p.getId()).stream()
@@ -85,13 +84,12 @@ public class PedidoControlador {
     // ─── Formulario nuevo pedido ──────────────────────────────────────────
     @GetMapping("/nuevo")
     public String mostrarFormularioNuevo(Model model) {
-        List<String> coloresDisponibles = Arrays.asList("Blanco", "Gris", "Fawn", "Vainilla");
-        model.addAttribute("pedido",             new Pedido());
-        model.addAttribute("listaColores",        coloresDisponibles);
-        model.addAttribute("rollosDisponibles",   inventarioServicio.getTodosLosRollos());
-        model.addAttribute("piezasDisponibles",   inventarioServicio.getTodasLasPiezas());
-        model.addAttribute("retazosDisponibles",  inventarioServicio.getTodosLosRetazos());
-        model.addAttribute("catalogoInsumos",     insumoRepository.findAllByOrderByNombreAsc());
+        model.addAttribute("pedido",            new Pedido());
+        model.addAttribute("listaColores",       Arrays.asList("Blanco", "Gris", "Fawn", "Vainilla"));
+        model.addAttribute("rollosDisponibles",  inventarioServicio.getTodosLosRollos());
+        model.addAttribute("piezasDisponibles",  inventarioServicio.getTodasLasPiezas());
+        model.addAttribute("retazosDisponibles", inventarioServicio.getTodosLosRetazos());
+        model.addAttribute("catalogoInsumos",    insumoRepository.findAllByOrderByNombreAsc());
         return "nuevo_pedido";
     }
 
@@ -116,7 +114,6 @@ public class PedidoControlador {
         p.setUsaConectorTope(usaConectorTope);
         p.setTuboManualElegido(tipoTuboManual);
         p.calcularFichaTecnica();
-
         return inventarioServicio.previsualizar(p);
     }
 
@@ -133,16 +130,12 @@ public class PedidoControlador {
             @RequestParam List<String> colores,
             @RequestParam List<String> mandos,
             @RequestParam Map<String, String> allParams,
-            @RequestParam(required = false) List<String> extraInsumoId,
-            @RequestParam(required = false) List<String> extraNombreLibre,
-            @RequestParam(required = false) List<String> extraCantidad,
             RedirectAttributes redirectAttributes) {
 
         int n = anchos.size();
         if (cantidades.size() != n || alturas.size() != n ||
             colores.size()   != n || mandos.size()   != n ||
             descripciones.size() != n) {
-
             redirectAttributes.addFlashAttribute("error",
                 "Error al leer el formulario: verifica que todos los campos estén completos.");
             return "redirect:/taller/nuevo";
@@ -193,27 +186,27 @@ public class PedidoControlador {
             }
         }
 
-        List<InventarioServicio.ExtraInsumo> extras = construirExtras(extraInsumoId, extraNombreLibre, extraCantidad);
-
+        // Verificar material estándar antes de guardar
         try {
             for (int i = 0; i < pedidosDelLote.size(); i++) {
                 inventarioServicio.verificarDisponibilidad(pedidosDelLote.get(i), seleccionesDelLote.get(i));
             }
-            inventarioServicio.verificarExtras(extras);
         } catch (InventarioServicio.MaterialInsuficienteException e) {
             redirectAttributes.addFlashAttribute("error", e.getMessage());
             return "redirect:/taller/nuevo";
         }
 
+        // Guardar, descontar material estándar y procesar extras
         try {
             for (int i = 0; i < pedidosDelLote.size(); i++) {
                 Pedido p = pedidosDelLote.get(i);
                 pedidoRepository.save(p);
                 inventarioServicio.descontarMaterialDe(p, seleccionesDelLote.get(i));
-            }
-            // Los extras se asocian al primer pedido del lote (representa la orden completa).
-            if (!extras.isEmpty() && !pedidosDelLote.isEmpty()) {
-                inventarioServicio.procesarExtras(pedidosDelLote.get(0), extras);
+                // Los extras vienen en el allParams global (no por fila de producto),
+                // solo se procesan en el primer pedido del lote para no duplicar
+                if (i == 0) {
+                    procesarExtras(p, allParams);
+                }
             }
         } catch (InventarioServicio.MaterialInsuficienteException e) {
             redirectAttributes.addFlashAttribute("error", e.getMessage());
@@ -225,128 +218,21 @@ public class PedidoControlador {
         return "redirect:/taller/pedidos";
     }
 
-    // ─── Helpers ─────────────────────────────────────────────────────────
-    private boolean leerBooleanoFila(Map<String, String> allParams, String nombreCampo, int indice, boolean porDefecto) {
-        String clave = nombreCampo + "[" + indice + "]";
-        if (!allParams.containsKey(clave)) return porDefecto;
-        return "true".equals(allParams.get(clave));
-    }
-
-    private String leerTextoOpcionalFila(Map<String, String> allParams, String nombreCampo, int indice) {
-        String clave = nombreCampo + "[" + indice + "]";
-        String texto = allParams.get(clave);
-        if (texto == null || texto.isBlank() || "auto".equalsIgnoreCase(texto)) return null;
-        return texto.trim();
-    }
-
-    private Integer leerIdOpcionalFila(Map<String, String> allParams, String nombreCampo, int indice) {
-        String clave = nombreCampo + "[" + indice + "]";
-        String texto = allParams.get(clave);
-        if (texto == null || texto.isBlank() || "auto".equalsIgnoreCase(texto)) return null;
-        try { return Integer.parseInt(texto.trim()); } catch (NumberFormatException e) { return null; }
-    }
-
-    /**
-     * Convierte las 3 listas paralelas del formulario (id de catálogo, nombre libre,
-     * cantidad) en una lista de ExtraInsumo, ignorando filas vacías o sin cantidad.
-     */
-    private List<InventarioServicio.ExtraInsumo> construirExtras(
-            List<String> ids, List<String> nombresLibres, List<String> cantidades) {
-        List<InventarioServicio.ExtraInsumo> resultado = new java.util.ArrayList<>();
-        if (ids == null) return resultado;
-        for (int i = 0; i < ids.size(); i++) {
-            String idTexto = ids.get(i);
-            String cantTexto = (cantidades != null && i < cantidades.size()) ? cantidades.get(i) : null;
-            if (cantTexto == null || cantTexto.isBlank()) continue;
-
-            double cantidad;
-            try { cantidad = Double.parseDouble(cantTexto.trim()); } catch (NumberFormatException e) { continue; }
-            if (cantidad <= 0) continue;
-
-            InventarioServicio.ExtraInsumo ex = new InventarioServicio.ExtraInsumo();
-            if (idTexto != null && !idTexto.isBlank() && !"libre".equalsIgnoreCase(idTexto.trim())) {
-                try {
-                    ex.insumoId = Integer.parseInt(idTexto.trim());
-                } catch (NumberFormatException e) {
-                    continue;
-                }
-            } else {
-                String libre = (nombresLibres != null && i < nombresLibres.size()) ? nombresLibres.get(i) : null;
-                if (libre == null || libre.isBlank()) continue;
-                ex.nombreLibre = libre.trim();
-            }
-            ex.cantidad = cantidad;
-            resultado.add(ex);
-        }
-        return resultado;
-    }
-
-    // ─── Actualizar estado ────────────────────────────────────────────────
-    @PostMapping("/actualizar/{id}/{accion}")
-    public String actualizarEstado(
-            @PathVariable("id") int id,
-            @PathVariable("accion") String accion,
-            @RequestParam(required = false, defaultValue = "Todos") String estadoFiltro,
-            RedirectAttributes redirectAttributes) {
-        Pedido pedido = pedidoRepository.findById(id).orElseThrow();
-        switch (accion.toLowerCase()) {
-            case "tela": pedido.setTelaCortada(!pedido.getTelaCortada()); break;
-            case "perfileria": pedido.setPerfileriaCortada(!pedido.getPerfileriaCortada()); break;
-            case "ensamblado":
-                if (Boolean.TRUE.equals(pedido.getTelaCortada()) && Boolean.TRUE.equals(pedido.getPerfileriaCortada())) {
-                    pedido.setEnsamblado(!pedido.getEnsamblado());
-                } else { redirectAttributes.addFlashAttribute("error", "¡Error! Primero debes cortar la tela y los perfiles."); }
-                break;
-        }
-        pedido.calcularEstadoGeneral();
-        pedidoRepository.save(pedido);
-        return "redirect:/taller/pedidos?estado=" + estadoFiltro;
-    }
-
-    // ─── Imprimir ─────────────────────────────────────────────────────────
-    @GetMapping("/imprimir/{id}")
-    public String imprimirPedido(@PathVariable("id") int id, Model model) {
-        Pedido p = pedidoRepository.findById(id).orElseThrow();
-        p.calcularFichaTecnica();
-        model.addAttribute("pedido", p);
-
-        List<MaterialUsado> historialMaterial = inventarioServicio.getHistorialDePedido(id);
-        model.addAttribute("historialMaterial", historialMaterial);
-
-        // ── Origen real de la tela usada en este pedido (rollo o retazo específico) ──
-        // Se resuelve aquí (y no en la plantilla) para poder mostrar con claridad si
-        // salió de un retazo o de un rollo nuevo, y si fue una selección manual
-        // (elegida a mano, por ejemplo por el jefe) o automática (FIFO del sistema).
-        Optional<MaterialUsado> materialTela = historialMaterial.stream()
-                .filter(m -> "TELA".equals(m.getTipoMaterial()) || "RETAZO".equals(m.getTipoMaterial()))
-                .findFirst();
-
-        model.addAttribute("materialTela", materialTela.orElse(null));
-        model.addAttribute("esRetazo",
-                materialTela.isPresent() && "RETAZO".equals(materialTela.get().getTipoMaterial()));
-
-        return "imprimir_pedido";
-    }
-
     // ─── Formulario editar ────────────────────────────────────────────────
     @GetMapping("/editar/{id}")
     public String mostrarFormularioEditar(@PathVariable("id") int id, Model model) {
         Pedido pedido = pedidoRepository.findById(id).orElseThrow();
-        model.addAttribute("pedido", pedido);
-        model.addAttribute("listaColores", Arrays.asList("Blanco", "Gris", "Fawn", "Vainilla"));
+        model.addAttribute("pedido",            pedido);
+        model.addAttribute("listaColores",       Arrays.asList("Blanco", "Gris", "Fawn", "Vainilla"));
         model.addAttribute("rollosDisponibles",  inventarioServicio.getTodosLosRollos());
         model.addAttribute("piezasDisponibles",  inventarioServicio.getTodasLasPiezas());
         model.addAttribute("retazosDisponibles", inventarioServicio.getTodosLosRetazos());
         model.addAttribute("catalogoInsumos",    insumoRepository.findAllByOrderByNombreAsc());
 
-        // Extras que ya tenía este pedido (registrados con "extra agregado al pedido"
-        // en la fuente), para que se puedan precargar en el formulario de edición.
-        List<MaterialUsado> extrasExistentes =
-                inventarioServicio.getHistorialDePedido(id).stream()
-                        .filter(m -> Boolean.TRUE.equals(m.getSeleccionManual())
-                                && m.getFuenteDescripcion() != null
-                                && m.getFuenteDescripcion().contains("extra agregado al pedido"))
-                        .collect(Collectors.toList());
+        // Extras ya registrados en este pedido (para mostrarlos pre-cargados)
+        List<MaterialUsado> extrasExistentes = inventarioServicio.getHistorialDePedido(id).stream()
+                .filter(m -> "EXTRA".equals(m.getTipoMaterial()))
+                .collect(Collectors.toList());
         model.addAttribute("extrasExistentes", extrasExistentes);
 
         return "editar_pedido";
@@ -376,9 +262,7 @@ public class PedidoControlador {
             @RequestParam(required = false) String pesaManual,
             @RequestParam(required = false) String cuerdaManual,
             @RequestParam(required = false) String pitilloManual,
-            @RequestParam(required = false) List<String> extraInsumoId,
-            @RequestParam(required = false) List<String> extraNombreLibre,
-            @RequestParam(required = false) List<String> extraCantidad,
+            @RequestParam Map<String, String> allParams,
             RedirectAttributes redirectAttributes) {
 
         Pedido pedido = pedidoRepository.findById(id).orElseThrow();
@@ -414,8 +298,7 @@ public class PedidoControlador {
             seleccion.retazoTelaId = null;
         }
 
-        List<InventarioServicio.ExtraInsumo> extras = construirExtras(extraInsumoId, extraNombreLibre, extraCantidad);
-
+        // Revertir TODO (incluyendo extras anteriores que hayan descontado stock)
         try {
             inventarioServicio.revertirMaterialDe(id);
         } catch (Exception e) {
@@ -426,7 +309,6 @@ public class PedidoControlador {
 
         try {
             inventarioServicio.verificarDisponibilidad(pedido, seleccion);
-            inventarioServicio.verificarExtras(extras);
         } catch (InventarioServicio.MaterialInsuficienteException e) {
             redirectAttributes.addFlashAttribute("error",
                     "No hay suficiente material para la nueva configuración: " + e.getMessage());
@@ -437,15 +319,130 @@ public class PedidoControlador {
 
         try {
             inventarioServicio.descontarMaterialDe(pedido, seleccion);
-            inventarioServicio.procesarExtras(pedido, extras);
         } catch (InventarioServicio.MaterialInsuficienteException e) {
             redirectAttributes.addFlashAttribute("error",
                     "Error al descontar material: " + e.getMessage());
             return "redirect:/taller/editar/" + id;
         }
 
+        // Procesar extras nuevos
+        procesarExtras(pedido, allParams);
+
         redirectAttributes.addFlashAttribute("mensaje", "Pedido actualizado. Inventario reajustado correctamente.");
         return "redirect:/taller/pedidos";
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // INSUMOS EXTRAS
+    // ═══════════════════════════════════════════════════════════════
+
+    /**
+     * Procesa los insumos extras opcionales que el jefe agregó al pedido.
+     *
+     * Cada extra llega como grupo de 4 parámetros con índice [i]:
+     *   extraInsumoId[i]     → id del insumo del catálogo, o "libre" si es nombre libre
+     *   extraNombreLibre[i]  → nombre escrito a mano (solo si extraInsumoId = "libre")
+     *   extraCantidad[i]     → cantidad numérica
+     *   extraUnidad[i]       → "und" o "m"
+     *
+     * Si viene del catálogo:
+     *   - Insumo por UNIDAD → descuenta stockUnidades real
+     *   - Insumo por MEDIDA → descuenta de la primera pieza disponible (ciclo hasta cubrir)
+     *
+     * Si es nombre libre → solo registra el gasto en MaterialUsado, sin tocar inventario.
+     *
+     * En todos los casos queda un registro MaterialUsado con tipoMaterial = "EXTRA".
+     */
+    private void procesarExtras(Pedido pedido, Map<String, String> allParams) {
+        int i = 0;
+        while (allParams.containsKey("extraCantidad[" + i + "]")) {
+            String cantidadStr  = allParams.getOrDefault("extraCantidad["    + i + "]", "").trim();
+            String insumoIdStr  = allParams.getOrDefault("extraInsumoId["    + i + "]", "").trim();
+            String nombreLibre  = allParams.getOrDefault("extraNombreLibre[" + i + "]", "").trim();
+            String unidad       = allParams.getOrDefault("extraUnidad["       + i + "]", "und").trim();
+            i++;
+
+            if (cantidadStr.isEmpty()) continue;
+            double cantidad;
+            try { cantidad = Double.parseDouble(cantidadStr); } catch (NumberFormatException e) { continue; }
+            if (cantidad <= 0) continue;
+
+            MaterialUsado registro = new MaterialUsado();
+            registro.setPedidoId(pedido.getId());
+            registro.setTipoMaterial("EXTRA");
+            registro.setMetrosUsados(cantidad);
+            registro.setMetrosSobrantes(0);
+            registro.setSeleccionManual(true);
+
+            if (!insumoIdStr.isEmpty() && !insumoIdStr.equals("libre")) {
+                // ── Insumo del catálogo ───────────────────────────────────
+                try {
+                    int insumoId = Integer.parseInt(insumoIdStr);
+                    Insumo insumo = insumoRepository.findById(insumoId).orElse(null);
+
+                    if (insumo != null) {
+                        if (Boolean.TRUE.equals(insumo.getTieneMedida())) {
+                            // Descontar de piezas disponibles (de menor a mayor sobrante)
+                            List<PiezaInsumo> piezas = piezaInsumoRepository
+                                    .findByInsumoIdAndLargoRestanteGreaterThanOrderByLargoRestanteAsc(insumoId, 0.0);
+                            double restante = cantidad;
+                            for (PiezaInsumo pieza : piezas) {
+                                if (restante <= 0.001) break;
+                                double aUsar = Math.min(pieza.getLargoRestante(), restante);
+                                pieza.setLargoRestante(
+                                        Math.round((pieza.getLargoRestante() - aUsar) * 1000.0) / 1000.0);
+                                piezaInsumoRepository.save(pieza);
+                                restante = Math.round((restante - aUsar) * 1000.0) / 1000.0;
+                            }
+                            registro.setFuenteDescripcion(insumo.getNombre()
+                                    + " [extra] (" + cantidad + " " + unidad + ")");
+                        } else {
+                            // Descontar unidades
+                            int cantInt = (int) Math.round(cantidad);
+                            int disponible = insumo.getStockUnidades() != null ? insumo.getStockUnidades() : 0;
+                            int nuevoStock = Math.max(0, disponible - cantInt);
+                            insumo.setStockUnidades(nuevoStock);
+                            insumoRepository.save(insumo);
+                            registro.setMetrosSobrantes(nuevoStock);
+                            registro.setFuenteDescripcion(insumo.getNombre()
+                                    + " [extra] (" + cantInt + " und.)");
+                        }
+                    } else {
+                        registro.setFuenteDescripcion("Insumo #" + insumoIdStr + " [extra, no encontrado]");
+                    }
+                } catch (NumberFormatException e) {
+                    registro.setFuenteDescripcion(insumoIdStr + " [extra]");
+                }
+            } else {
+                // ── Nombre libre — sin descuento de inventario ────────────
+                String desc = nombreLibre.isEmpty() ? "Insumo adicional" : nombreLibre;
+                registro.setFuenteDescripcion(desc + " [extra libre, sin descuento] ("
+                        + cantidad + " " + unidad + ")");
+            }
+
+            materialUsadoRepository.save(registro);
+        }
+    }
+
+    // ─── Helpers de lectura de formulario ────────────────────────────────
+    private boolean leerBooleanoFila(Map<String, String> allParams, String nombreCampo, int indice, boolean porDefecto) {
+        String clave = nombreCampo + "[" + indice + "]";
+        if (!allParams.containsKey(clave)) return porDefecto;
+        return "true".equals(allParams.get(clave));
+    }
+
+    private String leerTextoOpcionalFila(Map<String, String> allParams, String nombreCampo, int indice) {
+        String clave = nombreCampo + "[" + indice + "]";
+        String texto = allParams.get(clave);
+        if (texto == null || texto.isBlank() || "auto".equalsIgnoreCase(texto)) return null;
+        return texto.trim();
+    }
+
+    private Integer leerIdOpcionalFila(Map<String, String> allParams, String nombreCampo, int indice) {
+        String clave = nombreCampo + "[" + indice + "]";
+        String texto = allParams.get(clave);
+        if (texto == null || texto.isBlank() || "auto".equalsIgnoreCase(texto)) return null;
+        try { return Integer.parseInt(texto.trim()); } catch (NumberFormatException e) { return null; }
     }
 
     private Integer parsearIdManual(String valor) {
@@ -453,17 +450,96 @@ public class PedidoControlador {
         try { return Integer.parseInt(valor.trim()); } catch (NumberFormatException e) { return null; }
     }
 
+    // ─── Actualizar estado ────────────────────────────────────────────────
+    @PostMapping("/actualizar/{id}/{accion}")
+    public String actualizarEstado(
+            @PathVariable("id") int id,
+            @PathVariable("accion") String accion,
+            @RequestParam(required = false, defaultValue = "Todos") String estadoFiltro,
+            RedirectAttributes redirectAttributes) {
+        Pedido pedido = pedidoRepository.findById(id).orElseThrow();
+        switch (accion.toLowerCase()) {
+            case "tela":      pedido.setTelaCortada(!pedido.getTelaCortada()); break;
+            case "perfileria": pedido.setPerfileriaCortada(!pedido.getPerfileriaCortada()); break;
+            case "ensamblado":
+                if (Boolean.TRUE.equals(pedido.getTelaCortada()) && Boolean.TRUE.equals(pedido.getPerfileriaCortada())) {
+                    pedido.setEnsamblado(!pedido.getEnsamblado());
+                } else {
+                    redirectAttributes.addFlashAttribute("error", "¡Error! Primero debes cortar la tela y los perfiles.");
+                }
+                break;
+        }
+        pedido.calcularEstadoGeneral();
+        pedidoRepository.save(pedido);
+        return "redirect:/taller/pedidos?estado=" + estadoFiltro;
+    }
+
+    // ─── Imprimir ─────────────────────────────────────────────────────────
+    @GetMapping("/imprimir/{id}")
+    public String imprimirPedido(@PathVariable("id") int id, Model model) {
+        Pedido p = pedidoRepository.findById(id).orElseThrow();
+        p.calcularFichaTecnica();
+        model.addAttribute("pedido", p);
+
+        List<MaterialUsado> historial = inventarioServicio.getHistorialDePedido(id);
+        model.addAttribute("historialMaterial", historial);
+
+        // ── Tela: primer registro TELA o RETAZO ──────────────────
+        MaterialUsado materialTela = historial.stream()
+                .filter(m -> "TELA".equals(m.getTipoMaterial()) || "RETAZO".equals(m.getTipoMaterial()))
+                .findFirst().orElse(null);
+        model.addAttribute("materialTela", materialTela);
+        model.addAttribute("esRetazo", materialTela != null && "RETAZO".equals(materialTela.getTipoMaterial()));
+
+        // ── Tubo: registro cuya fuente empieza por "Tubo" ────────
+        String nombreTubo = "Tubo " + p.getTuboRecomendado();
+        MaterialUsado materialTubo = historial.stream()
+                .filter(m -> m.getFuenteDescripcion() != null
+                        && m.getFuenteDescripcion().toLowerCase().startsWith("tubo"))
+                .findFirst().orElse(null);
+        model.addAttribute("materialTubo", materialTubo);
+
+        // ── Pesa ─────────────────────────────────────────────────
+        MaterialUsado materialPesa = historial.stream()
+                .filter(m -> m.getFuenteDescripcion() != null
+                        && m.getFuenteDescripcion().toLowerCase().startsWith("pesa"))
+                .findFirst().orElse(null);
+        model.addAttribute("materialPesa", materialPesa);
+
+        // ── Cabezal ───────────────────────────────────────────────
+        MaterialUsado materialCabezal = historial.stream()
+                .filter(m -> m.getFuenteDescripcion() != null
+                        && m.getFuenteDescripcion().toLowerCase().startsWith("cabezal"))
+                .findFirst().orElse(null);
+        model.addAttribute("materialCabezal", materialCabezal);
+
+        // ── Extras ───────────────────────────────────────────────
+        List<MaterialUsado> extrasHistorial = historial.stream()
+                .filter(m -> "EXTRA".equals(m.getTipoMaterial()))
+                .collect(Collectors.toList());
+        model.addAttribute("extrasHistorial", extrasHistorial);
+
+        return "imprimir_pedido";
+    }
+
     // ─── Eliminar pedido ──────────────────────────────────────────────────
     @PostMapping("/eliminar/{id}")
     public String eliminarPedido(@PathVariable("id") int id, RedirectAttributes redirectAttributes) {
-        try { pedidoRepository.deleteById(id); redirectAttributes.addFlashAttribute("mensaje", "Pedido eliminado correctamente."); }
-        catch (Exception e) { redirectAttributes.addFlashAttribute("error", "No se pudo eliminar el pedido: " + e.getMessage()); }
+        try {
+            pedidoRepository.deleteById(id);
+            redirectAttributes.addFlashAttribute("mensaje", "Pedido eliminado correctamente.");
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("error", "No se pudo eliminar el pedido: " + e.getMessage());
+        }
         return "redirect:/taller/pedidos";
     }
 
     // ─── Reporte de materiales ────────────────────────────────────────────
     @GetMapping("/reporte-materiales")
-    public String reporteMateriales(@RequestParam(required = false) String desde, @RequestParam(required = false) String hasta, Model model) {
+    public String reporteMateriales(
+            @RequestParam(required = false) String desde,
+            @RequestParam(required = false) String hasta,
+            Model model) {
         LocalDateTime fechaDesde = (desde != null && !desde.isBlank()) ? LocalDateTime.parse(desde + "T00:00:00") : null;
         LocalDateTime fechaHasta = (hasta != null && !hasta.isBlank()) ? LocalDateTime.parse(hasta + "T23:59:59") : null;
         model.addAttribute("resumen", inventarioServicio.obtenerResumenConsumo(fechaDesde, fechaHasta));

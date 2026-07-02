@@ -7,351 +7,304 @@
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            padding: 16px;
+            padding: 10px 14px;
             background: #fff;
+            font-size: 0.82rem;
         }
 
-        /* ── Encabezado del reporte ─────────────────────────────── */
+        /* ── Encabezado ── */
         .encabezado-reporte {
-            border: 2px solid #212529;
-            border-radius: 6px;
-            padding: 10px 16px;
-            margin-bottom: 18px;
-            width: 100%;
-            max-width: 754px;
             background: #212529;
             color: #fff;
+            border-radius: 5px;
+            padding: 7px 14px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            gap: 12px;
+            margin-bottom: 10px;
         }
-        .encabezado-reporte .titulo {
-            font-size: 1rem;
-            font-weight: 700;
-            letter-spacing: 0.03em;
-        }
-        .encabezado-reporte .partes {
-            display: flex;
-            gap: 24px;
-            font-size: 0.88rem;
-        }
+        .encabezado-reporte .titulo { font-size: 0.95rem; font-weight: 700; }
+        .encabezado-reporte .partes { display: flex; gap: 20px; font-size: 0.78rem; }
         .encabezado-reporte .partes span strong {
-            display: block;
-            font-size: 0.72rem;
-            text-transform: uppercase;
-            letter-spacing: 0.06em;
-            opacity: 0.7;
-            margin-bottom: 1px;
+            display: block; font-size: 0.68rem; text-transform: uppercase;
+            letter-spacing: 0.05em; opacity: 0.65; margin-bottom: 1px;
         }
 
-        /* ── Contenedor de etiquetas: 2 columnas para aprovechar la hoja ── */
-        .contenedor-etiquetas {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 14px;
-            max-width: 754px;
+        /* ── Cuadrícula de etiquetas: 2 col ── */
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 8px;
         }
-
-        /* ── Etiquetas ──────────────────────────────────────────── */
         .etiqueta {
-            border: 2px solid #000;
-            border-radius: 6px;
-            padding: 12px 16px;
-            width: 360px;
+            border: 1.5px solid #333;
+            border-radius: 5px;
+            padding: 8px 11px;
             page-break-inside: avoid;
         }
         .etiqueta h3 {
-            font-size: 1rem;
+            font-size: 0.82rem;
             font-weight: 700;
-            border-bottom: 2px solid #333;
-            padding-bottom: 6px;
-            margin-bottom: 10px;
-            display: flex;
-            align-items: center;
-            gap: 6px;
+            border-bottom: 1.5px solid #333;
+            padding-bottom: 4px;
+            margin-bottom: 7px;
         }
-        .etiqueta p {
-            font-size: 0.92rem;
-            margin-bottom: 4px;
-            line-height: 1.4;
+        .etiqueta p { margin-bottom: 3px; line-height: 1.35; }
+        .etiqueta p strong { display: inline-block; min-width: 108px; }
+
+        /* Etiqueta ancha (tabla material) */
+        .etiqueta-full {
+            grid-column: 1 / -1;
         }
-        .etiqueta p strong {
-            display: inline-block;
-            min-width: 120px;
-        }
+
+        /* ── Badges ── */
         .badge {
-            display: inline-block;
-            padding: 2px 10px;
-            border-radius: 4px;
-            font-size: 0.78rem;
-            font-weight: 700;
-            color: #fff;
+            display: inline-block; padding: 1px 8px;
+            border-radius: 4px; font-size: 0.70rem; font-weight: 700; color: #fff;
         }
-        .badge-con { background-color: #198754; }
-        .badge-sin { background-color: #212529; }
-        .valor-mando {
-            font-size: 1.1rem;
-            font-weight: 700;
-            color: #c0392b;
-        }
+        .badge-con   { background: #198754; }
+        .badge-sin   { background: #212529; }
+        .valor-mando { font-size: 1rem; font-weight: 700; color: #c0392b; }
+
         .fila-cabezal {
-            background-color: #e8f5e9;
+            background: #e8f5e9;
             border-left: 3px solid #198754;
             border-radius: 3px;
-            padding: 4px 8px;
-            margin-top: 6px;
-            font-size: 0.92rem;
+            padding: 3px 7px;
+            margin-top: 4px;
+            font-size: 0.80rem;
         }
-        .fila-cabezal strong {
-            display: inline-block;
-            min-width: 120px;
-        }
-        .etiqueta-ancha {
-            width: 100%;
-            max-width: 754px;
-        }
-        .tabla-material {
-            border-collapse: collapse;
-            width: 100%;
-            font-size: 0.85rem;
-        }
-        .tabla-material th, .tabla-material td {
-            border: 1px solid #ccc;
-            padding: 5px 8px;
-            text-align: left;
-        }
-        .tabla-material th {
-            background: #f0f0f0;
-        }
-        .tabla-material tr.fila-tela-rollo { background-color: #eaf2fd; }
-        .tabla-material tr.fila-tela-retazo { background-color: #fff8e1; }
-        .sin-material {
-            color: #888;
-            font-style: italic;
-        }
+        .fila-cabezal strong { display: inline-block; min-width: 108px; }
 
-        /* ── Origen real de la tela (rollo o retazo) dentro de "Corte de Tela" ── */
+        /* Origen tela */
         .fila-origen-tela {
-            margin-top: 10px;
-            padding: 8px 10px;
-            border-radius: 4px;
-            font-size: 0.88rem;
+            margin-top: 7px; padding: 6px 9px;
+            border-radius: 4px; font-size: 0.78rem;
         }
-        .fila-origen-tela p { margin-bottom: 3px; }
-        .fila-origen-tela p:last-child { margin-bottom: 0; }
-        .origen-rollo  { background-color: #eaf2fd; border-left: 3px solid #1976d2; }
-        .origen-retazo { background-color: #fff8e1; border-left: 3px solid #f57c00; }
+        .fila-origen-tela p { margin-bottom: 2px; }
+        .origen-rollo  { background: #eaf2fd; border-left: 3px solid #1976d2; }
+        .origen-retazo { background: #fff8e1; border-left: 3px solid #f57c00; }
         .badge-origen {
-            display: inline-block;
-            padding: 1px 8px;
-            border-radius: 4px;
-            font-size: 0.68rem;
-            font-weight: 700;
-            margin-left: 6px;
-            color: #fff;
-            vertical-align: middle;
+            display: inline-block; padding: 1px 6px; border-radius: 4px;
+            font-size: 0.65rem; font-weight: 700; margin-left: 5px; color: #fff;
         }
-        .badge-rollo-origen  { background-color: #1976d2; }
-        .badge-retazo-origen { background-color: #f57c00; }
+        .badge-rollo-origen  { background: #1976d2; }
+        .badge-retazo-origen { background: #f57c00; }
         .badge-seleccion {
-            display: inline-block;
-            padding: 1px 8px;
-            border-radius: 4px;
-            font-size: 0.72rem;
-            font-weight: 700;
+            display: inline-block; padding: 1px 7px; border-radius: 4px;
+            font-size: 0.70rem; font-weight: 700;
         }
-        .badge-seleccion-manual { background-color: #6f42c1; color: #fff; }
-        .badge-seleccion-auto   { background-color: #6c757d; color: #fff; }
+        .badge-seleccion-manual { background: #6f42c1; color: #fff; }
+        .badge-seleccion-auto   { background: #6c757d; color: #fff; }
+
+        /* Tabla de material */
+        .tabla-material { border-collapse: collapse; width: 100%; font-size: 0.75rem; }
+        .tabla-material th, .tabla-material td {
+            border: 1px solid #ccc; padding: 3px 6px; text-align: left;
+        }
+        .tabla-material th { background: #f0f0f0; font-size: 0.72rem; }
+        .tabla-material tr.fila-tela-rollo  { background: #eaf2fd; }
+        .tabla-material tr.fila-tela-retazo { background: #fff8e1; }
+        .tabla-material tr.fila-extra       { background: #f0f7ff; }
+        .sin-material { color: #888; font-style: italic; font-size: 0.78rem; }
+
+        /* Resumen de material específico (tubo y pesa reales) */
+        .fila-pieza {
+            background: #f8f9fa;
+            border-left: 3px solid #6c757d;
+            border-radius: 3px;
+            padding: 3px 7px;
+            margin-top: 4px;
+            font-size: 0.78rem;
+        }
+        .fila-pieza strong { display: inline-block; min-width: 108px; }
 
         @media print {
-            body { padding: 0; }
+            body { padding: 6px 10px; }
             .no-print { display: none; }
+            @page { size: letter portrait; margin: 8mm; }
         }
     </style>
 </head>
 <body>
 
-    <!-- ── Encabezado del reporte ────────────────────────────────── -->
+    <!-- Encabezado -->
     <div class="encabezado-reporte no-print-hide">
         <span class="titulo">📄 Orden de Fabricación</span>
         <div class="partes">
-            <span>
-                <strong>Distribuidor</strong>
-                <span th:text="${pedido.nombreDecorador}"></span>
-            </span>
-            <span>
-                <strong>Cliente final</strong>
-                <span th:text="${pedido.nombreClienteFinal}"></span>
-            </span>
+            <span><strong>Distribuidor</strong><span th:text="${pedido.nombreDecorador}"></span></span>
+            <span><strong>Cliente final</strong><span th:text="${pedido.nombreClienteFinal}"></span></span>
         </div>
     </div>
 
-    <div class="contenedor-etiquetas">
+    <div class="grid">
 
-        <!-- ETIQUETA 1: Identificación -->
+        <!-- 1: Identificación -->
         <div class="etiqueta">
             <h3>📦 Identificación</h3>
-            <p><strong>Distribuidor:</strong>  <span th:text="${pedido.nombreDecorador}"></span></p>
-            <p><strong>Cliente final:</strong> <span th:text="${pedido.nombreClienteFinal}"></span></p>
-            <p><strong>Descripción:</strong>   <span th:text="${pedido.descripcion}"></span></p>
+            <p><strong>Distribuidor:</strong> <span th:text="${pedido.nombreDecorador}"></span></p>
+            <p><strong>Cliente:</strong>      <span th:text="${pedido.nombreClienteFinal}"></span></p>
+            <p><strong>Descripción:</strong>  <span th:text="${pedido.descripcion}"></span></p>
             <p><strong>Medida final:</strong>
-                <span th:text="${#numbers.formatDecimal(pedido.ancho,1,2) + 'm  x  ' + #numbers.formatDecimal(pedido.altura,1,2) + 'm'}"></span>
+                <span th:text="${#numbers.formatDecimal(pedido.ancho,1,2)+'m × '+#numbers.formatDecimal(pedido.altura,1,2)+'m'}"></span>
             </p>
             <p><strong>Sistema:</strong>
-                <span class="badge"
-                      th:classappend="${pedido.usaCabezal} ? 'badge-con' : 'badge-sin'"
-                      th:text="${pedido.tipoSistema}">
-                </span>
+                <span class="badge" th:classappend="${pedido.usaCabezal}?'badge-con':'badge-sin'"
+                      th:text="${pedido.tipoSistema}"></span>
             </p>
             <p><strong>Mando:</strong>   <span class="valor-mando" th:text="${pedido.ladoControl}"></span></p>
             <p><strong>Cuerda:</strong>  <span th:text="${pedido.medidaCuerda}"></span></p>
             <p><strong>Control:</strong> <span th:text="${pedido.tipoControl}"></span></p>
         </div>
 
-        <!-- ETIQUETA 2: Corte de tela -->
+        <!-- 2: Corte de tela -->
         <div class="etiqueta">
             <h3>✂️ Corte de Tela</h3>
             <p><strong>Color:</strong> <span th:text="${pedido.colorTelaDeseado}"></span></p>
             <p><strong>Medida corte:</strong>
-                <span th:text="${#numbers.formatDecimal(pedido.corteTelaAncho,1,3)
-                              + ' m  x  '
-                              + #numbers.formatDecimal(pedido.corteTelaAlto,1,3) + ' m'}"></span>
+                <span th:text="${#numbers.formatDecimal(pedido.corteTelaAncho,1,3)+' m × '+#numbers.formatDecimal(pedido.corteTelaAlto,1,3)+' m'}"></span>
             </p>
 
-            <!-- Origen real: de qué rollo o retazo específico toca sacar la tela,
-                 y si esa elección fue manual (por ejemplo, del jefe) o automática. -->
-            <div th:if="${materialTela != null}"
-                 class="fila-origen-tela"
-                 th:classappend="${esRetazo} ? 'origen-retazo' : 'origen-rollo'">
+            <!-- Origen real desde historial -->
+            <div th:if="${materialTela != null}" class="fila-origen-tela"
+                 th:classappend="${esRetazo}?'origen-retazo':'origen-rollo'">
                 <p>
-                    <strong th:text="${esRetazo} ? 'Sacar de (Retazo):' : 'Sacar de (Rollo):'"></strong>
+                    <strong th:text="${esRetazo}?'Retazo:':'Rollo:'"></strong>
                     <span th:text="${materialTela.fuenteDescripcion}"></span>
                     <span class="badge-origen"
-                          th:classappend="${esRetazo} ? 'badge-retazo-origen' : 'badge-rollo-origen'"
-                          th:text="${esRetazo} ? '✂ RETAZO' : '🧵 ROLLO'"></span>
+                          th:classappend="${esRetazo}?'badge-retazo-origen':'badge-rollo-origen'"
+                          th:text="${esRetazo}?'✂ RETAZO':'🧵 ROLLO'"></span>
                 </p>
                 <p>
                     <strong>Selección:</strong>
                     <span class="badge-seleccion"
-                          th:classappend="${materialTela.seleccionManual} ? 'badge-seleccion-manual' : 'badge-seleccion-auto'"
-                          th:text="${materialTela.seleccionManual} ? '👤 Manual (jefe)' : '🤖 Automática'"></span>
-                </p>
-                <p th:if="${materialTela.metrosSobrantes != null}">
-                    <strong>Sobrante tras el corte:</strong>
-                    <span th:text="${materialTela.metrosSobrantes}"></span>
+                          th:classappend="${materialTela.seleccionManual}?'badge-seleccion-manual':'badge-seleccion-auto'"
+                          th:text="${materialTela.seleccionManual}?'👤 Manual':'🤖 Auto'"></span>
+                    <span th:if="${materialTela.metrosSobrantes != null}">
+                        · Sobrante: <strong th:text="${materialTela.metrosSobrantes}+' m'"></strong>
+                    </span>
                 </p>
             </div>
-
-            <!-- Pedidos antiguos sin historial de trazabilidad: se cae al dato teórico -->
             <div th:if="${materialTela == null}" class="fila-origen-tela origen-rollo">
-                <p th:if="${pedido.rolloTela != null and !#strings.isEmpty(pedido.rolloTela)}">
-                    <strong>Rollo asignado:</strong>
-                    <span th:text="${pedido.rolloTela}"></span>
-                    <span class="badge-origen badge-rollo-origen">🧵 TEÓRICO</span>
-                </p>
-                <p th:unless="${pedido.rolloTela != null and !#strings.isEmpty(pedido.rolloTela)}" class="sin-material">
-                    Sin registro de origen de tela (pedido anterior al sistema de trazabilidad).
-                </p>
+                <p><strong>Rollo teórico:</strong> <span th:text="${pedido.rolloTela}"></span></p>
             </div>
         </div>
 
-        <!-- ETIQUETA 3: Perfilería -->
+        <!-- 3: Perfilería — con pieza específica de tubo y pesa desde historial -->
         <div class="etiqueta">
             <h3>📐 Perfilería</h3>
+
+            <!-- Tubo: muestra nombre+pieza del historial si existe -->
             <p>
-                <strong>Tubo (<span th:text="${pedido.tuboRecomendado}"></span>):</strong>
-                <span th:text="${#numbers.formatDecimal(pedido.corteTuberia,1,3) + ' m'}"></span>
+                <strong>Tubo:</strong>
+                <span th:if="${materialTubo != null}" th:text="${materialTubo.fuenteDescripcion}"></span>
+                <span th:if="${materialTubo == null}" th:text="'Tubo '+${pedido.tuboRecomendado}"></span>
+                · <span th:text="${#numbers.formatDecimal(pedido.corteTuberia,1,3)+' m'}"></span>
             </p>
+
+            <!-- Pesa: muestra pieza específica del historial si existe -->
             <p>
                 <strong>Pesa:</strong>
-                <span th:text="${#numbers.formatDecimal(pedido.corteTuberia,1,3) + ' m'}"></span>
+                <span th:if="${materialPesa != null}" th:text="${materialPesa.fuenteDescripcion}"></span>
+                <span th:if="${materialPesa == null}">Pesa</span>
+                · <span th:text="${#numbers.formatDecimal(pedido.corteTuberia,1,3)+' m'}"></span>
             </p>
-            <p>
-                <strong>Tope Pesa:</strong>
-                <span>2 unidad(es)</span>
-            </p>
+
+            <p><strong>Tope Pesa:</strong> 2 und.</p>
+
             <div class="fila-cabezal" th:if="${pedido.usaCabezal}">
-                <strong>Medida cabezal:</strong>
-                <span th:text="${#numbers.formatDecimal(pedido.medidaCabezal,1,3) + ' m'}"></span>
+                <strong>Cabezal:</strong>
+                <span th:if="${materialCabezal != null}" th:text="${materialCabezal.fuenteDescripcion}"></span>
+                <span th:if="${materialCabezal == null}">Cabezal</span>
+                · <span th:text="${#numbers.formatDecimal(pedido.medidaCabezal,1,3)+' m'}"></span>
             </div>
-            <p style="margin-top:6px;">
-                <strong>Soportes:</strong>
-                <span>2 unidad(es)</span>
-            </p>
+
+            <p style="margin-top:5px;"><strong>Soportes:</strong> 2 und.</p>
+
             <div class="fila-cabezal" th:if="${pedido.usaCabezal}">
-                <strong>Tapas:</strong>
-                <span>2 unidad(es)</span>
+                <strong>Tapas:</strong> 2 und.
             </div>
-            <p style="margin-top:6px;">
+
+            <p style="margin-top:5px;">
                 <strong>Tornillos:</strong>
-                <span th:text="${pedido.usaCabezal ? '8 unidad(es)' : '2 unidad(es)'}"></span>
+                <span th:text="${pedido.usaCabezal}?'8 und.':'2 und.'"></span>
             </p>
             <div class="fila-cabezal" th:if="${pedido.usaCabezal}">
-                <strong>T. Perforantes:</strong>
-                <span>4 unidad(es)</span>
+                <strong>T. Perforantes:</strong> 4 und.
             </div>
         </div>
 
-        <!-- ETIQUETA 4: Cliente final -->
+        <!-- 4: Cliente (etiqueta para despacho) -->
         <div class="etiqueta">
-            <h3>🏠 Cliente</h3>
-            <p><strong>Cliente:</strong>      <span th:text="${pedido.nombreClienteFinal}"></span></p>
-            <p><strong>Descripción:</strong>  <span th:text="${pedido.descripcion}"></span></p>
+            <h3>🏠 Despacho</h3>
+            <p><strong>Cliente:</strong>     <span th:text="${pedido.nombreClienteFinal}"></span></p>
+            <p><strong>Descripción:</strong> <span th:text="${pedido.descripcion}"></span></p>
             <p><strong>Medida final:</strong>
-                <span th:text="${#numbers.formatDecimal(pedido.ancho,1,2) + 'm  x  ' + #numbers.formatDecimal(pedido.altura,1,2) + 'm'}"></span>
+                <span th:text="${#numbers.formatDecimal(pedido.ancho,1,2)+'m × '+#numbers.formatDecimal(pedido.altura,1,2)+'m'}"></span>
             </p>
             <p><strong>Mando:</strong>  <span class="valor-mando" th:text="${pedido.ladoControl}"></span></p>
             <p><strong>Cuerda:</strong> <span th:text="${pedido.medidaCuerda}"></span></p>
+            <p><strong>Control:</strong><span th:text="${pedido.tipoControl}"></span></p>
+
+            <!-- Extras si los hay -->
+            <div th:if="${extrasHistorial != null and not #lists.isEmpty(extrasHistorial)}"
+                 style="margin-top:7px; padding-top:6px; border-top:1px dashed #aaa;">
+                <p style="font-weight:700; font-size:0.75rem; margin-bottom:4px;">➕ Insumos adicionales:</p>
+                <p th:each="e : ${extrasHistorial}" style="margin-bottom:2px; font-size:0.78rem;">
+                    · <span th:text="${e.fuenteDescripcion}"></span>
+                      (<span th:text="${e.metrosUsados}"></span>)
+                </p>
+            </div>
         </div>
 
-        <!-- ETIQUETA 5: Material real utilizado -->
-        <div class="etiqueta etiqueta-ancha">
-            <h3>📋 Material utilizado (registro real)</h3>
-            <div style="display:flex; gap:24px; margin-bottom:10px; font-size:0.85rem; background:#f8f9fa; border-radius:4px; padding:6px 10px;">
-                <span><strong>Distribuidor:</strong> <span th:text="${pedido.nombreDecorador}"></span></span>
+        <!-- 5: Material completo (tabla ancha) -->
+        <div class="etiqueta etiqueta-full">
+            <h3>📋 Registro de material utilizado</h3>
+            <div style="display:flex;gap:20px;margin-bottom:7px;font-size:0.75rem;background:#f8f9fa;border-radius:4px;padding:5px 9px;">
+                <span><strong>Dist.:</strong> <span th:text="${pedido.nombreDecorador}"></span></span>
                 <span><strong>Cliente:</strong> <span th:text="${pedido.nombreClienteFinal}"></span></span>
-                <span><strong>Descripción:</strong> <span th:text="${pedido.descripcion}"></span></span>
+                <span><strong>Desc.:</strong> <span th:text="${pedido.descripcion}"></span></span>
             </div>
-            <div th:if="${historialMaterial == null or historialMaterial.isEmpty()}">
-                <p class="sin-material">Sin registros de material (pedido creado antes del sistema de trazabilidad).</p>
-            </div>
-            <table th:if="${historialMaterial != null and !historialMaterial.isEmpty()}" class="tabla-material">
+
+            <p class="sin-material" th:if="${historialMaterial == null or #lists.isEmpty(historialMaterial)}">
+                Sin registros de material.
+            </p>
+
+            <table class="tabla-material" th:if="${historialMaterial != null and not #lists.isEmpty(historialMaterial)}">
                 <thead>
                     <tr>
-                        <th>Material</th>
-                        <th>Fuente</th>
-                        <th>Cantidad</th>
-                        <th>Unidad</th>
-                        <th>Área (m²)</th>
+                        <th>Tipo</th>
+                        <th>Fuente / Pieza usada</th>
+                        <th>Cant.</th>
+                        <th>Und.</th>
                         <th>Sobrante</th>
                         <th>Selección</th>
                     </tr>
                 </thead>
                 <tbody>
                     <tr th:each="m : ${historialMaterial}"
-                        th:classappend="${m.tipoMaterial == 'RETAZO'} ? 'fila-tela-retazo' : (${m.tipoMaterial == 'TELA'} ? 'fila-tela-rollo' : '')">
+                        th:classappend="${m.tipoMaterial=='RETAZO'}?'fila-tela-retazo':(${m.tipoMaterial=='TELA'}?'fila-tela-rollo':(${m.tipoMaterial=='EXTRA'}?'fila-extra':''))">
                         <td th:text="${m.tipoMaterial}"></td>
                         <td th:text="${m.fuenteDescripcion}"></td>
                         <td th:text="${m.metrosUsados}"></td>
                         <td th:text="${m.piezaInsumoId != null ? 'm' : (m.metrosCuadrados != null ? 'm²' : 'und.')}"></td>
-                        <td th:text="${m.metrosCuadrados != null ? m.metrosCuadrados + ' m²' : '—'}"></td>
                         <td th:text="${m.metrosSobrantes}"></td>
                         <td>
                             <span class="badge-seleccion"
-                                  th:classappend="${m.seleccionManual} ? 'badge-seleccion-manual' : 'badge-seleccion-auto'"
-                                  th:text="${m.seleccionManual} ? 'Manual' : 'Automática'"></span>
+                                  th:classappend="${m.seleccionManual}?'badge-seleccion-manual':'badge-seleccion-auto'"
+                                  th:text="${m.seleccionManual}?'Manual':'Auto'"></span>
                         </td>
                     </tr>
                 </tbody>
             </table>
         </div>
 
-    </div>
+    </div><!-- /grid -->
 
-    <div class="no-print" style="margin-top:10px;">
+    <div class="no-print" style="margin-top:8px;">
         <button onclick="window.print()"
-                style="padding:8px 20px;font-size:0.9rem;cursor:pointer;border:1px solid #333;border-radius:4px;background:#212529;color:#fff;">
+                style="padding:6px 18px;font-size:0.85rem;cursor:pointer;border:1px solid #333;border-radius:4px;background:#212529;color:#fff;">
             🖨️ Imprimir
         </button>
     </div>
