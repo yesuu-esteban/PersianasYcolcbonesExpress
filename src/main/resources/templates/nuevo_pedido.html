@@ -52,6 +52,9 @@
             margin-bottom: 18px;
         }
         .fila-extra select, .fila-extra input { font-size: 0.85rem; }
+        .fila-tela-venta select, .fila-tela-venta input { font-size: 0.85rem; }
+        .nav-tabs .nav-link { font-weight: 600; }
+        .nav-tabs .nav-link.active { border-bottom-color: #fff; }
     </style>
 </head>
 <body class="bg-light p-4">
@@ -62,7 +65,22 @@
     </div>
 
     <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
+    <div th:if="${mensaje}" class="alert alert-success" th:text="${mensaje}"></div>
 
+    <ul class="nav nav-tabs mb-3">
+        <li class="nav-item">
+            <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tabFabricacion" type="button">🧵 Fabricación</button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabVentaDirecta" type="button">💵 Venta Directa</button>
+        </li>
+    </ul>
+
+    <div class="tab-content">
+    <!-- ══════════════════════════════════════════════════════════════ -->
+    <!-- TAB: FABRICACIÓN (formulario original, sin cambios de lógica)  -->
+    <!-- ══════════════════════════════════════════════════════════════ -->
+    <div class="tab-pane fade show active" id="tabFabricacion">
     <form th:action="@{/taller/guardar-lista}" method="post" class="bg-white p-4 shadow-sm border rounded">
 
         <div class="row mb-4">
@@ -208,6 +226,47 @@
             <a href="/taller/pedidos" class="btn btn-secondary w-100 mt-2">Cancelar</a>
         </div>
     </form>
+    </div>
+    <!-- ══════════════════ FIN TAB FABRICACIÓN ══════════════════ -->
+
+    <!-- ══════════════════════════════════════════════════════════════ -->
+    <!-- TAB: VENTA DIRECTA                                              -->
+    <!-- ══════════════════════════════════════════════════════════════ -->
+    <div class="tab-pane fade" id="tabVentaDirecta">
+        <form th:action="@{/taller/guardar-venta-directa}" method="post" class="bg-white p-4 shadow-sm border rounded">
+            <div class="row g-3 mb-3">
+                <div class="col-md-6">
+                    <label class="form-label fw-bold">Cliente</label>
+                    <input type="text" name="nombreClienteFinal" class="form-control" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-bold">Descripción (opcional)</label>
+                    <input type="text" name="descripcion" class="form-control" placeholder="Ej: venta mostrador">
+                </div>
+            </div>
+
+            <!-- Ítems de tela por metros -->
+            <div class="seccion-extras mb-3">
+                <p class="fw-bold mb-2">🧵 Tela vendida por metros</p>
+                <div id="contenedorTelaVenta"></div>
+                <button type="button" class="btn btn-sm btn-outline-dark" onclick="agregarFilaTelaVenta()">+ Agregar tela</button>
+            </div>
+
+            <!-- Ítems de insumo de catálogo -->
+            <div class="seccion-extras mb-3">
+                <p class="fw-bold mb-2">🔧 Insumos vendidos</p>
+                <div id="contenedorInsumoVenta"></div>
+                <button type="button" class="btn btn-sm btn-outline-dark" onclick="agregarFilaInsumoVenta()">+ Agregar insumo</button>
+            </div>
+
+            <div class="mt-4">
+                <button type="submit" class="btn btn-success w-100">💾 Registrar Venta Directa</button>
+                <a href="/taller/pedidos" class="btn btn-secondary w-100 mt-2">Cancelar</a>
+            </div>
+        </form>
+    </div>
+    <!-- ══════════════════ FIN TAB VENTA DIRECTA ══════════════════ -->
+    </div>
 </div>
 
 <script th:inline="javascript">
@@ -554,7 +613,7 @@
     }
 
     // ════════════════════════════════════════════════════════════
-    //  INSUMOS ADICIONALES (extras de toda la orden)
+    //  INSUMOS ADICIONALES (extras de toda la orden — Fabricación)
     // ════════════════════════════════════════════════════════════
     let extraIndex = 0;
 
@@ -597,12 +656,130 @@
         cont.insertAdjacentHTML('beforeend', filaExtraHtml(extraIndex++));
     }
 
+    // ════════════════════════════════════════════════════════════
+    //  VENTA DIRECTA — tela por metros e insumos vendidos
+    //  (reutiliza rollosDisponibles / catalogoInsumos ya cargados)
+    // ════════════════════════════════════════════════════════════
+    let idxTelaVenta = 0;
+    let idxInsumoVenta = 0;
+
+    function coloresDisponiblesVenta() {
+        const colores = [...new Set(
+            rollosDisponibles.filter(r => r.largoRestante > 0.001).map(r => r.color)
+        )];
+        return colores.sort();
+    }
+
+    function anchosDisponiblesVenta(color) {
+        const anchos = [...new Set(
+            rollosDisponibles
+                .filter(r => r.color && r.color.toLowerCase() === (color || '').toLowerCase() && r.largoRestante > 0.001)
+                .map(r => r.ancho)
+        )];
+        return anchos.sort((a, b) => a - b);
+    }
+
+    function opcionesRolloVenta(color, ancho) {
+        const candidatos = rollosDisponibles.filter(r =>
+            r.color && r.color.toLowerCase() === (color || '').toLowerCase() &&
+            Math.abs(r.ancho - parseFloat(ancho)) < 0.001 &&
+            r.largoRestante > 0.001
+        );
+        let html = '<option value="auto">⚡ Automático (el rollo con menos sobrante)</option>';
+        candidatos.forEach(r => {
+            html += `<option value="${r.id}">Rollo #${r.id} · ${r.largoRestante.toFixed(2)} m restantes</option>`;
+        });
+        return html;
+    }
+
+    function refrescarFilaTelaVenta(fila) {
+        const color  = fila.querySelector('.select-color-venta').value;
+        const anchos = anchosDisponiblesVenta(color);
+        const selAncho = fila.querySelector('.select-ancho-venta');
+        const anchoPrevio = selAncho.value;
+        selAncho.innerHTML = anchos.length
+            ? anchos.map(a => `<option value="${a}">${a.toFixed(2)} m</option>`).join('')
+            : '<option value="">– Sin anchos disponibles –</option>';
+        if (anchos.some(a => String(a) === anchoPrevio)) selAncho.value = anchoPrevio;
+
+        const selRollo = fila.querySelector('.select-rollo-venta');
+        selRollo.innerHTML = opcionesRolloVenta(color, selAncho.value);
+    }
+
+    function agregarFilaTelaVenta() {
+        const i = idxTelaVenta++;
+        const colores = coloresDisponiblesVenta();
+        const opcionesColor = colores.length
+            ? colores.map(c => `<option value="${c}">${c}</option>`).join('')
+            : '<option value="">– Sin telas en inventario –</option>';
+
+        const html = `
+            <div class="row g-2 mb-2 align-items-center fila-tela-venta" data-indice="${i}">
+                <div class="col-md-3">
+                    <select name="ventaTelaColor[${i}]" class="form-select form-select-sm select-color-venta">${opcionesColor}</select>
+                </div>
+                <div class="col-md-2">
+                    <select name="ventaTelaAncho[${i}]" class="form-select form-select-sm select-ancho-venta"></select>
+                </div>
+                <div class="col-md-2">
+                    <input type="number" step="0.01" min="0" name="ventaTelaMetros[${i}]" class="form-control form-control-sm" placeholder="Metros" required>
+                </div>
+                <div class="col-md-4">
+                    <select name="ventaTelaRolloId[${i}]" class="form-select form-select-sm select-rollo-venta"></select>
+                </div>
+                <div class="col-md-1">
+                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="this.closest('.fila-tela-venta').remove()">✕</button>
+                </div>
+            </div>`;
+        document.getElementById('contenedorTelaVenta').insertAdjacentHTML('beforeend', html);
+
+        const fila = document.querySelector(`.fila-tela-venta[data-indice="${i}"]`);
+        refrescarFilaTelaVenta(fila);
+        fila.querySelector('.select-color-venta').addEventListener('change', () => refrescarFilaTelaVenta(fila));
+        fila.querySelector('.select-ancho-venta').addEventListener('change', () => {
+            fila.querySelector('.select-rollo-venta').innerHTML =
+                opcionesRolloVenta(fila.querySelector('.select-color-venta').value, fila.querySelector('.select-ancho-venta').value);
+        });
+    }
+
+    function filaInsumoVentaHtml(idx) {
+        return `
+        <div class="row g-2 align-items-center mb-2 fila-extra" data-indice="${idx}">
+            <div class="col-md-5">
+                <select name="extraInsumoId[${idx}]" class="form-select form-select-sm select-extra-insumo" onchange="toggleLibreVenta(this)">
+                    ${opcionesCatalogo()}
+                </select>
+            </div>
+            <div class="col-md-4 campo-libre-extra" style="display:none;">
+                <input type="text" name="extraNombreLibre[${idx}]" class="form-control form-control-sm" placeholder="Nombre del insumo">
+            </div>
+            <div class="col-md-2">
+                <input type="number" step="0.01" min="0" name="extraCantidad[${idx}]" class="form-control form-control-sm" placeholder="Cantidad">
+            </div>
+            <div class="col-md-1">
+                <button type="button" class="btn btn-sm btn-outline-danger" onclick="this.closest('.fila-extra').remove()">✕</button>
+            </div>
+        </div>`;
+    }
+
+    function toggleLibreVenta(select) {
+        const fila = select.closest('.fila-extra');
+        fila.querySelector('.campo-libre-extra').style.display = select.value === 'libre' ? '' : 'none';
+    }
+
+    function agregarFilaInsumoVenta() {
+        const cont = document.getElementById('contenedorInsumoVenta');
+        cont.insertAdjacentHTML('beforeend', filaInsumoVentaHtml(idxInsumoVenta++));
+    }
+
     document.addEventListener('DOMContentLoaded', () => {
         const fila0 = document.querySelector('.fila-producto[data-indice="0"]');
         if (fila0) {
             engancharEventosFila(fila0);
             actualizarSelectsManualFila(fila0);
         }
+        // Arrancamos la pestaña de Venta Directa con una fila de tela lista para usar
+        agregarFilaTelaVenta();
     });
 </script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>

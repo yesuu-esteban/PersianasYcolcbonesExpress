@@ -125,6 +125,19 @@ public class InventarioServicio {
         public double cantidad;
     }
 
+    /**
+     * Ítem de tela vendida directamente por metros lineales (Venta Directa),
+     * fuera del flujo de fabricación con corte calculado. rolloId permite
+     * seleccionar un rollo específico; si es null se busca automáticamente
+     * por color + ancho comercial.
+     */
+    public static class ItemTelaVenta {
+        public Integer rolloId;
+        public String color;
+        public double ancho;
+        public double metros;
+    }
+
     // ── Umbrales centralizados de alertas ───────────────────────
     private static final int UMBRAL_UNIDAD_ADVERTENCIA = 50; // entre 6 y 50 -> advertencia
     private static final int UMBRAL_UNIDAD_CRITICO = 5;      // <= 5 -> critico
@@ -357,6 +370,33 @@ public class InventarioServicio {
         r.setMetrosSobrantes(rollo.getLargoRestante());
         r.setMetrosCuadrados(redondear(pedido.getCorteTelaAncho() * pedido.getCorteTelaAlto()));
         r.setSeleccionManual(manual);
+        return materialUsadoRepository.save(r);
+    }
+
+    /**
+     * Descuenta tela vendida directamente por metros lineales (Venta Directa),
+     * sin pasar por el cálculo de corte de fabricación. El área se calcula
+     * como ancho del rollo × metros vendidos.
+     */
+    public MaterialUsado descontarTelaVentaDirecta(Pedido pedido, RolloTela rollo, double metros) {
+        if (rollo.getLargoRestante() < metros - 0.001) {
+            throw new MaterialInsuficienteException(
+                    "Rollo #" + rollo.getId() + " no tiene suficiente material ("
+                    + rollo.getLargoRestante() + " m disponibles, " + metros + " m necesarios).");
+        }
+        rollo.setLargoRestante(redondear(rollo.getLargoRestante() - metros));
+        rolloTelaRepository.save(rollo);
+
+        MaterialUsado r = new MaterialUsado();
+        r.setPedidoId(pedido.getId());
+        r.setTipoMaterial("TELA");
+        r.setRolloTelaId(rollo.getId());
+        r.setFuenteDescripcion("Rollo " + rollo.getColor() + " " + rollo.getAncho()
+                + "m (#" + rollo.getId() + ") — venta directa");
+        r.setMetrosUsados(metros);
+        r.setMetrosSobrantes(rollo.getLargoRestante());
+        r.setMetrosCuadrados(redondear(rollo.getAncho() * metros));
+        r.setSeleccionManual(false);
         return materialUsadoRepository.save(r);
     }
 
@@ -718,6 +758,53 @@ public class InventarioServicio {
         // 13. Tornillos perforantes
         if (Boolean.TRUE.equals(pedido.getUsaCabezal())) {
             descontarInsumoPorUnidad(pedido, "Tornillo Perforante", pedido.getCantidadTornillosPerforantes());
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // VENTA DIRECTA — verificación y descuento de ítems de tela suelta
+    // ═══════════════════════════════════════════════════════════════
+
+    /**
+     * Verifica disponibilidad de una lista de ítems de tela vendida por metros.
+     * Si el ítem trae rolloId, valida ese rollo específico (color + metros).
+     * Si no, busca automáticamente por color + ancho comercial declarado.
+     * No descuenta nada, solo lanza excepción si algo falta.
+     */
+    public void verificarItemsTelaVenta(List<ItemTelaVenta> items) {
+        if (items == null) return;
+        for (ItemTelaVenta it : items) {
+            if (it.metros <= 0) continue;
+            if (it.rolloId != null) {
+                RolloTela rollo = obtenerRolloPorId(it.rolloId);
+                if (!rollo.getColor().equalsIgnoreCase(it.color)) {
+                    throw new MaterialInsuficienteException(
+                            "El rollo #" + it.rolloId + " es de color \"" + rollo.getColor()
+                            + "\", pero se pidió color \"" + it.color + "\".");
+                }
+                if (rollo.getLargoRestante() < it.metros - 0.001) {
+                    throw new MaterialInsuficienteException(
+                            "El rollo #" + it.rolloId + " no tiene suficiente tela ("
+                            + rollo.getLargoRestante() + " m disponibles, " + it.metros + " m necesarios).");
+                }
+            } else {
+                buscarMejorRollo(it.color, it.ancho, it.metros); // lanza MaterialInsuficienteException si no hay
+            }
+        }
+    }
+
+    /**
+     * Descuenta del inventario real cada ítem de tela vendida por metros.
+     * Debe llamarse DESPUÉS de guardar el Pedido, para que ya tenga id.
+     */
+    public void descontarItemsTelaVenta(Pedido pedido, List<ItemTelaVenta> items) {
+        if (items == null) return;
+        for (ItemTelaVenta it : items) {
+            if (it.metros <= 0) continue;
+            RolloTela rollo = (it.rolloId != null)
+                    ? obtenerRolloPorId(it.rolloId)
+                    : buscarMejorRollo(it.color, it.ancho, it.metros);
+            descontarTelaVentaDirecta(pedido, rollo, it.metros);
         }
     }
 

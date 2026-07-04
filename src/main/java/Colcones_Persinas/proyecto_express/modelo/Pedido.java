@@ -33,6 +33,14 @@ public class Pedido {
     private String tuboRecomendado = "";
     private String rolloParaCortar = "";
 
+    /**
+     * Tipo de pedido: "FABRICACION" (default, flujo normal con ficha técnica
+     * y corte de tela/perfilería) o "VENTA_DIRECTA" (venta de insumos/tela
+     * suelta, sin fabricación, se descuenta inventario pero no hay ficha técnica).
+     */
+    @Column(name = "tipo", nullable = false)
+    private String tipo = "FABRICACION";
+
     // Flags de estado
     @Column(name = "usa_cabezal", nullable = false)
     private Boolean usaCabezal = false;
@@ -69,6 +77,9 @@ public class Pedido {
         LocalDateTime ahora = LocalDateTime.now();
         this.fechaCreacion = ahora;
         this.fechaActualizacion = ahora;
+        if (this.tipo == null || this.tipo.isBlank()) {
+            this.tipo = "FABRICACION";
+        }
     }
 
     @PreUpdate
@@ -86,6 +97,13 @@ public class Pedido {
     @Transient
     public String getFechaActualizacionFormateada() {
         return this.fechaActualizacion != null ? this.fechaActualizacion.format(FORMATO_FECHA) : "";
+    }
+
+    // ─── VENTA DIRECTA ──────────────────────────────────────────────────────
+
+    @Transient
+    public boolean isVentaDirecta() {
+        return "VENTA_DIRECTA".equalsIgnoreCase(this.tipo);
     }
 
     // ─── CÁLCULOS TRANSIENT ─────────────────────────────────────────────────
@@ -207,6 +225,12 @@ public class Pedido {
     // ─── LÓGICA DE NEGOCIO ──────────────────────────────────────────────────
 
     public void calcularFichaTecnica() {
+        // Las ventas directas no tienen ficha técnica de fabricación:
+        // no hay corte de tela/tubo/cabezal calculado, solo ítems sueltos.
+        if (isVentaDirecta()) {
+            return;
+        }
+
         // 1. Tubo: manual si el jefe lo eligió explícitamente, si no, automático por peso/tamaño
         if (this.tuboManualElegido != null && !this.tuboManualElegido.isBlank()
                 && !"auto".equalsIgnoreCase(this.tuboManualElegido.trim())) {
@@ -233,6 +257,13 @@ public class Pedido {
     }
 
     public void calcularEstadoGeneral() {
+        // Las ventas directas se consideran completadas de inmediato:
+        // no pasan por el flujo de tela/perfilería/ensamblado.
+        if (isVentaDirecta()) {
+            this.estado = "Vendido";
+            return;
+        }
+
         if (Boolean.TRUE.equals(ensamblado)) {
             this.estado = "Listo para Despacho";
         } else if (Boolean.TRUE.equals(telaCortada) && Boolean.TRUE.equals(perfileriaCortada)) {

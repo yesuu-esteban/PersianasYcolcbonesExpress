@@ -218,6 +218,124 @@ public class PedidoControlador {
         return "redirect:/taller/pedidos";
     }
 
+    // ═══════════════════════════════════════════════════════════════
+    // VENTA DIRECTA
+    // ═══════════════════════════════════════════════════════════════
+
+    /**
+     * Guarda una Venta Directa: no pasa por fabricación ni ficha técnica.
+     * Descuenta tela vendida por metros (rollo elegido o automático por color+ancho)
+     * y descuenta insumos del catálogo reutilizando ExtraInsumo/verificarExtras/procesarExtras,
+     * igual que el resto del sistema. Queda registrado en MaterialUsado, por lo que
+     * aparece automáticamente en los reportes de consumo.
+     */
+    @PostMapping("/guardar-venta-directa")
+    @org.springframework.transaction.annotation.Transactional
+    public String guardarVentaDirecta(
+            @RequestParam String nombreClienteFinal,
+            @RequestParam(required = false) String descripcion,
+            @RequestParam Map<String, String> allParams,
+            RedirectAttributes redirectAttributes) {
+
+        if (nombreClienteFinal == null || nombreClienteFinal.isBlank()) {
+            redirectAttributes.addFlashAttribute("error", "Debes indicar el cliente de la venta directa.");
+            return "redirect:/taller/nuevo";
+        }
+
+        Pedido pedido = new Pedido();
+        pedido.setTipo("VENTA_DIRECTA");
+        pedido.setNombreDecorador("Venta Directa");
+        pedido.setNombreClienteFinal(nombreClienteFinal);
+        pedido.setDescripcion(descripcion != null ? descripcion : "");
+        pedido.setUsaCabezal(false);
+        pedido.setUsaPitilloPesa(false);
+        pedido.setUsaConectorTope(false);
+        pedido.calcularEstadoGeneral(); // deja estado = "Vendido"
+        pedido.setTelaCortada(true);
+        pedido.setPerfileriaCortada(true);
+        pedido.setEnsamblado(true);
+
+        List<InventarioServicio.ItemTelaVenta> itemsTela = leerItemsTelaVenta(allParams);
+        List<InventarioServicio.ExtraInsumo> extras = leerExtrasComoLista(allParams);
+
+        if (itemsTela.isEmpty() && extras.isEmpty()) {
+            redirectAttributes.addFlashAttribute("error",
+                    "Agrega al menos un ítem de tela o un insumo para registrar la venta.");
+            return "redirect:/taller/nuevo";
+        }
+
+        try {
+            inventarioServicio.verificarItemsTelaVenta(itemsTela);
+            inventarioServicio.verificarExtras(extras);
+        } catch (InventarioServicio.MaterialInsuficienteException e) {
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
+            return "redirect:/taller/nuevo";
+        }
+
+        try {
+            pedidoRepository.save(pedido);
+            inventarioServicio.descontarItemsTelaVenta(pedido, itemsTela);
+            procesarExtras(pedido, allParams); // reutiliza el mismo método usado en fabricación
+        } catch (InventarioServicio.MaterialInsuficienteException e) {
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
+            return "redirect:/taller/nuevo";
+        }
+
+        redirectAttributes.addFlashAttribute("mensaje", "Venta directa registrada correctamente.");
+        return "redirect:/taller/pedidos";
+    }
+
+    /** Lee los ítems de tela vendida por metros desde los parámetros indexados del formulario. */
+    private List<InventarioServicio.ItemTelaVenta> leerItemsTelaVenta(Map<String, String> allParams) {
+        List<InventarioServicio.ItemTelaVenta> items = new java.util.ArrayList<>();
+        int i = 0;
+        while (allParams.containsKey("ventaTelaMetros[" + i + "]")) {
+            String metrosStr = allParams.getOrDefault("ventaTelaMetros[" + i + "]", "").trim();
+            final int idx = i;
+            i++;
+            if (metrosStr.isEmpty()) continue;
+            double metros;
+            try { metros = Double.parseDouble(metrosStr); } catch (NumberFormatException e) { continue; }
+            if (metros <= 0) continue;
+
+            InventarioServicio.ItemTelaVenta item = new InventarioServicio.ItemTelaVenta();
+            item.metros = metros;
+            item.color  = allParams.getOrDefault("ventaTelaColor[" + idx + "]", "").trim();
+            item.ancho  = parsearDoubleSeguro(allParams.get("ventaTelaAncho[" + idx + "]"), 1.83);
+            item.rolloId = leerIdOpcionalFila(allParams, "ventaTelaRolloId", idx);
+            items.add(item);
+        }
+        return items;
+    }
+
+    /** Reconstruye la lista de ExtraInsumo desde allParams, solo para VALIDAR antes de guardar el pedido. */
+    private List<InventarioServicio.ExtraInsumo> leerExtrasComoLista(Map<String, String> allParams) {
+        List<InventarioServicio.ExtraInsumo> lista = new java.util.ArrayList<>();
+        int i = 0;
+        while (allParams.containsKey("extraCantidad[" + i + "]")) {
+            String cantidadStr = allParams.getOrDefault("extraCantidad[" + i + "]", "").trim();
+            String insumoIdStr = allParams.getOrDefault("extraInsumoId[" + i + "]", "").trim();
+            i++;
+            if (cantidadStr.isEmpty()) continue;
+            double cantidad;
+            try { cantidad = Double.parseDouble(cantidadStr); } catch (NumberFormatException e) { continue; }
+            if (cantidad <= 0) continue;
+
+            InventarioServicio.ExtraInsumo ex = new InventarioServicio.ExtraInsumo();
+            ex.cantidad = cantidad;
+            if (!insumoIdStr.isEmpty() && !insumoIdStr.equals("libre")) {
+                try { ex.insumoId = Integer.parseInt(insumoIdStr); } catch (NumberFormatException ignored) {}
+            }
+            lista.add(ex);
+        }
+        return lista;
+    }
+
+    private double parsearDoubleSeguro(String texto, double porDefecto) {
+        if (texto == null || texto.isBlank()) return porDefecto;
+        try { return Double.parseDouble(texto); } catch (NumberFormatException e) { return porDefecto; }
+    }
+
     // ─── Formulario editar ────────────────────────────────────────────────
     @GetMapping("/editar/{id}")
     public String mostrarFormularioEditar(@PathVariable("id") int id, Model model) {
@@ -352,12 +470,15 @@ public class PedidoControlador {
      * Si es nombre libre → solo registra el gasto en MaterialUsado, sin tocar inventario.
      *
      * En todos los casos queda un registro MaterialUsado con tipoMaterial = "EXTRA".
+     *
+     * Reutilizado tanto por fabricación normal (guardar-lista, editar) como por
+     * Venta Directa (guardar-venta-directa), sin ninguna diferencia entre los dos flujos.
      */
     private void procesarExtras(Pedido pedido, Map<String, String> allParams) {
         int i = 0;
         while (allParams.containsKey("extraCantidad[" + i + "]")) {
-            String cantidadStr  = allParams.getOrDefault("extraCantidad["    + i + "]", "").trim();
-            String insumoIdStr  = allParams.getOrDefault("extraInsumoId["    + i + "]", "").trim();
+            String cantidadStr  = allParams.getOrDefault("extraCantidad[" + i + "]", "").trim();
+            String insumoIdStr  = allParams.getOrDefault("extraInsumoId[" + i + "]", "").trim();
             String nombreLibre  = allParams.getOrDefault("extraNombreLibre[" + i + "]", "").trim();
             String unidad       = allParams.getOrDefault("extraUnidad["       + i + "]", "und").trim();
             i++;
