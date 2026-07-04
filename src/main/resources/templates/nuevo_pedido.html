@@ -768,16 +768,23 @@
             </div>
         </div>
         <div class="row mb-2 fila-extra-info" data-indice="${idx}">
-            <div class="col-md-11 offset-md-0">
+            <div class="col-md-7">
                 <div class="info-stock-insumo"></div>
+            </div>
+            <div class="col-md-5 campo-pieza-insumo" style="display:none;">
+                <label class="form-label mb-1" style="font-size:0.76rem">🔩 ¿De qué pieza específica se corta?</label>
+                <select name="extraPiezaId[${idx}]" class="form-select form-select-sm select-pieza-insumo">
+                    <option value="auto">⚡ Automático (sugerido)</option>
+                </select>
             </div>
         </div>`;
     }
 
     /**
      * Al elegir un insumo del catálogo, muestra cuánto hay disponible:
-     * - Por unidad  → cantidad de unidades en stock, campo pide "unidades".
-     * - Por medida  → suma de metros restantes entre todas sus piezas, campo pide "metros".
+     * - Por unidad  → cantidad de unidades en stock, campo pide "unidades". No hay pieza que elegir.
+     * - Por medida  → suma de metros restantes entre todas sus piezas, campo pide "metros",
+     *                 y además se habilita el selector de pieza específica (igual que en Fabricación).
      * - Texto libre → sin inventario que descontar, se muestra un aviso neutro.
      */
     function actualizarInfoInsumoVenta(select) {
@@ -786,11 +793,14 @@
         const campoLibre = filaCampos.querySelector('.campo-libre-extra');
         const campoCantidad = filaCampos.querySelector('.campo-cantidad-insumo-venta');
         const infoDiv = filaInfo ? filaInfo.querySelector('.info-stock-insumo') : null;
+        const campoPieza = filaInfo ? filaInfo.querySelector('.campo-pieza-insumo') : null;
+        const selectPieza = filaInfo ? filaInfo.querySelector('.select-pieza-insumo') : null;
 
         if (select.value === 'libre') {
             campoLibre.style.display = '';
             campoCantidad.placeholder = 'Cantidad';
             campoCantidad.step = '1';
+            if (campoPieza) campoPieza.style.display = 'none';
             if (infoDiv) {
                 infoDiv.className = 'info-stock-insumo';
                 infoDiv.textContent = '✏ Insumo fuera de catálogo: no se descuenta del inventario, solo queda registrado en el reporte.';
@@ -812,6 +822,12 @@
             campoCantidad.placeholder = 'Metros';
             campoCantidad.step = '0.01';
 
+            // Por medida → mostrar y llenar el selector de pieza específica
+            if (campoPieza && selectPieza) {
+                campoPieza.style.display = '';
+                selectPieza.innerHTML = opcionesPieza(insumo.nombre);
+            }
+
             if (piezas.length === 0) {
                 infoDiv.className = 'info-stock-insumo sin-stock';
                 infoDiv.textContent = `⚠ Este insumo se mide en metros y no hay piezas disponibles de "${insumo.nombre}".`;
@@ -823,6 +839,9 @@
             const stock = insumo.stockUnidades != null ? insumo.stockUnidades : 0;
             campoCantidad.placeholder = 'Unidades';
             campoCantidad.step = '1';
+
+            // Por unidad → no aplica selección de pieza
+            if (campoPieza) campoPieza.style.display = 'none';
 
             if (stock <= 0) {
                 infoDiv.className = 'info-stock-insumo sin-stock';
