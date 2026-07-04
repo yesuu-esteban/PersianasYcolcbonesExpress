@@ -67,6 +67,21 @@
         .badge-sin   { background: #212529; }
         .valor-mando { font-size: 1rem; font-weight: 700; color: #c0392b; }
 
+        /* Badge de identificador (#id) + medida original de la pieza/rollo/retazo */
+        .badge-id-original {
+            display: inline-block;
+            padding: 1px 7px;
+            margin-left: 4px;
+            border-radius: 4px;
+            font-size: 0.70rem;
+            font-weight: 700;
+            font-family: 'Consolas', monospace;
+            background: #e3f2fd;
+            color: #0d47a1;
+            border: 1px solid #90caf9;
+            white-space: nowrap;
+        }
+
         .fila-cabezal {
             background: #e8f5e9;
             border-left: 3px solid #198754;
@@ -171,7 +186,10 @@
                  th:classappend="${esRetazo}?'origen-retazo':'origen-rollo'">
                 <p>
                     <strong th:text="${esRetazo}?'Retazo:':'Rollo:'"></strong>
-                    <span th:text="${materialTela.fuenteDescripcion}"></span>
+                    <span th:text="${#strings.contains(materialTela.fuenteDescripcion,'(')} ? ${#strings.substringBefore(materialTela.fuenteDescripcion,'(')} : ${materialTela.fuenteDescripcion}"></span>
+                    <span class="badge-id-original"
+                          th:if="${#strings.contains(materialTela.fuenteDescripcion,'(')}"
+                          th:text="'('+${#strings.substringAfter(materialTela.fuenteDescripcion,'(')}"></span>
                     <span class="badge-origen"
                           th:classappend="${esRetazo}?'badge-retazo-origen':'badge-rollo-origen'"
                           th:text="${esRetazo}?'✂ RETAZO':'🧵 ROLLO'"></span>
@@ -195,18 +213,26 @@
         <div class="etiqueta">
             <h3>📐 Perfilería</h3>
 
-            <!-- Tubo: muestra nombre+pieza del historial si existe -->
+            <!-- Tubo: muestra nombre+pieza del historial si existe, con badge de #id y medida original -->
             <p>
                 <strong>Tubo:</strong>
-                <span th:if="${materialTubo != null}" th:text="${materialTubo.fuenteDescripcion}"></span>
+                <span th:if="${materialTubo != null}"
+                      th:text="${#strings.contains(materialTubo.fuenteDescripcion,'(')} ? ${#strings.substringBefore(materialTubo.fuenteDescripcion,'(')} : ${materialTubo.fuenteDescripcion}"></span>
+                <span class="badge-id-original"
+                      th:if="${materialTubo != null and #strings.contains(materialTubo.fuenteDescripcion,'(')}"
+                      th:text="'('+${#strings.substringAfter(materialTubo.fuenteDescripcion,'(')}"></span>
                 <span th:if="${materialTubo == null}" th:text="'Tubo '+${pedido.tuboRecomendado}"></span>
                 · <span th:text="${#numbers.formatDecimal(pedido.corteTuberia,1,3)+' m'}"></span>
             </p>
 
-            <!-- Pesa: muestra pieza específica del historial si existe -->
+            <!-- Pesa: muestra pieza específica del historial si existe, con badge de #id y medida original -->
             <p>
                 <strong>Pesa:</strong>
-                <span th:if="${materialPesa != null}" th:text="${materialPesa.fuenteDescripcion}"></span>
+                <span th:if="${materialPesa != null}"
+                      th:text="${#strings.contains(materialPesa.fuenteDescripcion,'(')} ? ${#strings.substringBefore(materialPesa.fuenteDescripcion,'(')} : ${materialPesa.fuenteDescripcion}"></span>
+                <span class="badge-id-original"
+                      th:if="${materialPesa != null and #strings.contains(materialPesa.fuenteDescripcion,'(')}"
+                      th:text="'('+${#strings.substringAfter(materialPesa.fuenteDescripcion,'(')}"></span>
                 <span th:if="${materialPesa == null}">Pesa</span>
                 · <span th:text="${#numbers.formatDecimal(pedido.corteTuberia,1,3)+' m'}"></span>
             </p>
@@ -215,7 +241,11 @@
 
             <div class="fila-cabezal" th:if="${pedido.usaCabezal}">
                 <strong>Cabezal:</strong>
-                <span th:if="${materialCabezal != null}" th:text="${materialCabezal.fuenteDescripcion}"></span>
+                <span th:if="${materialCabezal != null}"
+                      th:text="${#strings.contains(materialCabezal.fuenteDescripcion,'(')} ? ${#strings.substringBefore(materialCabezal.fuenteDescripcion,'(')} : ${materialCabezal.fuenteDescripcion}"></span>
+                <span class="badge-id-original"
+                      th:if="${materialCabezal != null and #strings.contains(materialCabezal.fuenteDescripcion,'(')}"
+                      th:text="'('+${#strings.substringAfter(materialCabezal.fuenteDescripcion,'(')}"></span>
                 <span th:if="${materialCabezal == null}">Cabezal</span>
                 · <span th:text="${#numbers.formatDecimal(pedido.medidaCabezal,1,3)+' m'}"></span>
             </div>
@@ -247,12 +277,15 @@
             <p><strong>Cuerda:</strong> <span th:text="${pedido.medidaCuerda}"></span></p>
             <p><strong>Control:</strong><span th:text="${pedido.tipoControl}"></span></p>
 
-            <!-- Extras si los hay -->
+            <!-- Extras si los hay, cada uno con su badge de #id y medida original -->
             <div th:if="${extrasHistorial != null and not #lists.isEmpty(extrasHistorial)}"
                  style="margin-top:7px; padding-top:6px; border-top:1px dashed #aaa;">
                 <p style="font-weight:700; font-size:0.75rem; margin-bottom:4px;">➕ Insumos adicionales:</p>
                 <p th:each="e : ${extrasHistorial}" style="margin-bottom:2px; font-size:0.78rem;">
-                    · <span th:text="${e.fuenteDescripcion}"></span>
+                    · <span th:text="${#strings.contains(e.fuenteDescripcion,'(')} ? ${#strings.substringBefore(e.fuenteDescripcion,'(')} : ${e.fuenteDescripcion}"></span>
+                    <span class="badge-id-original"
+                          th:if="${#strings.contains(e.fuenteDescripcion,'(')}"
+                          th:text="'('+${#strings.substringAfter(e.fuenteDescripcion,'(')}"></span>
                       (<span th:text="${e.metrosUsados}"></span>)
                 </p>
             </div>
@@ -276,6 +309,7 @@
                     <tr>
                         <th>Tipo</th>
                         <th>Fuente / Pieza usada</th>
+                        <th># y medida original</th>
                         <th>Cant.</th>
                         <th>Und.</th>
                         <th>Sobrante</th>
@@ -286,7 +320,13 @@
                     <tr th:each="m : ${historialMaterial}"
                         th:classappend="${m.tipoMaterial=='RETAZO'}?'fila-tela-retazo':(${m.tipoMaterial=='TELA'}?'fila-tela-rollo':(${m.tipoMaterial=='EXTRA'}?'fila-extra':''))">
                         <td th:text="${m.tipoMaterial}"></td>
-                        <td th:text="${m.fuenteDescripcion}"></td>
+                        <td th:text="${#strings.contains(m.fuenteDescripcion,'(')} ? ${#strings.substringBefore(m.fuenteDescripcion,'(')} : ${m.fuenteDescripcion}"></td>
+                        <td>
+                            <span class="badge-id-original"
+                                  th:if="${#strings.contains(m.fuenteDescripcion,'(')}"
+                                  th:text="'('+${#strings.substringAfter(m.fuenteDescripcion,'(')}"></span>
+                            <span th:unless="${#strings.contains(m.fuenteDescripcion,'(')}">—</span>
+                        </td>
                         <td th:text="${m.metrosUsados}"></td>
                         <td th:text="${m.piezaInsumoId != null ? 'm' : (m.metrosCuadrados != null ? 'm²' : 'und.')}"></td>
                         <td th:text="${m.metrosSobrantes}"></td>
