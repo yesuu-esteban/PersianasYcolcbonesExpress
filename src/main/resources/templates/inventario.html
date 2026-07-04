@@ -252,6 +252,16 @@
         .alertas-silenciadas-info a {
             font-size: 0.74rem;
         }
+        .id-pill {
+            display: inline-block;
+            background: #e9ecef;
+            color: #495057;
+            font-weight: 700;
+            font-size: 0.76rem;
+            padding: 1px 8px;
+            border-radius: 12px;
+            font-family: 'Courier New', monospace;
+        }
     </style>
 </head>
 <body class="bg-light p-4">
@@ -770,6 +780,7 @@
 
                     filasHtml += `
                         <tr class="${estClase}">
+                            <td><span class="id-pill">#${escapeHtml(r.id)}</span></td>
                             <td>${escapeHtml(r.area)} m²<br><small class="text-muted">${escapeHtml(r.largoRestante)} / ${escapeHtml(r.largoInicial)} m lineales</small></td>
                             <td>${estBadge}</td>
                             <td><small>${escapeHtml(r.fecha)}</small></td>
@@ -795,7 +806,7 @@
                     <div class="grupo-body">
                         <table class="table table-hover align-middle table-small mb-0">
                             <thead class="table-light">
-                                <tr><th>Área restante</th><th>Estado</th><th>Ingreso</th><th>Acciones</th></tr>
+                                <tr><th>#</th><th>Área restante</th><th>Estado</th><th>Ingreso</th><th>Acciones</th></tr>
                             </thead>
                             <tbody>${filasHtml}</tbody>
                         </table>
@@ -909,7 +920,7 @@
 
                     filasHtml += `
                         <tr class="${estClase}">
-                            <td>#${escapeHtml(r.id)}</td>
+                            <td><span class="id-pill">#${escapeHtml(r.id)}</span></td>
                             <td>${escapeHtml(r.ancho)} m</td>
                             <td><strong>${escapeHtml(r.alto)} m</strong></td>
                             <td>${escapeHtml(r.area)} m²</td>
@@ -1053,6 +1064,7 @@
                             : '<span class="badge bg-success">Disponible</span>';
                         filasPiezasHtml += `
                             <tr class="${estClase}">
+                                <td><span class="id-pill">#${escapeHtml(p.id)}</span></td>
                                 <td><strong>${escapeHtml(p.largoRestante)} / ${escapeHtml(p.largoInicial)} m</strong></td>
                                 <td>${estBadge}</td>
                                 <td><small>${escapeHtml(p.fecha)}</small></td>
@@ -1066,14 +1078,14 @@
                     });
 
                     if (piezas.length === 0) {
-                        filasPiezasHtml = `<tr><td colspan="4" class="text-center text-muted py-2">Sin piezas registradas todavía.</td></tr>`;
+                        filasPiezasHtml = `<tr><td colspan="5" class="text-center text-muted py-2">Sin piezas registradas todavía.</td></tr>`;
                     }
 
                     cuerpoInterno = `
                         <div class="grupo-body">
                             <table class="table table-hover align-middle table-small mb-0">
                                 <thead class="table-light">
-                                    <tr><th>Largo restante</th><th>Estado</th><th>Ingreso</th><th>Acciones</th></tr>
+                                    <tr><th>#</th><th>Largo restante</th><th>Estado</th><th>Ingreso</th><th>Acciones</th></tr>
                                 </thead>
                                 <tbody>${filasPiezasHtml}</tbody>
                             </table>
@@ -1095,6 +1107,7 @@
                     <div class="grupo-header" role="button">
                         <div class="grupo-titulo">
                             <span class="chevron">▶</span>
+                            <span class="id-pill">#${escapeHtml(ins.id)}</span>
                             <span>${escapeHtml(ins.nombre)}</span>
                             ${badgeTipo}
                             <span class="grupo-meta">(${stockTexto})</span>

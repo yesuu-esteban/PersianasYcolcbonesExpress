@@ -286,7 +286,8 @@ public class InventarioServicio {
         r.setPedidoId(pedido.getId());
         r.setTipoMaterial(pieza.getInsumo().getNombre().toUpperCase().replace(" ", "_"));
         r.setPiezaInsumoId(pieza.getId());
-        r.setFuenteDescripcion(pieza.getInsumo().getNombre() + " (#" + pieza.getId() + ")"
+        r.setFuenteDescripcion(pieza.getInsumo().getNombre() + " (#" + pieza.getId()
+                + ", pieza original de " + redondear(pieza.getLargoInicial()) + " m)"
                 + (combinado ? " [combinado con otra(s) pieza(s)]" : ""));
         r.setMetrosUsados(metros);
         r.setSeleccionManual(manual);
@@ -310,6 +311,12 @@ public class InventarioServicio {
     public MaterialUsado descontarRetazo(Pedido pedido, RetazoTela retazo, boolean manual) {
         double corteAncho = pedido.getCorteTelaAncho();
         double corteAlto = pedido.getCorteTelaAlto();
+
+        // Guardamos la medida ORIGINAL del retazo antes de recortarlo, para
+        // que el reporte siempre muestre de qué tamaño era la pieza de la
+        // que se cortó, sin importar si el retazo termina agotado o no.
+        double anchoOriginal = retazo.getAncho();
+        double altoOriginal = retazo.getAlto();
 
         boolean entraDirecto = retazo.getAncho() >= corteAncho - 0.001 && retazo.getAlto() >= corteAlto - 0.001;
         boolean entraRotado = retazo.getAncho() >= corteAlto - 0.001 && retazo.getAlto() >= corteAncho - 0.001;
@@ -336,8 +343,8 @@ public class InventarioServicio {
         MaterialUsado r = new MaterialUsado();
         r.setPedidoId(pedido.getId());
         r.setTipoMaterial("RETAZO");
-        r.setFuenteDescripcion("Retazo " + retazo.getColor() + " " + retazo.getAncho()
-                + "m × " + retazo.getAlto() + "m (#" + retazo.getId() + ")");
+        r.setFuenteDescripcion("Retazo " + retazo.getColor() + " (#" + retazo.getId()
+                + ") — medida original " + anchoOriginal + "m × " + altoOriginal + "m");
         r.setMetrosUsados(altoUsado);
         r.setMetrosSobrantes(sobrante);
         r.setMetrosCuadrados(redondear(pedido.getCorteTelaAncho() * pedido.getCorteTelaAlto()));
@@ -359,7 +366,8 @@ public class InventarioServicio {
         rollo.setLargoRestante(redondear(rollo.getLargoRestante() - metros));
         rolloTelaRepository.save(rollo);
 
-        String fuente = "Rollo " + rollo.getColor() + " " + rollo.getAncho() + "m (#" + rollo.getId() + ")";
+        String fuente = "Rollo " + rollo.getColor() + " " + rollo.getAncho() + "m (#" + rollo.getId()
+                + ", rollo original de " + redondear(rollo.getLargoInicial()) + " m)";
         if (esSustituto) {
             fuente += " ⚠ SUSTITUTO: se necesitaba ancho " + anchoOriginalNecesario
                     + "m pero no había stock; se usó " + rollo.getAncho() + "m en su lugar.";
@@ -396,7 +404,8 @@ public class InventarioServicio {
         r.setTipoMaterial("TELA");
         r.setRolloTelaId(rollo.getId());
         r.setFuenteDescripcion("Rollo " + rollo.getColor() + " " + rollo.getAncho()
-                + "m (#" + rollo.getId() + ") — venta directa");
+                + "m (#" + rollo.getId() + ", rollo original de " + redondear(rollo.getLargoInicial())
+                + " m) — venta directa");
         r.setMetrosUsados(metros);
         r.setMetrosSobrantes(rollo.getLargoRestante());
         r.setMetrosCuadrados(redondear(rollo.getAncho() * metros));
@@ -416,7 +425,8 @@ public class InventarioServicio {
         r.setPedidoId(pedido.getId());
         r.setTipoMaterial(pieza.getInsumo().getNombre().toUpperCase().replace(" ", "_"));
         r.setPiezaInsumoId(pieza.getId());
-        r.setFuenteDescripcion(pieza.getInsumo().getNombre() + " (#" + pieza.getId() + ")");
+        r.setFuenteDescripcion(pieza.getInsumo().getNombre() + " (#" + pieza.getId()
+                + ", pieza original de " + redondear(pieza.getLargoInicial()) + " m)");
         r.setMetrosUsados(metros);
         r.setMetrosSobrantes(pieza.getLargoRestante());
         r.setSeleccionManual(manual);
@@ -863,19 +873,40 @@ public class InventarioServicio {
         try {
             String desc = m.getFuenteDescripcion();
             if (desc == null || !desc.startsWith("Retazo ")) return null;
-            String sinPrefijo = desc.substring("Retazo ".length());
-            int idxNumero = -1;
-            for (int i = 0; i < sinPrefijo.length(); i++) {
-                if (Character.isDigit(sinPrefijo.charAt(i))) { idxNumero = i; break; }
+
+            String color;
+            double ancho;
+
+            // Formato NUEVO: "Retazo COLOR (#ID) — medida original ANCHOm × ALTOm"
+            int idxMedidaOriginal = desc.indexOf("medida original ");
+            if (idxMedidaOriginal >= 0) {
+                int idxParentesis = desc.indexOf(" (#");
+                if (idxParentesis <= 0) return null;
+                color = desc.substring("Retazo ".length(), idxParentesis).trim();
+                String medidas = desc.substring(idxMedidaOriginal + "medida original ".length());
+                String anchoTexto = medidas.split("×")[0].replace("m", "").trim();
+                ancho = Double.parseDouble(anchoTexto);
+            } else {
+                // Formato HEREDADO (registros guardados antes de este cambio):
+                // "Retazo COLOR ANCHOm × ALTOm (#ID)"
+                String sinPrefijo = desc.substring("Retazo ".length());
+                int idxNumero = -1;
+                for (int i = 0; i < sinPrefijo.length(); i++) {
+                    if (Character.isDigit(sinPrefijo.charAt(i))) { idxNumero = i; break; }
+                }
+                if (idxNumero < 1) return null;
+                color = sinPrefijo.substring(0, idxNumero).trim();
+                String medidas = sinPrefijo.substring(idxNumero);
+                String[] partes = medidas.split("m");
+                if (partes.length < 1) return null;
+                ancho = Double.parseDouble(partes[0].trim());
             }
-            if (idxNumero < 1) return null;
-            String color = sinPrefijo.substring(0, idxNumero).trim();
-            String medidas = sinPrefijo.substring(idxNumero);
-            String[] partes = medidas.split("m");
-            if (partes.length < 1) return null;
-            double ancho = Double.parseDouble(partes[0].trim());
+
+            // El alto original siempre se recupera de metrosUsados + metrosSobrantes,
+            // independientemente del formato del texto (esto no cambió).
             double altoOriginal = redondear(m.getMetrosUsados() + m.getMetrosSobrantes());
             if (altoOriginal <= 0.001) return null;
+
             RetazoTela retazo = new RetazoTela();
             retazo.setColor(color);
             retazo.setAncho(ancho);
@@ -1358,7 +1389,8 @@ public class InventarioServicio {
                     r.setPedidoId(pedido.getId());
                     r.setTipoMaterial(insumo.getNombre().toUpperCase().replace(" ", "_"));
                     r.setPiezaInsumoId(p.getId());
-                    r.setFuenteDescripcion(insumo.getNombre() + " (#" + p.getId() + ") — extra agregado al pedido");
+                    r.setFuenteDescripcion(insumo.getNombre() + " (#" + p.getId() + ", pieza original de "
+                            + redondear(p.getLargoInicial()) + " m) — extra agregado al pedido");
                     r.setMetrosUsados(aUsar);
                     r.setSeleccionManual(true);
 
