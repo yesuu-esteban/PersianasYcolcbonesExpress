@@ -139,11 +139,15 @@ public class InventarioServicio {
     }
 
     // ── Umbrales centralizados de alertas ───────────────────────
-    private static final int UMBRAL_UNIDAD_ADVERTENCIA = 50; // entre 6 y 50 -> advertencia
+    // Insumos POR UNIDAD (ej: Control, Tornillo, Conector...):
+    // se alerta cuando quedan MENOS de 50 unidades; si además quedan
+    // 5 o menos, se marca como CRITICO en vez de ADVERTENCIA.
+    private static final int UMBRAL_UNIDAD_ADVERTENCIA = 50; // < 50 -> advertencia
     private static final int UMBRAL_UNIDAD_CRITICO = 5;      // <= 5 -> critico
 
-    private static final int UMBRAL_PIEZAS_ADVERTENCIA = 10; // entre 6 y 10 piezas -> advertencia
-    private static final int UMBRAL_PIEZAS_CRITICO = 5;      // <= 5 piezas -> critico
+    // Insumos POR MEDIDA (ej: Tubo, Cuerda, Pesa...), contando piezas
+    // completas disponibles: se alerta únicamente cuando quedan MENOS de 5.
+    private static final int UMBRAL_PIEZAS_CRITICO = 5;      // < 5 piezas -> alerta (critico)
 
     // ═══════════════════════════════════════════════════════════════
     // BÚSQUEDA DE RETAZO
@@ -1219,7 +1223,10 @@ public class InventarioServicio {
 
         for (Insumo insumo : insumos) {
             if (Boolean.TRUE.equals(insumo.getTieneMedida())) {
-                // ── Insumo por medida: contar piezas con material disponible ──
+                // ── Insumo por medida (tubo, cuerda, pesa, etc.): se cuentan
+                //    las piezas COMPLETAS con material disponible. Solo se
+                //    alerta cuando quedan MENOS de 5 piezas (umbral único,
+                //    sin nivel intermedio de "advertencia" a 10).
                 List<PiezaInsumo> piezas = piezaInsumoRepository.findByInsumoIdOrderByLargoRestanteAsc(insumo.getId());
                 long piezasDisponibles = piezas.stream().filter(p -> !p.isAgotada()).count();
 
@@ -1229,22 +1236,19 @@ public class InventarioServicio {
                             insumo.getNombre(),
                             "No hay piezas disponibles de \"" + insumo.getNombre() + "\".",
                             "INSUMO_MEDIDA"));
-                } else if (piezasDisponibles <= UMBRAL_PIEZAS_CRITICO) {
+                } else if (piezasDisponibles < UMBRAL_PIEZAS_CRITICO) {
                     alertas.add(new AlertaInventario(
                             NivelAlerta.CRITICO,
                             insumo.getNombre(),
-                            "Solo quedan " + piezasDisponibles + " pieza(s) de \"" + insumo.getNombre() + "\". Pedir ya.",
-                            "INSUMO_MEDIDA"));
-                } else if (piezasDisponibles <= UMBRAL_PIEZAS_ADVERTENCIA) {
-                    alertas.add(new AlertaInventario(
-                            NivelAlerta.ADVERTENCIA,
-                            insumo.getNombre(),
-                            "Quedan " + piezasDisponibles + " piezas de \"" + insumo.getNombre() + "\". Empezar a pensar en reponer.",
+                            "Quedan solo " + piezasDisponibles + " pieza(s) de \"" + insumo.getNombre() + "\". Pedir ya.",
                             "INSUMO_MEDIDA"));
                 }
+                // 5 piezas o más disponibles -> todavía no se alerta.
 
             } else {
-                // ── Insumo por unidad: comparar stock directo ──
+                // ── Insumo por unidad (ej: Control, Tornillo, Conector...):
+                //    se alerta cuando quedan MENOS de 50 unidades; si además
+                //    quedan 5 o menos, se marca como CRITICO en vez de ADVERTENCIA.
                 int stock = insumo.getStockUnidades() != null ? insumo.getStockUnidades() : 0;
 
                 if (stock == 0) {
@@ -1259,7 +1263,7 @@ public class InventarioServicio {
                             insumo.getNombre(),
                             "Solo quedan " + stock + " unidad(es) de \"" + insumo.getNombre() + "\". Pedir ya.",
                             "INSUMO_UNIDAD"));
-                } else if (stock <= UMBRAL_UNIDAD_ADVERTENCIA) {
+                } else if (stock < UMBRAL_UNIDAD_ADVERTENCIA) {
                     alertas.add(new AlertaInventario(
                             NivelAlerta.ADVERTENCIA,
                             insumo.getNombre(),
