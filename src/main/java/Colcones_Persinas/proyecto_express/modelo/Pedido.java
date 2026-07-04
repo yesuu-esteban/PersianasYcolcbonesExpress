@@ -37,8 +37,21 @@ public class Pedido {
      * Tipo de pedido: "FABRICACION" (default, flujo normal con ficha técnica
      * y corte de tela/perfilería) o "VENTA_DIRECTA" (venta de insumos/tela
      * suelta, sin fabricación, se descuenta inventario pero no hay ficha técnica).
+     *
+     * IMPORTANTE — columnDefinition con DEFAULT:
+     * Al declarar la columna como NOT NULL sin un valor por defecto a nivel
+     * de base de datos, un ALTER TABLE automático (ddl-auto=update) sobre una
+     * tabla que ya tiene filas falla, porque esas filas viejas no tendrían
+     * ningún valor para la columna nueva. Con columnDefinition, si Hibernate
+     * necesita crear la columna, la base de datos misma le pone 'FABRICACION'
+     * a las filas existentes y el ALTER no se rompe.
+     *
+     * Si tu ddl-auto está en "validate" o "none", esto NO reemplaza la
+     * migración manual: igual necesitas correr el ALTER TABLE / UPDATE por tu
+     * cuenta antes de reiniciar la aplicación, ya que en esos modos Hibernate
+     * nunca modifica el esquema, solo lo valida contra lo que ya existe.
      */
-    @Column(name = "tipo", nullable = false)
+    @Column(name = "tipo", nullable = false, columnDefinition = "VARCHAR(255) DEFAULT 'FABRICACION'")
     private String tipo = "FABRICACION";
 
     // Flags de estado
