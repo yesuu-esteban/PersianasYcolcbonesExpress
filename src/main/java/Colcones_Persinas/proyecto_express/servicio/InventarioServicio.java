@@ -138,17 +138,8 @@ public class InventarioServicio {
         public double metros;
     }
 
-    // ── Umbrales centralizados de alertas ───────────────────────
-    // Insumos POR UNIDAD (ej: Control, Tornillo, Conector...):
-    // se alerta cuando quedan MENOS de 50 unidades; si además quedan
-    // 5 o menos, se marca como CRITICO en vez de ADVERTENCIA.
-    private static final int UMBRAL_UNIDAD_ADVERTENCIA = 50; // < 50 -> advertencia
-    private static final int UMBRAL_UNIDAD_CRITICO = 5;      // <= 5 -> critico
-
-    // Insumos POR MEDIDA (ej: Tubo, Cuerda, Pesa...), contando piezas
-    // completas disponibles: se alerta únicamente cuando quedan MENOS de 5.
-    private static final int UMBRAL_PIEZAS_CRITICO = 5;      // < 5 piezas -> alerta (critico)
-
+    private static final int UMBRAL_UNIDAD_ADVERTENCIA_DEFECTO = 50; // usado si el insumo no tiene umbralAlerta propio
+    private static final double UMBRAL_METROS_CRITICO_DEFECTO = 5.0; // metros totales restantes; < esto = critico
     // ═══════════════════════════════════════════════════════════════
     // BÚSQUEDA DE RETAZO
     // ═══════════════════════════════════════════════════════════════
@@ -1254,33 +1245,55 @@ public class InventarioServicio {
 
         for (Insumo insumo : insumos) {
             if (Boolean.TRUE.equals(insumo.getTieneMedida())) {
-                // ── Insumo por medida (tubo, cuerda, pesa, etc.): se cuentan
-                //    las piezas COMPLETAS con material disponible. Solo se
-                //    alerta cuando quedan MENOS de 5 piezas (umbral único,
-                //    sin nivel intermedio de "advertencia" a 10).
+                // ── Insumo por medida (tubo, cuerda, pesa, etc.): se suman los
+                //    METROS TOTALES restantes de todas las piezas con material
+                //    (antes se contaban piezas, lo cual distorsionaba la alerta
+                //    si había, por ejemplo, muchas piezas casi agotadas o pocas
+                //    piezas pero muy largas). El umbral es en metros.
                 List<PiezaInsumo> piezas = piezaInsumoRepository.findByInsumoIdOrderByLargoRestanteAsc(insumo.getId());
-                long piezasDisponibles = piezas.stream().filter(p -> !p.isAgotada()).count();
+                double totalMetros = piezas.stream()
+                        .filter(p -> !p.isAgotada())
+                        .mapToDouble(PiezaInsumo::getLargoRestante)
+                        .sum();
 
-                if (piezasDisponibles == 0) {
+                double umbralCritico = (insumo.getUmbralAlerta() != null && insumo.getUmbralAlerta() > 0)
+                        ? insumo.getUmbralAlerta()
+                        : UMBRAL_METROS_CRITICO_DEFECTO;
+                double umbralAdvertencia = umbralCritico * 2;
+
+                if (totalMetros <= 0.001) {
                     alertas.add(new AlertaInventario(
                             NivelAlerta.AGOTADO,
                             insumo.getNombre(),
-                            "No hay piezas disponibles de \"" + insumo.getNombre() + "\".",
+                            "No hay material disponible de \"" + insumo.getNombre() + "\".",
                             "INSUMO_MEDIDA"));
-                } else if (piezasDisponibles < UMBRAL_PIEZAS_CRITICO) {
+                } else if (totalMetros < umbralCritico) {
                     alertas.add(new AlertaInventario(
                             NivelAlerta.CRITICO,
                             insumo.getNombre(),
-                            "Quedan solo " + piezasDisponibles + " pieza(s) de \"" + insumo.getNombre() + "\". Pedir ya.",
+                            "Quedan solo " + redondear(totalMetros) + " m en total de \"" + insumo.getNombre() + "\" (en "
+                                    + piezas.stream().filter(p -> !p.isAgotada()).count() + " pieza(s)). Pedir ya.",
+                            "INSUMO_MEDIDA"));
+                } else if (totalMetros < umbralAdvertencia) {
+                    alertas.add(new AlertaInventario(
+                            NivelAlerta.ADVERTENCIA,
+                            insumo.getNombre(),
+                            "Quedan " + redondear(totalMetros) + " m en total de \"" + insumo.getNombre() + "\". Conviene reponer pronto.",
                             "INSUMO_MEDIDA"));
                 }
-                // 5 piezas o más disponibles -> todavía no se alerta.
 
             } else {
                 // ── Insumo por unidad (ej: Control, Tornillo, Conector...):
-                //    se alerta cuando quedan MENOS de 50 unidades; si además
-                //    quedan 5 o menos, se marca como CRITICO en vez de ADVERTENCIA.
+                //    umbralAlerta (si el jefe lo configuró) hace de umbral de
+                //    ADVERTENCIA; el umbral CRITICO es el 10% de ese valor
+                //    (mínimo 1), igual que el comportamiento por defecto de antes
+                //    (50 advertencia / 5 critico = 10%).
                 int stock = insumo.getStockUnidades() != null ? insumo.getStockUnidades() : 0;
+
+                int umbralAdvertencia = (insumo.getUmbralAlerta() != null && insumo.getUmbralAlerta() > 0)
+                        ? insumo.getUmbralAlerta()
+                        : UMBRAL_UNIDAD_ADVERTENCIA_DEFECTO;
+                int umbralCritico = Math.max(1, umbralAdvertencia / 10);
 
                 if (stock == 0) {
                     alertas.add(new AlertaInventario(
@@ -1288,13 +1301,13 @@ public class InventarioServicio {
                             insumo.getNombre(),
                             "No hay stock de \"" + insumo.getNombre() + "\".",
                             "INSUMO_UNIDAD"));
-                } else if (stock <= UMBRAL_UNIDAD_CRITICO) {
+                } else if (stock <= umbralCritico) {
                     alertas.add(new AlertaInventario(
                             NivelAlerta.CRITICO,
                             insumo.getNombre(),
                             "Solo quedan " + stock + " unidad(es) de \"" + insumo.getNombre() + "\". Pedir ya.",
                             "INSUMO_UNIDAD"));
-                } else if (stock < UMBRAL_UNIDAD_ADVERTENCIA) {
+                } else if (stock < umbralAdvertencia) {
                     alertas.add(new AlertaInventario(
                             NivelAlerta.ADVERTENCIA,
                             insumo.getNombre(),
@@ -1306,7 +1319,6 @@ public class InventarioServicio {
 
         return alertas;
     }
-
     // ═══════════════════════════════════════════════════════════════
     // INSUMOS EXTRA (agregados manualmente al pedido)
     // ═══════════════════════════════════════════════════════════════

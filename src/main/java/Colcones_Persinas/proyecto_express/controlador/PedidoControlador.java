@@ -443,8 +443,14 @@ public class PedidoControlador {
             return "redirect:/taller/editar/" + id;
         }
 
-        // Procesar extras nuevos
-        procesarExtras(pedido, allParams);
+       // Procesar extras nuevos
+        try {
+            procesarExtras(pedido, allParams);
+        } catch (InventarioServicio.MaterialInsuficienteException e) {
+            redirectAttributes.addFlashAttribute("error",
+                    "Pedido guardado, pero hubo un problema con un insumo extra: " + e.getMessage());
+            return "redirect:/taller/pedidos";
+        }
 
         redirectAttributes.addFlashAttribute("mensaje", "Pedido actualizado. Inventario reajustado correctamente.");
         return "redirect:/taller/pedidos";
@@ -474,13 +480,14 @@ public class PedidoControlador {
      * Reutilizado tanto por fabricación normal (guardar-lista, editar) como por
      * Venta Directa (guardar-venta-directa), sin ninguna diferencia entre los dos flujos.
      */
-    private void procesarExtras(Pedido pedido, Map<String, String> allParams) {
+   private void procesarExtras(Pedido pedido, Map<String, String> allParams) {
         int i = 0;
         while (allParams.containsKey("extraCantidad[" + i + "]")) {
             String cantidadStr  = allParams.getOrDefault("extraCantidad[" + i + "]", "").trim();
             String insumoIdStr  = allParams.getOrDefault("extraInsumoId[" + i + "]", "").trim();
             String nombreLibre  = allParams.getOrDefault("extraNombreLibre[" + i + "]", "").trim();
             String unidad       = allParams.getOrDefault("extraUnidad["       + i + "]", "und").trim();
+            String piezaIdStr   = allParams.getOrDefault("extraPiezaId["      + i + "]", "auto").trim();
             i++;
 
             if (cantidadStr.isEmpty()) continue;
@@ -496,29 +503,59 @@ public class PedidoControlador {
             registro.setSeleccionManual(true);
 
             if (!insumoIdStr.isEmpty() && !insumoIdStr.equals("libre")) {
-                // ── Insumo del catálogo ───────────────────────────────────
                 try {
                     int insumoId = Integer.parseInt(insumoIdStr);
                     Insumo insumo = insumoRepository.findById(insumoId).orElse(null);
 
                     if (insumo != null) {
                         if (Boolean.TRUE.equals(insumo.getTieneMedida())) {
-                            // Descontar de piezas disponibles (de menor a mayor sobrante)
-                            List<PiezaInsumo> piezas = piezaInsumoRepository
-                                    .findByInsumoIdAndLargoRestanteGreaterThanOrderByLargoRestanteAsc(insumoId, 0.0);
-                            double restante = cantidad;
-                            for (PiezaInsumo pieza : piezas) {
-                                if (restante <= 0.001) break;
-                                double aUsar = Math.min(pieza.getLargoRestante(), restante);
-                                pieza.setLargoRestante(
-                                        Math.round((pieza.getLargoRestante() - aUsar) * 1000.0) / 1000.0);
-                                piezaInsumoRepository.save(pieza);
-                                restante = Math.round((restante - aUsar) * 1000.0) / 1000.0;
+                            boolean piezaManual = !piezaIdStr.isEmpty() && !piezaIdStr.equalsIgnoreCase("auto");
+
+                            if (piezaManual) {
+                                // ── Pieza específica elegida por el jefe ──
+                                Integer piezaId = null;
+                                try { piezaId = Integer.parseInt(piezaIdStr); } catch (NumberFormatException ignored) {}
+
+                                PiezaInsumo pieza = (piezaId != null)
+                                        ? piezaInsumoRepository.findById(piezaId).orElse(null)
+                                        : null;
+
+                                if (pieza == null || pieza.getInsumo() == null || pieza.getInsumo().getId() != insumoId) {
+                                    piezaManual = false;
+                                } else {
+                                    if (pieza.getLargoRestante() < cantidad - 0.001) {
+                                        throw new InventarioServicio.MaterialInsuficienteException(
+                                            "La pieza #" + piezaId + " de \"" + insumo.getNombre() + "\" no tiene suficiente material ("
+                                            + pieza.getLargoRestante() + " m disponibles, " + cantidad + " m necesarios).");
+                                    }
+                                    pieza.setLargoRestante(Math.round((pieza.getLargoRestante() - cantidad) * 1000.0) / 1000.0);
+                                    piezaInsumoRepository.save(pieza);
+                                    registro.setPiezaInsumoId(pieza.getId());
+                                    registro.setFuenteDescripcion(insumo.getNombre()
+                                            + " (#" + pieza.getId() + ") [extra] (" + cantidad + " " + unidad + ") — pieza elegida por ti");
+                                }
                             }
-                            registro.setFuenteDescripcion(insumo.getNombre()
-                                    + " [extra] (" + cantidad + " " + unidad + ")");
+
+                            if (!piezaManual) {
+                                List<PiezaInsumo> piezas = piezaInsumoRepository
+                                        .findByInsumoIdAndLargoRestanteGreaterThanOrderByLargoRestanteAsc(insumoId, 0.0);
+                                double restante = cantidad;
+                                for (PiezaInsumo pieza : piezas) {
+                                    if (restante <= 0.001) break;
+                                    double aUsar = Math.min(pieza.getLargoRestante(), restante);
+                                    pieza.setLargoRestante(
+                                            Math.round((pieza.getLargoRestante() - aUsar) * 1000.0) / 1000.0);
+                                    piezaInsumoRepository.save(pieza);
+                                    restante = Math.round((restante - aUsar) * 1000.0) / 1000.0;
+                                }
+                                if (restante > 0.001) {
+                                    throw new InventarioServicio.MaterialInsuficienteException(
+                                            "No hay suficiente \"" + insumo.getNombre() + "\" para completar el insumo extra.");
+                                }
+                                registro.setFuenteDescripcion(insumo.getNombre()
+                                        + " [extra] (" + cantidad + " " + unidad + ")");
+                            }
                         } else {
-                            // Descontar unidades
                             int cantInt = (int) Math.round(cantidad);
                             int disponible = insumo.getStockUnidades() != null ? insumo.getStockUnidades() : 0;
                             int nuevoStock = Math.max(0, disponible - cantInt);
@@ -535,7 +572,6 @@ public class PedidoControlador {
                     registro.setFuenteDescripcion(insumoIdStr + " [extra]");
                 }
             } else {
-                // ── Nombre libre — sin descuento de inventario ────────────
                 String desc = nombreLibre.isEmpty() ? "Insumo adicional" : nombreLibre;
                 registro.setFuenteDescripcion(desc + " [extra libre, sin descuento] ("
                         + cantidad + " " + unidad + ")");

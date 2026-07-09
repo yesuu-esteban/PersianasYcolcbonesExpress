@@ -381,7 +381,8 @@
                         th:data-largo-restante="${#numbers.formatDecimal(r.largoRestante, 1, 2)}"
                         th:data-largo-inicial="${#numbers.formatDecimal(r.largoInicial, 1, 0)}"
                         th:data-fecha="${#temporals.format(r.fechaIngreso, 'dd/MM/yyyy HH:mm')}"
-                        th:data-url-eliminar="@{/inventario/rollo/eliminar/{id}(id=${r.id})}">
+                        th:data-url-eliminar="@{/inventario/rollo/eliminar/{id}(id=${r.id})}"
+                        th:data-url-corregir="@{/inventario/rollo/{id}/corregir(id=${r.id})}">
                     </tr>
                 </tbody>
             </table>
@@ -706,7 +707,8 @@
             largoRestante: tr.dataset.largoRestante,
             largoInicial: tr.dataset.largoInicial,
             fecha: tr.dataset.fecha,
-            urlEliminar: tr.dataset.urlEliminar
+            urlEliminar: tr.dataset.urlEliminar,
+            urlCorregir: tr.dataset.urlCorregir
         }));
 
         // Poblar el <select> de anchos dinámicamente según los datos reales
@@ -784,7 +786,14 @@
                             <td>${escapeHtml(r.area)} m²<br><small class="text-muted">${escapeHtml(r.largoRestante)} / ${escapeHtml(r.largoInicial)} m lineales</small></td>
                             <td>${estBadge}</td>
                             <td><small>${escapeHtml(r.fecha)}</small></td>
-                            <td>
+                            <td class="d-flex gap-1 flex-wrap">
+                                <form action="${escapeHtml(r.urlCorregir)}" method="post" class="d-flex gap-1 align-items-center">
+                                    <input type="number" step="0.01" min="0" max="${escapeHtml(r.largoInicial)}"
+                                           name="largoRestante" value="${escapeHtml(r.largoRestante)}"
+                                           class="form-control form-control-sm" style="width:80px;" required>
+                                    <button type="submit" class="btn btn-sm btn-outline-primary" title="Corregir largo restante">💾</button>
+                                    <button type="submit" class="btn btn-sm btn-outline-warning btn-agotar-rollo" title="Marcar agotado (0 m)">⛔</button>
+                                </form>
                                 <form action="${escapeHtml(r.urlEliminar)}" method="post" class="d-inline"
                                       onsubmit="return confirm('¿Eliminar este rollo del inventario?');">
                                     <button type="submit" class="btn btn-sm btn-outline-danger">🗑️</button>
@@ -844,6 +853,18 @@
         document.getElementById('btnColapsarTodosRollo').addEventListener('click', () => {
             document.querySelectorAll('#gruposRollosContainer .grupo-header').forEach(h => h.classList.remove('abierto'));
             document.querySelectorAll('#gruposRollosContainer .grupo-body').forEach(b => b.classList.remove('abierto'));
+        });
+
+
+        contenedor.addEventListener('click', (e) => {
+            const btn = e.target.closest('.btn-agotar-rollo');
+            if (!btn) return;
+            e.preventDefault();
+            if (!window.confirm('¿Marcar este rollo como agotado (largo restante = 0)?')) return;
+            const form = btn.closest('form');
+            const input = form.querySelector('input[name="largoRestante"]');
+            if (input) input.value = '0';
+            form.submit();
         });
 
         render();

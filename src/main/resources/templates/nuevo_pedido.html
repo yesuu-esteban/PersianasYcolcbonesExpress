@@ -634,22 +634,48 @@
 
     function filaExtraHtml(idx) {
         return `
-        <div class="row g-2 align-items-center mb-2 fila-extra" data-indice="${idx}">
+        <div class="row g-2 align-items-center mb-1 fila-extra" data-indice="${idx}">
             <div class="col-md-5">
-                <select name="extraInsumoId" class="form-select form-select-sm select-extra-insumo" onchange="toggleLibre(this)">
+                <select name="extraInsumoId[${idx}]" class="form-select form-select-sm select-extra-insumo" onchange="actualizarInfoExtra(this)">
                     ${opcionesCatalogo()}
+                 </select>
+               </div>
+               <div class="col-md-4 campo-libre-extra" style="display:none;">
+                  <input type="text" name="extraNombreLibre[${idx}]" class="form-control form-control-sm" placeholder="Nombre del insumo">
+                </div>
+                <div class="col-md-2">
+                    <input type="number" step="0.01" min="0" name="extraCantidad[${idx}]" class="form-control form-control-sm campo-cantidad-insumo-venta" placeholder="Cantidad">
+                </div>
+                <div class="col-md-1">
+                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="this.closest('.fila-extra').remove()">✕</button>
+                </div>
+            </div>
+            <div class="row mb-2 fila-extra-info" data-indice="${idx}">
+                <div class="col-md-7">
+                    <div class="info-stock-insumo"></div>
+             </div>
+                <div class="col-md-5 campo-pieza-insumo" style="display:none;">                    <label class="form-label mb-1" style="font-size:0.76rem">🔩 ¿De qué pieza específica se corta?</label>
+                <select name="extraPiezaId[${idx}]" class="form-select form-select-sm select-pieza-insumo">
+                    <option value="auto">⚡ Automático (sugerido)</option>
                 </select>
             </div>
-            <div class="col-md-4 campo-libre-extra" style="display:none;">
-                <input type="text" name="extraNombreLibre" class="form-control form-control-sm" placeholder="Nombre del insumo">
-            </div>
-            <div class="col-md-2">
-                <input type="number" step="0.01" name="extraCantidad" class="form-control form-control-sm" placeholder="Cantidad" min="0">
-            </div>
-            <div class="col-md-1">
-                <button type="button" class="btn btn-sm btn-outline-danger" onclick="this.closest('.fila-extra').remove()">✕</button>
-            </div>
         </div>`;
+    }
+
+    // Reutiliza exactamente la misma lógica que Venta Directa: muestra el
+    // stock/metros disponibles del insumo elegido y, si es por medida,
+    // habilita el selector de pieza específica.
+    function actualizarInfoExtra(select) {
+        actualizarInfoInsumoVenta(select);
+    }
+
+    function agregarFilaExtra() {
+        const cont = document.getElementById('contenedorExtras');
+        const idx = extraIndex++;
+        cont.insertAdjacentHTML('beforeend', filaExtraHtml(idx));
+        const filaCampos = cont.querySelector(`.fila-extra[data-indice="${idx}"]`);
+        const select = filaCampos.querySelector('.select-extra-insumo');
+        actualizarInfoExtra(select);
     }
 
     function toggleLibre(select) {

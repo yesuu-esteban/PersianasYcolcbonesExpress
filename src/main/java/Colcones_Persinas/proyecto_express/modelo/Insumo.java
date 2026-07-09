@@ -37,4 +37,16 @@ public class Insumo {
 
     /** Descripción libre opcional, para que el jefe aclare detalles. */
     private String descripcion = "";
+
+    /**
+     * Umbral personalizado a partir del cual se genera una alerta de stock bajo
+     * para ESTE insumo en particular. Si es null, se usa el umbral global por
+     * defecto (ver InventarioServicio.UMBRAL_UNIDAD_DEFECTO / UMBRAL_METROS_DEFECTO).
+     *
+     * - Para insumos POR UNIDAD: cantidad de unidades (ej: 50).
+     * - Para insumos POR MEDIDA: cantidad de metros totales restantes (ej: 10.0),
+     *   truncado a entero en el formulario por simplicidad.
+     */
+    @Column(name = "umbral_alerta")
+    private Integer umbralAlerta;
 }

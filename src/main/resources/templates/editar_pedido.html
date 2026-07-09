@@ -507,24 +507,119 @@
 
     function filaExtraHtml(idx) {
         return `
-        <div class="row g-2 align-items-center mb-2 fila-extra" data-indice="${idx}">
+        <div class="row g-2 align-items-center mb-1 fila-extra" data-indice="${idx}">
             <div class="col-md-5">
-                <select name="extraInsumoId" class="form-select form-select-sm select-extra-insumo" onchange="toggleLibre(this)">
+                <select name="extraInsumoId[${idx}]" class="form-select form-select-sm select-extra-insumo" onchange="actualizarInfoExtra(this)">
                     ${opcionesCatalogo()}
                 </select>
             </div>
             <div class="col-md-4 campo-libre-extra" style="display:none;">
-                <input type="text" name="extraNombreLibre" class="form-control form-control-sm" placeholder="Nombre del insumo">
+                <input type="text" name="extraNombreLibre[${idx}]" class="form-control form-control-sm" placeholder="Nombre del insumo">
             </div>
             <div class="col-md-2">
-                <input type="number" step="0.01" name="extraCantidad" class="form-control form-control-sm" placeholder="Cantidad" min="0">
+                <input type="number" step="0.01" min="0" name="extraCantidad[${idx}]" class="form-control form-control-sm campo-cantidad-insumo-venta" placeholder="Cantidad">
             </div>
             <div class="col-md-1">
                 <button type="button" class="btn btn-sm btn-outline-danger" onclick="this.closest('.fila-extra').remove()">✕</button>
             </div>
+        </div>
+        <div class="row mb-2 fila-extra-info" data-indice="${idx}">
+            <div class="col-md-7">
+                <div class="info-stock-insumo"></div>
+            </div>
+            <div class="col-md-5 campo-pieza-insumo" style="display:none;">
+                <label class="form-label mb-1" style="font-size:0.76rem">🔩 ¿De qué pieza específica se corta?</label>
+                <select name="extraPiezaId[${idx}]" class="form-select form-select-sm select-pieza-insumo">
+                    <option value="auto">⚡ Automático (sugerido)</option>
+                </select>
+            </div>
         </div>`;
     }
 
+    // ── Generadores de opciones de catálogo (faltaban en este archivo) ──
+    function opcionesCatalogo() {
+        let html = '<option value="libre">✏ Insumo fuera del catálogo (texto libre)</option>';
+        catalogoInsumos.forEach(ins => {
+            html += `<option value="${ins.id}">${ins.nombre}${ins.tieneMedida ? ' (por medida)' : ' (por unidad)'}</option>`;
+        });
+        return html;
+    }
+
+    function actualizarInfoExtra(select) {
+        const filaCampos = select.closest('.fila-extra');
+        const filaInfo = filaCampos.nextElementSibling;
+        const campoLibre = filaCampos.querySelector('.campo-libre-extra');
+        const campoCantidad = filaCampos.querySelector('.campo-cantidad-insumo-venta');
+        const infoDiv = filaInfo ? filaInfo.querySelector('.info-stock-insumo') : null;
+        const campoPieza = filaInfo ? filaInfo.querySelector('.campo-pieza-insumo') : null;
+        const selectPieza = filaInfo ? filaInfo.querySelector('.select-pieza-insumo') : null;
+
+        if (select.value === 'libre') {
+            campoLibre.style.display = '';
+            campoCantidad.placeholder = 'Cantidad';
+            campoCantidad.step = '1';
+            if (campoPieza) campoPieza.style.display = 'none';
+            if (infoDiv) {
+                infoDiv.className = 'info-stock-insumo';
+                infoDiv.textContent = '✏ Insumo fuera de catálogo: no se descuenta del inventario, solo queda registrado en el reporte.';
+            }
+            return;
+        }
+        campoLibre.style.display = 'none';
+
+        const insumo = catalogoInsumos.find(ins => String(ins.id) === String(select.value));
+        if (!insumo || !infoDiv) return;
+
+        if (insumo.tieneMedida) {
+            const piezas = piezasDisponibles.filter(p => {
+                const nombre = p.insumoNombre || (p.insumo && p.insumo.nombre) || '';
+                return nombre.toLowerCase() === insumo.nombre.toLowerCase() && p.largoRestante > 0.001;
+            });
+            const totalMetros = piezas.reduce((sum, p) => sum + p.largoRestante, 0);
+
+            campoCantidad.placeholder = 'Metros';
+            campoCantidad.step = '0.01';
+
+            if (campoPieza && selectPieza) {
+                campoPieza.style.display = '';
+                selectPieza.innerHTML = opcionesPieza(insumo.nombre);
+            }
+
+            if (piezas.length === 0) {
+                infoDiv.className = 'info-stock-insumo sin-stock';
+                infoDiv.textContent = `⚠ Este insumo se mide en metros y no hay piezas disponibles de "${insumo.nombre}".`;
+            } else {
+                infoDiv.className = 'info-stock-insumo ok';
+                infoDiv.textContent = `📏 Se mide en metros · disponible: ${totalMetros.toFixed(2)} m en ${piezas.length} pieza(s).`;
+            }
+        } else {
+            const stock = insumo.stockUnidades != null ? insumo.stockUnidades : 0;
+            campoCantidad.placeholder = 'Unidades';
+            campoCantidad.step = '1';
+
+            if (campoPieza) campoPieza.style.display = 'none';
+
+            if (stock <= 0) {
+                infoDiv.className = 'info-stock-insumo sin-stock';
+                infoDiv.textContent = `⚠ Se vende por unidad y no hay stock de "${insumo.nombre}".`;
+            } else {
+                infoDiv.className = 'info-stock-insumo ok';
+                infoDiv.textContent = `🔢 Se vende por unidad · disponible: ${stock} unidad(es).`;
+            }
+        }
+    }
+
+    function agregarFilaExtra(valSelect, valLibre, valCant) {
+        const cont = document.getElementById('contenedorExtras');
+        const idx = extraIndex++;
+        cont.insertAdjacentHTML('beforeend', filaExtraHtml(idx));
+        const filaCampos = cont.querySelector(`.fila-extra[data-indice="${idx}"]`);
+        const sel = filaCampos.querySelector('.select-extra-insumo');
+        if (valSelect) sel.value = valSelect;
+        if (valLibre) filaCampos.querySelector('input[name^="extraNombreLibre"]').value = valLibre;
+        if (valCant) filaCampos.querySelector('input[name^="extraCantidad"]').value = valCant;
+        actualizarInfoExtra(sel);
+    }
     function toggleLibre(select) {
         const fila = select.closest('.fila-extra');
         const campoLibre = fila.querySelector('.campo-libre-extra');

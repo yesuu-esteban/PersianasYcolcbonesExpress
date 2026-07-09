@@ -121,6 +121,36 @@ public class InventarioControlador {
         return "redirect:/inventario";
     }
 
+    /**
+     * Corrige el largo restante real de un rollo de tela, o lo marca como
+     * agotado poniendo el largo en 0. Útil cuando el sistema no coincide
+     * con lo que realmente hay físicamente en el rollo.
+     */
+    @PostMapping("/rollo/{id}/corregir")
+    public String corregirRollo(@PathVariable("id") int id,
+                                 @RequestParam double largoRestante,
+                                 RedirectAttributes redirectAttributes) {
+        try {
+            RolloTela rollo = rolloTelaRepository.findById(id).orElseThrow();
+            if (largoRestante < 0) {
+                redirectAttributes.addFlashAttribute("error", "El largo restante no puede ser negativo.");
+                return "redirect:/inventario";
+            }
+            if (largoRestante > rollo.getLargoInicial()) {
+                redirectAttributes.addFlashAttribute("error",
+                        "No puede ser mayor al largo inicial (" + rollo.getLargoInicial() + " m).");
+                return "redirect:/inventario";
+            }
+            rollo.setLargoRestante(largoRestante);
+            rolloTelaRepository.save(rollo);
+            redirectAttributes.addFlashAttribute("mensaje",
+                    "Rollo #" + id + " corregido a " + largoRestante + " m" + (largoRestante == 0 ? " (agotado)" : "") + ".");
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("error", "No se pudo corregir el rollo: " + e.getMessage());
+        }
+        return "redirect:/inventario";
+    }
+
     // ─── RETAZOS DE TELA ─────────────────────────────────────────────────────
 
     @PostMapping("/retazo/nuevo")
@@ -185,12 +215,19 @@ public class InventarioControlador {
 
             boolean tieneMedida = "true".equals(allParams.getOrDefault("tieneMedida[" + i + "]", "false"));
             String descripcion = (descripciones != null && i < descripciones.size()) ? descripciones.get(i) : "";
+            String umbralTexto = allParams.get("umbralAlerta[" + i + "]");
+            Integer umbral = null;
+            if (umbralTexto != null && !umbralTexto.isBlank()) {
+                try { umbral = (int) parsearDouble(umbralTexto, -1); if (umbral < 0) umbral = null; }
+                catch (Exception ignored) { umbral = null; }
+            }
 
             Insumo insumo = new Insumo();
             insumo.setNombre(nombre);
             insumo.setTieneMedida(tieneMedida);
             insumo.setDescripcion(descripcion != null ? descripcion : "");
             insumo.setStockUnidades(0);
+            insumo.setUmbralAlerta(umbral);
 
             if (tieneMedida) {
                 String largoTexto = allParams.get("largoInicial[" + i + "]");
@@ -308,15 +345,13 @@ public class InventarioControlador {
         return "redirect:/inventario";
     }
 
-    // ─── NUEVO: eliminar y editar insumo ────────────────────────────────────
+    // ─── eliminar y editar insumo ────────────────────────────
 
     @PostMapping("/insumo/eliminar/{id}")
     public String eliminarInsumo(@PathVariable("id") int id, RedirectAttributes redirectAttributes) {
         try {
             Insumo insumo = insumoRepository.findById(id).orElseThrow();
 
-            // Si tiene piezas asociadas (insumos por medida), se eliminan primero
-            // para no romper la relación de clave foránea.
             if (Boolean.TRUE.equals(insumo.getTieneMedida())) {
                 List<PiezaInsumo> piezas = piezaInsumoRepository.findByInsumoIdOrderByLargoRestanteAsc(id);
                 piezaInsumoRepository.deleteAll(piezas);
@@ -343,6 +378,7 @@ public class InventarioControlador {
             @PathVariable("id") int id,
             @RequestParam String nombre,
             @RequestParam(required = false) String descripcion,
+            @RequestParam(required = false) Integer umbralAlerta,
             RedirectAttributes redirectAttributes) {
 
         Insumo insumo = insumoRepository.findById(id).orElseThrow();
@@ -353,7 +389,6 @@ public class InventarioControlador {
             return "redirect:/inventario/insumo/" + id + "/editar";
         }
 
-        // Si cambió el nombre, verificar que no choque con otro insumo existente
         Optional<Insumo> existente = insumoRepository.findByNombreIgnoreCase(nombreLimpio);
         if (existente.isPresent() && existente.get().getId() != id) {
             redirectAttributes.addFlashAttribute("error",
@@ -363,18 +398,13 @@ public class InventarioControlador {
 
         insumo.setNombre(nombreLimpio);
         insumo.setDescripcion(descripcion != null ? descripcion : "");
+        insumo.setUmbralAlerta(umbralAlerta != null && umbralAlerta >= 0 ? umbralAlerta : null);
         insumoRepository.save(insumo);
         redirectAttributes.addFlashAttribute("mensaje", "Insumo actualizado correctamente.");
 
         return "redirect:/inventario";
     }
 
-    /**
-     * Corrige directamente el stock de un insumo SIN medida (por unidad).
-     * Útil cuando el stock real no coincide con el sistema (ej: se agotó,
-     * se dañó, o se contó mal) y se necesita poner el número exacto,
-     * a diferencia de "/cargar" que solo suma unidades nuevas.
-     */
     @PostMapping("/insumo/{id}/corregir-stock")
     public String corregirStockInsumo(
             @PathVariable("id") int id,
@@ -404,11 +434,6 @@ public class InventarioControlador {
         return "redirect:/inventario/insumo/" + id + "/cargar";
     }
 
-    /**
-     * Corrige el largo restante de una pieza individual de un insumo CON medida
-     * (ej: tubo, cuerda). Permite poner el largo real (incluyendo 0 para marcarla
-     * como agotada) sin pasar por el flujo normal de corte por pedido.
-     */
     @PostMapping("/insumo/pieza/{id}/corregir")
     public String corregirPieza(
             @PathVariable("id") int id,
