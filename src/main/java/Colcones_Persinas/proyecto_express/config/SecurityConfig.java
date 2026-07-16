@@ -18,28 +18,60 @@ public class SecurityConfig {
         http
             .csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/css/**", "/js/**", "/images/**").permitAll() // Permitir archivos estáticos
+                .requestMatchers("/css/**", "/js/**", "/images/**").permitAll()
+
+                // Tienda: TIENDA y ADMIN
+                .requestMatchers("/tienda/**").hasAnyRole("TIENDA", "ADMIN")
+
+                // Fábrica: FABRICA y ADMIN
+                .requestMatchers("/taller/**", "/inventario/**", "/reportes/**").hasAnyRole("FABRICA", "ADMIN")
+
                 .anyRequest().authenticated()
             )
             .formLogin(login -> login
-                .defaultSuccessUrl("/taller/pedidos", true) // CORREGIDO: Ruta completa
-            ); 
+                .successHandler((request, response, authentication) -> {
+                    boolean esAdmin = authentication.getAuthorities().stream()
+                        .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+                    boolean esFabrica = authentication.getAuthorities().stream()
+                        .anyMatch(a -> a.getAuthority().equals("ROLE_FABRICA"));
+
+                    if (esAdmin) {
+                        response.sendRedirect("/taller/pedidos");
+                    } else if (esFabrica) {
+                        response.sendRedirect("/taller/pedidos");
+                    } else {
+                        response.sendRedirect("/tienda/listado");
+                    }
+                })
+            );
         return http.build();
     }
-    // 1. Definimos el codificador de contraseñas
+
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
 
-    // 2. Usamos el codificador para crear el usuario
     @Bean
     public InMemoryUserDetailsManager userDetailsService() {
-        UserDetails user = User.builder()
+        UserDetails jefeFabrica = User.builder()
             .username("jefe")
-            .password(passwordEncoder().encode("123456")) // Aquí se codifica la clave
-            .roles("USER")
+            .password(passwordEncoder().encode("123456"))
+            .roles("FABRICA")
             .build();
-        return new InMemoryUserDetailsManager(user);
+
+        UserDetails vendedor = User.builder()
+            .username("vendedor1")
+            .password(passwordEncoder().encode("123456"))
+            .roles("TIENDA")
+            .build();
+
+        UserDetails admin = User.builder()
+            .username("admin")
+            .password(passwordEncoder().encode("123456"))
+            .roles("ADMIN")
+            .build();
+
+        return new InMemoryUserDetailsManager(jefeFabrica, vendedor, admin);
     }
 }

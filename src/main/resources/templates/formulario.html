@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Nuevo Pedido de Tienda</title>
+</head>
+<body>
+    <h1>Nuevo Pedido de Tienda</h1>
+
+    <form th:action="@{/tienda/guardar}" th:object="${pedidoTienda}" method="post">
+
+        <label>Cliente:</label>
+        <input type="text" th:field="*{nombreCliente}"><br>
+
+        <label>Dirección:</label>
+        <input type="text" th:field="*{direccion}"><br>
+
+        <label>Teléfono:</label>
+        <input type="text" th:field="*{telefono}"><br>
+
+        <label>Vendedor:</label>
+        <input type="text" th:field="*{vendedor}"><br>
+
+        <label>Abono:</label>
+        <input type="number" step="0.01" th:field="*{abono}"><br>
+
+        <label>Método de pago:</label>
+        <input type="text" th:field="*{metodoPago}"><br>
+
+        <hr>
+        <h3>Productos</h3>
+
+        <table id="tablaDetalles">
+            <thead>
+                <tr>
+                    <th>Producto</th>
+                    <th>Cantidad</th>
+                    <th>Precio unitario</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:each="detalle, iter : *{detalles}">
+                    <td>
+                        <input type="text"
+                               th:field="*{detalles[__${iter.index}__].producto}">
+                    </td>
+                    <td>
+                        <input type="number"
+                               th:field="*{detalles[__${iter.index}__].cantidad}">
+                    </td>
+                    <td>
+                        <input type="number" step="0.01"
+                               th:field="*{detalles[__${iter.index}__].precioUnitario}">
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+
+        <button type="submit">Guardar Pedido</button>
+    </form>
+
+</body>
+</html>

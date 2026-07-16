@@ -1,18 +1,25 @@
 package Colcones_Persinas.proyecto_express.controlador;
 
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
 
 /**
- * La aplicación no tiene una página de inicio propia: la raíz "/"
- * simplemente redirige a la pantalla principal de pedidos, para que
- * entrar a http://localhost:8080 sin ninguna ruta no muestre un 404.
+ * La raíz "/" redirige según el rol del usuario autenticado:
+ * fábrica/admin van a /taller/pedidos, tienda va a /tienda/listado.
  */
 @Controller
 public class InicioControlador {
 
     @GetMapping("/")
     public String irAInicio() {
-        return "redirect:/taller/pedidos";
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+
+        boolean esFabricaOAdmin = auth.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_FABRICA")
+                            || a.getAuthority().equals("ROLE_ADMIN"));
+
+        return esFabricaOAdmin ? "redirect:/taller/pedidos" : "redirect:/tienda/listado";
     }
 }
