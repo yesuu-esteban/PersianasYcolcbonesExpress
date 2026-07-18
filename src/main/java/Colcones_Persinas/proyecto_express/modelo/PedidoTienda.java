@@ -7,6 +7,8 @@ import java.util.List;
 
 import jakarta.persistence.*;
 import lombok.Data;
+import lombok.ToString;
+import lombok.EqualsAndHashCode;
 
 @Entity
 @Table(name = "pedido_tienda")
@@ -37,9 +39,10 @@ public class PedidoTienda {
     private String metodoPago = "";
 
     @OneToMany(mappedBy = "pedidoTienda", cascade = CascadeType.ALL, orphanRemoval = true)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
     private List<DetallePedidoTienda> detalles = new ArrayList<>();
 
-    // Método útil para agregar detalles manteniendo la relación bidireccional
     public void agregarDetalle(DetallePedidoTienda detalle) {
         detalles.add(detalle);
         detalle.setPedidoTienda(this);

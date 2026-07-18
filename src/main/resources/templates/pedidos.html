@@ -125,10 +125,10 @@
 
                             <!-- ── Rollo/Retazo: muestra el real si existe en historial, si no el teórico ── -->
                             <strong>Rollo:</strong>
-                            <span th:if="${telaUsadaPorPedido[p.id] != null}"
+                            <span th:if="${telaUsadaPorPedido != null and telaUsadaPorPedido.get(p.id) != null}"
                                   class="tela-real"
-                                  th:text="${telaUsadaPorPedido[p.id]}"></span>
-                            <span th:unless="${telaUsadaPorPedido[p.id] != null}"
+                                  th:text="${telaUsadaPorPedido.get(p.id)}"></span>
+                            <span th:unless="${telaUsadaPorPedido != null and telaUsadaPorPedido.get(p.id) != null}"
                                   th:text="${p.rolloTela}"></span><br>
 
                             <strong>Tubo (<span th:text="${p.tuboRecomendado}"></span>):</strong> <span th:text="${#numbers.formatDecimal(p.corteTuberia, 1, 3)}"></span>m<br>

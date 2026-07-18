@@ -4,6 +4,8 @@ import java.math.BigDecimal;
 
 import jakarta.persistence.*;
 import lombok.Data;
+import lombok.ToString;
+import lombok.EqualsAndHashCode;
 
 @Entity
 @Table(name = "detalle_pedido_tienda")
@@ -21,5 +23,7 @@ public class DetallePedidoTienda {
 
     @ManyToOne
     @JoinColumn(name = "pedido_tienda_id")
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
     private PedidoTienda pedidoTienda;
 }
