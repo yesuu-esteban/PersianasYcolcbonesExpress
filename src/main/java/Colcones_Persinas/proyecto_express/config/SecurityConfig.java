@@ -62,7 +62,7 @@ public class SecurityConfig {
 
         UserDetails vendedor = User.builder()
             .username("vendedor1")
-            .password(passwordEncoder().encode("123456"))
+            .password(passwordEncoder().encode("-"))
             .roles("TIENDA")
             .build();
 
