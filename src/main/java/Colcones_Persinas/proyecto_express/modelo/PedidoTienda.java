@@ -5,6 +5,8 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.springframework.format.annotation.DateTimeFormat;
+
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.ToString;
@@ -24,6 +26,8 @@ public class PedidoTienda {
     private String telefono = "";
 
     private LocalDateTime fechaPedido = LocalDateTime.now();
+        
+    @DateTimeFormat(pattern = "yyyy-MM-dd'T'HH:mm")
     private LocalDateTime fechaEntrega = LocalDateTime.now();
 
     private String descripcion = "";
@@ -35,7 +39,8 @@ public class PedidoTienda {
     private String fabrica = "";
     private String vendedor = "";
     private String aliado = "";
-    private String estado = "Pendiente";
+
+    private String estado = "pendiente";
     private String metodoPago = "";
 
     @OneToMany(mappedBy = "pedidoTienda", cascade = CascadeType.ALL, orphanRemoval = true)
