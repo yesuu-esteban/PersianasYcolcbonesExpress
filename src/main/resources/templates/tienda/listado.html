@@ -9,6 +9,9 @@
         .badge-estado-bodega    { background-color: #0dcaf0; color: #000; }
         .badge-estado-instalado { background-color: #ffc107; color: #000; }
         .badge-estado-terminado { background-color: #198754; }
+        .fila-detalle-productos { background-color: #f8f9fa; }
+        .btn-ver-detalle { cursor: pointer; }
+        .tabla-productos-mini th, .tabla-productos-mini td { font-size: 0.85rem; padding: 4px 8px; }
     </style>
 </head>
 <body class="bg-light p-4">
@@ -24,8 +27,10 @@
         <table class="table table-hover shadow-sm bg-white align-middle table-sm">
             <thead class="table-dark">
                 <tr>
+                    <th></th>
                     <th>#</th>
                     <th>Cliente</th>
+                    <th>Descripción</th>
                     <th>Teléfono</th>
                     <th>Vendedor</th>
                     <th>Fecha pedido</th>
@@ -38,39 +43,81 @@
                 </tr>
             </thead>
             <tbody>
-                <tr th:each="p : ${pedidos}">
-                    <td th:text="${p.id}"></td>
-                    <td th:text="${p.nombreCliente}"></td>
-                    <td th:text="${p.telefono}"></td>
-                    <td th:text="${p.vendedor}"></td>
-                    <td th:text="${#temporals.format(p.fechaPedido, 'dd/MM/yyyy HH:mm')}"></td>
-                    <td>
-                        <span th:if="${p.fechaEntrega != null}"
-                              th:text="${#temporals.format(p.fechaEntrega, 'dd/MM/yyyy HH:mm')}"></span>
-                        <span th:unless="${p.fechaEntrega != null}" class="text-muted">Sin definir</span>
-                    </td>
-                    <td th:text="${p.total}"></td>
-                    <td th:text="${p.abono}"></td>
-                    <td th:text="${p.saldo}"></td>
-                    <td>
-                        <span class="badge"
-                              th:classappend="${p.estado == 'Pedido' ? 'badge-estado-pedido' :
-                                               (p.estado == 'En Bodega' ? 'badge-estado-bodega' :
-                                               (p.estado == 'Instalado' ? 'badge-estado-instalado' : 'badge-estado-terminado'))}"
-                              th:text="${p.estado}"></span>
-                    </td>
-                    <td>
-                        <form th:action="@{/tienda/actualizar-estado/{id}(id=${p.id})}" method="post" class="d-flex gap-1">
-                            <select name="estado" class="form-select form-select-sm" style="width:140px;">
-                                <option value="Pedido"     th:selected="${p.estado == 'Pedido'}">Pedido</option>
-                                <option value="En Bodega"  th:selected="${p.estado == 'En Bodega'}">En Bodega</option>
-                                <option value="Instalado"  th:selected="${p.estado == 'Instalado'}">Instalado</option>
-                                <option value="Terminado"  th:selected="${p.estado == 'Terminado'}">Terminado</option>
-                            </select>
-                            <button type="submit" class="btn btn-sm btn-outline-primary">💾</button>
-                        </form>
-                    </td>
-                </tr>
+                <th:block th:each="p, iter : ${pedidos}">
+                    <tr>
+                        <td>
+                            <button type="button" class="btn btn-sm btn-outline-secondary btn-ver-detalle"
+                                    th:data-bs-toggle="collapse"
+                                    th:data-bs-target="'#detalle-' + ${p.id}">
+                                🧾
+                            </button>
+                        </td>
+                        <td th:text="${p.id}"></td>
+                        <td th:text="${p.nombreCliente}"></td>
+                        <td th:text="${p.descripcion}"></td>
+                        <td th:text="${p.telefono}"></td>
+                        <td th:text="${p.vendedor}"></td>
+                        <td th:text="${#temporals.format(p.fechaPedido, 'dd/MM/yyyy HH:mm')}"></td>
+                        <td>
+                            <span th:if="${p.fechaEntrega != null}"
+                                  th:text="${#temporals.format(p.fechaEntrega, 'dd/MM/yyyy HH:mm')}"></span>
+                            <span th:unless="${p.fechaEntrega != null}" class="text-muted">Sin definir</span>
+                        </td>
+                        <td th:text="${p.total}"></td>
+                        <td th:text="${p.abono}"></td>
+                        <td th:text="${p.saldo}"></td>
+                        <td>
+                            <span class="badge"
+                                  th:classappend="${p.estado == 'Pedido' ? 'badge-estado-pedido' :
+                                                   (p.estado == 'En Bodega' ? 'badge-estado-bodega' :
+                                                   (p.estado == 'Instalado' ? 'badge-estado-instalado' : 'badge-estado-terminado'))}"
+                                  th:text="${p.estado}"></span>
+                        </td>
+                        <td>
+                            <form th:action="@{/tienda/actualizar-estado/{id}(id=${p.id})}" method="post" class="d-flex gap-1">
+                                <select name="estado" class="form-select form-select-sm" style="width:140px;">
+                                    <option value="Pedido"     th:selected="${p.estado == 'Pedido'}">Pedido</option>
+                                    <option value="En Bodega"  th:selected="${p.estado == 'En Bodega'}">En Bodega</option>
+                                    <option value="Instalado"  th:selected="${p.estado == 'Instalado'}">Instalado</option>
+                                    <option value="Terminado"  th:selected="${p.estado == 'Terminado'}">Terminado</option>
+                                </select>
+                                <button type="submit" class="btn btn-sm btn-outline-primary">💾</button>
+                            </form>
+                        </td>
+                    </tr>
+
+                    <!-- Fila expandible con el detalle de productos de este pedido -->
+                    <tr class="fila-detalle-productos">
+                        <td colspan="13" class="p-0">
+                            <div class="collapse" th:id="'detalle-' + ${p.id}">
+                                <div class="p-3">
+                                    <p class="fw-bold mb-2" style="font-size:0.85rem;">Productos del pedido</p>
+                                    <table class="table table-sm table-bordered tabla-productos-mini mb-0" style="max-width:600px;">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>Producto</th>
+                                                <th>Cantidad</th>
+                                                <th>Precio unitario</th>
+                                                <th>Subtotal</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr th:each="d : ${p.detalles}">
+                                                <td th:text="${d.producto}"></td>
+                                                <td th:text="${d.cantidad}"></td>
+                                                <td th:text="${d.precioUnitario}"></td>
+                                                <td th:text="${d.subtotal}"></td>
+                                            </tr>
+                                            <tr th:if="${#lists.isEmpty(p.detalles)}">
+                                                <td colspan="4" class="text-center text-muted">Sin productos registrados.</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                </th:block>
             </tbody>
         </table>
 
@@ -78,5 +125,7 @@
             No hay pedidos de tienda registrados todavía.
         </div>
     </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
