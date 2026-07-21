@@ -9,6 +9,8 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
 
 import Colcones_Persinas.proyecto_express.modelo.PedidoTienda;
 import Colcones_Persinas.proyecto_express.modelo.DetallePedidoTienda;
@@ -31,6 +33,13 @@ public class PedidoTiendaControlador {
 
     @PostMapping("/guardar")
     public String guardarPedido(@ModelAttribute PedidoTienda pedidoTienda, RedirectAttributes redirectAttributes) {
+        List<String> errores = validarProductos(pedidoTienda.getDetalles());
+        if (!errores.isEmpty()) {
+            redirectAttributes.addFlashAttribute("error", String.join(" ", errores));
+            redirectAttributes.addFlashAttribute("pedidoTienda", pedidoTienda);
+            return "redirect:/tienda/nuevo";
+        }
+
         recalcularTotales(pedidoTienda);
         pedidoTiendaRepository.save(pedidoTienda);
         redirectAttributes.addFlashAttribute("mensaje", "Pedido registrado correctamente.");
@@ -61,6 +70,12 @@ public class PedidoTiendaControlador {
             @ModelAttribute PedidoTienda formPedido,
             RedirectAttributes redirectAttributes) {
 
+        List<String> errores = validarProductos(formPedido.getDetalles());
+        if (!errores.isEmpty()) {
+            redirectAttributes.addFlashAttribute("error", String.join(" ", errores));
+            return "redirect:/tienda/editar/" + id;
+        }
+
         PedidoTienda pedido = pedidoTiendaRepository.findById(id).orElseThrow();
 
         pedido.setNombreCliente(formPedido.getNombreCliente());
@@ -72,8 +87,6 @@ public class PedidoTiendaControlador {
         pedido.setAbono(formPedido.getAbono());
         pedido.setMetodoPago(formPedido.getMetodoPago());
 
-        // Reemplaza los productos: limpia la lista (orphanRemoval borra los viejos)
-        // y agrega los que vinieron del formulario, ignorando filas vacías.
         pedido.getDetalles().clear();
         for (DetallePedidoTienda d : formPedido.getDetalles()) {
             if (d.getProducto() == null || d.getProducto().isBlank()) continue;
@@ -114,6 +127,32 @@ public class PedidoTiendaControlador {
     }
 
     // ─── Helpers ────────────────────────────────────────────────────────
+
+    /**
+     * Valida que cada producto con nombre tenga cantidad y precio unitario
+     * mayores a cero. Filas totalmente vacías (sin nombre de producto) se
+     * ignoran aquí — se descartan más adelante al guardar.
+     */
+    private List<String> validarProductos(List<DetallePedidoTienda> detalles) {
+        List<String> errores = new ArrayList<>();
+        if (detalles == null) return errores;
+
+        for (DetallePedidoTienda d : detalles) {
+            if (d.getProducto() == null || d.getProducto().isBlank()) continue;
+
+            if (d.getCantidad() <= 0) {
+                errores.add("\"" + d.getProducto() + "\": la cantidad debe ser mayor a 0.");
+            }
+
+            BigDecimal precio = d.getPrecioUnitario();
+            if (precio == null || precio.compareTo(BigDecimal.ZERO) <= 0) {
+                errores.add("\"" + d.getProducto() + "\": el precio unitario debe ser mayor a 0.");
+            }
+        }
+
+        return errores;
+    }
+
     private void recalcularTotales(PedidoTienda pedido) {
         BigDecimal total = BigDecimal.ZERO;
         for (DetallePedidoTienda d : pedido.getDetalles()) {
@@ -125,6 +164,8 @@ public class PedidoTiendaControlador {
         }
         pedido.setTotal(total);
         BigDecimal abono = pedido.getAbono() != null ? pedido.getAbono() : BigDecimal.ZERO;
+        if (abono.compareTo(BigDecimal.ZERO) < 0) abono = BigDecimal.ZERO;
+        pedido.setAbono(abono);
         pedido.setSaldo(total.subtract(abono));
     }
 
