@@ -28,6 +28,12 @@
             <input type="text" th:field="*{direccion}" class="form-control">
         </div>
 
+        <div class="mb-3">
+            <label class="form-label fw-bold">Descripción</label>
+            <textarea th:field="*{descripcion}" class="form-control" rows="2"
+                      placeholder="Ej: Persianas para sala y comedor, instalación incluida"></textarea>
+        </div>
+
         <div class="row g-3 mb-3">
             <div class="col-md-6">
                 <label class="form-label fw-bold">Vendedor</label>

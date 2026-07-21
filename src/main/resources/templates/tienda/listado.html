@@ -18,7 +18,7 @@
     <div class="container-fluid">
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h2>🛒 Pedidos de Tienda</h2>
-            <a href="/tienda/nuevo" class="btn btn-primary">+ Nuevo Pedido</a>
+            <a th:if="${puedeCrearPedidos}" href="/tienda/nuevo" class="btn btn-primary">+ Nuevo Pedido</a>
         </div>
 
         <div th:if="${mensaje}" class="alert alert-success" th:text="${mensaje}"></div>

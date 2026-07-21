@@ -1,6 +1,8 @@
 package Colcones_Persinas.proyecto_express.controlador;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
@@ -47,10 +49,16 @@ public class PedidoTiendaControlador {
     @GetMapping("/listado")
     public String listarPedidos(Model model) {
         model.addAttribute("pedidos", pedidoTiendaRepository.findAll());
+
+        // ── Determina si el usuario actual puede crear pedidos (vendedores y admin general sí, admin de tienda no) ──
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        boolean puedeCrearPedidos = auth.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_TIENDA") || a.getAuthority().equals("ROLE_ADMIN"));
+        model.addAttribute("puedeCrearPedidos", puedeCrearPedidos);
+
         return "tienda/listado";
     }
 
-    // ─── Cambiar estado del pedido ─────────────────────────────────────
     @PostMapping("/actualizar-estado/{id}")
     public String actualizarEstado(
             @PathVariable("id") int id,

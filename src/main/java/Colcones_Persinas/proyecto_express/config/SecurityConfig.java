@@ -20,8 +20,13 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/css/**", "/js/**", "/images/**").permitAll()
 
-                // Tienda: TIENDA y ADMIN
-                .requestMatchers("/tienda/**").hasAnyRole("TIENDA", "ADMIN")
+                // Crear pedidos de tienda: SOLO vendedores y admin general
+                // (va ANTES del matcher general de /tienda/** para que tenga prioridad)
+                .requestMatchers("/tienda/nuevo", "/tienda/guardar").hasAnyRole("TIENDA", "ADMIN")
+
+                // Resto de tienda (listado, ver detalle, cambiar estado):
+                // vendedores, admin de tienda (solo lectura/estado), y admin general
+                .requestMatchers("/tienda/**").hasAnyRole("TIENDA", "TIENDA_ADMIN", "ADMIN")
 
                 // Fábrica: FABRICA y ADMIN
                 .requestMatchers("/taller/**", "/inventario/**", "/reportes/**").hasAnyRole("FABRICA", "ADMIN")
@@ -62,8 +67,15 @@ public class SecurityConfig {
 
         UserDetails vendedor = User.builder()
             .username("vendedor1")
-            .password(passwordEncoder().encode("-"))
+            .password(passwordEncoder().encode("123456"))
             .roles("TIENDA")
+            .build();
+
+        // Nuevo: administrador de tienda — solo ve y cambia estados, no crea pedidos
+        UserDetails adminTienda = User.builder()
+            .username("admin_tienda")
+            .password(passwordEncoder().encode("123456"))
+            .roles("TIENDA_ADMIN")
             .build();
 
         UserDetails admin = User.builder()
@@ -72,6 +84,6 @@ public class SecurityConfig {
             .roles("ADMIN")
             .build();
 
-        return new InMemoryUserDetailsManager(jefeFabrica, vendedor, admin);
+        return new InMemoryUserDetailsManager(jefeFabrica, vendedor, adminTienda, admin);
     }
 }
