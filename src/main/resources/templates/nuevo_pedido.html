@@ -4,151 +4,72 @@
     <meta charset="UTF-8">
     <title>Nuevo Pedido</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
     <style>
-        :root {
-            --bg-dark: #1a0f2e;
-            --bg-card: #2a1b42;
-            --accent: #ec1561;
-            --accent-light: #ff4d94;
-            --gold: #ffc107;
-            --text-muted: #c9bfe0;
-        }
-        * { font-family: 'Poppins', sans-serif; }
-        body {
-            background: linear-gradient(160deg, #1a0f2e 0%, #241536 100%);
-            color: #fff;
-        }
-        .marca-header {
-            display: flex; align-items: center; justify-content: space-between;
-            background: var(--bg-card);
-            border: 1px solid rgba(236,21,97,0.35);
-            border-radius: 14px; padding: 16px 24px; margin-bottom: 24px;
-            box-shadow: 0 4px 22px rgba(236,21,97,0.15);
-        }
-        .marca-header .logo-marca { display: flex; align-items: center; gap: 12px; }
-        .marca-header .icono {
-            width: 46px; height: 46px;
-            background: linear-gradient(135deg, var(--accent), #a5107f);
-            border-radius: 50%; display: flex; align-items: center; justify-content: center;
-            font-size: 1.4rem; box-shadow: 0 0 0 3px rgba(236,21,97,0.25); flex-shrink: 0;
-        }
-        .marca-header .titulo-marca { font-weight: 800; font-size: 1.05rem; line-height: 1.1; }
-        .marca-header .titulo-marca small {
-            display: block; font-weight: 600; font-size: 0.6rem;
-            color: var(--gold); letter-spacing: 1.5px; margin-top: 2px;
-        }
-        h2 { font-weight: 700; }
-        .text-muted { color: var(--text-muted) !important; }
-
-        .alert-success { background: rgba(46,204,113,0.15); border: 1px solid #2ecc71; color: #7ff0a8; }
-        .alert-danger  { background: rgba(231,76,60,0.15); border: 1px solid #e74c3c; color: #ff9a90; }
-
-        /* ── Tabs ── */
-        .nav-tabs { border-bottom: 1px solid rgba(255,255,255,0.15); }
-        .nav-tabs .nav-link {
-            color: var(--text-muted);
-            background: transparent;
-            border: none;
-            font-weight: 600;
-        }
-        .nav-tabs .nav-link:hover { color: #fff; border-color: transparent; }
-        .nav-tabs .nav-link.active {
-            background: var(--bg-card) !important;
-            color: #fff !important;
-            border: 1px solid rgba(236,21,97,0.35);
-            border-bottom-color: var(--bg-card) !important;
-        }
-
-        /* ── Tarjeta / formulario ── */
-        .card-formulario, form.bg-white {
-            background: var(--bg-card) !important;
-            border: 1px solid rgba(255,255,255,0.08) !important;
-            border-radius: 14px;
-            box-shadow: 0 4px 22px rgba(0,0,0,0.3);
-            color: #fff;
-        }
-
-        .form-label { color: var(--text-muted); font-size: 0.85rem; }
-        .form-control, .form-select {
-            background: #1e1330; border: 1px solid rgba(255,255,255,0.15); color: #fff;
-        }
-        .form-control:focus, .form-select:focus {
-            background: #1e1330; border-color: var(--accent); color: #fff;
-            box-shadow: 0 0 0 0.2rem rgba(236,21,97,0.25);
-        }
-        .form-control::placeholder { color: #8f84a8; }
-        .form-select option { background: #1e1330; color: #fff; }
-        hr { border-color: rgba(255,255,255,0.12); }
-
-        .fila-producto {
-            background: #1e1330 !important;
-            border: 1px solid rgba(255,255,255,0.1) !important;
-        }
-
-        .seccion-manual {
-            background: rgba(255,193,7,0.1) !important;
-            border: 1px solid rgba(255,193,7,0.35) !important;
-            color: #ffe9a8;
-        }
-        .toggle-manual { color: var(--gold) !important; }
-
-        .flags-row label { color: var(--text-muted); }
-
         .previsualizacion {
-            background-color: rgba(255,255,255,0.04);
-            border: 1px dashed rgba(255,255,255,0.25);
-            color: var(--text-muted);
+            background-color: #f8f9fa;
+            border: 1px dashed #adb5bd;
+            border-radius: 4px;
+            padding: 10px 14px;
+            font-size: 0.80rem;
+            margin-top: 8px;
         }
-        .previsualizacion.ok    { border-color: #2ecc71; background-color: rgba(46,204,113,0.1); color: #d3ffe4; }
-        .previsualizacion.falta { border-color: #e74c3c; background-color: rgba(231,76,60,0.12); color: #ffc4bd; }
-        .previsualizacion .cargando { color: #a599c2; }
-        .previsualizacion table td { color: inherit; }
-        .previsualizacion.ok table td:last-child { color: #a8f5c4 !important; }
-
+        .previsualizacion.ok    { border-color: #198754; background-color: #f0fbf4; }
+        .previsualizacion.falta { border-color: #dc3545; background-color: #fdf2f3; color: #842029; }
+        .previsualizacion .cargando { color: #888; }
+        .fila-producto {
+            background: #fff;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            padding: 12px 10px 6px;
+            margin-bottom: 12px;
+        }
+        .seccion-manual {
+            background: #fffbea;
+            border: 1px solid #ffe082;
+            border-radius: 5px;
+            padding: 8px 12px;
+            margin-top: 8px;
+            font-size: 0.82rem;
+        }
+        .seccion-manual .form-label { font-size: 0.78rem; margin-bottom: 2px; }
+        .seccion-manual select { font-size: 0.80rem; }
+        .toggle-manual {
+            font-size: 0.78rem;
+            cursor: pointer;
+            color: #856404;
+            text-decoration: underline;
+            background: none;
+            border: none;
+            padding: 0;
+        }
+        .flags-row { display: flex; gap: 18px; align-items: center; flex-wrap: wrap; margin: 6px 0 4px; }
+        .flags-row label { font-size: 0.82rem; display: flex; align-items: center; gap: 5px; cursor: pointer; }
         .seccion-extras {
-            background: rgba(255,193,7,0.1) !important;
-            border: 1px solid rgba(255,193,7,0.35) !important;
+            background: #fffbea;
+            border: 1px solid #ffe082;
+            border-radius: 6px;
+            padding: 14px 16px;
+            margin-bottom: 18px;
         }
-        .info-stock-insumo { color: var(--text-muted); }
-        .info-stock-insumo.ok { color: #7ff0a8; }
-        .info-stock-insumo.sin-stock { color: #ff9a90; font-weight: 600; }
-
-        .btn-success {
-            background: linear-gradient(135deg, var(--accent), #b81050) !important;
-            border: none !important; font-weight: 600;
-            box-shadow: 0 3px 10px rgba(236,21,97,0.35);
+        .fila-extra select, .fila-extra input { font-size: 0.85rem; }
+        .fila-tela-venta select, .fila-tela-venta input { font-size: 0.85rem; }
+        .info-stock-insumo {
+            font-size: 0.76rem;
+            padding-top: 3px;
+            color: #6c757d;
         }
-        .btn-success:hover { filter: brightness(1.12); }
-        .btn-info {
-            background: linear-gradient(135deg, #0dcaf0, #0b9fc0) !important;
-            border: none !important; color: #03171c !important; font-weight: 600;
-        }
-        .btn-secondary {
-            background: rgba(255,255,255,0.08) !important;
-            border: 1px solid rgba(255,255,255,0.2) !important; color: #fff !important;
-        }
-        .btn-secondary:hover { background: rgba(255,255,255,0.16) !important; }
-        .btn-outline-dark { color: var(--text-muted); border-color: rgba(255,255,255,0.25); }
-        .btn-outline-dark:hover { background: rgba(255,255,255,0.1); color: #fff; }
-        .btn-outline-danger:hover { background: #e74c3c; }
+        .info-stock-insumo.ok { color: #0a5c30; }
+        .info-stock-insumo.sin-stock { color: #b02a37; font-weight: 600; }
+        .nav-tabs .nav-link { font-weight: 600; }
+        .nav-tabs .nav-link.active { border-bottom-color: #fff; }
     </style>
 </head>
-<body class="p-4">
+<body class="bg-light p-4">
 <div class="container col-md-11">
-
-    <div class="marca-header">
-        <div class="logo-marca">
-            <div class="icono">⚙️</div>
-            <div class="titulo-marca">
-                PERSIANAS Y CORTINAS EXPRESS
-                <small>PUNTO DE FÁBRICA</small>
-            </div>
-        </div>
-        <a href="/inventario" class="btn btn-outline-secondary btn-sm">📦 Ver Inventario</a>
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>➕ Registrar Pedido</h2>
+        <a href="/inventario" class="btn btn-outline-dark btn-sm">📦 Ver Inventario</a>
     </div>
-
-    <h2 class="mb-4">➕ Registrar Pedido</h2>
 
     <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
     <div th:if="${mensaje}" class="alert alert-success" th:text="${mensaje}"></div>
@@ -163,8 +84,11 @@
     </ul>
 
     <div class="tab-content">
+    <!-- ══════════════════════════════════════════════════════════════ -->
+    <!-- TAB: FABRICACIÓN (formulario original, sin cambios de lógica)  -->
+    <!-- ══════════════════════════════════════════════════════════════ -->
     <div class="tab-pane fade show active" id="tabFabricacion">
-    <form th:action="@{/taller/guardar-lista}" method="post" class="p-4 card-formulario">
+    <form th:action="@{/taller/guardar-lista}" method="post" class="bg-white p-4 shadow-sm border rounded">
 
         <div class="row mb-4">
             <div class="col-md-6">
@@ -179,7 +103,7 @@
         <hr>
 
         <div id="contenedor-productos">
-            <div class="fila-producto rounded p-3 mb-3" data-indice="0">
+            <div class="fila-producto" data-indice="0">
                 <div class="row align-items-end g-2 mb-1">
                     <div class="col-md-3">
                         <label class="form-label fw-bold mb-1" style="font-size:0.82rem">Descripción</label>
@@ -229,11 +153,11 @@
                     <button type="button" class="toggle-manual" onclick="toggleManual(this)">⚙ Selección manual de material</button>
                 </div>
 
-                <div class="previsualizacion mt-2 rounded p-2">
+                <div class="previsualizacion mt-2">
                     <span class="cargando">Completa ancho, alto y color para ver el material necesario.</span>
                 </div>
 
-                <div class="seccion-manual rounded p-2 mt-2" style="display:none;">
+                <div class="seccion-manual" style="display:none;">
                     <div class="fw-bold mb-2" style="font-size:0.82rem">⚙ Selección manual <small class="text-muted">(deja "Automático" para que el sistema elija)</small></div>
                     <div class="row g-2">
                         <div class="col-md-6 col-lg-4">
@@ -293,7 +217,8 @@
 
         <hr class="mt-4">
 
-        <div class="seccion-extras rounded p-3">
+        <!-- ═══════════ INSUMOS ADICIONALES (extras de toda la orden) ═══════════ -->
+        <div class="seccion-extras">
             <p class="fw-bold mb-2">➕ Insumos adicionales (opcional)</p>
             <p class="text-muted mb-2" style="font-size:0.82rem;">
                 Para cualquier material extra que se agregue a esta orden y que no entra en el cálculo automático
@@ -309,9 +234,13 @@
         </div>
     </form>
     </div>
+    <!-- ══════════════════ FIN TAB FABRICACIÓN ══════════════════ -->
 
+    <!-- ══════════════════════════════════════════════════════════════ -->
+    <!-- TAB: VENTA DIRECTA                                              -->
+    <!-- ══════════════════════════════════════════════════════════════ -->
     <div class="tab-pane fade" id="tabVentaDirecta">
-        <form th:action="@{/taller/guardar-venta-directa}" method="post" class="p-4 card-formulario">
+        <form th:action="@{/taller/guardar-venta-directa}" method="post" class="bg-white p-4 shadow-sm border rounded">
             <div class="row g-3 mb-3">
                 <div class="col-md-6">
                     <label class="form-label fw-bold">Cliente</label>
@@ -323,13 +252,15 @@
                 </div>
             </div>
 
-            <div class="seccion-extras rounded p-3 mb-3">
+            <!-- Ítems de tela por metros -->
+            <div class="seccion-extras mb-3">
                 <p class="fw-bold mb-2">🧵 Tela vendida por metros</p>
                 <div id="contenedorTelaVenta"></div>
                 <button type="button" class="btn btn-sm btn-outline-dark" onclick="agregarFilaTelaVenta()">+ Agregar tela</button>
             </div>
 
-            <div class="seccion-extras rounded p-3 mb-3">
+            <!-- Ítems de insumo de catálogo -->
+            <div class="seccion-extras mb-3">
                 <p class="fw-bold mb-2">🔧 Insumos vendidos</p>
                 <div id="contenedorInsumoVenta"></div>
                 <button type="button" class="btn btn-sm btn-outline-dark" onclick="agregarFilaInsumoVenta()">+ Agregar insumo</button>
@@ -341,6 +272,7 @@
             </div>
         </form>
     </div>
+    <!-- ══════════════════ FIN TAB VENTA DIRECTA ══════════════════ -->
     </div>
 </div>
 
@@ -422,12 +354,14 @@
         const anchoCorte = ancho > 0 ? ancho - descTela : 0;
         const altoCorte  = alto  > 0 ? alto  + 0.20    : 0;
 
+        // Mantenemos valor previo si es manual para no perderlo al refrescar opciones
         const retazoVal = fila.querySelector('.select-retazo').value;
         const rolloVal  = fila.querySelector('.select-rollo').value;
 
         fila.querySelector('.select-retazo').innerHTML  = opcionesRetazo(color, anchoCorte, altoCorte);
         fila.querySelector('.select-rollo').innerHTML   = opcionesRollo(color);
-
+        
+        // Restauramos el valor si existía
         if (retazoVal !== 'auto') fila.querySelector('.select-retazo').value = retazoVal;
         if (rolloVal !== 'auto') fila.querySelector('.select-rollo').value = rolloVal;
 
@@ -468,7 +402,8 @@
         fila.querySelector('.campo-pitillo').addEventListener('change', () => { actualizarSelectsManualFila(fila); disparar(); });
         fila.querySelector('.campo-conector').addEventListener('change', disparar);
         fila.querySelector('.select-tipo-tubo').addEventListener('change', () => { actualizarSelectsManualFila(fila); disparar(); });
-
+        
+        // Exclusión mutua entre selects de tela
         fila.querySelector('.select-retazo').addEventListener('change', function() {
             if (this.value !== 'auto') fila.querySelector('.select-rollo').value = 'auto';
             consultarPrevisualizacion(fila);
@@ -483,7 +418,7 @@
         const opcionesColor = listaColores.map(c => `<option value="${c}">${c}</option>`).join('');
         const primerColor   = listaColores[0] || '';
         return `
-        <div class="fila-producto rounded p-3 mb-3" data-indice="${idx}">
+        <div class="fila-producto" data-indice="${idx}">
             <div class="row align-items-end g-2 mb-1">
                 <div class="col-md-3">
                     <label class="form-label fw-bold mb-1" style="font-size:0.82rem">Descripción</label>
@@ -532,10 +467,10 @@
                 </label>
                 <button type="button" class="toggle-manual" onclick="toggleManual(this)">⚙ Selección manual de material</button>
             </div>
-            <div class="previsualizacion mt-2 rounded p-2">
+            <div class="previsualizacion mt-2">
                 <span class="cargando">Completa ancho, alto y color para ver el material necesario.</span>
             </div>
-            <div class="seccion-manual rounded p-2 mt-2" style="display:none;">
+            <div class="seccion-manual" style="display:none;">
                 <div class="fw-bold mb-2" style="font-size:0.82rem">⚙ Selección manual <small class="text-muted">(deja "Automático" para que el sistema elija)</small></div>
                 <div class="row g-2">
                     <div class="col-md-6 col-lg-4">
@@ -610,17 +545,18 @@
         const conector = fila.querySelector('.campo-conector').checked;
         const tipoTuboManual = fila.querySelector('.select-tipo-tubo').value;
 
+        // ── Leer selecciones manuales de tela ──
         const selectRetazo = fila.querySelector('.select-retazo');
         const selectRollo  = fila.querySelector('.select-rollo');
         const retazoManualId = selectRetazo && selectRetazo.value !== 'auto' ? selectRetazo.value : null;
         const rolloManualId  = selectRollo  && selectRollo.value  !== 'auto' ? selectRollo.value  : null;
 
         if (!ancho || !alto) {
-            caja.className = 'previsualizacion mt-2 rounded p-2';
+            caja.className = 'previsualizacion';
             caja.innerHTML = '<span class="cargando">Completa ancho, alto y color para ver el material necesario.</span>';
             return;
         }
-        caja.className = 'previsualizacion mt-2 rounded p-2';
+        caja.className = 'previsualizacion';
         caja.innerHTML = '<span class="cargando">🔍 Consultando inventario...</span>';
 
         try {
@@ -628,7 +564,7 @@
             const d = await fetch('/taller/previsualizar-material?' + params).then(r => r.json());
 
             if (d.disponible) {
-                caja.className = 'previsualizacion ok mt-2 rounded p-2';
+                caja.className = 'previsualizacion ok';
                 const a = parseFloat(ancho), h = parseFloat(alto);
                 const descTela = cabezal ? 0.035 : 0.03;
                 const descTubo = cabezal ? 0.03  : 0.025;
@@ -666,23 +602,26 @@
                 html += '</table>';
                 caja.innerHTML = html;
             } else {
-                caja.className = 'previsualizacion falta mt-2 rounded p-2';
+                caja.className = 'previsualizacion falta';
                 caja.innerHTML = '<strong>⚠ Falta material:</strong><br>' + d.faltantes.join('<br>');
             }
         } catch {
-            caja.className = 'previsualizacion falta mt-2 rounded p-2';
+            caja.className = 'previsualizacion falta';
             caja.innerHTML = '<span>No se pudo consultar el inventario.</span>';
         }
     }
 
     function tr(mat, med, info) {
-        return `<tr style="border-top:1px solid rgba(255,255,255,0.12)">
+        return `<tr style="border-top:1px solid #d6efdd">
             <td style="padding:2px 4px;font-weight:600;white-space:nowrap">${mat}</td>
-            <td style="padding:2px 6px;white-space:nowrap;opacity:0.8">${med}</td>
-            <td style="padding:2px 4px;">${info}</td>
+            <td style="padding:2px 6px;color:#555;white-space:nowrap">${med}</td>
+            <td style="padding:2px 4px;color:#1a6b3a">${info}</td>
         </tr>`;
     }
 
+    // ════════════════════════════════════════════════════════════
+    //  INSUMOS ADICIONALES (extras de toda la orden — Fabricación)
+    // ════════════════════════════════════════════════════════════
     let extraIndex = 0;
 
     function opcionesCatalogo() {
@@ -723,6 +662,9 @@
         </div>`;
     }
 
+    // Reutiliza exactamente la misma lógica que Venta Directa: muestra el
+    // stock/metros disponibles del insumo elegido y, si es por medida,
+    // habilita el selector de pieza específica.
     function actualizarInfoExtra(select) {
         actualizarInfoInsumoVenta(select);
     }
@@ -747,6 +689,10 @@
         cont.insertAdjacentHTML('beforeend', filaExtraHtml(extraIndex++));
     }
 
+    // ════════════════════════════════════════════════════════════
+    //  VENTA DIRECTA — tela por metros e insumos vendidos
+    //  (reutiliza rollosDisponibles / catalogoInsumos ya cargados)
+    // ════════════════════════════════════════════════════════════
     let idxTelaVenta = 0;
     let idxInsumoVenta = 0;
 
@@ -860,6 +806,13 @@
         </div>`;
     }
 
+    /**
+     * Al elegir un insumo del catálogo, muestra cuánto hay disponible:
+     * - Por unidad  → cantidad de unidades en stock, campo pide "unidades". No hay pieza que elegir.
+     * - Por medida  → suma de metros restantes entre todas sus piezas, campo pide "metros",
+     *                 y además se habilita el selector de pieza específica (igual que en Fabricación).
+     * - Texto libre → sin inventario que descontar, se muestra un aviso neutro.
+     */
     function actualizarInfoInsumoVenta(select) {
         const filaCampos = select.closest('.fila-extra');
         const filaInfo = filaCampos.nextElementSibling;
@@ -895,6 +848,7 @@
             campoCantidad.placeholder = 'Metros';
             campoCantidad.step = '0.01';
 
+            // Por medida → mostrar y llenar el selector de pieza específica
             if (campoPieza && selectPieza) {
                 campoPieza.style.display = '';
                 selectPieza.innerHTML = opcionesPieza(insumo.nombre);
@@ -912,6 +866,7 @@
             campoCantidad.placeholder = 'Unidades';
             campoCantidad.step = '1';
 
+            // Por unidad → no aplica selección de pieza
             if (campoPieza) campoPieza.style.display = 'none';
 
             if (stock <= 0) {
@@ -938,6 +893,7 @@
             engancharEventosFila(fila0);
             actualizarSelectsManualFila(fila0);
         }
+        // Arrancamos la pestaña de Venta Directa con una fila de tela lista para usar
         agregarFilaTelaVenta();
     });
 </script>
