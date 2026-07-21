@@ -9,6 +9,8 @@
         .badge-estado-bodega    { background-color: #0dcaf0; color: #000; }
         .badge-estado-instalado { background-color: #ffc107; color: #000; }
         .badge-estado-terminado { background-color: #198754; }
+        .badge-pagado           { background-color: #198754; }
+        .badge-pendiente        { background-color: #dc3545; }
         .fila-detalle-productos { background-color: #f8f9fa; }
         .btn-ver-detalle { cursor: pointer; }
         .tabla-productos-mini th, .tabla-productos-mini td { font-size: 0.85rem; padding: 4px 8px; }
@@ -38,6 +40,7 @@
                     <th>Total</th>
                     <th>Abono</th>
                     <th>Saldo</th>
+                    <th>Pago</th>
                     <th>Estado</th>
                     <th>Cambiar estado</th>
                     <th th:if="${puedeCrearPedidos}">Acciones</th>
@@ -65,8 +68,19 @@
                             <span th:unless="${p.fechaEntrega != null}" class="text-muted">Sin definir</span>
                         </td>
                         <td th:text="${p.total}"></td>
-                        <td th:text="${p.abono}"></td>
+                        <td>
+                            <form th:action="@{/tienda/actualizar-abono/{id}(id=${p.id})}" method="post" class="d-flex gap-1">
+                                <input type="number" step="0.01" min="0" name="abono"
+                                       th:value="${p.abono}" class="form-control form-control-sm" style="width:100px;">
+                                <button type="submit" class="btn btn-sm btn-outline-primary" title="Guardar abono">💾</button>
+                            </form>
+                        </td>
                         <td th:text="${p.saldo}"></td>
+                        <td>
+                            <span class="badge"
+                                  th:classappend="${p.estadoPago == 'Pagado Completo' ? 'badge-pagado' : 'badge-pendiente'}"
+                                  th:text="${p.estadoPago}"></span>
+                        </td>
                         <td>
                             <span class="badge"
                                   th:classappend="${p.estado == 'Pedido' ? 'badge-estado-pedido' :
@@ -95,7 +109,7 @@
 
                     <!-- Fila expandible con el detalle de productos de este pedido -->
                     <tr class="fila-detalle-productos">
-                        <td colspan="14" class="p-0">
+                        <td colspan="15" class="p-0">
                             <div class="collapse" th:id="'detalle-' + ${p.id}">
                                 <div class="p-3">
                                     <p class="fw-bold mb-2" style="font-size:0.85rem;">Productos del pedido</p>

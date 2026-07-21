@@ -26,7 +26,7 @@ public class PedidoTienda {
     private String telefono = "";
 
     private LocalDateTime fechaPedido = LocalDateTime.now();
-        
+
     @DateTimeFormat(pattern = "yyyy-MM-dd'T'HH:mm")
     private LocalDateTime fechaEntrega = LocalDateTime.now();
 
@@ -51,5 +51,17 @@ public class PedidoTienda {
     public void agregarDetalle(DetallePedidoTienda detalle) {
         detalles.add(detalle);
         detalle.setPedidoTienda(this);
+    }
+
+    /**
+     * Estado de pago calculado automáticamente a partir del saldo.
+     * No se persiste en BD — siempre refleja el saldo real.
+     */
+    @Transient
+    public String getEstadoPago() {
+        if (saldo == null) {
+            return "Saldo Pendiente";
+        }
+        return saldo.compareTo(BigDecimal.ZERO) <= 0 ? "Pagado Completo" : "Saldo Pendiente";
     }
 }

@@ -126,6 +126,41 @@ public class PedidoTiendaControlador {
         return "redirect:/tienda/listado";
     }
 
+    // ─── Actualizar abono (pago) ────────────────────────────────────────
+    // Disponible para TIENDA, TIENDA_ADMIN y ADMIN (cae bajo el matcher
+    // general "/tienda/**" del SecurityConfig, no bajo el restringido).
+    @PostMapping("/actualizar-abono/{id}")
+    public String actualizarAbono(
+            @PathVariable("id") int id,
+            @RequestParam BigDecimal abono,
+            RedirectAttributes redirectAttributes) {
+
+        PedidoTienda pedido = pedidoTiendaRepository.findById(id).orElseThrow();
+
+        if (abono == null || abono.compareTo(BigDecimal.ZERO) < 0) {
+            redirectAttributes.addFlashAttribute("error", "El abono no puede ser negativo.");
+            return "redirect:/tienda/listado";
+        }
+
+        BigDecimal total = pedido.getTotal() != null ? pedido.getTotal() : BigDecimal.ZERO;
+        if (abono.compareTo(total) > 0) {
+            redirectAttributes.addFlashAttribute("error",
+                "El abono (" + abono + ") no puede superar el total del pedido (" + total + ").");
+            return "redirect:/tienda/listado";
+        }
+
+        pedido.setAbono(abono);
+        pedido.setSaldo(total.subtract(abono));
+        pedidoTiendaRepository.save(pedido);
+
+        String mensaje = pedido.getSaldo().compareTo(BigDecimal.ZERO) <= 0
+            ? "Pedido #" + id + " marcado como Pagado Completo."
+            : "Abono actualizado para el pedido #" + id + ".";
+        redirectAttributes.addFlashAttribute("mensaje", mensaje);
+
+        return "redirect:/tienda/listado";
+    }
+
     // ─── Helpers ────────────────────────────────────────────────────────
 
     /**
@@ -174,4 +209,5 @@ public class PedidoTiendaControlador {
         return auth.getAuthorities().stream()
                 .anyMatch(a -> a.getAuthority().equals("ROLE_TIENDA") || a.getAuthority().equals("ROLE_ADMIN"));
     }
+
 }
