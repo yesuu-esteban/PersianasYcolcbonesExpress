@@ -4,15 +4,139 @@
     <meta charset="UTF-8">
     <title>Nuevo Pedido de Tienda</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #1a0f2e;
+            --bg-card: #2a1b42;
+            --accent: #ec1561;
+            --accent-light: #ff4d94;
+            --gold: #ffc107;
+            --text-muted: #c9bfe0;
+        }
+
+        * { font-family: 'Poppins', sans-serif; }
+
+        body {
+            background: linear-gradient(160deg, #1a0f2e 0%, #241536 100%);
+            color: #fff;
+            padding: 24px;
+            min-height: 100vh;
+        }
+
+        /* ── Sello de marca ── */
+        .marca-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: var(--bg-card);
+            border: 1px solid rgba(236,21,97,0.35);
+            border-radius: 14px;
+            padding: 16px 24px;
+            margin-bottom: 26px;
+            box-shadow: 0 4px 22px rgba(236,21,97,0.15);
+        }
+        .marca-header .icono {
+            width: 46px; height: 46px;
+            background: linear-gradient(135deg, var(--accent), #a5107f);
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.4rem;
+            box-shadow: 0 0 0 3px rgba(236,21,97,0.25);
+            flex-shrink: 0;
+        }
+        .marca-header .titulo-marca {
+            font-weight: 800;
+            font-size: 1.05rem;
+            line-height: 1.1;
+            letter-spacing: 0.3px;
+        }
+        .marca-header .titulo-marca small {
+            display: block;
+            font-weight: 600;
+            font-size: 0.6rem;
+            color: var(--gold);
+            letter-spacing: 1.5px;
+            margin-top: 2px;
+        }
+
+        h2 { font-weight: 700; }
+
+        .alert-danger { background: rgba(231,76,60,0.15); border: 1px solid #e74c3c; color: #ff9a90; }
+
+        /* ── Tarjeta del formulario ── */
+        .card-formulario {
+            background: var(--bg-card) !important;
+            border: 1px solid rgba(255,255,255,0.08) !important;
+            border-radius: 14px;
+            box-shadow: 0 4px 22px rgba(0,0,0,0.3);
+        }
+
+        .form-label { color: var(--text-muted); font-size: 0.85rem; }
+
+        .form-control, .form-select {
+            background: #1e1330;
+            border: 1px solid rgba(255,255,255,0.15);
+            color: #fff;
+        }
+        .form-control:focus, .form-select:focus {
+            background: #1e1330;
+            border-color: var(--accent);
+            color: #fff;
+            box-shadow: 0 0 0 0.2rem rgba(236,21,97,0.25);
+        }
+        .form-control::placeholder { color: #8f84a8; }
+        .form-select option { background: #1e1330; color: #fff; }
+
+        hr { border-color: rgba(255,255,255,0.12); }
+
+        /* ── Tabla de productos ── */
+        table.table { color: #fff; }
+        table.table thead th {
+            background: #1e1330;
+            border-color: rgba(255,255,255,0.1);
+            color: var(--text-muted);
+            font-size: 0.78rem;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+        }
+        table.table td { border-color: rgba(255,255,255,0.08); vertical-align: middle; }
+
+        .btn-success {
+            background: linear-gradient(135deg, var(--accent), #b81050) !important;
+            border: none !important;
+            font-weight: 600;
+            box-shadow: 0 3px 10px rgba(236,21,97,0.35);
+        }
+        .btn-success:hover { filter: brightness(1.12); }
+
+        .btn-secondary {
+            background: rgba(255,255,255,0.08) !important;
+            border: 1px solid rgba(255,255,255,0.2) !important;
+            color: #fff !important;
+        }
+        .btn-secondary:hover { background: rgba(255,255,255,0.16) !important; }
+
+        .text-muted { color: var(--text-muted) !important; }
+    </style>
 </head>
-<body class="bg-light p-4">
+<body class="p-4">
 <div class="container col-md-8">
+
+    <div class="marca-header">
+        <div class="icono">⚙️</div>
+        <div class="titulo-marca">
+            PERSIANAS Y CORTINAS EXPRESS
+            <small>PUNTO DE FÁBRICA</small>
+        </div>
+    </div>
+
     <h2 class="mb-4">🛒 Nuevo Pedido de Tienda</h2>
 
     <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
 
     <form th:action="@{/tienda/guardar}" th:object="${pedidoTienda}" method="post"
-          class="bg-white p-4 shadow-sm border rounded">
+          class="card-formulario p-4">
 
         <div class="row g-3 mb-3">
             <div class="col-md-6">

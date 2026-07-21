@@ -4,272 +4,146 @@
     <meta charset="UTF-8">
     <title>Inventario de Materiales</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
     <style>
+        :root {
+            --bg-dark: #1a0f2e;
+            --bg-card: #2a1b42;
+            --accent: #ec1561;
+            --accent-light: #ff4d94;
+            --gold: #ffc107;
+            --text-muted: #c9bfe0;
+        }
+        * { font-family: 'Poppins', sans-serif; }
+        body {
+            background: linear-gradient(160deg, #1a0f2e 0%, #241536 100%);
+            color: #fff;
+        }
+        .marca-header {
+            display: flex; align-items: center; justify-content: space-between;
+            background: var(--bg-card);
+            border: 1px solid rgba(236,21,97,0.35);
+            border-radius: 14px; padding: 16px 24px; margin-bottom: 24px;
+            box-shadow: 0 4px 22px rgba(236,21,97,0.15);
+        }
+        .marca-header .logo-marca { display: flex; align-items: center; gap: 12px; }
+        .marca-header .icono {
+            width: 46px; height: 46px;
+            background: linear-gradient(135deg, var(--accent), #a5107f);
+            border-radius: 50%; display: flex; align-items: center; justify-content: center;
+            font-size: 1.4rem; box-shadow: 0 0 0 3px rgba(236,21,97,0.25); flex-shrink: 0;
+        }
+        .marca-header .titulo-marca { font-weight: 800; font-size: 1.05rem; line-height: 1.1; }
+        .marca-header .titulo-marca small {
+            display: block; font-weight: 600; font-size: 0.6rem;
+            color: var(--gold); letter-spacing: 1.5px; margin-top: 2px;
+        }
+
+        h2, h5 { font-weight: 700; }
+        .text-muted { color: var(--text-muted) !important; }
+
+        .btn-outline-secondary { color: var(--text-muted); border-color: rgba(255,255,255,0.25); }
+        .btn-outline-secondary:hover { background: rgba(255,255,255,0.1); color: #fff; }
+        .btn-primary, .btn-success, .btn-light {
+            background: linear-gradient(135deg, var(--accent), #b81050) !important;
+            border: none !important; color: #fff !important; font-weight: 600;
+            box-shadow: 0 3px 10px rgba(236,21,97,0.35);
+        }
+        .btn-primary:hover, .btn-success:hover, .btn-light:hover { filter: brightness(1.12); }
+        .btn-warning {
+            background: linear-gradient(135deg, var(--gold), #e0a800) !important;
+            border: none !important; color: #3a2c00 !important; font-weight: 600;
+        }
+        .btn-outline-primary { color: var(--accent-light); border-color: var(--accent); }
+        .btn-outline-primary:hover { background: var(--accent); border-color: var(--accent); color: #fff; }
+        .btn-outline-danger:hover { background: #e74c3c; }
+        .btn-outline-warning { color: var(--gold); border-color: var(--gold); }
+        .btn-outline-warning:hover { background: var(--gold); color: #3a2c00; }
+        .btn-link { color: var(--accent-light) !important; }
+
+        .alert-success { background: rgba(46,204,113,0.15); border: 1px solid #2ecc71; color: #7ff0a8; }
+        .alert-danger  { background: rgba(231,76,60,0.15); border: 1px solid #e74c3c; color: #ff9a90; }
+
+        .form-control, .form-select {
+            background: #1e1330; border: 1px solid rgba(255,255,255,0.15); color: #fff;
+        }
+        .form-control:focus, .form-select:focus {
+            background: #1e1330; border-color: var(--accent); color: #fff;
+            box-shadow: 0 0 0 0.2rem rgba(236,21,97,0.25);
+        }
+        .form-control::placeholder { color: #8f84a8; }
+        .form-select option { background: #1e1330; color: #fff; }
+        .form-label { color: var(--text-muted); }
+
         .table-small { font-size: 0.88rem; }
-        .fila-retazo { background-color: #fff8e1 !important; }
-        .fila-agotado { background-color: #f8d7da !important; opacity: 0.7; }
-        .badge-retazo { background-color: #ffc107; color: #000; }
+        .fila-retazo { background-color: rgba(255,193,7,0.12) !important; }
+        .fila-agotado { background-color: rgba(231,76,60,0.18) !important; opacity: 0.85; }
+        .badge-retazo { background: linear-gradient(135deg, var(--gold), #e0a800); color: #3a2c00; }
+        .badge-tipo-medida { background: linear-gradient(135deg, #0dcaf0, #0b9fc0); color: #03171c; }
+        .badge-tipo-unidad { background-color: #6c5b7b; color: #fff; }
 
         .seccion-card {
-            background: #fff;
-            border-radius: 8px;
-            box-shadow: 0 1px 3px rgba(0,0,0,.08);
-            margin-bottom: 28px;
+            background: var(--bg-card) !important;
+            box-shadow: 0 4px 22px rgba(0,0,0,0.3) !important;
         }
         .seccion-header {
-            background-color: #343a40;
-            color: #fff;
-            padding: 12px 18px;
-            border-radius: 8px 8px 0 0;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 8px;
+            background: linear-gradient(90deg, var(--accent), #a5107f) !important;
+            color: #fff !important;
         }
-        .resumen-pill {
-            background: #e9ecef;
-            border-radius: 20px;
-            padding: 6px 16px;
-            font-size: 0.85rem;
-            margin-right: 8px;
-            display: inline-block;
-        }
+        .resumen-pill { background: rgba(255,255,255,0.08); color: #fff; }
 
-        /* ───────── Barra de filtros ───────── */
-        .filtros-bar {
-            background: #f8f9fa;
-            border-bottom: 1px solid #e9ecef;
-            padding: 12px 18px;
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            align-items: end;
-        }
-        .filtros-bar .form-label {
-            font-size: 0.78rem;
-            font-weight: 600;
-            margin-bottom: 2px;
-            color: #495057;
-        }
-        .filtro-chip-clear {
-            font-size: 0.78rem;
-        }
+        .filtros-bar { background: #1e1330 !important; border-bottom: 1px solid rgba(255,255,255,0.08) !important; }
+        .filtros-bar .form-label { color: var(--text-muted); }
+        .filtro-chip-clear { font-size: 0.78rem; }
 
-        /* ───────── Acordeón de grupos (color + ancho) ───────── */
-        .grupo-rollo {
-            border: 1px solid #e3e3e3;
-            border-radius: 6px;
-            margin: 10px 14px;
-            overflow: hidden;
-        }
-        .grupo-rollo:first-of-type { margin-top: 14px; }
-        .grupo-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 10px 14px;
-            cursor: pointer;
-            background: #f1f3f5;
-            user-select: none;
-            transition: background 0.15s ease;
-        }
-        .grupo-header:hover { background: #e7eaee; }
-        .grupo-header .chevron {
-            transition: transform 0.2s ease;
-            font-size: 0.8rem;
-            color: #6c757d;
-        }
-        .grupo-header.abierto .chevron {
-            transform: rotate(90deg);
-        }
-        .grupo-titulo {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            font-weight: 600;
-        }
-        .swatch-color {
-            width: 16px;
-            height: 16px;
-            border-radius: 4px;
-            border: 1px solid rgba(0,0,0,.15);
-            display: inline-block;
-            flex-shrink: 0;
-        }
-        .grupo-meta {
-            font-size: 0.82rem;
-            color: #6c757d;
-            font-weight: 400;
-        }
-        .grupo-body {
-            max-height: 0;
-            overflow: hidden;
-            transition: max-height 0.25s ease;
-        }
-        .grupo-body.abierto {
-            max-height: 2000px;
-        }
+        .grupo-rollo, .grupo-insumo { border: 1px solid rgba(255,255,255,0.1) !important; background: #1e1330; }
+        .grupo-header { background: rgba(255,255,255,0.04) !important; }
+        .grupo-header:hover { background: rgba(236,21,97,0.1) !important; }
+        .grupo-header .chevron { color: var(--text-muted); }
+        .grupo-titulo { color: #fff; }
+        .grupo-meta { color: var(--text-muted) !important; }
         .grupo-resumen-badges .badge { font-size: 0.72rem; }
 
-        /* ───────── Grupos de insumos por nombre ───────── */
-        .grupo-insumo {
-            border: 1px solid #e3e3e3;
-            border-radius: 6px;
-            margin: 10px 14px;
-            overflow: hidden;
+        table.table { color: #fff; }
+        table.table thead.table-light th, table.table thead th {
+            background: #241536 !important; color: var(--text-muted) !important; border-color: rgba(255,255,255,0.08) !important;
         }
-        .grupo-insumo:first-of-type { margin-top: 14px; }
+        table.table td, table.table th { border-color: rgba(255,255,255,0.08) !important; }
+        table.table-hover tbody tr:hover { background: rgba(236,21,97,0.08) !important; color: #fff; }
 
-        .badge-tipo-medida { background-color: #0dcaf0; color: #000; }
-        .badge-tipo-unidad { background-color: #6c757d; color: #fff; }
+        .contador-resultados { color: var(--text-muted) !important; }
 
-        .oculto-por-filtro { display: none !important; }
+        .panel-alertas { background: var(--bg-card) !important; box-shadow: 0 4px 22px rgba(0,0,0,0.3) !important; }
+        .panel-alertas-header { background-color: #100a1c !important; }
+        .item-alerta.nivel-agotado { background-color: #000 !important; }
+        .item-alerta.nivel-critico { background-color: rgba(231,76,60,0.18) !important; border-left-color: #e74c3c !important; }
+        .item-alerta.nivel-advertencia { background-color: rgba(255,193,7,0.15) !important; border-left-color: var(--gold) !important; }
+        .item-alerta .mensaje-alerta { color: var(--text-muted) !important; }
+        .item-alerta .titulo-alerta { color: #fff; }
+        .btn-silenciar-alerta { color: #fff; }
+        .sin-alertas { color: #2ecc71 !important; }
+        .alertas-silenciadas-info { color: var(--text-muted) !important; }
+        .alertas-silenciadas-info a { color: var(--accent-light) !important; }
 
-        .contador-resultados {
-            font-size: 0.8rem;
-            color: #6c757d;
-            padding: 0 18px;
-        }
-
-        /* ───────── Panel de alertas de stock bajo ───────── */
-        .panel-alertas {
-            background: #fff;
-            border-radius: 8px;
-            box-shadow: 0 1px 3px rgba(0,0,0,.08);
-            margin-bottom: 24px;
-            overflow: hidden;
-        }
-        .panel-alertas-header {
-            padding: 12px 18px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            cursor: pointer;
-            user-select: none;
-            background-color: #212529;
-            color: #fff;
-        }
-        .panel-alertas-header .chevron {
-            transition: transform 0.2s ease;
-            font-size: 0.8rem;
-        }
-        .panel-alertas-header.abierto .chevron {
-            transform: rotate(90deg);
-        }
-        .panel-alertas-body {
-            max-height: 0;
-            overflow: hidden;
-            transition: max-height 0.25s ease;
-        }
-        .panel-alertas-body.abierto {
-            max-height: 3000px;
-        }
-        .lista-alertas {
-            list-style: none;
-            margin: 0;
-            padding: 8px 10px;
-            display: flex;
-            flex-direction: column;
-            gap: 5px;
-        }
-        .item-alerta {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 6px 10px;
-            border-radius: 5px;
-            border-left: 4px solid transparent;
-            font-size: 0.82rem;
-        }
-        .item-alerta .icono-alerta {
-            font-size: 0.95rem;
-            line-height: 1;
-            flex-shrink: 0;
-        }
-        .item-alerta .texto-alerta {
-            flex: 1;
-            display: flex;
-            align-items: baseline;
-            flex-wrap: wrap;
-            gap: 4px;
-            min-width: 0;
-        }
-        .item-alerta .titulo-alerta {
-            font-weight: 700;
-            font-size: 0.83rem;
-        }
-        .item-alerta .mensaje-alerta {
-            color: #495057;
-            font-size: 0.79rem;
-        }
-        .item-alerta.nivel-agotado {
-            background-color: #2b2b2b;
-            border-left-color: #000;
-            color: #fff;
-        }
-        .item-alerta.nivel-agotado .mensaje-alerta { color: #d6d6d6; }
-        .item-alerta.nivel-critico {
-            background-color: #f8d7da;
-            border-left-color: #dc3545;
-        }
-        .item-alerta.nivel-advertencia {
-            background-color: #fff3cd;
-            border-left-color: #ffc107;
-        }
-        .btn-silenciar-alerta {
-            background: none;
-            border: none;
-            opacity: 0.55;
-            font-size: 0.85rem;
-            line-height: 1;
-            cursor: pointer;
-            padding: 3px 6px;
-            border-radius: 4px;
-            flex-shrink: 0;
-            color: inherit;
-        }
-        .btn-silenciar-alerta:hover {
-            opacity: 1;
-            background: rgba(0,0,0,.08);
-        }
-        .item-alerta.nivel-agotado .btn-silenciar-alerta:hover {
-            background: rgba(255,255,255,.15);
-        }
-        .sin-alertas {
-            padding: 14px;
-            text-align: center;
-            color: #198754;
-            font-weight: 600;
-            font-size: 0.9rem;
-        }
-        .alertas-silenciadas-info {
-            font-size: 0.74rem;
-            color: #6c757d;
-            padding: 0 10px 8px;
-            text-align: right;
-        }
-        .alertas-silenciadas-info a {
-            font-size: 0.74rem;
-        }
-        .id-pill {
-            display: inline-block;
-            background: #e9ecef;
-            color: #495057;
-            font-weight: 700;
-            font-size: 0.76rem;
-            padding: 1px 8px;
-            border-radius: 12px;
-            font-family: 'Courier New', monospace;
-        }
+        .id-pill { background: rgba(255,255,255,0.1) !important; color: #fff !important; }
+        .swatch-color { border-color: rgba(255,255,255,0.25) !important; }
     </style>
 </head>
-<body class="bg-light p-4">
+<body class="p-4">
     <div class="container-fluid">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <h2>📦 Inventario de Materiales</h2>
+
+        <div class="marca-header">
+            <div class="logo-marca">
+                <div class="icono">⚙️</div>
+                <div class="titulo-marca">
+                    PERSIANAS Y CORTINAS EXPRESS
+                    <small>PUNTO DE FÁBRICA</small>
+                </div>
+            </div>
             <a href="/taller/pedidos" class="btn btn-outline-secondary">← Volver a Pedidos</a>
         </div>
+
+        <h2 class="mb-3">📦 Inventario de Materiales</h2>
 
         <div th:if="${mensaje}" class="alert alert-success" th:text="${mensaje}"></div>
         <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
@@ -326,7 +200,6 @@
                 <a href="/inventario/rollo/nuevo" class="btn btn-sm btn-light">+ Agregar Rollo</a>
             </div>
 
-            <!-- Filtros -->
             <div class="filtros-bar">
                 <div>
                     <label class="form-label d-block">Color</label>
@@ -361,14 +234,12 @@
 
             <div id="contadorRollo" class="contador-resultados pt-2"></div>
 
-            <!-- Contenedor de grupos: se construye con JS a partir de las filas ocultas de abajo -->
             <div id="gruposRollosContainer"></div>
 
             <div th:if="${#lists.isEmpty(rollos)}" class="text-center text-muted py-4">
                 No hay rollos registrados todavía.
             </div>
 
-            <!-- Datos crudos (ocultos) que Thymeleaf sí sabe renderizar; el JS los agrupa visualmente -->
             <table id="datosRollosRaw" style="display:none;">
                 <tbody>
                     <tr th:each="r : ${rollos}"
@@ -394,8 +265,7 @@
                 <h5 class="mb-0">✂ Retazos de Tela</h5>
             </div>
 
-            <!-- Formulario para registrar un retazo nuevo: ancho y alto son medidas variables (sobrantes) -->
-            <div class="p-3 border-bottom" style="background:#fffbea;">
+            <div class="p-3 border-bottom" style="background:#1e1330; border-color: rgba(255,255,255,0.08) !important;">
                 <form th:action="@{/inventario/retazo/nuevo}" method="post" class="row g-2 align-items-end">
                     <div class="col-md-3">
                         <label class="form-label fw-bold mb-1" style="font-size:0.83rem">Color</label>
@@ -418,7 +288,6 @@
                 </form>
             </div>
 
-            <!-- Filtros -->
             <div class="filtros-bar">
                 <div>
                     <label class="form-label d-block">Color</label>
@@ -446,14 +315,12 @@
 
             <div id="contadorRetazo" class="contador-resultados pt-2"></div>
 
-            <!-- Contenedor de grupos de retazos, agrupados por color (igual que los rollos) -->
             <div id="gruposRetazosContainer"></div>
 
             <div th:if="${#lists.isEmpty(retazos)}" class="text-center text-muted py-4">
                 No hay retazos registrados. Usa el formulario de arriba para agregar uno.
             </div>
 
-            <!-- Datos crudos (ocultos); el JS los agrupa visualmente por color -->
             <table id="datosRetazosRaw" style="display:none;">
                 <tbody>
                     <tr th:each="rt : ${retazos}"
@@ -477,7 +344,6 @@
                 <a href="/inventario/insumo/nuevo" class="btn btn-sm btn-light">+ Crear Insumo Nuevo</a>
             </div>
 
-            <!-- Filtros -->
             <div class="filtros-bar">
                 <div>
                     <label class="form-label d-block">Tipo</label>
@@ -508,7 +374,6 @@
                 No hay insumos registrados todavía.
             </div>
 
-            <!-- Datos crudos de insumos -->
             <table id="datosInsumosRaw" style="display:none;">
                 <tbody>
                     <tr th:each="ins : ${insumos}"
@@ -524,7 +389,6 @@
             </table>
         </div>
 
-        <!-- ───────────── PIEZAS DE INSUMOS CON MEDIDA (detalle, agrupado dentro de cada insumo arriba) ───────────── -->
         <table id="datosPiezasRaw" style="display:none;">
             <tbody>
                 <tr th:each="pz : ${piezas}"
@@ -543,8 +407,6 @@
     </div>
 
     <script>
-    // Paleta aproximada para el "swatch" visual de color. Si el nombre de color
-    // no está en este mapa, se usa un cuadro gris neutro como respaldo.
     const MAPA_COLORES = {
         'blanco': '#ffffff', 'negro': '#1a1a1a', 'rojo': '#d32f2f', 'azul': '#1976d2',
         'verde': '#388e3c', 'amarillo': '#fbc02d', 'naranja': '#f57c00', 'morado': '#7b1fa2',
@@ -562,9 +424,6 @@
             .replace(/"/g, '&quot;');
     }
 
-    // ════════════════════════════════════════════════════════════
-    //  PANEL DE ALERTAS → acordeón + silenciar individualmente (7 días)
-    // ════════════════════════════════════════════════════════════
     (function initPanelAlertas() {
         const header = document.getElementById('panelAlertasHeader');
         const body = document.getElementById('panelAlertasBody');
@@ -580,7 +439,6 @@
         const PREFIJO_STORAGE = 'inventario_alerta_silenciada_';
 
         function claveStorage(key) {
-            // Clave de storage a partir de la clave de la alerta (título+mensaje).
             let hash = 0;
             for (let i = 0; i < key.length; i++) {
                 hash = ((hash << 5) - hash + key.charCodeAt(i)) | 0;
@@ -649,7 +507,6 @@
             }
 
             if (sinAlertasMensaje) {
-                // Solo mostramos "todo saludable" si además no hay nada silenciado esperando.
                 sinAlertasMensaje.style.display = (visibles === 0 && silenciadas === 0) ? '' : 'none';
             }
 
@@ -689,9 +546,6 @@
         actualizarVisibilidad();
     })();
 
-    // ════════════════════════════════════════════════════════════
-    //  ROLLOS DE TELA → agrupados por Color + Ancho, en acordeón
-    // ════════════════════════════════════════════════════════════
     (function initRollos() {
         const filas = Array.from(document.querySelectorAll('#datosRollosRaw tbody tr'));
         const contenedor = document.getElementById('gruposRollosContainer');
@@ -711,7 +565,6 @@
             urlCorregir: tr.dataset.urlCorregir
         }));
 
-        // Poblar el <select> de anchos dinámicamente según los datos reales
         const selAncho = document.getElementById('filtroRolloAncho');
         const anchosUnicos = Array.from(new Set(rollos.map(r => r.ancho))).sort((a, b) => parseFloat(a) - parseFloat(b));
         anchosUnicos.forEach(a => {
@@ -721,7 +574,6 @@
             selAncho.appendChild(opt);
         });
 
-        // Agrupar por color + ancho
         const grupos = {};
         rollos.forEach(r => {
             const key = r.color + '||' + r.ancho;
@@ -855,7 +707,6 @@
             document.querySelectorAll('#gruposRollosContainer .grupo-body').forEach(b => b.classList.remove('abierto'));
         });
 
-
         contenedor.addEventListener('click', (e) => {
             const btn = e.target.closest('.btn-agotar-rollo');
             if (!btn) return;
@@ -870,9 +721,6 @@
         render();
     })();
 
-    // ════════════════════════════════════════════════════════════
-    //  RETAZOS DE TELA → agrupados por Color, en acordeón (igual que rollos)
-    // ════════════════════════════════════════════════════════════
     (function initRetazos() {
         const filas = Array.from(document.querySelectorAll('#datosRetazosRaw tbody tr'));
         const contenedor = document.getElementById('gruposRetazosContainer');
@@ -891,7 +739,6 @@
 
         if (retazos.length === 0) return;
 
-        // Agrupar por color
         const grupos = {};
         retazos.forEach(r => {
             if (!grupos[r.color]) grupos[r.color] = { color: r.color, items: [] };
@@ -1010,10 +857,6 @@
         render();
     })();
 
-    // ════════════════════════════════════════════════════════════
-    //  INSUMOS → agrupados por Nombre, con filtro por Tipo y por texto.
-    //  Cada grupo, si "tieneMedida", despliega sus piezas individuales adentro.
-    // ════════════════════════════════════════════════════════════
     (function initInsumos() {
         const filasInsumo = Array.from(document.querySelectorAll('#datosInsumosRaw tbody tr'));
         const filasPieza = Array.from(document.querySelectorAll('#datosPiezasRaw tbody tr'));
