@@ -5,12 +5,11 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.springframework.format.annotation.DateTimeFormat;
-
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.ToString;
 import lombok.EqualsAndHashCode;
+import org.springframework.format.annotation.DateTimeFormat;
 
 @Entity
 @Table(name = "pedido_tienda")
@@ -22,13 +21,14 @@ public class PedidoTienda {
     private int id;
 
     private String nombreCliente = "";
+    private String cedula = "";
     private String direccion = "";
     private String telefono = "";
 
     private LocalDateTime fechaPedido = LocalDateTime.now();
 
     @DateTimeFormat(pattern = "yyyy-MM-dd'T'HH:mm")
-    private LocalDateTime fechaEntrega = LocalDateTime.now();
+    private LocalDateTime fechaEntrega;
 
     private String descripcion = "";
 
@@ -40,7 +40,9 @@ public class PedidoTienda {
     private String vendedor = "";
     private String aliado = "";
 
-    private String estado = "pendiente";
+    /** Estados posibles: "Pedido", "En Bodega", "Instalado", "Terminado". */
+    private String estado = "Pedido";
+
     private String metodoPago = "";
 
     @OneToMany(mappedBy = "pedidoTienda", cascade = CascadeType.ALL, orphanRemoval = true)
@@ -53,15 +55,10 @@ public class PedidoTienda {
         detalle.setPedidoTienda(this);
     }
 
-    /**
-     * Estado de pago calculado automáticamente a partir del saldo.
-     * No se persiste en BD — siempre refleja el saldo real.
-     */
+    /** "Pagado Completo" si el saldo es 0 o negativo, "Pendiente" en cualquier otro caso. */
     @Transient
     public String getEstadoPago() {
-        if (saldo == null) {
-            return "Saldo Pendiente";
-        }
-        return saldo.compareTo(BigDecimal.ZERO) <= 0 ? "Pagado Completo" : "Saldo Pendiente";
+        if (saldo == null) return "Pendiente";
+        return saldo.compareTo(BigDecimal.ZERO) <= 0 ? "Pagado Completo" : "Pendiente";
     }
 }

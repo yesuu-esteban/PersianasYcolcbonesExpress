@@ -11,6 +11,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import Colcones_Persinas.proyecto_express.modelo.PedidoTienda;
 import Colcones_Persinas.proyecto_express.modelo.DetallePedidoTienda;
@@ -36,7 +37,6 @@ public class PedidoTiendaControlador {
         List<String> errores = validarProductos(pedidoTienda.getDetalles());
         if (!errores.isEmpty()) {
             redirectAttributes.addFlashAttribute("error", String.join(" ", errores));
-            redirectAttributes.addFlashAttribute("pedidoTienda", pedidoTienda);
             return "redirect:/tienda/nuevo";
         }
 
@@ -46,9 +46,29 @@ public class PedidoTiendaControlador {
         return "redirect:/tienda/listado";
     }
 
+    // ─── Listado con búsqueda por nombre o cédula ───────────────────────
     @GetMapping("/listado")
-    public String listarPedidos(Model model) {
-        model.addAttribute("pedidos", pedidoTiendaRepository.findAll());
+    public String listarPedidos(
+            @RequestParam(required = false) String buscar,
+            Model model) {
+
+        List<PedidoTienda> todos = pedidoTiendaRepository.findAll();
+
+        List<PedidoTienda> pedidos;
+        if (buscar != null && !buscar.isBlank()) {
+            String q = buscar.trim().toLowerCase();
+            pedidos = todos.stream()
+                    .filter(p ->
+                        (p.getNombreCliente() != null && p.getNombreCliente().toLowerCase().contains(q)) ||
+                        (p.getCedula() != null && p.getCedula().toLowerCase().contains(q))
+                    )
+                    .collect(Collectors.toList());
+        } else {
+            pedidos = todos;
+        }
+
+        model.addAttribute("pedidos", pedidos);
+        model.addAttribute("buscar", buscar != null ? buscar : "");
         model.addAttribute("puedeCrearPedidos", puedeGestionarPedidos());
         return "tienda/listado";
     }
@@ -79,6 +99,7 @@ public class PedidoTiendaControlador {
         PedidoTienda pedido = pedidoTiendaRepository.findById(id).orElseThrow();
 
         pedido.setNombreCliente(formPedido.getNombreCliente());
+        pedido.setCedula(formPedido.getCedula());
         pedido.setDireccion(formPedido.getDireccion());
         pedido.setTelefono(formPedido.getTelefono());
         pedido.setDescripcion(formPedido.getDescripcion());
@@ -126,11 +147,9 @@ public class PedidoTiendaControlador {
         return "redirect:/tienda/listado";
     }
 
-    // ─── Agregar un abono/pago adicional ─────────────────────────────────
-    // Disponible para TIENDA, TIENDA_ADMIN y ADMIN (cae bajo el matcher
-    // general "/tienda/**" del SecurityConfig, no bajo el restringido).
+    // ─── Agregar abono a un pedido existente ────────────────────────────
     @PostMapping("/abonar/{id}")
-    public String abonarPedido(
+    public String agregarAbono(
             @PathVariable("id") int id,
             @RequestParam BigDecimal monto,
             RedirectAttributes redirectAttributes) {
@@ -141,36 +160,22 @@ public class PedidoTiendaControlador {
             redirectAttributes.addFlashAttribute("error", "El monto del abono debe ser mayor a 0.");
             return "redirect:/tienda/listado";
         }
-
-        BigDecimal total = pedido.getTotal() != null ? pedido.getTotal() : BigDecimal.ZERO;
-        BigDecimal abonoActual = pedido.getAbono() != null ? pedido.getAbono() : BigDecimal.ZERO;
-        BigDecimal nuevoAbono = abonoActual.add(monto);
-
-        if (nuevoAbono.compareTo(total) > 0) {
+        if (monto.compareTo(pedido.getSaldo()) > 0) {
             redirectAttributes.addFlashAttribute("error",
-                "Ese abono deja el total pagado en " + nuevoAbono + ", que supera el total del pedido (" + total + ").");
+                "El abono (" + monto + ") no puede ser mayor al saldo pendiente (" + pedido.getSaldo() + ").");
             return "redirect:/tienda/listado";
         }
 
-        pedido.setAbono(nuevoAbono);
-        pedido.setSaldo(total.subtract(nuevoAbono));
+        pedido.setAbono(pedido.getAbono().add(monto));
+        pedido.setSaldo(pedido.getTotal().subtract(pedido.getAbono()));
         pedidoTiendaRepository.save(pedido);
 
-        String mensaje = pedido.getSaldo().compareTo(BigDecimal.ZERO) <= 0
-            ? "Pedido #" + id + " marcado como Pagado Completo."
-            : "Abono de " + monto + " registrado para el pedido #" + id + ". Saldo pendiente: " + pedido.getSaldo();
-        redirectAttributes.addFlashAttribute("mensaje", mensaje);
-
+        redirectAttributes.addFlashAttribute("mensaje",
+            "Abono de " + monto + " registrado. Saldo restante: " + pedido.getSaldo());
         return "redirect:/tienda/listado";
     }
 
     // ─── Helpers ────────────────────────────────────────────────────────
-
-    /**
-     * Valida que cada producto con nombre tenga cantidad y precio unitario
-     * mayores a cero. Filas totalmente vacías (sin nombre de producto) se
-     * ignoran aquí — se descartan más adelante al guardar.
-     */
     private List<String> validarProductos(List<DetallePedidoTienda> detalles) {
         List<String> errores = new ArrayList<>();
         if (detalles == null) return errores;
@@ -212,5 +217,4 @@ public class PedidoTiendaControlador {
         return auth.getAuthorities().stream()
                 .anyMatch(a -> a.getAuthority().equals("ROLE_TIENDA") || a.getAuthority().equals("ROLE_ADMIN"));
     }
-
 }
