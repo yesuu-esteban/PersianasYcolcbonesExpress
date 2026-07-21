@@ -40,6 +40,7 @@
                     <th>Saldo</th>
                     <th>Estado</th>
                     <th>Cambiar estado</th>
+                    <th th:if="${puedeCrearPedidos}">Acciones</th>
                 </tr>
             </thead>
             <tbody>
@@ -84,11 +85,17 @@
                                 <button type="submit" class="btn btn-sm btn-outline-primary">💾</button>
                             </form>
                         </td>
+                        <td th:if="${puedeCrearPedidos}">
+                            <a th:href="@{/tienda/editar/{id}(id=${p.id})}" class="btn btn-sm btn-outline-secondary">✏️</a>
+                            <button type="button" class="btn btn-sm btn-outline-danger"
+                                    data-bs-toggle="modal" data-bs-target="#modalEliminarTienda"
+                                    th:attr="data-id=${p.id}, data-cliente=${p.nombreCliente}">🗑️</button>
+                        </td>
                     </tr>
 
                     <!-- Fila expandible con el detalle de productos de este pedido -->
                     <tr class="fila-detalle-productos">
-                        <td colspan="13" class="p-0">
+                        <td colspan="14" class="p-0">
                             <div class="collapse" th:id="'detalle-' + ${p.id}">
                                 <div class="p-3">
                                     <p class="fw-bold mb-2" style="font-size:0.85rem;">Productos del pedido</p>
@@ -126,6 +133,38 @@
         </div>
     </div>
 
+    <!-- Modal de confirmación para eliminar -->
+    <div class="modal fade" id="modalEliminarTienda" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">⚠️ Confirmar eliminación</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>¿Seguro que deseas eliminar el pedido de <strong id="modalEliminarTiendaCliente"></strong>?</p>
+                    <p class="text-danger mb-0">Esta acción no se puede deshacer.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <form id="formEliminarTienda" method="post" class="d-inline">
+                        <button type="submit" class="btn btn-danger">Sí, eliminar</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const modalEliminarTienda = document.getElementById('modalEliminarTienda');
+        modalEliminarTienda.addEventListener('show.bs.modal', function (event) {
+            const boton = event.relatedTarget;
+            const id = boton.getAttribute('data-id');
+            const cliente = boton.getAttribute('data-cliente');
+            document.getElementById('modalEliminarTiendaCliente').textContent = cliente;
+            document.getElementById('formEliminarTienda').action = '/tienda/eliminar/' + id;
+        });
+    </script>
 </body>
 </html>

@@ -20,9 +20,10 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/css/**", "/js/**", "/images/**").permitAll()
 
-                // Crear pedidos de tienda: SOLO vendedores y admin general
-                // (va ANTES del matcher general de /tienda/** para que tenga prioridad)
-                .requestMatchers("/tienda/nuevo", "/tienda/guardar").hasAnyRole("TIENDA", "ADMIN")
+                // Gestión de pedidos de tienda (crear, editar, eliminar):
+                // SOLO vendedores y admin general — va ANTES del matcher general de /tienda/**
+                .requestMatchers("/tienda/nuevo", "/tienda/guardar", "/tienda/editar/**", "/tienda/eliminar/**")
+                    .hasAnyRole("TIENDA", "ADMIN")
 
                 // Resto de tienda (listado, ver detalle, cambiar estado):
                 // vendedores, admin de tienda (solo lectura/estado), y admin general
@@ -71,7 +72,7 @@ public class SecurityConfig {
             .roles("TIENDA")
             .build();
 
-        // Nuevo: administrador de tienda — solo ve y cambia estados, no crea pedidos
+        // Administrador de tienda — solo ve y cambia estados, no crea/edita/elimina pedidos
         UserDetails adminTienda = User.builder()
             .username("admin_tienda")
             .password(passwordEncoder().encode("123456"))

@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Editar Pedido de Tienda</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light p-4">
+<div class="container col-md-8">
+    <h2 class="mb-4">✏️ Editar Pedido de Tienda #<span th:text="${pedidoTienda.id}"></span></h2>
+
+    <form th:action="@{/tienda/editar/{id}(id=${pedidoTienda.id})}" th:object="${pedidoTienda}" method="post"
+          class="bg-white p-4 shadow-sm border rounded">
+
+        <div class="row g-3 mb-3">
+            <div class="col-md-6">
+                <label class="form-label fw-bold">Cliente</label>
+                <input type="text" th:field="*{nombreCliente}" class="form-control" required>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label fw-bold">Teléfono</label>
+                <input type="text" th:field="*{telefono}" class="form-control">
+            </div>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label fw-bold">Dirección</label>
+            <input type="text" th:field="*{direccion}" class="form-control">
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label fw-bold">Descripción</label>
+            <textarea th:field="*{descripcion}" class="form-control" rows="2"></textarea>
+        </div>
+
+        <div class="row g-3 mb-3">
+            <div class="col-md-6">
+                <label class="form-label fw-bold">Vendedor</label>
+                <select th:field="*{vendedor}" class="form-select" required>
+                    <option value="">-- Selecciona --</option>
+                    <option value="Fabián Andrés">Fabián Andrés</option>
+                    <option value="Carlos Andrés">Carlos Andrés</option>
+                </select>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label fw-bold">Fecha de entrega</label>
+                <input type="datetime-local" th:field="*{fechaEntrega}" class="form-control">
+            </div>
+        </div>
+
+        <div class="row g-3 mb-3">
+            <div class="col-md-6">
+                <label class="form-label fw-bold">Abono</label>
+                <input type="number" step="0.01" th:field="*{abono}" class="form-control">
+            </div>
+            <div class="col-md-6">
+                <label class="form-label fw-bold">Método de pago</label>
+                <input type="text" th:field="*{metodoPago}" class="form-control">
+            </div>
+        </div>
+
+        <hr>
+        <h5 class="mb-3">Productos</h5>
+
+        <table class="table table-sm" id="tablaDetalles">
+            <thead>
+                <tr>
+                    <th>Producto</th>
+                    <th>Cantidad</th>
+                    <th>Precio unitario</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody id="cuerpoDetalles">
+                <tr th:each="detalle, iter : *{detalles}">
+                    <td>
+                        <input type="text" class="form-control form-control-sm"
+                               th:field="*{detalles[__${iter.index}__].producto}">
+                    </td>
+                    <td>
+                        <input type="number" class="form-control form-control-sm"
+                               th:field="*{detalles[__${iter.index}__].cantidad}">
+                    </td>
+                    <td>
+                        <input type="number" step="0.01" class="form-control form-control-sm"
+                               th:field="*{detalles[__${iter.index}__].precioUnitario}">
+                    </td>
+                    <td>
+                        <button type="button" class="btn btn-sm btn-outline-danger"
+                                onclick="this.closest('tr').remove()">✕</button>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+
+        <button type="button" class="btn btn-sm btn-outline-dark mb-3" onclick="agregarFilaProducto()">
+            + Agregar producto
+        </button>
+
+        <div class="mt-4">
+            <button type="submit" class="btn btn-primary w-100">Guardar Cambios</button>
+            <a href="/tienda/listado" class="btn btn-secondary w-100 mt-2">Cancelar</a>
+        </div>
+    </form>
+</div>
+
+<script th:inline="javascript">
+    // Arranca en el índice siguiente al último ya renderizado por Thymeleaf
+    let indiceDetalle = /*[[${pedidoTienda.detalles.size()}]]*/ 0;
+
+    function agregarFilaProducto() {
+        const idx = indiceDetalle++;
+        const fila = `
+            <tr>
+                <td><input type="text" class="form-control form-control-sm" name="detalles[${idx}].producto"></td>
+                <td><input type="number" class="form-control form-control-sm" name="detalles[${idx}].cantidad" value="1"></td>
+                <td><input type="number" step="0.01" class="form-control form-control-sm" name="detalles[${idx}].precioUnitario" value="0"></td>
+                <td><button type="button" class="btn btn-sm btn-outline-danger" onclick="this.closest('tr').remove()">✕</button></td>
+            </tr>`;
+        document.getElementById('cuerpoDetalles').insertAdjacentHTML('beforeend', fila);
+    }
+</script>
+</body>
+</html>
