@@ -126,36 +126,39 @@ public class PedidoTiendaControlador {
         return "redirect:/tienda/listado";
     }
 
-    // ─── Actualizar abono (pago) ────────────────────────────────────────
+    // ─── Agregar un abono/pago adicional ─────────────────────────────────
     // Disponible para TIENDA, TIENDA_ADMIN y ADMIN (cae bajo el matcher
     // general "/tienda/**" del SecurityConfig, no bajo el restringido).
-    @PostMapping("/actualizar-abono/{id}")
-    public String actualizarAbono(
+    @PostMapping("/abonar/{id}")
+    public String abonarPedido(
             @PathVariable("id") int id,
-            @RequestParam BigDecimal abono,
+            @RequestParam BigDecimal monto,
             RedirectAttributes redirectAttributes) {
 
         PedidoTienda pedido = pedidoTiendaRepository.findById(id).orElseThrow();
 
-        if (abono == null || abono.compareTo(BigDecimal.ZERO) < 0) {
-            redirectAttributes.addFlashAttribute("error", "El abono no puede ser negativo.");
+        if (monto == null || monto.compareTo(BigDecimal.ZERO) <= 0) {
+            redirectAttributes.addFlashAttribute("error", "El monto del abono debe ser mayor a 0.");
             return "redirect:/tienda/listado";
         }
 
         BigDecimal total = pedido.getTotal() != null ? pedido.getTotal() : BigDecimal.ZERO;
-        if (abono.compareTo(total) > 0) {
+        BigDecimal abonoActual = pedido.getAbono() != null ? pedido.getAbono() : BigDecimal.ZERO;
+        BigDecimal nuevoAbono = abonoActual.add(monto);
+
+        if (nuevoAbono.compareTo(total) > 0) {
             redirectAttributes.addFlashAttribute("error",
-                "El abono (" + abono + ") no puede superar el total del pedido (" + total + ").");
+                "Ese abono deja el total pagado en " + nuevoAbono + ", que supera el total del pedido (" + total + ").");
             return "redirect:/tienda/listado";
         }
 
-        pedido.setAbono(abono);
-        pedido.setSaldo(total.subtract(abono));
+        pedido.setAbono(nuevoAbono);
+        pedido.setSaldo(total.subtract(nuevoAbono));
         pedidoTiendaRepository.save(pedido);
 
         String mensaje = pedido.getSaldo().compareTo(BigDecimal.ZERO) <= 0
             ? "Pedido #" + id + " marcado como Pagado Completo."
-            : "Abono actualizado para el pedido #" + id + ".";
+            : "Abono de " + monto + " registrado para el pedido #" + id + ". Saldo pendiente: " + pedido.getSaldo();
         redirectAttributes.addFlashAttribute("mensaje", mensaje);
 
         return "redirect:/tienda/listado";
