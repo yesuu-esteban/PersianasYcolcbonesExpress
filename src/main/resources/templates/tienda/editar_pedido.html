@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pedidos de Tienda</title>
+    <title>Editar Pedido de Tienda</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
     <style>
@@ -16,85 +16,68 @@
             --text-muted: #c9bfe0;
         }
 
-        * { font-family: 'Poppins', sans-serif; box-sizing: border-box; }
+        * { font-family: 'Poppins', sans-serif; }
 
         body {
             background: linear-gradient(160deg, #1a0f2e 0%, #241536 100%);
             color: #fff;
-            padding: 16px;
+            padding: 24px;
+            min-height: 100vh;
         }
 
         .marca-header {
             display: flex;
             align-items: center;
-            justify-content: space-between;
-            flex-wrap: wrap;
             gap: 12px;
             background: var(--bg-card);
             border: 1px solid rgba(236,21,97,0.35);
             border-radius: 14px;
-            padding: 14px 18px;
-            margin-bottom: 20px;
+            padding: 16px 24px;
+            margin-bottom: 26px;
             box-shadow: 0 4px 22px rgba(236,21,97,0.15);
         }
-        .marca-header .logo-marca {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-        .marca-header .logo-marca .icono {
-            width: 42px; height: 42px;
+        .marca-header .icono {
+            width: 46px; height: 46px;
             background: linear-gradient(135deg, var(--accent), #a5107f);
             border-radius: 50%;
             display: flex; align-items: center; justify-content: center;
-            font-size: 1.3rem;
+            font-size: 1.4rem;
             box-shadow: 0 0 0 3px rgba(236,21,97,0.25);
             flex-shrink: 0;
         }
         .marca-header .titulo-marca {
             font-weight: 800;
-            font-size: 1rem;
-            line-height: 1.15;
+            font-size: 1.05rem;
+            line-height: 1.1;
             letter-spacing: 0.3px;
         }
         .marca-header .titulo-marca small {
             display: block;
             font-weight: 600;
-            font-size: 0.58rem;
+            font-size: 0.6rem;
             color: var(--gold);
-            letter-spacing: 1.3px;
+            letter-spacing: 1.5px;
             margin-top: 2px;
         }
 
-        h2 { font-weight: 700; font-size: 1.3rem; }
+        h2 { font-weight: 700; font-size: 1.4rem; }
+        h2 span { color: var(--accent-light); }
 
-        .btn { min-height: 44px; }
+        .alert-danger { background: rgba(231,76,60,0.15); border: 1px solid #e74c3c; color: #ff9a90; }
 
-        .btn-primary, .btn-success {
-            background: linear-gradient(135deg, var(--accent), #b81050) !important;
-            border: none !important;
-            font-weight: 600;
-            box-shadow: 0 3px 10px rgba(236,21,97,0.35);
+        .card-formulario {
+            background: var(--bg-card) !important;
+            border: 1px solid rgba(255,255,255,0.08) !important;
+            border-radius: 14px;
+            box-shadow: 0 4px 22px rgba(0,0,0,0.3);
         }
-        .btn-primary:hover, .btn-success:hover { filter: brightness(1.12); }
 
-        .btn-outline-primary { color: var(--accent-light); border-color: var(--accent); }
-        .btn-outline-primary:hover { background: var(--accent); border-color: var(--accent); }
-        .btn-outline-secondary { color: var(--text-muted); border-color: rgba(255,255,255,0.25); }
-        .btn-outline-secondary:hover { background: rgba(255,255,255,0.1); color: #fff; }
-        .btn-outline-danger:hover { background: #e74c3c; }
-        .btn-outline-success { color: #2ecc71; border-color: #2ecc71; }
-        .btn-outline-success:hover { background: #2ecc71; color: #1a0f2e; }
-
-        .alert-success { background: rgba(46,204,113,0.15); border: 1px solid #2ecc71; color: #7ff0a8; }
-        .alert-danger  { background: rgba(231,76,60,0.15); border: 1px solid #e74c3c; color: #ff9a90; }
+        .form-label { color: var(--text-muted); font-size: 0.85rem; }
 
         .form-control, .form-select {
             background: #1e1330;
             border: 1px solid rgba(255,255,255,0.15);
             color: #fff;
-            font-size: 16px;
-            min-height: 44px;
         }
         .form-control:focus, .form-select:focus {
             background: #1e1330;
@@ -103,284 +86,190 @@
             box-shadow: 0 0 0 0.2rem rgba(236,21,97,0.25);
         }
         .form-control::placeholder { color: #8f84a8; }
+        .form-select option { background: #1e1330; color: #fff; }
 
-        /* ── Buscador ── */
-        .barra-busqueda {
-            background: var(--bg-card);
-            border-radius: 14px;
-            padding: 14px 16px;
-            margin-bottom: 20px;
-            box-shadow: 0 4px 22px rgba(0,0,0,0.25);
-        }
+        hr { border-color: rgba(255,255,255,0.12); }
 
-        /* ── Tabla con scroll horizontal en móvil ── */
-        .table-wrapper {
-            background: var(--bg-card);
-            border-radius: 14px;
-            padding: 6px;
-            box-shadow: 0 4px 22px rgba(0,0,0,0.3);
-            overflow-x: auto;
-            -webkit-overflow-scrolling: touch;
-        }
-        table.table {
-            color: #fff;
-            margin-bottom: 0;
-            min-width: 1100px; /* fuerza scroll horizontal en vez de romper el layout */
-        }
-        table.table thead {
-            background: linear-gradient(90deg, var(--accent), #a5107f) !important;
-        }
+        table.table { color: #fff; }
         table.table thead th {
-            border: none;
-            color: #fff;
-            font-weight: 700;
-            font-size: 0.72rem;
+            background: #1e1330;
+            border-color: rgba(255,255,255,0.1);
+            color: var(--text-muted);
+            font-size: 0.75rem;
             text-transform: uppercase;
-            letter-spacing: 0.3px;
-            padding: 12px 10px;
-            white-space: nowrap;
+            letter-spacing: 0.4px;
         }
-        table.table tbody tr { border-color: rgba(255,255,255,0.08); }
-        table.table tbody tr:hover { background: rgba(236,21,97,0.08) !important; }
-        table.table td { vertical-align: middle; border-color: rgba(255,255,255,0.08); font-size: 0.82rem; }
+        table.table td { border-color: rgba(255,255,255,0.08); vertical-align: middle; }
 
-        .fila-detalle-productos { background-color: rgba(255,255,255,0.03) !important; }
-        .tabla-productos-mini { background: #1e1330; min-width: 380px; }
-        .tabla-productos-mini th { background: #241536 !important; color: var(--text-muted); }
-        .tabla-productos-mini td { color: #ded4f0; border-color: rgba(255,255,255,0.08) !important; }
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent), #b81050) !important;
+            border: none !important;
+            font-weight: 600;
+            box-shadow: 0 3px 10px rgba(236,21,97,0.35);
+        }
+        .btn-primary:hover { filter: brightness(1.12); }
 
-        /* ── Badges de estado ── */
-        .badge-estado-pedido    { background-color: #6c5b7b; }
-        .badge-estado-bodega    { background: linear-gradient(135deg,#0dcaf0,#0b9fc0); color:#03171c; }
-        .badge-estado-instalado { background: linear-gradient(135deg,var(--gold),#e0a800); color:#3a2c00; }
-        .badge-estado-terminado { background: linear-gradient(135deg,#2ecc71,#1e9e58); }
-        .badge-pagado           { background: linear-gradient(135deg,#2ecc71,#1e9e58); }
-        .badge-pendiente        { background: linear-gradient(135deg,var(--accent),#a5107f); }
+        .btn-secondary {
+            background: rgba(255,255,255,0.08) !important;
+            border: 1px solid rgba(255,255,255,0.2) !important;
+            color: #fff !important;
+        }
+        .btn-secondary:hover { background: rgba(255,255,255,0.16) !important; }
 
-        .btn-ver-detalle { cursor: pointer; }
+        .btn-outline-danger {
+            color: #ff8a80;
+            border-color: #e74c3c;
+        }
+        .btn-outline-danger:hover { background: #e74c3c; color: #fff; }
 
-        .card-vacio {
-            background: var(--bg-card);
-            border: 1px dashed rgba(255,255,255,0.2);
+        .btn-outline-dark {
             color: var(--text-muted);
-            border-radius: 12px;
+            border-color: rgba(255,255,255,0.25);
         }
+        .btn-outline-dark:hover { background: rgba(255,255,255,0.1); color: #fff; border-color: rgba(255,255,255,0.25); }
 
-        .modal-content {
-            background: var(--bg-card);
-            color: #fff;
-            border: 1px solid rgba(236,21,97,0.3);
-        }
-        .modal-header, .modal-footer { border-color: rgba(255,255,255,0.1); }
-        .btn-close { filter: invert(1); }
-
-        .aviso-scroll {
-            display: none;
-            font-size: 0.72rem;
-            color: var(--text-muted);
-            text-align: center;
-            margin-bottom: 8px;
-        }
-
-        @media (max-width: 767px) {
-            body { padding: 10px; }
-            h2 { font-size: 1.1rem; }
-            .aviso-scroll { display: block; }
+        @media (max-width: 576px) {
+            body { padding: 12px; }
+            .marca-header { padding: 12px 16px; margin-bottom: 16px; }
+            .marca-header .titulo-marca { font-size: 0.9rem; }
+            h2 { font-size: 1.05rem; }
+            .card-formulario { padding: 16px !important; }
+            table.table { font-size: 0.8rem; }
+            table.table thead th { font-size: 0.65rem; }
         }
     </style>
 </head>
-<body>
-    <div class="container-fluid px-2 px-md-4">
+<body class="p-4">
+<div class="container col-md-8">
 
-        <div class="marca-header">
-            <div class="logo-marca">
-                <div class="icono">⚙️</div>
-                <div class="titulo-marca">
-                    PERSIANAS Y CORTINAS EXPRESS
-                    <small>PUNTO DE VENTA</small>
-                </div>
+    <div class="marca-header">
+        <div class="icono">⚙️</div>
+        <div class="titulo-marca">
+            PERSIANAS Y CORTINAS EXPRESS
+            <small>PUNTO DE FÁBRICA</small>
+        </div>
+    </div>
+
+    <h2 class="mb-4">✏️ Editar Pedido de Tienda #<span th:text="${pedidoTienda.id}"></span></h2>
+
+    <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
+
+    <form th:action="@{/tienda/editar/{id}(id=${pedidoTienda.id})}" th:object="${pedidoTienda}" method="post"
+          class="card-formulario p-4">
+
+        <div class="row g-3 mb-3">
+            <div class="col-md-4">
+                <label class="form-label fw-bold">Cliente</label>
+                <input type="text" th:field="*{nombreCliente}" class="form-control" required>
             </div>
-            <a th:if="${puedeCrearPedidos}" href="/tienda/nuevo" class="btn btn-primary">+ Nuevo Pedido</a>
+            <div class="col-md-4">
+                <label class="form-label fw-bold">Cédula</label>
+                <input type="text" th:field="*{cedula}" class="form-control" placeholder="Ej: 1234567890">
+            </div>
+            <div class="col-md-4">
+                <label class="form-label fw-bold">Teléfono</label>
+                <input type="text" th:field="*{telefono}" class="form-control">
+            </div>
         </div>
 
-        <h2 class="mb-3">🛒 Pedidos de Tienda</h2>
-
-        <div th:if="${mensaje}" class="alert alert-success" th:text="${mensaje}"></div>
-        <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
-
-        <!-- Buscador -->
-        <div class="barra-busqueda">
-            <form method="get" th:action="@{/tienda/listado}" class="d-flex flex-column flex-sm-row gap-2">
-                <input type="text" name="buscar" th:value="${buscar}"
-                       class="form-control" placeholder="🔍 Buscar por nombre o cédula...">
-                <div class="d-flex gap-2">
-                    <button type="submit" class="btn btn-outline-primary flex-fill flex-sm-grow-0">Buscar</button>
-                    <a th:if="${buscar != ''}" href="/tienda/listado" class="btn btn-outline-secondary flex-fill flex-sm-grow-0">✕ Limpiar</a>
-                </div>
-            </form>
+        <div class="mb-3">
+            <label class="form-label fw-bold">Dirección</label>
+            <input type="text" th:field="*{direccion}" class="form-control">
         </div>
 
-        <p class="aviso-scroll">↔ Desliza la tabla hacia los lados para ver todas las columnas</p>
+        <div class="mb-3">
+            <label class="form-label fw-bold">Descripción</label>
+            <textarea th:field="*{descripcion}" class="form-control" rows="2"></textarea>
+        </div>
 
-        <div class="table-wrapper">
-        <table class="table table-hover align-middle table-sm mb-0">
+        <div class="row g-3 mb-3">
+            <div class="col-md-6">
+                <label class="form-label fw-bold">Vendedor</label>
+                <select th:field="*{vendedor}" class="form-select" required>
+                    <option value="">-- Selecciona --</option>
+                    <option value="Fabián Andrés">Fabián Andrés</option>
+                    <option value="Carlos Andrés">Carlos Andrés</option>
+                </select>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label fw-bold">Fecha de entrega</label>
+                <input type="datetime-local" th:field="*{fechaEntrega}" class="form-control">
+            </div>
+        </div>
+
+        <div class="row g-3 mb-3">
+            <div class="col-md-6">
+                <label class="form-label fw-bold">Abono</label>
+                <input type="number" step="0.01" min="0" th:field="*{abono}" class="form-control">
+            </div>
+            <div class="col-md-6">
+                <label class="form-label fw-bold">Método de pago</label>
+                <input type="text" th:field="*{metodoPago}" class="form-control">
+            </div>
+        </div>
+
+        <hr>
+        <h5 class="mb-1">Productos</h5>
+        <p class="text-muted mb-3" style="font-size:0.82rem;">La cantidad y el precio unitario deben ser mayores a 0.</p>
+
+        <div class="table-responsive">
+        <table class="table table-sm" id="tablaDetalles">
             <thead>
                 <tr>
+                    <th>Producto</th>
+                    <th>Cantidad</th>
+                    <th>Precio unitario</th>
                     <th></th>
-                    <th>#</th>
-                    <th>Cliente</th>
-                    <th>Cédula</th>
-                    <th>Descripción</th>
-                    <th>Teléfono</th>
-                    <th>Vendedor</th>
-                    <th>Fecha pedido</th>
-                    <th>Fecha entrega</th>
-                    <th>Total</th>
-                    <th>Abono</th>
-                    <th>Saldo</th>
-                    <th>Pago</th>
-                    <th>Estado</th>
-                    <th>Cambiar estado</th>
-                    <th th:if="${puedeCrearPedidos}">Acciones</th>
                 </tr>
             </thead>
-            <tbody>
-                <th:block th:each="p, iter : ${pedidos}">
-                    <tr>
-                        <td>
-                            <button type="button" class="btn btn-sm btn-outline-secondary btn-ver-detalle"
-                                    th:data-bs-toggle="collapse"
-                                    th:data-bs-target="'#detalle-' + ${p.id}">
-                                🧾
-                            </button>
-                        </td>
-                        <td th:text="${p.id}"></td>
-                        <td th:text="${p.nombreCliente}"></td>
-                        <td th:text="${p.cedula}"></td>
-                        <td th:text="${p.descripcion}"></td>
-                        <td th:text="${p.telefono}"></td>
-                        <td th:text="${p.vendedor}"></td>
-                        <td th:text="${#temporals.format(p.fechaPedido, 'dd/MM/yyyy HH:mm')}"></td>
-                        <td>
-                            <span th:if="${p.fechaEntrega != null}"
-                                  th:text="${#temporals.format(p.fechaEntrega, 'dd/MM/yyyy HH:mm')}"></span>
-                            <span th:unless="${p.fechaEntrega != null}" class="text-muted">Sin definir</span>
-                        </td>
-                        <td th:text="${p.total}"></td>
-                        <td>
-                            <div class="mb-1 fw-bold" th:text="${p.abono}"></div>
-                            <form th:action="@{/tienda/abonar/{id}(id=${p.id})}" method="post" class="d-flex gap-1">
-                                <input type="number" step="0.01" min="0.01" name="monto"
-                                       placeholder="+ monto" class="form-control form-control-sm" style="width:90px;">
-                                <button type="submit" class="btn btn-sm btn-outline-success" title="Agregar abono">+</button>
-                            </form>
-                        </td>
-                        <td th:text="${p.saldo}"></td>
-                        <td>
-                            <span class="badge"
-                                  th:classappend="${p.estadoPago == 'Pagado Completo' ? 'badge-pagado' : 'badge-pendiente'}"
-                                  th:text="${p.estadoPago}"></span>
-                        </td>
-                        <td>
-                            <span class="badge"
-                                  th:classappend="${p.estado == 'Pedido' ? 'badge-estado-pedido' :
-                                                   (p.estado == 'En Bodega' ? 'badge-estado-bodega' :
-                                                   (p.estado == 'Instalado' ? 'badge-estado-instalado' : 'badge-estado-terminado'))}"
-                                  th:text="${p.estado}"></span>
-                        </td>
-                        <td>
-                            <form th:action="@{/tienda/actualizar-estado/{id}(id=${p.id})}" method="post" class="d-flex gap-1">
-                                <select name="estado" class="form-select form-select-sm" style="width:140px;">
-                                    <option value="Pedido"     th:selected="${p.estado == 'Pedido'}">Pedido</option>
-                                    <option value="En Bodega"  th:selected="${p.estado == 'En Bodega'}">En Bodega</option>
-                                    <option value="Instalado"  th:selected="${p.estado == 'Instalado'}">Instalado</option>
-                                    <option value="Terminado"  th:selected="${p.estado == 'Terminado'}">Terminado</option>
-                                </select>
-                                <button type="submit" class="btn btn-sm btn-outline-primary">💾</button>
-                            </form>
-                        </td>
-                        <td th:if="${puedeCrearPedidos}">
-                            <a th:href="@{/tienda/editar/{id}(id=${p.id})}" class="btn btn-sm btn-outline-secondary">✏️</a>
-                            <button type="button" class="btn btn-sm btn-outline-danger"
-                                    data-bs-toggle="modal" data-bs-target="#modalEliminarTienda"
-                                    th:attr="data-id=${p.id}, data-cliente=${p.nombreCliente}">🗑️</button>
-                        </td>
-                    </tr>
-
-                    <tr class="fila-detalle-productos">
-                        <td colspan="16" class="p-0">
-                            <div class="collapse" th:id="'detalle-' + ${p.id}">
-                                <div class="p-3">
-                                    <p class="fw-bold mb-2" style="font-size:0.85rem;">Productos del pedido</p>
-                                    <div style="overflow-x:auto;">
-                                        <table class="table table-sm table-bordered tabla-productos-mini mb-0">
-                                            <thead>
-                                                <tr>
-                                                    <th>Producto</th>
-                                                    <th>Cantidad</th>
-                                                    <th>Precio unitario</th>
-                                                    <th>Subtotal</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                <tr th:each="d : ${p.detalles}">
-                                                    <td th:text="${d.producto}"></td>
-                                                    <td th:text="${d.cantidad}"></td>
-                                                    <td th:text="${d.precioUnitario}"></td>
-                                                    <td th:text="${d.subtotal}"></td>
-                                                </tr>
-                                                <tr th:if="${#lists.isEmpty(p.detalles)}">
-                                                    <td colspan="4" class="text-center text-muted">Sin productos registrados.</td>
-                                                </tr>
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                            </div>
-                        </td>
-                    </tr>
-                </th:block>
+            <tbody id="cuerpoDetalles">
+                <tr th:each="detalle, iter : *{detalles}">
+                    <td>
+                        <input type="text" class="form-control form-control-sm"
+                               th:field="*{detalles[__${iter.index}__].producto}">
+                    </td>
+                    <td>
+                        <input type="number" class="form-control form-control-sm" min="1" step="1" required
+                               th:field="*{detalles[__${iter.index}__].cantidad}">
+                    </td>
+                    <td>
+                        <input type="number" step="0.01" min="0.01" class="form-control form-control-sm" required
+                               th:field="*{detalles[__${iter.index}__].precioUnitario}">
+                    </td>
+                    <td>
+                        <button type="button" class="btn btn-sm btn-outline-danger"
+                                onclick="this.closest('tr').remove()">✕</button>
+                    </td>
+                </tr>
             </tbody>
         </table>
         </div>
 
-        <div th:if="${#lists.isEmpty(pedidos)}" class="card-vacio text-center py-4 mt-3">
-            No hay pedidos de tienda registrados todavía.
-        </div>
-    </div>
+        <button type="button" class="btn btn-sm btn-outline-dark mb-3" onclick="agregarFilaProducto()">
+            + Agregar producto
+        </button>
 
-    <!-- Modal de confirmación para eliminar -->
-    <div class="modal fade" id="modalEliminarTienda" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">⚠️ Confirmar eliminación</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <p>¿Seguro que deseas eliminar el pedido de <strong id="modalEliminarTiendaCliente"></strong>?</p>
-                    <p class="text-danger mb-0">Esta acción no se puede deshacer.</p>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <form id="formEliminarTienda" method="post" class="d-inline">
-                        <button type="submit" class="btn btn-danger">Sí, eliminar</button>
-                    </form>
-                </div>
-            </div>
+        <div class="mt-4">
+            <button type="submit" class="btn btn-primary w-100">Guardar Cambios</button>
+            <a href="/tienda/listado" class="btn btn-secondary w-100 mt-2">Cancelar</a>
         </div>
-    </div>
+    </form>
+</div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        const modalEliminarTienda = document.getElementById('modalEliminarTienda');
-        modalEliminarTienda.addEventListener('show.bs.modal', function (event) {
-            const boton = event.relatedTarget;
-            const id = boton.getAttribute('data-id');
-            const cliente = boton.getAttribute('data-cliente');
-            document.getElementById('modalEliminarTiendaCliente').textContent = cliente;
-            document.getElementById('formEliminarTienda').action = '/tienda/eliminar/' + id;
-        });
-    </script>
+<script th:inline="javascript">
+    let indiceDetalle = /*[[${pedidoTienda.detalles.size()}]]*/ 0;
+
+    function agregarFilaProducto() {
+        const idx = indiceDetalle++;
+        const fila = `
+            <tr>
+                <td><input type="text" class="form-control form-control-sm" name="detalles[${idx}].producto"></td>
+                <td><input type="number" class="form-control form-control-sm" name="detalles[${idx}].cantidad" value="1" min="1" step="1" required></td>
+                <td><input type="number" step="0.01" min="0.01" class="form-control form-control-sm" name="detalles[${idx}].precioUnitario" value="0.01" required></td>
+                <td><button type="button" class="btn btn-sm btn-outline-danger" onclick="this.closest('tr').remove()">✕</button></td>
+            </tr>`;
+        document.getElementById('cuerpoDetalles').insertAdjacentHTML('beforeend', fila);
+    }
+</script>
 </body>
 </html>

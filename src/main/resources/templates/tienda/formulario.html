@@ -16,12 +16,12 @@
             --text-muted: #c9bfe0;
         }
 
-        * { font-family: 'Poppins', sans-serif; box-sizing: border-box; }
+        * { font-family: 'Poppins', sans-serif; }
 
         body {
             background: linear-gradient(160deg, #1a0f2e 0%, #241536 100%);
             color: #fff;
-            padding: 16px;
+            padding: 24px;
             min-height: 100vh;
         }
 
@@ -32,35 +32,35 @@
             background: var(--bg-card);
             border: 1px solid rgba(236,21,97,0.35);
             border-radius: 14px;
-            padding: 14px 18px;
-            margin-bottom: 20px;
+            padding: 16px 24px;
+            margin-bottom: 26px;
             box-shadow: 0 4px 22px rgba(236,21,97,0.15);
         }
         .marca-header .icono {
-            width: 42px; height: 42px;
+            width: 46px; height: 46px;
             background: linear-gradient(135deg, var(--accent), #a5107f);
             border-radius: 50%;
             display: flex; align-items: center; justify-content: center;
-            font-size: 1.3rem;
+            font-size: 1.4rem;
             box-shadow: 0 0 0 3px rgba(236,21,97,0.25);
             flex-shrink: 0;
         }
         .marca-header .titulo-marca {
             font-weight: 800;
-            font-size: 0.95rem;
-            line-height: 1.15;
+            font-size: 1.05rem;
+            line-height: 1.1;
             letter-spacing: 0.3px;
         }
         .marca-header .titulo-marca small {
             display: block;
             font-weight: 600;
-            font-size: 0.58rem;
+            font-size: 0.6rem;
             color: var(--gold);
-            letter-spacing: 1.3px;
+            letter-spacing: 1.5px;
             margin-top: 2px;
         }
 
-        h2 { font-weight: 700; font-size: 1.35rem; }
+        h2 { font-weight: 700; font-size: 1.4rem; }
 
         .alert-danger { background: rgba(231,76,60,0.15); border: 1px solid #e74c3c; color: #ff9a90; }
 
@@ -69,7 +69,6 @@
             border: 1px solid rgba(255,255,255,0.08) !important;
             border-radius: 14px;
             box-shadow: 0 4px 22px rgba(0,0,0,0.3);
-            padding: 18px;
         }
 
         .form-label { color: var(--text-muted); font-size: 0.85rem; }
@@ -78,8 +77,6 @@
             background: #1e1330;
             border: 1px solid rgba(255,255,255,0.15);
             color: #fff;
-            font-size: 16px; /* evita zoom automático en iOS al enfocar */
-            min-height: 44px; /* buen tamaño táctil */
         }
         .form-control:focus, .form-select:focus {
             background: #1e1330;
@@ -92,9 +89,7 @@
 
         hr { border-color: rgba(255,255,255,0.12); }
 
-        /* ── Tabla de productos: scroll horizontal en pantallas chicas ── */
-        .tabla-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-        table.table { color: #fff; min-width: 480px; }
+        table.table { color: #fff; }
         table.table thead th {
             background: #1e1330;
             border-color: rgba(255,255,255,0.1);
@@ -102,12 +97,8 @@
             font-size: 0.75rem;
             text-transform: uppercase;
             letter-spacing: 0.4px;
-            white-space: nowrap;
         }
         table.table td { border-color: rgba(255,255,255,0.08); vertical-align: middle; }
-        table.table td .form-control { min-width: 100px; }
-
-        .btn { min-height: 44px; }
 
         .btn-success {
             background: linear-gradient(135deg, var(--accent), #b81050) !important;
@@ -127,13 +118,17 @@
         .text-muted { color: var(--text-muted) !important; }
 
         @media (max-width: 576px) {
-            body { padding: 10px; }
-            .card-formulario { padding: 14px; }
-            h2 { font-size: 1.15rem; }
+            body { padding: 12px; }
+            .marca-header { padding: 12px 16px; margin-bottom: 16px; }
+            .marca-header .titulo-marca { font-size: 0.9rem; }
+            h2 { font-size: 1.1rem; }
+            .card-formulario { padding: 16px !important; }
+            table.table { font-size: 0.8rem; }
+            table.table thead th { font-size: 0.65rem; }
         }
     </style>
 </head>
-<body class="p-2 p-md-4">
+<body class="p-4">
 <div class="container col-md-8">
 
     <div class="marca-header">
@@ -149,18 +144,18 @@
     <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
 
     <form th:action="@{/tienda/guardar}" th:object="${pedidoTienda}" method="post"
-          class="card-formulario">
+          class="card-formulario p-4">
 
         <div class="row g-3 mb-3">
-            <div class="col-12 col-md-4">
+            <div class="col-md-4">
                 <label class="form-label fw-bold">Cliente</label>
                 <input type="text" th:field="*{nombreCliente}" class="form-control" required>
             </div>
-            <div class="col-12 col-md-4">
+            <div class="col-md-4">
                 <label class="form-label fw-bold">Cédula</label>
                 <input type="text" th:field="*{cedula}" class="form-control" placeholder="Ej: 1234567890">
             </div>
-            <div class="col-12 col-md-4">
+            <div class="col-md-4">
                 <label class="form-label fw-bold">Teléfono</label>
                 <input type="text" th:field="*{telefono}" class="form-control">
             </div>
@@ -178,7 +173,7 @@
         </div>
 
         <div class="row g-3 mb-3">
-            <div class="col-12 col-md-6">
+            <div class="col-md-6">
                 <label class="form-label fw-bold">Vendedor</label>
                 <select th:field="*{vendedor}" class="form-select" required>
                     <option value="">-- Selecciona --</option>
@@ -186,58 +181,58 @@
                     <option value="Carlos Andrés">Carlos Andrés</option>
                 </select>
             </div>
-            <div class="col-12 col-md-6">
+            <div class="col-md-6">
                 <label class="form-label fw-bold">Fecha de entrega</label>
                 <input type="datetime-local" th:field="*{fechaEntrega}" class="form-control">
             </div>
         </div>
 
         <div class="row g-3 mb-3">
-            <div class="col-12 col-md-6">
+            <div class="col-md-6">
                 <label class="form-label fw-bold">Abono</label>
                 <input type="number" step="0.01" min="0" th:field="*{abono}" class="form-control">
             </div>
-            <div class="col-12 col-md-6">
+            <div class="col-md-6">
                 <label class="form-label fw-bold">Método de pago</label>
                 <input type="text" th:field="*{metodoPago}" class="form-control">
             </div>
         </div>
 
         <hr>
-        <h5 class="mb-2">Productos</h5>
-        <p class="text-muted mb-3" style="font-size:0.8rem;">La cantidad y el precio unitario deben ser mayores a 0.</p>
+        <h5 class="mb-1">Productos</h5>
+        <p class="text-muted mb-3" style="font-size:0.82rem;">La cantidad y el precio unitario deben ser mayores a 0.</p>
 
-        <div class="tabla-scroll mb-3">
-            <table class="table table-sm" id="tablaDetalles">
-                <thead>
-                    <tr>
-                        <th>Producto</th>
-                        <th>Cantidad</th>
-                        <th>Precio unitario</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr th:each="detalle, iter : *{detalles}">
-                        <td>
-                            <input type="text" class="form-control form-control-sm"
-                                   th:field="*{detalles[__${iter.index}__].producto}">
-                        </td>
-                        <td>
-                            <input type="number" class="form-control form-control-sm" min="1" step="1" required
-                                   th:field="*{detalles[__${iter.index}__].cantidad}">
-                        </td>
-                        <td>
-                            <input type="number" step="0.01" min="0.01" class="form-control form-control-sm" required
-                                   th:field="*{detalles[__${iter.index}__].precioUnitario}">
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
+        <div class="table-responsive">
+        <table class="table table-sm" id="tablaDetalles">
+            <thead>
+                <tr>
+                    <th>Producto</th>
+                    <th>Cantidad</th>
+                    <th>Precio unitario</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:each="detalle, iter : *{detalles}">
+                    <td>
+                        <input type="text" class="form-control form-control-sm"
+                               th:field="*{detalles[__${iter.index}__].producto}">
+                    </td>
+                    <td>
+                        <input type="number" class="form-control form-control-sm" min="1" step="1" required
+                               th:field="*{detalles[__${iter.index}__].cantidad}">
+                    </td>
+                    <td>
+                        <input type="number" step="0.01" min="0.01" class="form-control form-control-sm" required
+                               th:field="*{detalles[__${iter.index}__].precioUnitario}">
+                    </td>
+                </tr>
+            </tbody>
+        </table>
         </div>
 
-        <div class="mt-4 d-grid gap-2">
-            <button type="submit" class="btn btn-success">Guardar Pedido</button>
-            <a href="/tienda/listado" class="btn btn-secondary">Cancelar</a>
+        <div class="mt-4">
+            <button type="submit" class="btn btn-success w-100">Guardar Pedido</button>
+            <a href="/tienda/listado" class="btn btn-secondary w-100 mt-2">Cancelar</a>
         </div>
     </form>
 </div>
