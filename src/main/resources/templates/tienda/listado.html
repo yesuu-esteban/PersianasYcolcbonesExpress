@@ -112,17 +112,27 @@
             min-width: 1150px;
         }
         table.table thead {
+            background-color: var(--accent) !important;
             background: linear-gradient(90deg, var(--accent), #a5107f) !important;
         }
         table.table thead th {
             border: none;
-            color: #fff;
+            color: #000 !important;
             font-weight: 700;
             font-size: 0.75rem;
             text-transform: uppercase;
             letter-spacing: 0.4px;
             padding: 12px 10px;
             white-space: nowrap;
+            forced-color-adjust: none;
+        }
+        @media (forced-colors: active) {
+            table.table thead {
+                background-color: var(--accent) !important;
+            }
+            table.table thead th {
+                color: #000 !important;
+            }
         }
         table.table tbody tr { border-color: rgba(255,255,255,0.08); }
         table.table tbody tr:hover { background: rgba(236,21,97,0.08) !important; }
