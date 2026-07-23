@@ -109,7 +109,7 @@
         table.table {
             color: #fff;
             margin-bottom: 0;
-            min-width: 1150px;
+            min-width: 1250px;
         }
         table.table thead {
             background-color: var(--accent) !important;
@@ -229,6 +229,7 @@
                     <th>Descripción</th>
                     <th>Teléfono</th>
                     <th>Vendedor</th>
+                    <th>Fabricante</th>
                     <th>Fecha pedido</th>
                     <th>Fecha entrega</th>
                     <th>Total</th>
@@ -256,6 +257,7 @@
                         <td th:text="${p.descripcion}"></td>
                         <td th:text="${p.telefono}"></td>
                         <td th:text="${p.vendedor}"></td>
+                        <td th:text="${p.fabrica}"></td>
                         <td th:text="${#temporals.format(p.fechaPedido, 'dd/MM/yyyy HH:mm')}"></td>
                         <td>
                             <span th:if="${p.fechaEntrega != null}"
@@ -304,7 +306,7 @@
                     </tr>
 
                     <tr class="fila-detalle-productos">
-                        <td colspan="16" class="p-0">
+                        <td colspan="17" class="p-0">
                             <div class="collapse" th:id="'detalle-' + ${p.id}">
                                 <div class="p-3">
                                     <p class="fw-bold mb-2" style="font-size:0.85rem;">Productos del pedido</p>
