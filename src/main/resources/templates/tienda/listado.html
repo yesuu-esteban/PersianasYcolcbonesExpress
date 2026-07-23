@@ -138,22 +138,12 @@
         table.table tbody tr:hover { background: rgba(236,21,97,0.08) !important; }
         table.table td { vertical-align: middle; border-color: rgba(255,255,255,0.08); font-size: 0.85rem; }
 
-        /* Detalle de productos: fondo sólido oscuro para que el texto siempre sea legible */
+        /* Detalle de productos: fondo sólido oscuro para que el texto siempre sea legible,
+           sin depender del fondo de la página */
         .fila-detalle-productos { background-color: var(--bg-dark) !important; }
         .fila-detalle-productos .p-3 {
             background: var(--bg-dark);
             border-radius: 0 0 10px 10px;
-        }
-        .titulo-detalle-productos {
-            color: #ffffff !important;
-            font-weight: 700;
-            font-size: 0.95rem !important;
-            letter-spacing: 0.3px;
-            opacity: 1 !important;
-            margin-bottom: 10px !important;
-        }
-        .titulo-detalle-productos::before {
-            content: "🧾 ";
         }
         .tabla-productos-mini {
             background: #1e1330 !important;
@@ -296,16 +286,16 @@
                                   th:text="${#temporals.format(p.fechaEntrega, 'dd/MM/yyyy HH:mm')}"></span>
                             <span th:unless="${p.fechaEntrega != null}" class="text-muted">Sin definir</span>
                         </td>
-                        <td th:text="${#numbers.formatDecimal(p.total, 1, 'POINT', 0)}"></td>
+                        <td th:text="${p.total}"></td>
                         <td>
-                            <div class="mb-1 fw-bold" th:text="${#numbers.formatDecimal(p.abono, 1, 'POINT', 0)}"></div>
+                            <div class="mb-1 fw-bold" th:text="${p.abono}"></div>
                             <form th:action="@{/tienda/abonar/{id}(id=${p.id})}" method="post" class="d-flex gap-1">
                                 <input type="number" step="0.01" min="0.01" name="monto"
                                        placeholder="+ monto" class="form-control form-control-sm" style="width:90px;">
                                 <button type="submit" class="btn btn-sm btn-outline-success" title="Agregar abono">+</button>
                             </form>
                         </td>
-                        <td th:text="${#numbers.formatDecimal(p.saldo, 1, 'POINT', 0)}"></td>
+                        <td th:text="${p.saldo}"></td>
                         <td>
                             <span class="badge"
                                   th:classappend="${p.estadoPago == 'Pagado Completo' ? 'badge-pagado' : 'badge-pendiente'}"
@@ -341,7 +331,7 @@
                         <td colspan="18" class="p-0">
                             <div class="collapse" th:id="'detalle-' + ${p.id}">
                                 <div class="p-3">
-                                    <p class="titulo-detalle-productos mb-2">Productos del pedido</p>
+                                    <p class="fw-bold mb-2" style="font-size:0.85rem;">Productos del pedido</p>
                                     <table class="table table-sm table-bordered tabla-productos-mini mb-0" style="max-width:600px;">
                                         <thead>
                                             <tr>
@@ -355,8 +345,8 @@
                                             <tr th:each="d : ${p.detalles}">
                                                 <td th:text="${d.producto}"></td>
                                                 <td th:text="${d.cantidad}"></td>
-                                                <td th:text="${#numbers.formatDecimal(d.precioUnitario, 1, 'POINT', 0)}"></td>
-                                                <td th:text="${#numbers.formatDecimal(d.subtotal, 1, 'POINT', 0)}"></td>
+                                                <td th:text="${d.precioUnitario}"></td>
+                                                <td th:text="${d.subtotal}"></td>
                                             </tr>
                                             <tr th:if="${#lists.isEmpty(p.detalles)}">
                                                 <td colspan="4" class="text-center text-muted">Sin productos registrados.</td>
