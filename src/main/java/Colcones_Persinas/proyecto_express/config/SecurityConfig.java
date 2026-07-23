@@ -74,8 +74,8 @@ public class SecurityConfig {
 
         // Administrador de tienda — solo ve y cambia estados, no crea/edita/elimina pedidos
         UserDetails adminTienda = User.builder()
-            .username("admin_tienda")
-            .password(passwordEncoder().encode("123456"))
+            .username("Tienda")
+            .password(passwordEncoder().encode("express"))
             .roles("TIENDA_ADMIN")
             .build();
 
