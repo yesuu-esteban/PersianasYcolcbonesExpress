@@ -104,6 +104,7 @@ public class PedidoTiendaControlador {
         pedido.setTelefono(formPedido.getTelefono());
         pedido.setDescripcion(formPedido.getDescripcion());
         pedido.setVendedor(formPedido.getVendedor());
+        pedido.setFabrica(formPedido.getFabrica());
         pedido.setFechaEntrega(formPedido.getFechaEntrega());
         pedido.setAbono(formPedido.getAbono());
         pedido.setMetodoPago(formPedido.getMetodoPago());
