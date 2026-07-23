@@ -192,8 +192,19 @@
                 </select>
             </div>
             <div class="col-md-6">
+                <label class="form-label fw-bold">Fabricante</label>
+                <input type="text" th:field="*{fabrica}" class="form-control" placeholder="Ej: Fábrica propia, Proveedor X">
+            </div>
+        </div>
+
+        <div class="row g-3 mb-3">
+            <div class="col-md-6">
                 <label class="form-label fw-bold">Fecha de entrega</label>
                 <input type="datetime-local" th:field="*{fechaEntrega}" class="form-control">
+            </div>
+            <div class="col-md-6">
+                <label class="form-label fw-bold">Método de pago</label>
+                <input type="text" th:field="*{metodoPago}" class="form-control">
             </div>
         </div>
 
@@ -201,10 +212,6 @@
             <div class="col-md-6">
                 <label class="form-label fw-bold">Abono</label>
                 <input type="number" step="0.01" min="0" th:field="*{abono}" class="form-control">
-            </div>
-            <div class="col-md-6">
-                <label class="form-label fw-bold">Método de pago</label>
-                <input type="text" th:field="*{metodoPago}" class="form-control">
             </div>
         </div>
 
