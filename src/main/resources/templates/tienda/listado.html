@@ -289,16 +289,16 @@
                                   th:text="${#temporals.format(p.fechaEntrega, 'dd/MM/yyyy HH:mm')}"></span>
                             <span th:unless="${p.fechaEntrega != null}" class="text-muted">Sin definir</span>
                         </td>
-                        <td th:text="${#numbers.formatDecimal(p.total, 1, 'POINT', 0)}"></td>
+                        <td th:text="${#numbers.formatDecimal(p.total ?: 0, 1, 'POINT', 0)}"></td>
                         <td>
-                            <div class="mb-1 fw-bold" th:text="${#numbers.formatDecimal(p.abono, 1, 'POINT', 0)}"></div>
+                            <div class="mb-1 fw-bold" th:text="${#numbers.formatDecimal(p.abono ?: 0, 1, 'POINT', 0)}"></div>
                             <form th:action="@{/tienda/abonar/{id}(id=${p.id})}" method="post" class="d-flex gap-1">
                                 <input type="number" step="0.01" min="0.01" name="monto"
                                        placeholder="+ monto" class="form-control form-control-sm" style="width:90px;">
                                 <button type="submit" class="btn btn-sm btn-outline-success" title="Agregar abono">+</button>
                             </form>
                         </td>
-                        <td th:text="${#numbers.formatDecimal(p.saldo, 1, 'POINT', 0)}"></td>
+                        <td th:text="${#numbers.formatDecimal(p.saldo ?: 0, 1, 'POINT', 0)}"></td>
                         <td>
                             <span class="badge"
                                   th:classappend="${p.estadoPago == 'Pagado Completo' ? 'badge-pagado' : 'badge-pendiente'}"
@@ -348,8 +348,8 @@
                                             <tr th:each="d : ${p.detalles}">
                                                 <td th:text="${d.producto}"></td>
                                                 <td th:text="${d.cantidad}"></td>
-                                                <td th:text="${#numbers.formatDecimal(d.precioUnitario, 1, 'POINT', 0)}"></td>
-                                                <td th:text="${#numbers.formatDecimal(d.subtotal, 1, 'POINT', 0)}"></td>
+                                                <td th:text="${#numbers.formatDecimal(d.precioUnitario ?: 0, 1, 'POINT', 0)}"></td>
+                                                <td th:text="${#numbers.formatDecimal(d.subtotal ?: 0, 1, 'POINT', 0)}"></td>
                                             </tr>
                                             <tr th:if="${#lists.isEmpty(p.detalles)}">
                                                 <td colspan="4" class="text-center text-muted">Sin productos registrados.</td>
