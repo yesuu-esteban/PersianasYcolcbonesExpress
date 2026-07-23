@@ -109,7 +109,7 @@
         table.table {
             color: #fff;
             margin-bottom: 0;
-            min-width: 1250px;
+            min-width: 1350px;
         }
         table.table thead {
             background-color: var(--accent) !important;
@@ -138,10 +138,30 @@
         table.table tbody tr:hover { background: rgba(236,21,97,0.08) !important; }
         table.table td { vertical-align: middle; border-color: rgba(255,255,255,0.08); font-size: 0.85rem; }
 
-        .fila-detalle-productos { background-color: rgba(255,255,255,0.03) !important; }
-        .tabla-productos-mini { background: #1e1330; }
-        .tabla-productos-mini th { background: #241536 !important; color: var(--text-muted); }
-        .tabla-productos-mini td { color: #ded4f0; border-color: rgba(255,255,255,0.08) !important; }
+        /* Detalle de productos: fondo sólido oscuro para que el texto siempre sea legible,
+           sin depender del fondo de la página */
+        .fila-detalle-productos { background-color: var(--bg-dark) !important; }
+        .fila-detalle-productos .p-3 {
+            background: var(--bg-dark);
+            border-radius: 0 0 10px 10px;
+        }
+        .tabla-productos-mini {
+            background: #1e1330 !important;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .tabla-productos-mini thead th {
+            background: linear-gradient(90deg, var(--accent), #a5107f) !important;
+            color: #ffffff !important;
+            font-weight: 700;
+            border-color: rgba(255,255,255,0.1) !important;
+        }
+        .tabla-productos-mini tbody td {
+            background: #1e1330 !important;
+            color: #f4f0fb !important;
+            border-color: rgba(255,255,255,0.12) !important;
+        }
+        .tabla-productos-mini tbody tr:hover td { background: #2a1b42 !important; }
 
         .form-control, .form-select {
             background: #1e1330;
@@ -226,6 +246,7 @@
                     <th>#</th>
                     <th>Cliente</th>
                     <th>Cédula</th>
+                    <th>Dirección</th>
                     <th>Descripción</th>
                     <th>Teléfono</th>
                     <th>Vendedor</th>
@@ -254,6 +275,7 @@
                         <td th:text="${p.id}"></td>
                         <td th:text="${p.nombreCliente}"></td>
                         <td th:text="${p.cedula}"></td>
+                        <td th:text="${p.direccion}"></td>
                         <td th:text="${p.descripcion}"></td>
                         <td th:text="${p.telefono}"></td>
                         <td th:text="${p.vendedor}"></td>
@@ -306,7 +328,7 @@
                     </tr>
 
                     <tr class="fila-detalle-productos">
-                        <td colspan="17" class="p-0">
+                        <td colspan="18" class="p-0">
                             <div class="collapse" th:id="'detalle-' + ${p.id}">
                                 <div class="p-3">
                                     <p class="fw-bold mb-2" style="font-size:0.85rem;">Productos del pedido</p>
