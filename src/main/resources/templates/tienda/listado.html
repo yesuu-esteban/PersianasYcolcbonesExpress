@@ -289,7 +289,7 @@
                                   th:text="${#temporals.format(p.fechaEntrega, 'dd/MM/yyyy HH:mm')}"></span>
                             <span th:unless="${p.fechaEntrega != null}" class="text-muted">Sin definir</span>
                         </td>
-                        <td th:text="${#numbers.formatDecimal(p.total ?: 0, 1, 'POINT', 0)}"></td>
+                        <td th:text="${p.total}"></td>
                         <td>
                             <div class="mb-1 fw-bold" th:text="${#numbers.formatDecimal(p.abono ?: 0, 1, 'POINT', 0)}"></div>
                             <form th:action="@{/tienda/abonar/{id}(id=${p.id})}" method="post" class="d-flex gap-1">
@@ -298,7 +298,7 @@
                                 <button type="submit" class="btn btn-sm btn-outline-success" title="Agregar abono">+</button>
                             </form>
                         </td>
-                        <td th:text="${#numbers.formatDecimal(p.saldo ?: 0, 1, 'POINT', 0)}"></td>
+                        <td th:text="${p.saldo}"></td>
                         <td>
                             <span class="badge"
                                   th:classappend="${p.estadoPago == 'Pagado Completo' ? 'badge-pagado' : 'badge-pendiente'}"
