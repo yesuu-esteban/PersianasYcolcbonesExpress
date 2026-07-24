@@ -40,17 +40,6 @@ public class PedidoTiendaControlador {
             return "redirect:/tienda/nuevo";
         }
 
-        // Filtrar filas de producto vacías (igual que en la edición), para no guardar
-        // detalles fantasma que inflan el total del pedido.
-        List<DetallePedidoTienda> detallesValidos = new ArrayList<>();
-        for (DetallePedidoTienda d : pedidoTienda.getDetalles()) {
-            if (d.getProducto() == null || d.getProducto().isBlank()) continue;
-            d.setId(0);
-            detallesValidos.add(d);
-        }
-        pedidoTienda.getDetalles().clear();
-        pedidoTienda.getDetalles().addAll(detallesValidos);
-
         recalcularTotales(pedidoTienda);
         pedidoTiendaRepository.save(pedidoTienda);
         redirectAttributes.addFlashAttribute("mensaje", "Pedido registrado correctamente.");
