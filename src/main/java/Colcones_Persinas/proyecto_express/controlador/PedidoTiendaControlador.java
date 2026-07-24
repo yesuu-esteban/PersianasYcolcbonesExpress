@@ -4,6 +4,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Controller;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
@@ -32,6 +33,7 @@ public class PedidoTiendaControlador {
         return "tienda/formulario";
     }
 
+    @Transactional
     @PostMapping("/guardar")
     public String guardarPedido(@ModelAttribute PedidoTienda pedidoTienda, RedirectAttributes redirectAttributes) {
         List<String> errores = validarProductos(pedidoTienda.getDetalles());
@@ -39,6 +41,20 @@ public class PedidoTiendaControlador {
             redirectAttributes.addFlashAttribute("error", String.join(" ", errores));
             return "redirect:/tienda/nuevo";
         }
+
+        // Forzar id=0 en el pedido: nunca debe crearse con un id ya existente.
+        pedidoTienda.setId(0);
+
+        // Filtrar filas de producto vacías, para no guardar detalles fantasma
+        // que inflan el total del pedido.
+        List<DetallePedidoTienda> detallesValidos = new ArrayList<>();
+        for (DetallePedidoTienda d : pedidoTienda.getDetalles()) {
+            if (d.getProducto() == null || d.getProducto().isBlank()) continue;
+            d.setId(0);
+            detallesValidos.add(d);
+        }
+        pedidoTienda.getDetalles().clear();
+        pedidoTienda.getDetalles().addAll(detallesValidos);
 
         recalcularTotales(pedidoTienda);
         pedidoTiendaRepository.save(pedidoTienda);
@@ -75,6 +91,7 @@ public class PedidoTiendaControlador {
 
     // ─── Editar pedido ──────────────────────────────────────────────────
     @GetMapping("/editar/{id}")
+    @Transactional(readOnly = true)
     public String mostrarFormularioEditar(@PathVariable("id") int id, Model model) {
         PedidoTienda pedido = pedidoTiendaRepository.findById(id).orElseThrow();
         if (pedido.getDetalles().isEmpty()) {
@@ -84,6 +101,7 @@ public class PedidoTiendaControlador {
         return "tienda/editar_pedido";
     }
 
+    @Transactional
     @PostMapping("/editar/{id}")
     public String guardarEdicion(
             @PathVariable("id") int id,
@@ -124,9 +142,14 @@ public class PedidoTiendaControlador {
     }
 
     // ─── Eliminar pedido ────────────────────────────────────────────────
+    @Transactional
     @PostMapping("/eliminar/{id}")
     public String eliminarPedido(@PathVariable("id") int id, RedirectAttributes redirectAttributes) {
         try {
+            if (!pedidoTiendaRepository.existsById(id)) {
+                redirectAttributes.addFlashAttribute("error", "El pedido #" + id + " ya no existe.");
+                return "redirect:/tienda/listado";
+            }
             pedidoTiendaRepository.deleteById(id);
             redirectAttributes.addFlashAttribute("mensaje", "Pedido #" + id + " eliminado correctamente.");
         } catch (Exception e) {
@@ -136,6 +159,7 @@ public class PedidoTiendaControlador {
     }
 
     // ─── Cambiar estado del pedido ─────────────────────────────────────
+    @Transactional
     @PostMapping("/actualizar-estado/{id}")
     public String actualizarEstado(
             @PathVariable("id") int id,
@@ -149,6 +173,7 @@ public class PedidoTiendaControlador {
     }
 
     // ─── Agregar abono a un pedido existente ────────────────────────────
+    @Transactional
     @PostMapping("/abonar/{id}")
     public String agregarAbono(
             @PathVariable("id") int id,
