@@ -2,6 +2,7 @@ package Colcones_Persinas.proyecto_express.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -11,6 +12,7 @@ import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
 
 @Configuration
+@EnableMethodSecurity // habilita @PreAuthorize en los controladores
 public class SecurityConfig {
 
     @Bean
@@ -25,8 +27,8 @@ public class SecurityConfig {
                 .requestMatchers("/tienda/nuevo", "/tienda/guardar", "/tienda/editar/**", "/tienda/eliminar/**")
                     .hasAnyRole("TIENDA", "ADMIN")
 
-                // Resto de tienda (listado, ver detalle, cambiar estado):
-                // vendedores, admin de tienda (solo lectura/estado), y admin general
+                // Resto de tienda (listado, ver detalle, abonar, cambiar estado):
+                // vendedores, admin de tienda (solo lectura/estado/abono), y admin general
                 .requestMatchers("/tienda/**").hasAnyRole("TIENDA", "TIENDA_ADMIN", "ADMIN")
 
                 // Fábrica: FABRICA y ADMIN
@@ -72,7 +74,7 @@ public class SecurityConfig {
             .roles("TIENDA")
             .build();
 
-        // Administrador de tienda — solo ve y cambia estados, no crea/edita/elimina pedidos
+        // Administrador de tienda — solo ve, abona y cambia estados; no crea/edita/elimina pedidos
         UserDetails adminTienda = User.builder()
             .username("Tienda")
             .password(passwordEncoder().encode("express"))

@@ -1,6 +1,7 @@
 package Colcones_Persinas.proyecto_express.controlador;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Controller;
@@ -24,6 +25,7 @@ public class PedidoTiendaControlador {
     @Autowired
     private PedidoTiendaRepository pedidoTiendaRepository;
 
+    @PreAuthorize("hasAnyRole('TIENDA','ADMIN')")
     @GetMapping("/nuevo")
     public String mostrarFormulario(Model model) {
         PedidoTienda pedido = new PedidoTienda();
@@ -32,6 +34,7 @@ public class PedidoTiendaControlador {
         return "tienda/formulario";
     }
 
+    @PreAuthorize("hasAnyRole('TIENDA','ADMIN')")
     @PostMapping("/guardar")
     public String guardarPedido(@ModelAttribute PedidoTienda pedidoTienda, RedirectAttributes redirectAttributes) {
         List<String> errores = validarProductos(pedidoTienda.getDetalles());
@@ -47,6 +50,7 @@ public class PedidoTiendaControlador {
     }
 
     // ─── Listado con búsqueda por nombre o cédula ───────────────────────
+    @PreAuthorize("hasAnyRole('TIENDA','TIENDA_ADMIN','ADMIN')")
     @GetMapping("/listado")
     public String listarPedidos(
             @RequestParam(required = false) String buscar,
@@ -74,6 +78,7 @@ public class PedidoTiendaControlador {
     }
 
     // ─── Editar pedido ──────────────────────────────────────────────────
+    @PreAuthorize("hasAnyRole('TIENDA','ADMIN')")
     @GetMapping("/editar/{id}")
     public String mostrarFormularioEditar(@PathVariable("id") int id, Model model) {
         PedidoTienda pedido = pedidoTiendaRepository.findById(id).orElseThrow();
@@ -84,6 +89,7 @@ public class PedidoTiendaControlador {
         return "tienda/editar_pedido";
     }
 
+    @PreAuthorize("hasAnyRole('TIENDA','ADMIN')")
     @PostMapping("/editar/{id}")
     public String guardarEdicion(
             @PathVariable("id") int id,
@@ -124,6 +130,7 @@ public class PedidoTiendaControlador {
     }
 
     // ─── Eliminar pedido ────────────────────────────────────────────────
+    @PreAuthorize("hasAnyRole('TIENDA','ADMIN')")
     @PostMapping("/eliminar/{id}")
     public String eliminarPedido(@PathVariable("id") int id, RedirectAttributes redirectAttributes) {
         try {
@@ -135,7 +142,8 @@ public class PedidoTiendaControlador {
         return "redirect:/tienda/listado";
     }
 
-    // ─── Cambiar estado del pedido ─────────────────────────────────────
+    // ─── Cambiar estado del pedido (Tienda_Admin sí puede) ─────────────
+    @PreAuthorize("hasAnyRole('TIENDA','TIENDA_ADMIN','ADMIN')")
     @PostMapping("/actualizar-estado/{id}")
     public String actualizarEstado(
             @PathVariable("id") int id,
@@ -148,7 +156,8 @@ public class PedidoTiendaControlador {
         return "redirect:/tienda/listado";
     }
 
-    // ─── Agregar abono a un pedido existente ────────────────────────────
+    // ─── Agregar abono (Tienda_Admin sí puede) ──────────────────────────
+    @PreAuthorize("hasAnyRole('TIENDA','TIENDA_ADMIN','ADMIN')")
     @PostMapping("/abonar/{id}")
     public String agregarAbono(
             @PathVariable("id") int id,
@@ -215,6 +224,7 @@ public class PedidoTiendaControlador {
 
     private boolean puedeGestionarPedidos() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null) return false;
         return auth.getAuthorities().stream()
                 .anyMatch(a -> a.getAuthority().equals("ROLE_TIENDA") || a.getAuthority().equals("ROLE_ADMIN"));
     }
