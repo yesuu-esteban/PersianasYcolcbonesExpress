@@ -17,6 +17,7 @@ public class DetallePedidoTienda {
     private int id;
 
     private String producto = "";
+    private String material = "";
     private int cantidad = 1;
     private BigDecimal precioUnitario = BigDecimal.ZERO;
     private BigDecimal subtotal = BigDecimal.ZERO;

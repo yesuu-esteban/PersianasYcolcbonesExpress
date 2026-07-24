@@ -336,6 +336,7 @@
                                         <thead>
                                             <tr>
                                                 <th>Producto</th>
+                                                <th>Material</th>
                                                 <th>Cantidad</th>
                                                 <th>Precio unitario</th>
                                                 <th>Subtotal</th>
@@ -344,12 +345,13 @@
                                         <tbody>
                                             <tr th:each="d : ${p.detalles}">
                                                 <td th:text="${d.producto}"></td>
+                                                <td th:text="${d.material}"></td>
                                                 <td th:text="${d.cantidad}"></td>
-                                                <td th:text="${#numbers.formatDecimal(d.precioUnitario, 1, 'POINT', 0, 'NONE')}"></td>
-                                                <td th:text="${#numbers.formatDecimal(d.subtotal, 1, 'POINT', 0, 'NONE')}"></td>
+                                                <td th:text="${#numbers.formatDecimal(d.precioUnitario ?: 0, 1, 'POINT', 0)}"></td>
+                                                <td th:text="${#numbers.formatDecimal(d.subtotal ?: 0, 1, 'POINT', 0)}"></td>
                                             </tr>
                                             <tr th:if="${#lists.isEmpty(p.detalles)}">
-                                                <td colspan="4" class="text-center text-muted">Sin productos registrados.</td>
+                                                <td colspan="5" class="text-center text-muted">Sin productos registrados.</td>
                                             </tr>
                                         </tbody>
                                     </table>
