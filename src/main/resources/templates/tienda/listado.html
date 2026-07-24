@@ -15,18 +15,78 @@
             --gold: #ffc107;
             --text-muted: #ffffff;
         }
+
         * { font-family: 'Poppins', sans-serif; }
-        body { background: linear-gradient(160deg, #1a0f2e 0%, #241536 100%); color: #fff; padding: 24px; }
-        .marca-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; background: var(--bg-card); border: 1px solid rgba(236,21,97,0.35); border-radius: 14px; padding: 16px 24px; margin-bottom: 20px; box-shadow: 0 4px 22px rgba(236,21,97,0.15); }
-        .marca-header .logo-marca { display: flex; align-items: center; gap: 12px; }
-        .marca-header .logo-marca .icono { width: 46px; height: 46px; background: linear-gradient(135deg, var(--accent), #a5107f); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.4rem; box-shadow: 0 0 0 3px rgba(236,21,97,0.25); flex-shrink: 0; }
-        .marca-header .titulo-marca { font-weight: 800; font-size: 1.1rem; line-height: 1.1; letter-spacing: 0.3px; }
-        .marca-header .titulo-marca small { display: block; font-weight: 600; font-size: 0.6rem; color: var(--gold); letter-spacing: 1.5px; margin-top: 2px; }
+
+        body {
+            background: linear-gradient(160deg, #1a0f2e 0%, #241536 100%);
+            color: #fff;
+            padding: 24px;
+        }
+
+        .marca-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 12px;
+            background: var(--bg-card);
+            border: 1px solid rgba(236,21,97,0.35);
+            border-radius: 14px;
+            padding: 16px 24px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 22px rgba(236,21,97,0.15);
+        }
+        .marca-header .logo-marca {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .marca-header .logo-marca .icono {
+            width: 46px; height: 46px;
+            background: linear-gradient(135deg, var(--accent), #a5107f);
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.4rem;
+            box-shadow: 0 0 0 3px rgba(236,21,97,0.25);
+            flex-shrink: 0;
+        }
+        .marca-header .titulo-marca {
+            font-weight: 800;
+            font-size: 1.1rem;
+            line-height: 1.1;
+            letter-spacing: 0.3px;
+        }
+        .marca-header .titulo-marca small {
+            display: block;
+            font-weight: 600;
+            font-size: 0.6rem;
+            color: var(--gold);
+            letter-spacing: 1.5px;
+            margin-top: 2px;
+        }
+
         h2 { font-weight: 700; font-size: 1.4rem; }
-        .barra-busqueda { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
-        .barra-busqueda input { flex: 1 1 260px; max-width: 340px; }
-        .btn-primary, .btn-success { background: linear-gradient(135deg, var(--accent), #b81050) !important; border: none !important; font-weight: 600; box-shadow: 0 3px 10px rgba(236,21,97,0.35); }
+
+        .barra-busqueda {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+        .barra-busqueda input {
+            flex: 1 1 260px;
+            max-width: 340px;
+        }
+
+        .btn-primary, .btn-success {
+            background: linear-gradient(135deg, var(--accent), #b81050) !important;
+            border: none !important;
+            font-weight: 600;
+            box-shadow: 0 3px 10px rgba(236,21,97,0.35);
+        }
         .btn-primary:hover, .btn-success:hover { filter: brightness(1.12); }
+
         .btn-outline-primary { color: var(--accent-light); border-color: var(--accent); }
         .btn-outline-primary:hover { background: var(--accent); border-color: var(--accent); }
         .btn-outline-secondary { color: var(--text-muted); border-color: rgba(255,255,255,0.25); }
@@ -34,41 +94,116 @@
         .btn-outline-danger:hover { background: #e74c3c; }
         .btn-outline-success { color: #2ecc71; border-color: #2ecc71; }
         .btn-outline-success:hover { background: #2ecc71; color: #1a0f2e; }
+
         .alert-success { background: rgba(46,204,113,0.15); border: 1px solid #2ecc71; color: #7ff0a8; }
         .alert-danger  { background: rgba(231,76,60,0.15); border: 1px solid #e74c3c; color: #ff9a90; }
-        .table-wrapper { background: var(--bg-card); border-radius: 14px; padding: 6px; box-shadow: 0 4px 22px rgba(0,0,0,0.3); overflow-x: auto; -webkit-overflow-scrolling: touch; }
-        table.table { color: #fff; margin-bottom: 0; min-width: 1350px; }
-        table.table thead { background-color: var(--accent) !important; background: linear-gradient(90deg, var(--accent), #a5107f) !important; }
-        table.table thead th { border: none; color: #000 !important; font-weight: 700; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.4px; padding: 12px 10px; white-space: nowrap; forced-color-adjust: none; }
+
+        .table-wrapper {
+            background: var(--bg-card);
+            border-radius: 14px;
+            padding: 6px;
+            box-shadow: 0 4px 22px rgba(0,0,0,0.3);
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        table.table {
+            color: #fff;
+            margin-bottom: 0;
+            min-width: 1350px;
+        }
+        table.table thead {
+            background-color: var(--accent) !important;
+            background: linear-gradient(90deg, var(--accent), #a5107f) !important;
+        }
+        table.table thead th {
+            border: none;
+            color: #000 !important;
+            font-weight: 700;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            padding: 12px 10px;
+            white-space: nowrap;
+            forced-color-adjust: none;
+        }
         @media (forced-colors: active) {
-            table.table thead { background-color: var(--accent) !important; }
-            table.table thead th { color: #000 !important; }
+            table.table thead {
+                background-color: var(--accent) !important;
+            }
+            table.table thead th {
+                color: #000 !important;
+            }
         }
         table.table tbody tr { border-color: rgba(255,255,255,0.08); }
         table.table tbody tr:hover { background: rgba(236,21,97,0.08) !important; }
         table.table td { vertical-align: middle; border-color: rgba(255,255,255,0.08); font-size: 0.85rem; }
+
+        /* Detalle de productos: fondo sólido oscuro para que el texto siempre sea legible */
         .fila-detalle-productos { background-color: var(--bg-dark) !important; }
-        .fila-detalle-productos .p-3 { background: var(--bg-dark); border-radius: 0 0 10px 10px; }
-        .titulo-detalle-productos { color: #ffffff !important; font-weight: 700; }
-        .tabla-productos-mini { background: #1e1330 !important; border-radius: 8px; overflow: hidden; }
-        .tabla-productos-mini thead th { background: linear-gradient(90deg, var(--accent), #a5107f) !important; color: #ffffff !important; font-weight: 700; border-color: rgba(255,255,255,0.1) !important; }
-        .tabla-productos-mini tbody td { background: #1e1330 !important; color: #f4f0fb !important; border-color: rgba(255,255,255,0.12) !important; }
+        .fila-detalle-productos .p-3 {
+            background: var(--bg-dark);
+            border-radius: 0 0 10px 10px;
+        }
+        .titulo-detalle-productos {
+            color: #ffffff !important;
+            font-weight: 700;
+        }
+        .tabla-productos-mini {
+            background: #1e1330 !important;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .tabla-productos-mini thead th {
+            background: linear-gradient(90deg, var(--accent), #a5107f) !important;
+            color: #ffffff !important;
+            font-weight: 700;
+            border-color: rgba(255,255,255,0.1) !important;
+        }
+        .tabla-productos-mini tbody td {
+            background: #1e1330 !important;
+            color: #f4f0fb !important;
+            border-color: rgba(255,255,255,0.12) !important;
+        }
         .tabla-productos-mini tbody tr:hover td { background: #2a1b42 !important; }
-        .form-control, .form-select { background: #1e1330; border: 1px solid rgba(255,255,255,0.15); color: #fff; }
-        .form-control:focus, .form-select:focus { background: #1e1330; border-color: var(--accent); color: #fff; box-shadow: 0 0 0 0.2rem rgba(236,21,97,0.25); }
+
+        .form-control, .form-select {
+            background: #1e1330;
+            border: 1px solid rgba(255,255,255,0.15);
+            color: #fff;
+        }
+        .form-control:focus, .form-select:focus {
+            background: #1e1330;
+            border-color: var(--accent);
+            color: #fff;
+            box-shadow: 0 0 0 0.2rem rgba(236,21,97,0.25);
+        }
         .form-control::placeholder { color: #8f84a8; }
         .form-select option { background: #1e1330; color: #fff; }
+
         .badge-estado-pedido    { background-color: #6c5b7b; }
         .badge-estado-bodega    { background: linear-gradient(135deg,#0dcaf0,#0b9fc0); color:#03171c; }
         .badge-estado-instalado { background: linear-gradient(135deg,var(--gold),#e0a800); color:#3a2c00; }
         .badge-estado-terminado { background: linear-gradient(135deg,#2ecc71,#1e9e58); }
         .badge-pagado           { background: linear-gradient(135deg,#2ecc71,#1e9e58); }
         .badge-pendiente        { background: linear-gradient(135deg,var(--accent),#a5107f); }
+
         .btn-ver-detalle { cursor: pointer; }
-        .card-vacio { background: var(--bg-card); border: 1px dashed rgba(255,255,255,0.2); color: var(--text-muted); border-radius: 12px; }
-        .modal-content { background: var(--bg-card); color: #fff; border: 1px solid rgba(236,21,97,0.3); }
+
+        .card-vacio {
+            background: var(--bg-card);
+            border: 1px dashed rgba(255,255,255,0.2);
+            color: var(--text-muted);
+            border-radius: 12px;
+        }
+
+        .modal-content {
+            background: var(--bg-card);
+            color: #fff;
+            border: 1px solid rgba(236,21,97,0.3);
+        }
         .modal-header, .modal-footer { border-color: rgba(255,255,255,0.1); }
         .btn-close { filter: invert(1); }
+
         @media (max-width: 576px) {
             body { padding: 12px; }
             .marca-header { padding: 12px 16px; }

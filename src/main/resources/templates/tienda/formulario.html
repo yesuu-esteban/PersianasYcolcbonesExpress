@@ -15,33 +15,120 @@
             --gold: #ffc107;
             --text-muted: #ffffff;
         }
+
         * { font-family: 'Poppins', sans-serif; }
-        body { background: linear-gradient(160deg, #1a0f2e 0%, #241536 100%); color: #fff; padding: 24px; min-height: 100vh; }
-        .marca-header { display: flex; align-items: center; gap: 12px; background: var(--bg-card); border: 1px solid rgba(236,21,97,0.35); border-radius: 14px; padding: 16px 24px; margin-bottom: 26px; box-shadow: 0 4px 22px rgba(236,21,97,0.15); }
-        .marca-header .icono { width: 46px; height: 46px; background: linear-gradient(135deg, var(--accent), #a5107f); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.4rem; box-shadow: 0 0 0 3px rgba(236,21,97,0.25); flex-shrink: 0; }
-        .marca-header .titulo-marca { font-weight: 800; font-size: 1.05rem; line-height: 1.1; letter-spacing: 0.3px; }
-        .marca-header .titulo-marca small { display: block; font-weight: 600; font-size: 0.6rem; color: var(--gold); letter-spacing: 1.5px; margin-top: 2px; }
+
+        body {
+            background: linear-gradient(160deg, #1a0f2e 0%, #241536 100%);
+            color: #fff;
+            padding: 24px;
+            min-height: 100vh;
+        }
+
+        .marca-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: var(--bg-card);
+            border: 1px solid rgba(236,21,97,0.35);
+            border-radius: 14px;
+            padding: 16px 24px;
+            margin-bottom: 26px;
+            box-shadow: 0 4px 22px rgba(236,21,97,0.15);
+        }
+        .marca-header .icono {
+            width: 46px; height: 46px;
+            background: linear-gradient(135deg, var(--accent), #a5107f);
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.4rem;
+            box-shadow: 0 0 0 3px rgba(236,21,97,0.25);
+            flex-shrink: 0;
+        }
+        .marca-header .titulo-marca {
+            font-weight: 800;
+            font-size: 1.05rem;
+            line-height: 1.1;
+            letter-spacing: 0.3px;
+        }
+        .marca-header .titulo-marca small {
+            display: block;
+            font-weight: 600;
+            font-size: 0.6rem;
+            color: var(--gold);
+            letter-spacing: 1.5px;
+            margin-top: 2px;
+        }
+
         h2 { font-weight: 700; font-size: 1.4rem; }
+
         .alert-danger { background: rgba(231,76,60,0.15); border: 1px solid #e74c3c; color: #ff9a90; }
-        .card-formulario { background: var(--bg-card) !important; border: 1px solid rgba(255,255,255,0.08) !important; border-radius: 14px; box-shadow: 0 4px 22px rgba(0,0,0,0.3); }
+
+        .card-formulario {
+            background: var(--bg-card) !important;
+            border: 1px solid rgba(255,255,255,0.08) !important;
+            border-radius: 14px;
+            box-shadow: 0 4px 22px rgba(0,0,0,0.3);
+        }
+
         .form-label { color: var(--text-muted); font-size: 0.85rem; }
-        .form-control, .form-select { background: #1e1330; border: 1px solid rgba(255,255,255,0.15); color: #fff; }
-        .form-control:focus, .form-select:focus { background: #1e1330; border-color: var(--accent); color: #fff; box-shadow: 0 0 0 0.2rem rgba(236,21,97,0.25); }
+
+        .form-control, .form-select {
+            background: #1e1330;
+            border: 1px solid rgba(255,255,255,0.15);
+            color: #fff;
+        }
+        .form-control:focus, .form-select:focus {
+            background: #1e1330;
+            border-color: var(--accent);
+            color: #fff;
+            box-shadow: 0 0 0 0.2rem rgba(236,21,97,0.25);
+        }
         .form-control::placeholder { color: #8f84a8; }
         .form-select option { background: #1e1330; color: #fff; }
+
         hr { border-color: rgba(255,255,255,0.12); }
+
         table.table { color: #fff; }
-        table.table thead th { background: #1e1330; border-color: rgba(255,255,255,0.1); color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.4px; }
+        table.table thead th {
+            background: #1e1330;
+            border-color: rgba(255,255,255,0.1);
+            color: var(--text-muted);
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+        }
         table.table td { border-color: rgba(255,255,255,0.08); vertical-align: middle; }
-        .btn-success { background: linear-gradient(135deg, var(--accent), #b81050) !important; border: none !important; font-weight: 600; box-shadow: 0 3px 10px rgba(236,21,97,0.35); }
+
+        .btn-success {
+            background: linear-gradient(135deg, var(--accent), #b81050) !important;
+            border: none !important;
+            font-weight: 600;
+            box-shadow: 0 3px 10px rgba(236,21,97,0.35);
+        }
         .btn-success:hover { filter: brightness(1.12); }
-        .btn-secondary { background: rgba(255,255,255,0.08) !important; border: 1px solid rgba(255,255,255,0.2) !important; color: #fff !important; }
+
+        .btn-secondary {
+            background: rgba(255,255,255,0.08) !important;
+            border: 1px solid rgba(255,255,255,0.2) !important;
+            color: #fff !important;
+        }
         .btn-secondary:hover { background: rgba(255,255,255,0.16) !important; }
-        .btn-outline-danger { color: #ff8a80; border-color: #e74c3c; }
+
+        .btn-outline-danger {
+            color: #ff8a80;
+            border-color: #e74c3c;
+        }
         .btn-outline-danger:hover { background: #e74c3c; color: #fff; }
-        .btn-outline-dark { color: var(--text-muted); border-color: rgba(0, 0, 0, 0.25); }
+
+        .btn-outline-dark {
+            color: var(--text-muted);
+            border-color: rgba(0, 0, 0, 0.25);
+        }
         .btn-outline-dark:hover { background: rgba(255,255,255,0.1); color: #fff; border-color: rgba(255,255,255,0.25); }
+
         .text-muted { color: var(--text-muted) !important; }
+
         @media (max-width: 576px) {
             body { padding: 12px; }
             .marca-header { padding: 12px 16px; margin-bottom: 16px; }
@@ -68,7 +155,8 @@
 
     <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
 
-    <form th:action="@{/tienda/guardar}" th:object="${pedidoTienda}" method="post" class="card-formulario p-4">
+    <form th:action="@{/tienda/guardar}" th:object="${pedidoTienda}" method="post"
+          class="card-formulario p-4">
 
         <div class="row g-3 mb-3">
             <div class="col-md-4">
