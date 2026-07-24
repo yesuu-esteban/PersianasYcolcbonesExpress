@@ -224,6 +224,7 @@
             <thead>
                 <tr>
                     <th>Producto</th>
+                    <th>Material</th>
                     <th>Cantidad</th>
                     <th>Precio unitario</th>
                     <th></th>
@@ -232,8 +233,25 @@
             <tbody id="cuerpoDetalles">
                 <tr th:each="detalle, iter : *{detalles}">
                     <td>
-                        <input type="text" class="form-control form-control-sm"
-                               th:field="*{detalles[__${iter.index}__].producto}">
+                        <select class="form-select form-select-sm"
+                                th:field="*{detalles[__${iter.index}__].producto}">
+                            <option value="">-- Selecciona --</option>
+                            <option value="Panel Japonés">Panel Japonés</option>
+                            <option value="Blackout">Blackout</option>
+                            <option value="Chic Elegante">Chic Elegante</option>
+                            <option value="Enrollable">Enrollable</option>
+                            <option value="Vertical">Vertical</option>
+                            <option value="Cortina en Onda">Cortina en Onda</option>
+                        </select>
+                    </td>
+                    <td>
+                        <select class="form-select form-select-sm"
+                                th:field="*{detalles[__${iter.index}__].material}">
+                            <option value="">-- Selecciona --</option>
+                            <option value="Poliéster">Poliéster</option>
+                            <option value="Screen">Screen</option>
+                            <option value="Blackout">Blackout</option>
+                        </select>
                     </td>
                     <td>
                         <input type="number" class="form-control form-control-sm" min="1" step="1" required
@@ -270,7 +288,25 @@
         const idx = indiceDetalle++;
         const fila = `
             <tr>
-                <td><input type="text" class="form-control form-control-sm" name="detalles[${idx}].producto"></td>
+                <td>
+                    <select class="form-select form-select-sm" name="detalles[${idx}].producto">
+                        <option value="">-- Selecciona --</option>
+                        <option value="Panel Japonés">Panel Japonés</option>
+                        <option value="Blackout">Blackout</option>
+                        <option value="Chic Elegante">Chic Elegante</option>
+                        <option value="Enrollable">Enrollable</option>
+                        <option value="Vertical">Vertical</option>
+                        <option value="Cortina en Onda">Cortina en Onda</option>
+                    </select>
+                </td>
+                <td>
+                    <select class="form-select form-select-sm" name="detalles[${idx}].material">
+                        <option value="">-- Selecciona --</option>
+                        <option value="Poliéster">Poliéster</option>
+                        <option value="Screen">Screen</option>
+                        <option value="Blackout">Blackout</option>
+                    </select>
+                </td>
                 <td><input type="number" class="form-control form-control-sm" name="detalles[${idx}].cantidad" value="1" min="1" step="1" required></td>
                 <td><input type="number" step="0.01" min="0.01" class="form-control form-control-sm" name="detalles[${idx}].precioUnitario" value="0.01" required></td>
                 <td><button type="button" class="btn btn-sm btn-outline-danger" onclick="this.closest('tr').remove()">✕</button></td>
