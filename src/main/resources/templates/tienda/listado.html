@@ -1,10 +1,11 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org"><head>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pedidos de Tienda</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&amp;display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
     <style>
         :root {
             --bg-dark: #1a0f2e;
@@ -14,78 +15,32 @@
             --gold: #ffc107;
             --text-muted: #ffffff;
         }
-
         * { font-family: 'Poppins', sans-serif; }
-
-        body {
-            background: linear-gradient(160deg, #1a0f2e 0%, #241536 100%);
-            color: #fff;
-            padding: 24px;
-        }
-
+        body { background: linear-gradient(160deg, #1a0f2e 0%, #241536 100%); color: #fff; padding: 24px; }
         .marca-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            flex-wrap: wrap;
-            gap: 12px;
-            background: var(--bg-card);
-            border: 1px solid rgba(236,21,97,0.35);
-            border-radius: 14px;
-            padding: 16px 24px;
-            margin-bottom: 20px;
-            box-shadow: 0 4px 22px rgba(236,21,97,0.15);
+            display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;
+            background: var(--bg-card); border: 1px solid rgba(236,21,97,0.35); border-radius: 14px;
+            padding: 16px 24px; margin-bottom: 20px; box-shadow: 0 4px 22px rgba(236,21,97,0.15);
         }
-        .marca-header .logo-marca {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
+        .marca-header .logo-marca { display: flex; align-items: center; gap: 12px; }
         .marca-header .logo-marca .icono {
-            width: 46px; height: 46px;
-            background: linear-gradient(135deg, var(--accent), #a5107f);
-            border-radius: 50%;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 1.4rem;
-            box-shadow: 0 0 0 3px rgba(236,21,97,0.25);
-            flex-shrink: 0;
+            width: 46px; height: 46px; background: linear-gradient(135deg, var(--accent), #a5107f);
+            border-radius: 50%; display: flex; align-items: center; justify-content: center;
+            font-size: 1.4rem; box-shadow: 0 0 0 3px rgba(236,21,97,0.25); flex-shrink: 0;
         }
-        .marca-header .titulo-marca {
-            font-weight: 800;
-            font-size: 1.1rem;
-            line-height: 1.1;
-            letter-spacing: 0.3px;
-        }
+        .marca-header .titulo-marca { font-weight: 800; font-size: 1.1rem; line-height: 1.1; letter-spacing: 0.3px; }
         .marca-header .titulo-marca small {
-            display: block;
-            font-weight: 600;
-            font-size: 0.6rem;
-            color: var(--gold);
-            letter-spacing: 1.5px;
-            margin-top: 2px;
+            display: block; font-weight: 600; font-size: 0.6rem; color: var(--gold);
+            letter-spacing: 1.5px; margin-top: 2px;
         }
-
         h2 { font-weight: 700; font-size: 1.4rem; }
-
-        .barra-busqueda {
-            display: flex;
-            gap: 8px;
-            flex-wrap: wrap;
-            margin-bottom: 20px;
-        }
-        .barra-busqueda input {
-            flex: 1 1 260px;
-            max-width: 340px;
-        }
-
+        .barra-busqueda { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
+        .barra-busqueda input { flex: 1 1 260px; max-width: 340px; }
         .btn-primary, .btn-success {
-            background: linear-gradient(135deg, var(--accent), #b81050) !important;
-            border: none !important;
-            font-weight: 600;
-            box-shadow: 0 3px 10px rgba(236,21,97,0.35);
+            background: linear-gradient(135deg, var(--accent), #b81050) !important; border: none !important;
+            font-weight: 600; box-shadow: 0 3px 10px rgba(236,21,97,0.35);
         }
         .btn-primary:hover, .btn-success:hover { filter: brightness(1.12); }
-
         .btn-outline-primary { color: var(--accent-light); border-color: var(--accent); }
         .btn-outline-primary:hover { background: var(--accent); border-color: var(--accent); }
         .btn-outline-secondary { color: var(--text-muted); border-color: rgba(255,255,255,0.25); }
@@ -93,116 +48,53 @@
         .btn-outline-danger:hover { background: #e74c3c; }
         .btn-outline-success { color: #2ecc71; border-color: #2ecc71; }
         .btn-outline-success:hover { background: #2ecc71; color: #1a0f2e; }
-
         .alert-success { background: rgba(46,204,113,0.15); border: 1px solid #2ecc71; color: #7ff0a8; }
         .alert-danger  { background: rgba(231,76,60,0.15); border: 1px solid #e74c3c; color: #ff9a90; }
-
         .table-wrapper {
-            background: var(--bg-card);
-            border-radius: 14px;
-            padding: 6px;
-            box-shadow: 0 4px 22px rgba(0,0,0,0.3);
-            overflow-x: auto;
-            -webkit-overflow-scrolling: touch;
+            background: var(--bg-card); border-radius: 14px; padding: 6px;
+            box-shadow: 0 4px 22px rgba(0,0,0,0.3); overflow-x: auto; -webkit-overflow-scrolling: touch;
         }
-        table.table {
-            color: #fff;
-            margin-bottom: 0;
-            min-width: 1350px;
-        }
+        table.table { color: #fff; margin-bottom: 0; min-width: 1350px; }
         table.table thead {
             background-color: var(--accent) !important;
             background: linear-gradient(90deg, var(--accent), #a5107f) !important;
         }
         table.table thead th {
-            border: none;
-            color: #000 !important;
-            font-weight: 700;
-            font-size: 0.75rem;
-            text-transform: uppercase;
-            letter-spacing: 0.4px;
-            padding: 12px 10px;
-            white-space: nowrap;
-            forced-color-adjust: none;
+            border: none; color: #000 !important; font-weight: 700; font-size: 0.75rem;
+            text-transform: uppercase; letter-spacing: 0.4px; padding: 12px 10px; white-space: nowrap;
         }
-        @media (forced-colors: active) {
-            table.table thead {
-                background-color: var(--accent) !important;
-            }
-            table.table thead th {
-                color: #000 !important;
-            }
-        }
-        table.table tbody tr { border-color: rgba(255,255,255,0.08); }
+        table.table tbody tr { border-color: rgba(255,255,255,0.08); background-color: var(--bg-card); }
         table.table tbody tr:hover { background: rgba(236,21,97,0.08) !important; }
-        table.table td { vertical-align: middle; border-color: rgba(255,255,255,0.08); font-size: 0.85rem; }
-
-        /* Detalle de productos: fondo sólido oscuro para que el texto siempre sea legible */
+        table.table td { vertical-align: middle; border-color: rgba(255,255,255,0.08); font-size: 0.85rem; color: #fff; }
         .fila-detalle-productos { background-color: var(--bg-dark) !important; }
-        .fila-detalle-productos .p-3 {
-            background: var(--bg-dark);
-            border-radius: 0 0 10px 10px;
-        }
-        .titulo-detalle-productos {
-            color: #ffffff !important;
-            font-weight: 700;
-        }
-        .tabla-productos-mini {
-            background: #1e1330 !important;
-            border-radius: 8px;
-            overflow: hidden;
-        }
+        .fila-detalle-productos .p-3 { background: var(--bg-dark); border-radius: 0 0 10px 10px; }
+        .titulo-detalle-productos { color: #ffffff !important; font-weight: 700; }
+        .tabla-productos-mini { background: #1e1330 !important; border-radius: 8px; overflow: hidden; }
         .tabla-productos-mini thead th {
             background: linear-gradient(90deg, var(--accent), #a5107f) !important;
-            color: #ffffff !important;
-            font-weight: 700;
-            border-color: rgba(255,255,255,0.1) !important;
+            color: #ffffff !important; font-weight: 700; border-color: rgba(255,255,255,0.1) !important;
         }
         .tabla-productos-mini tbody td {
-            background: #1e1330 !important;
-            color: #f4f0fb !important;
-            border-color: rgba(255,255,255,0.12) !important;
+            background: #1e1330 !important; color: #f4f0fb !important; border-color: rgba(255,255,255,0.12) !important;
         }
         .tabla-productos-mini tbody tr:hover td { background: #2a1b42 !important; }
-
-        .form-control, .form-select {
-            background: #1e1330;
-            border: 1px solid rgba(255,255,255,0.15);
-            color: #fff;
-        }
+        .form-control, .form-select { background: #1e1330; border: 1px solid rgba(255,255,255,0.15); color: #fff; }
         .form-control:focus, .form-select:focus {
-            background: #1e1330;
-            border-color: var(--accent);
-            color: #fff;
-            box-shadow: 0 0 0 0.2rem rgba(236,21,97,0.25);
+            background: #1e1330; border-color: var(--accent); color: #fff; box-shadow: 0 0 0 0.2rem rgba(236,21,97,0.25);
         }
         .form-control::placeholder { color: #8f84a8; }
         .form-select option { background: #1e1330; color: #fff; }
-
         .badge-estado-pedido    { background-color: #6c5b7b; }
         .badge-estado-bodega    { background: linear-gradient(135deg,#0dcaf0,#0b9fc0); color:#03171c; }
         .badge-estado-instalado { background: linear-gradient(135deg,var(--gold),#e0a800); color:#3a2c00; }
         .badge-estado-terminado { background: linear-gradient(135deg,#2ecc71,#1e9e58); }
         .badge-pagado           { background: linear-gradient(135deg,#2ecc71,#1e9e58); }
         .badge-pendiente        { background: linear-gradient(135deg,var(--accent),#a5107f); }
-
         .btn-ver-detalle { cursor: pointer; }
-
-        .card-vacio {
-            background: var(--bg-card);
-            border: 1px dashed rgba(255,255,255,0.2);
-            color: var(--text-muted);
-            border-radius: 12px;
-        }
-
-        .modal-content {
-            background: var(--bg-card);
-            color: #fff;
-            border: 1px solid rgba(236,21,97,0.3);
-        }
+        .card-vacio { background: var(--bg-card); border: 1px dashed rgba(255,255,255,0.2); color: var(--text-muted); border-radius: 12px; }
+        .modal-content { background: var(--bg-card); color: #fff; border: 1px solid rgba(236,21,97,0.3); }
         .modal-header, .modal-footer { border-color: rgba(255,255,255,0.1); }
         .btn-close { filter: invert(1); }
-
         @media (max-width: 576px) {
             body { padding: 12px; }
             .marca-header { padding: 12px 16px; }
@@ -231,7 +123,8 @@
         <h2 class="mb-3">🛒 Pedidos de Tienda</h2>
 
         <form method="get" th:action="@{/tienda/listado}" class="barra-busqueda">
-            <input type="text" name="buscar" th:value="${buscar}" class="form-control" placeholder="Buscar por nombre o cédula...">
+            <input type="text" name="buscar" th:value="${buscar}"
+                   class="form-control" placeholder="Buscar por nombre o cédula...">
             <button type="submit" class="btn btn-outline-primary">🔍 Buscar</button>
             <a th:if="${buscar != ''}" href="/tienda/listado" class="btn btn-outline-secondary">✕ Limpiar</a>
         </form>
@@ -240,8 +133,7 @@
         <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
 
         <div class="table-wrapper">
-        <th:block th:each="p, iter : ${pedidos}">
-                    </th:block><table class="table table-hover align-middle table-sm mb-0">
+        <table class="table table-hover align-middle table-sm mb-0">
             <thead>
                 <tr>
                     <th></th>
@@ -265,9 +157,12 @@
                 </tr>
             </thead>
             <tbody>
-                <tr>
+                <th:block th:each="p, iter : ${pedidos}">
+                    <tr>
                         <td>
-                            <button type="button" class="btn btn-sm btn-outline-secondary btn-ver-detalle" th:data-bs-toggle="collapse" th:data-bs-target="'#detalle-' + ${p.id}">
+                            <button type="button" class="btn btn-sm btn-outline-secondary btn-ver-detalle"
+                                    th:data-bs-toggle="collapse"
+                                    th:data-bs-target="'#detalle-' + ${p.id}">
                                 🧾
                             </button>
                         </td>
@@ -281,40 +176,48 @@
                         <td th:text="${p.fabrica}"></td>
                         <td th:text="${#temporals.format(p.fechaPedido, 'dd/MM/yyyy HH:mm')}"></td>
                         <td>
-                            <span th:if="${p.fechaEntrega != null}" th:text="${#temporals.format(p.fechaEntrega, 'dd/MM/yyyy HH:mm')}"></span>
+                            <span th:if="${p.fechaEntrega != null}"
+                                  th:text="${#temporals.format(p.fechaEntrega, 'dd/MM/yyyy HH:mm')}"></span>
                             <span th:unless="${p.fechaEntrega != null}" class="text-muted">Sin definir</span>
                         </td>
-                        <td th:text="${#numbers.formatDecimal(p.total ?: 0, 1, 'POINT', 0)}"></td>
+                        <td th:text="${p.total}"></td>
                         <td>
-                            <div class="mb-1 fw-bold" th:text="${#numbers.formatDecimal(p.abono ?: 0, 1, 'POINT', 0)}"></div>
+                            <div class="mb-1 fw-bold" th:text="${p.abono}"></div>
                             <form th:action="@{/tienda/abonar/{id}(id=${p.id})}" method="post" class="d-flex gap-1">
-                                <input type="number" step="0.01" min="0.01" name="monto" placeholder="+ monto" class="form-control form-control-sm" style="width:90px;">
+                                <input type="number" step="0.01" min="0.01" name="monto"
+                                       placeholder="+ monto" class="form-control form-control-sm" style="width:90px;">
                                 <button type="submit" class="btn btn-sm btn-outline-success" title="Agregar abono">+</button>
                             </form>
                         </td>
-                        <td th:text="${#numbers.formatDecimal(p.saldo ?: 0, 1, 'POINT', 0)}"></td>
+                        <td th:text="${p.saldo}"></td>
                         <td>
-                            <span class="badge" th:classappend="${p.estadoPago == 'Pagado Completo' ? 'badge-pagado' : 'badge-pendiente'}" th:text="${p.estadoPago}"></span>
+                            <span class="badge"
+                                  th:classappend="${p.estadoPago == 'Pagado Completo' ? 'badge-pagado' : 'badge-pendiente'}"
+                                  th:text="${p.estadoPago}"></span>
                         </td>
                         <td>
-                            <span class="badge" th:classappend="${p.estado == 'Pedido' ? 'badge-estado-pedido' :
+                            <span class="badge"
+                                  th:classappend="${p.estado == 'Pedido' ? 'badge-estado-pedido' :
                                                    (p.estado == 'En Bodega' ? 'badge-estado-bodega' :
-                                                   (p.estado == 'Instalado' ? 'badge-estado-instalado' : 'badge-estado-terminado'))}" th:text="${p.estado}"></span>
+                                                   (p.estado == 'Instalado' ? 'badge-estado-instalado' : 'badge-estado-terminado'))}"
+                                  th:text="${p.estado}"></span>
                         </td>
                         <td>
                             <form th:action="@{/tienda/actualizar-estado/{id}(id=${p.id})}" method="post" class="d-flex gap-1">
                                 <select name="estado" class="form-select form-select-sm" style="width:140px;">
-                                    <option value="Pedido" th:selected="${p.estado == 'Pedido'}">Pedido</option>
-                                    <option value="En Bodega" th:selected="${p.estado == 'En Bodega'}">En Bodega</option>
-                                    <option value="Instalado" th:selected="${p.estado == 'Instalado'}">Instalado</option>
-                                    <option value="Terminado" th:selected="${p.estado == 'Terminado'}">Terminado</option>
+                                    <option value="Pedido"     th:selected="${p.estado == 'Pedido'}">Pedido</option>
+                                    <option value="En Bodega"  th:selected="${p.estado == 'En Bodega'}">En Bodega</option>
+                                    <option value="Instalado"  th:selected="${p.estado == 'Instalado'}">Instalado</option>
+                                    <option value="Terminado"  th:selected="${p.estado == 'Terminado'}">Terminado</option>
                                 </select>
                                 <button type="submit" class="btn btn-sm btn-outline-primary">💾</button>
                             </form>
                         </td>
                         <td th:if="${puedeCrearPedidos}">
                             <a th:href="@{/tienda/editar/{id}(id=${p.id})}" class="btn btn-sm btn-outline-secondary">✏️</a>
-                            <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#modalEliminarTienda" th:attr="data-id=${p.id}, data-cliente=${p.nombreCliente}">🗑️</button>
+                            <button type="button" class="btn btn-sm btn-outline-danger"
+                                    data-bs-toggle="modal" data-bs-target="#modalEliminarTienda"
+                                    th:attr="data-id=${p.id}, data-cliente=${p.nombreCliente}">🗑️</button>
                         </td>
                     </tr>
 
@@ -338,8 +241,8 @@
                                                 <td th:text="${d.producto}"></td>
                                                 <td th:text="${d.material}"></td>
                                                 <td th:text="${d.cantidad}"></td>
-                                                <td th:text="${#numbers.formatDecimal(d.precioUnitario ?: 0, 1, 'POINT', 0)}"></td>
-                                                <td th:text="${#numbers.formatDecimal(d.subtotal ?: 0, 1, 'POINT', 0)}"></td>
+                                                <td th:text="${d.precioUnitario}"></td>
+                                                <td th:text="${d.subtotal}"></td>
                                             </tr>
                                             <tr th:if="${#lists.isEmpty(p.detalles)}">
                                                 <td colspan="5" class="text-center text-muted">Sin productos registrados.</td>
@@ -350,7 +253,7 @@
                             </div>
                         </td>
                     </tr>
-                
+                </th:block>
             </tbody>
         </table>
         </div>
@@ -392,5 +295,5 @@
             document.getElementById('formEliminarTienda').action = '/tienda/eliminar/' + id;
         });
     </script>
-
-</body></html>
+</body>
+</html>
