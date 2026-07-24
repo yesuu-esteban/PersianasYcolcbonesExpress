@@ -54,18 +54,45 @@
             background: var(--bg-card); border-radius: 14px; padding: 6px;
             box-shadow: 0 4px 22px rgba(0,0,0,0.3); overflow-x: auto; -webkit-overflow-scrolling: touch;
         }
-        table.table { color: #fff; margin-bottom: 0; min-width: 1350px; }
+
+        /* --- TABLA PRINCIPAL: fix de contraste con variables de Bootstrap --- */
+        table.table {
+            color: #f4f0fb;
+            margin-bottom: 0;
+            min-width: 1350px;
+            --bs-table-bg: transparent;
+            --bs-table-color: #f4f0fb;
+            --bs-table-striped-bg: rgba(255,255,255,0.04);
+            --bs-table-striped-color: #f4f0fb;
+            --bs-table-active-bg: rgba(236,21,97,0.18);
+            --bs-table-active-color: #ffffff;
+            --bs-table-hover-bg: rgba(236,21,97,0.10);
+            --bs-table-hover-color: #ffffff;
+            --bs-table-border-color: rgba(255,255,255,0.10);
+        }
         table.table thead {
             background-color: var(--accent) !important;
             background: linear-gradient(90deg, var(--accent), #a5107f) !important;
+            --bs-table-bg: transparent;
+            --bs-table-color: #000;
         }
         table.table thead th {
             border: none; color: #000 !important; font-weight: 700; font-size: 0.75rem;
             text-transform: uppercase; letter-spacing: 0.4px; padding: 12px 10px; white-space: nowrap;
         }
-        table.table tbody tr { border-color: rgba(255,255,255,0.08); background-color: var(--bg-card); }
+        table.table tbody tr {
+            border-color: rgba(255,255,255,0.08);
+            background-color: var(--bg-card);
+        }
         table.table tbody tr:hover { background: rgba(236,21,97,0.08) !important; }
-        table.table td { vertical-align: middle; border-color: rgba(255,255,255,0.08); font-size: 0.85rem; color: #fff; }
+        table.table td {
+            vertical-align: middle;
+            border-color: rgba(255,255,255,0.08);
+            font-size: 0.85rem;
+            color: #f4f0fb !important;
+        }
+        /* --- fin fix --- */
+
         .fila-detalle-productos { background-color: var(--bg-dark) !important; }
         .fila-detalle-productos .p-3 { background: var(--bg-dark); border-radius: 0 0 10px 10px; }
         .titulo-detalle-productos { color: #ffffff !important; font-weight: 700; }
