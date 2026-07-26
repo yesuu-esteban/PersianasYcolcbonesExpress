@@ -59,7 +59,7 @@
         table.table {
             color: #f4f0fb;
             margin-bottom: 0;
-            min-width: 1350px;
+            min-width: 1450px;
             --bs-table-bg: transparent;
             --bs-table-color: #f4f0fb;
             --bs-table-striped-bg: rgba(255,255,255,0.04);
@@ -174,7 +174,9 @@
                     <th>Fabricante</th>
                     <th>Fecha pedido</th>
                     <th>Fecha entrega</th>
+                    <th>Costo Fábrica</th>
                     <th>Total</th>
+                    <th>Precio Final</th>
                     <th>Abono</th>
                     <th>Saldo</th>
                     <th>Pago</th>
@@ -207,7 +209,9 @@
                                   th:text="${#temporals.format(p.fechaEntrega, 'dd/MM/yyyy HH:mm')}"></span>
                             <span th:unless="${p.fechaEntrega != null}" class="text-muted">Sin definir</span>
                         </td>
+                        <td th:text="${p.costoFabricaTotal}"></td>
                         <td th:text="${p.total}"></td>
+                        <td th:text="${p.precioFinal}"></td>
                         <td>
                             <div class="mb-1 fw-bold" th:text="${p.abono}"></div>
                             <form th:action="@{/tienda/abonar/{id}(id=${p.id})}" method="post" class="d-flex gap-1">
@@ -232,6 +236,7 @@
                         <td>
                             <form th:action="@{/tienda/actualizar-estado/{id}(id=${p.id})}" method="post" class="d-flex gap-1">
                                 <select name="estado" class="form-select form-select-sm" style="width:140px;">
+                                    <option value="Pendiente"  th:selected="${p.estado == 'Pendiente'}">Pendiente</option>
                                     <option value="Pedido"     th:selected="${p.estado == 'Pedido'}">Pedido</option>
                                     <option value="En Bodega"  th:selected="${p.estado == 'En Bodega'}">En Bodega</option>
                                     <option value="Instalado"  th:selected="${p.estado == 'Instalado'}">Instalado</option>
@@ -249,18 +254,20 @@
                     </tr>
 
                     <tr class="fila-detalle-productos">
-                        <td colspan="18" class="p-0">
+                        <td colspan="20" class="p-0">
                             <div class="collapse" th:id="'detalle-' + ${p.id}">
                                 <div class="p-3">
                                     <p class="titulo-detalle-productos mb-2" style="font-size:0.85rem;">Productos del pedido</p>
-                                    <table class="table table-sm table-bordered tabla-productos-mini mb-0" style="max-width:700px;">
+                                    <table class="table table-sm table-bordered tabla-productos-mini mb-0" style="max-width:900px;">
                                         <thead>
                                             <tr>
                                                 <th>Producto</th>
                                                 <th>Material</th>
                                                 <th>Cantidad</th>
                                                 <th>Precio unitario</th>
+                                                <th>Precio Fábrica</th>
                                                 <th>Subtotal</th>
+                                                <th>Subtotal Fábrica</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -269,10 +276,12 @@
                                                 <td th:text="${d.material}"></td>
                                                 <td th:text="${d.cantidad}"></td>
                                                 <td th:text="${d.precioUnitario}"></td>
+                                                <td th:text="${d.precioFabricaUnitario}"></td>
                                                 <td th:text="${d.subtotal}"></td>
+                                                <td th:text="${d.subtotalFabrica}"></td>
                                             </tr>
                                             <tr th:if="${#lists.isEmpty(p.detalles)}">
-                                                <td colspan="5" class="text-center text-muted">Sin productos registrados.</td>
+                                                <td colspan="7" class="text-center text-muted">Sin productos registrados.</td>
                                             </tr>
                                         </tbody>
                                     </table>
