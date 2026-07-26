@@ -32,16 +32,16 @@ public class PedidoTienda {
 
     private String descripcion = "";
 
-    /** Suma automática de venta de los productos (cantidad × precio unitario de cada línea). Informativo. */
+    /** Suma automática de los productos (cantidad × precio unitario de cada línea). */
     private BigDecimal total = BigDecimal.ZERO;
 
-    /** Precio final que se le cobra al cliente (puede diferir del total sumado, por descuentos, etc). */
-    private BigDecimal precioFinal = BigDecimal.ZERO;
+    /** Descuento que se le hace al cliente sobre el total. */
+    private BigDecimal descuento = BigDecimal.ZERO;
 
     /** Lo que el cliente ha abonado hasta el momento. */
     private BigDecimal abono = BigDecimal.ZERO;
 
-    /** Saldo pendiente = precioFinal - abono. */
+    /** Saldo pendiente = precioCliente - abono. */
     private BigDecimal saldo = BigDecimal.ZERO;
 
     private String fabrica = "";
@@ -63,6 +63,15 @@ public class PedidoTienda {
         detalle.setPedidoTienda(this);
     }
 
+    /** Precio real que paga el cliente = total - descuento. Único lugar donde se calcula. */
+    @Transient
+    public BigDecimal getPrecioCliente() {
+        BigDecimal t = total != null ? total : BigDecimal.ZERO;
+        BigDecimal d = descuento != null ? descuento : BigDecimal.ZERO;
+        BigDecimal resultado = t.subtract(d);
+        return resultado.compareTo(BigDecimal.ZERO) < 0 ? BigDecimal.ZERO : resultado;
+    }
+
     /** "Pagado Completo" si el saldo es 0 o negativo, "Pendiente" en cualquier otro caso. */
     @Transient
     public String getEstadoPago() {
@@ -70,7 +79,7 @@ public class PedidoTienda {
         return saldo.compareTo(BigDecimal.ZERO) <= 0 ? "Pagado Completo" : "Pendiente";
     }
 
-    /** Costo total de fábrica = suma de subtotalFabrica de cada línea. Único lugar de cálculo, no se duplica. */
+    /** Costo total de fábrica = suma de subtotalFabrica de cada línea. */
     @Transient
     public BigDecimal getCostoFabricaTotal() {
         if (detalles == null) return BigDecimal.ZERO;
@@ -79,10 +88,9 @@ public class PedidoTienda {
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
-    /** Utilidad estimada = precioFinal - costoFabricaTotal. Útil para ver margen de un vistazo. */
+    /** Utilidad estimada = precioCliente - costoFabricaTotal. */
     @Transient
     public BigDecimal getUtilidadEstimada() {
-        BigDecimal pf = precioFinal != null ? precioFinal : BigDecimal.ZERO;
-        return pf.subtract(getCostoFabricaTotal());
+        return getPrecioCliente().subtract(getCostoFabricaTotal());
     }
 }

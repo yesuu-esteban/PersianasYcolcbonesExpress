@@ -38,13 +38,19 @@ public class PedidoTiendaControlador {
     @PostMapping("/guardar")
     public String guardarPedido(@ModelAttribute PedidoTienda pedidoTienda, RedirectAttributes redirectAttributes) {
         List<String> errores = validarProductos(pedidoTienda.getDetalles());
-        errores.addAll(validarPrecioFinal(pedidoTienda));
         if (!errores.isEmpty()) {
             redirectAttributes.addFlashAttribute("error", String.join(" ", errores));
             return "redirect:/tienda/nuevo";
         }
 
         recalcularTotales(pedidoTienda);
+
+        errores = validarDescuento(pedidoTienda);
+        if (!errores.isEmpty()) {
+            redirectAttributes.addFlashAttribute("error", String.join(" ", errores));
+            return "redirect:/tienda/nuevo";
+        }
+
         pedidoTiendaRepository.save(pedidoTienda);
         redirectAttributes.addFlashAttribute("mensaje", "Pedido registrado correctamente.");
         return "redirect:/tienda/listado";
@@ -98,7 +104,6 @@ public class PedidoTiendaControlador {
             RedirectAttributes redirectAttributes) {
 
         List<String> errores = validarProductos(formPedido.getDetalles());
-        errores.addAll(validarPrecioFinal(formPedido));
         if (!errores.isEmpty()) {
             redirectAttributes.addFlashAttribute("error", String.join(" ", errores));
             return "redirect:/tienda/editar/" + id;
@@ -115,7 +120,7 @@ public class PedidoTiendaControlador {
         pedido.setFabrica(formPedido.getFabrica());
         pedido.setFechaEntrega(formPedido.getFechaEntrega());
         pedido.setAbono(formPedido.getAbono());
-        pedido.setPrecioFinal(formPedido.getPrecioFinal());
+        pedido.setDescuento(formPedido.getDescuento());
         pedido.setMetodoPago(formPedido.getMetodoPago());
         pedido.setEstado(formPedido.getEstado());
 
@@ -127,6 +132,13 @@ public class PedidoTiendaControlador {
         }
 
         recalcularTotales(pedido);
+
+        errores = validarDescuento(pedido);
+        if (!errores.isEmpty()) {
+            redirectAttributes.addFlashAttribute("error", String.join(" ", errores));
+            return "redirect:/tienda/editar/" + id;
+        }
+
         pedidoTiendaRepository.save(pedido);
 
         redirectAttributes.addFlashAttribute("mensaje", "Pedido #" + id + " actualizado correctamente.");
@@ -181,7 +193,7 @@ public class PedidoTiendaControlador {
         }
 
         pedido.setAbono(pedido.getAbono().add(monto));
-        pedido.setSaldo(pedido.getPrecioFinal().subtract(pedido.getAbono()));
+        pedido.setSaldo(pedido.getPrecioCliente().subtract(pedido.getAbono()));
         pedidoTiendaRepository.save(pedido);
 
         redirectAttributes.addFlashAttribute("mensaje",
@@ -215,11 +227,17 @@ public class PedidoTiendaControlador {
         return errores;
     }
 
-    /** Valida que el precio final (si se indicó) no sea negativo. */
-    private List<String> validarPrecioFinal(PedidoTienda pedido) {
+    /** Se valida DESPUÉS de recalcularTotales, porque necesita el total ya calculado. */
+    private List<String> validarDescuento(PedidoTienda pedido) {
         List<String> errores = new ArrayList<>();
-        if (pedido.getPrecioFinal() != null && pedido.getPrecioFinal().compareTo(BigDecimal.ZERO) < 0) {
-            errores.add("El precio final de venta no puede ser negativo.");
+        BigDecimal descuento = pedido.getDescuento();
+        if (descuento == null) return errores;
+
+        if (descuento.compareTo(BigDecimal.ZERO) < 0) {
+            errores.add("El descuento no puede ser negativo.");
+        }
+        if (descuento.compareTo(pedido.getTotal()) > 0) {
+            errores.add("El descuento (" + descuento + ") no puede ser mayor al total de productos (" + pedido.getTotal() + ").");
         }
         return errores;
     }
@@ -246,18 +264,16 @@ public class PedidoTiendaControlador {
         }
         pedido.setTotal(total);
 
-        // Precio final de venta al cliente: si no se indicó (0), se usa el total de los productos como valor por defecto
-        BigDecimal precioFinal = pedido.getPrecioFinal() != null ? pedido.getPrecioFinal() : BigDecimal.ZERO;
-        if (precioFinal.compareTo(BigDecimal.ZERO) <= 0) {
-            precioFinal = total;
-        }
-        pedido.setPrecioFinal(precioFinal);
+        // Descuento
+        BigDecimal descuento = pedido.getDescuento() != null ? pedido.getDescuento() : BigDecimal.ZERO;
+        if (descuento.compareTo(BigDecimal.ZERO) < 0) descuento = BigDecimal.ZERO;
+        pedido.setDescuento(descuento);
 
-        // Abono y saldo, calculados sobre el precio final
+        // Abono y saldo, calculados sobre precioCliente (total - descuento)
         BigDecimal abono = pedido.getAbono() != null ? pedido.getAbono() : BigDecimal.ZERO;
         if (abono.compareTo(BigDecimal.ZERO) < 0) abono = BigDecimal.ZERO;
         pedido.setAbono(abono);
-        pedido.setSaldo(precioFinal.subtract(abono));
+        pedido.setSaldo(pedido.getPrecioCliente().subtract(abono));
     }
 
     private boolean puedeGestionarPedidos() {

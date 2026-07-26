@@ -59,7 +59,7 @@
         table.table {
             color: #f4f0fb;
             margin-bottom: 0;
-            min-width: 1450px;
+            min-width: 1500px;
             --bs-table-bg: transparent;
             --bs-table-color: #f4f0fb;
             --bs-table-striped-bg: rgba(255,255,255,0.04);
@@ -176,7 +176,8 @@
                     <th>Fecha entrega</th>
                     <th>Costo Fábrica</th>
                     <th>Total</th>
-                    <th>Precio Final</th>
+                    <th>Descuento</th>
+                    <th>Precio a Cliente</th>
                     <th>Abono</th>
                     <th>Saldo</th>
                     <th>Pago</th>
@@ -211,7 +212,8 @@
                         </td>
                         <td th:text="${p.costoFabricaTotal}"></td>
                         <td th:text="${p.total}"></td>
-                        <td th:text="${p.precioFinal}"></td>
+                        <td th:text="${p.descuento}"></td>
+                        <td th:text="${p.precioCliente}"></td>
                         <td>
                             <div class="mb-1 fw-bold" th:text="${p.abono}"></div>
                             <form th:action="@{/tienda/abonar/{id}(id=${p.id})}" method="post" class="d-flex gap-1">
@@ -254,7 +256,7 @@
                     </tr>
 
                     <tr class="fila-detalle-productos">
-                        <td colspan="20" class="p-0">
+                        <td colspan="21" class="p-0">
                             <div class="collapse" th:id="'detalle-' + ${p.id}">
                                 <div class="p-3">
                                     <p class="titulo-detalle-productos mb-2" style="font-size:0.85rem;">Productos del pedido</p>

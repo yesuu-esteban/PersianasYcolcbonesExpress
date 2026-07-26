@@ -87,6 +87,7 @@
         }
         .form-control::placeholder { color: #8f84a8; }
         .form-select option { background: #1e1330; color: #fff; }
+        .form-control:disabled { background: #17102a; color: #c9c1dc; opacity: 1; }
 
         hr { border-color: rgba(255,255,255,0.12); }
 
@@ -209,11 +210,22 @@
         </div>
 
         <div class="row g-3 mb-3">
-            <div class="col-md-6">
-                <label class="form-label fw-bold">Precio Final (venta al cliente)</label>
-                <input type="number" step="0.01" min="0" th:field="*{precioFinal}" class="form-control"
-                       placeholder="Si lo dejas en 0, se usa la suma de productos">
+            <div class="col-md-4">
+                <label class="form-label fw-bold">Total productos</label>
+                <input type="text" class="form-control" th:value="${pedidoTienda.total}" disabled>
             </div>
+            <div class="col-md-4">
+                <label class="form-label fw-bold">Descuento</label>
+                <input type="number" step="0.01" min="0" th:field="*{descuento}" class="form-control"
+                       placeholder="0.00 si no hay descuento">
+            </div>
+            <div class="col-md-4">
+                <label class="form-label fw-bold">Precio a Cliente</label>
+                <input type="text" class="form-control" th:value="${pedidoTienda.precioCliente}" disabled>
+            </div>
+        </div>
+
+        <div class="row g-3 mb-3">
             <div class="col-md-6">
                 <label class="form-label fw-bold">Abono</label>
                 <input type="number" step="0.01" min="0" th:field="*{abono}" class="form-control">
