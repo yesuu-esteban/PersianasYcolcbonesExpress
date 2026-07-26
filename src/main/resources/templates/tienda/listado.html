@@ -59,7 +59,7 @@
         table.table {
             color: #f4f0fb;
             margin-bottom: 0;
-            min-width: 1500px;
+            min-width: 1550px;
             --bs-table-bg: transparent;
             --bs-table-color: #f4f0fb;
             --bs-table-striped-bg: rgba(255,255,255,0.04);
@@ -90,6 +90,7 @@
             border-color: rgba(255,255,255,0.08);
             font-size: 0.85rem;
             color: #f4f0fb !important;
+            white-space: nowrap;
         }
         /* --- fin fix --- */
 
@@ -210,19 +211,20 @@
                                   th:text="${#temporals.format(p.fechaEntrega, 'dd/MM/yyyy HH:mm')}"></span>
                             <span th:unless="${p.fechaEntrega != null}" class="text-muted">Sin definir</span>
                         </td>
-                        <td th:text="${p.costoFabricaTotal}"></td>
-                        <td th:text="${p.total}"></td>
-                        <td th:text="${p.descuento}"></td>
-                        <td th:text="${p.precioCliente}"></td>
+                        <td th:text="'$ ' + ${#numbers.formatDecimal(p.costoFabricaTotal, 0, 'POINT', 0, 'NONE')}"></td>
+                        <td th:text="'$ ' + ${#numbers.formatDecimal(p.total, 0, 'POINT', 0, 'NONE')}"></td>
+                        <td th:text="'$ ' + ${#numbers.formatDecimal(p.descuento, 0, 'POINT', 0, 'NONE')}"></td>
+                        <td th:text="'$ ' + ${#numbers.formatDecimal(p.precioCliente, 0, 'POINT', 0, 'NONE')}"></td>
                         <td>
-                            <div class="mb-1 fw-bold" th:text="${p.abono}"></div>
+                            <div class="mb-1 fw-bold"
+                                 th:text="'$ ' + ${#numbers.formatDecimal(p.abono, 0, 'POINT', 0, 'NONE')}"></div>
                             <form th:action="@{/tienda/abonar/{id}(id=${p.id})}" method="post" class="d-flex gap-1">
                                 <input type="number" step="0.01" min="0.01" name="monto"
                                        placeholder="+ monto" class="form-control form-control-sm" style="width:90px;">
                                 <button type="submit" class="btn btn-sm btn-outline-success" title="Agregar abono">+</button>
                             </form>
                         </td>
-                        <td th:text="${p.saldo}"></td>
+                        <td th:text="'$ ' + ${#numbers.formatDecimal(p.saldo, 0, 'POINT', 0, 'NONE')}"></td>
                         <td>
                             <span class="badge"
                                   th:classappend="${p.estadoPago == 'Pagado Completo' ? 'badge-pagado' : 'badge-pendiente'}"
@@ -277,10 +279,10 @@
                                                 <td th:text="${d.producto}"></td>
                                                 <td th:text="${d.material}"></td>
                                                 <td th:text="${d.cantidad}"></td>
-                                                <td th:text="${d.precioUnitario}"></td>
-                                                <td th:text="${d.precioFabricaUnitario}"></td>
-                                                <td th:text="${d.subtotal}"></td>
-                                                <td th:text="${d.subtotalFabrica}"></td>
+                                                <td th:text="'$ ' + ${#numbers.formatDecimal(d.precioUnitario, 0, 'POINT', 0, 'NONE')}"></td>
+                                                <td th:text="'$ ' + ${#numbers.formatDecimal(d.precioFabricaUnitario, 0, 'POINT', 0, 'NONE')}"></td>
+                                                <td th:text="'$ ' + ${#numbers.formatDecimal(d.subtotal, 0, 'POINT', 0, 'NONE')}"></td>
+                                                <td th:text="'$ ' + ${#numbers.formatDecimal(d.subtotalFabrica, 0, 'POINT', 0, 'NONE')}"></td>
                                             </tr>
                                             <tr th:if="${#lists.isEmpty(p.detalles)}">
                                                 <td colspan="7" class="text-center text-muted">Sin productos registrados.</td>
