@@ -10,8 +10,12 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import Colcones_Persinas.proyecto_express.modelo.PedidoTienda;
@@ -38,19 +42,13 @@ public class PedidoTiendaControlador {
     @PostMapping("/guardar")
     public String guardarPedido(@ModelAttribute PedidoTienda pedidoTienda, RedirectAttributes redirectAttributes) {
         List<String> errores = validarProductos(pedidoTienda.getDetalles());
+        errores.addAll(validarPrecios(pedidoTienda));
         if (!errores.isEmpty()) {
             redirectAttributes.addFlashAttribute("error", String.join(" ", errores));
             return "redirect:/tienda/nuevo";
         }
 
         recalcularTotales(pedidoTienda);
-
-        errores = validarDescuento(pedidoTienda);
-        if (!errores.isEmpty()) {
-            redirectAttributes.addFlashAttribute("error", String.join(" ", errores));
-            return "redirect:/tienda/nuevo";
-        }
-
         pedidoTiendaRepository.save(pedidoTienda);
         redirectAttributes.addFlashAttribute("mensaje", "Pedido registrado correctamente.");
         return "redirect:/tienda/listado";
@@ -104,6 +102,7 @@ public class PedidoTiendaControlador {
             RedirectAttributes redirectAttributes) {
 
         List<String> errores = validarProductos(formPedido.getDetalles());
+        errores.addAll(validarPrecios(formPedido));
         if (!errores.isEmpty()) {
             redirectAttributes.addFlashAttribute("error", String.join(" ", errores));
             return "redirect:/tienda/editar/" + id;
@@ -132,13 +131,6 @@ public class PedidoTiendaControlador {
         }
 
         recalcularTotales(pedido);
-
-        errores = validarDescuento(pedido);
-        if (!errores.isEmpty()) {
-            redirectAttributes.addFlashAttribute("error", String.join(" ", errores));
-            return "redirect:/tienda/editar/" + id;
-        }
-
         pedidoTiendaRepository.save(pedido);
 
         redirectAttributes.addFlashAttribute("mensaje", "Pedido #" + id + " actualizado correctamente.");
@@ -201,6 +193,86 @@ public class PedidoTiendaControlador {
         return "redirect:/tienda/listado";
     }
 
+    // ─── Reporte de ventas por rango de fechas ──────────────────────────
+    @PreAuthorize("hasAnyRole('TIENDA','TIENDA_ADMIN','ADMIN')")
+    @GetMapping("/reporte")
+    public String verReporte(
+            @RequestParam(required = false) String desde,
+            @RequestParam(required = false) String hasta,
+            Model model) {
+
+        List<PedidoTienda> pedidosFiltrados;
+
+        if (desde != null && !desde.isBlank() && hasta != null && !hasta.isBlank()) {
+            LocalDateTime fechaDesde = LocalDate.parse(desde).atStartOfDay();
+            LocalDateTime fechaHasta = LocalDate.parse(hasta).atTime(23, 59, 59);
+
+            pedidosFiltrados = pedidoTiendaRepository.findAll().stream()
+                    .filter(p -> p.getFechaPedido() != null
+                            && !p.getFechaPedido().isBefore(fechaDesde)
+                            && !p.getFechaPedido().isAfter(fechaHasta))
+                    .collect(Collectors.toList());
+        } else {
+            pedidosFiltrados = pedidoTiendaRepository.findAll();
+        }
+
+        // ── Totales generales ──
+        int totalPedidos = pedidosFiltrados.size();
+
+        BigDecimal sumaTotal = pedidosFiltrados.stream()
+                .map(PedidoTienda::getPrecioCliente)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal sumaAbonado = pedidosFiltrados.stream()
+                .map(p -> p.getAbono() != null ? p.getAbono() : BigDecimal.ZERO)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal sumaPendiente = pedidosFiltrados.stream()
+                .map(p -> p.getSaldo() != null ? p.getSaldo() : BigDecimal.ZERO)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal sumaCostoFabrica = pedidosFiltrados.stream()
+                .map(PedidoTienda::getCostoFabricaTotal)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal sumaUtilidad = sumaTotal.subtract(sumaCostoFabrica);
+
+        // ── Desglose por vendedor ──
+        Map<String, List<PedidoTienda>> porVendedor = pedidosFiltrados.stream()
+                .collect(Collectors.groupingBy(p ->
+                        (p.getVendedor() == null || p.getVendedor().isBlank()) ? "Sin asignar" : p.getVendedor()));
+
+        List<Map<String, Object>> resumenVendedores = new ArrayList<>();
+        for (Map.Entry<String, List<PedidoTienda>> entry : porVendedor.entrySet()) {
+            List<PedidoTienda> lista = entry.getValue();
+
+            BigDecimal sumaVendedor = lista.stream()
+                    .map(PedidoTienda::getPrecioCliente)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+            BigDecimal utilidadVendedor = lista.stream()
+                    .map(PedidoTienda::getUtilidadEstimada)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+            Map<String, Object> fila = new HashMap<>();
+            fila.put("vendedor", entry.getKey());
+            fila.put("cantidadPedidos", lista.size());
+            fila.put("totalVendido", sumaVendedor);
+            fila.put("utilidad", utilidadVendedor);
+            resumenVendedores.add(fila);
+        }
+        resumenVendedores.sort((a, b) ->
+                ((BigDecimal) b.get("totalVendido")).compareTo((BigDecimal) a.get("totalVendido")));
+
+        model.addAttribute("pedidos", pedidosFiltrados);
+        model.addAttribute("desde", desde != null ? desde : "");
+        model.addAttribute("hasta", hasta != null ? hasta : "");
+        model.addAttribute("totalPedidos", totalPedidos);
+        model.addAttribute("sumaTotal", sumaTotal);
+        model.addAttribute("sumaAbonado", sumaAbonado);
+        model.addAttribute("sumaPendiente", sumaPendiente);
+        model.addAttribute("sumaCostoFabrica", sumaCostoFabrica);
+        model.addAttribute("sumaUtilidad", sumaUtilidad);
+        model.addAttribute("resumenVendedores", resumenVendedores);
+
+        return "tienda/reporte";
+    }
+
     // ─── Helpers ────────────────────────────────────────────────────────
     private List<String> validarProductos(List<DetallePedidoTienda> detalles) {
         List<String> errores = new ArrayList<>();
@@ -227,53 +299,50 @@ public class PedidoTiendaControlador {
         return errores;
     }
 
-    /** Se valida DESPUÉS de recalcularTotales, porque necesita el total ya calculado. */
-    private List<String> validarDescuento(PedidoTienda pedido) {
+    /** Valida que el descuento (si se indicó) no sea negativo. */
+    private List<String> validarPrecios(PedidoTienda pedido) {
         List<String> errores = new ArrayList<>();
-        BigDecimal descuento = pedido.getDescuento();
-        if (descuento == null) return errores;
 
-        if (descuento.compareTo(BigDecimal.ZERO) < 0) {
+        if (pedido.getDescuento() != null && pedido.getDescuento().compareTo(BigDecimal.ZERO) < 0) {
             errores.add("El descuento no puede ser negativo.");
         }
-        if (descuento.compareTo(pedido.getTotal()) > 0) {
-            errores.add("El descuento (" + descuento + ") no puede ser mayor al total de productos (" + pedido.getTotal() + ").");
-        }
+
         return errores;
     }
 
     private void recalcularTotales(PedidoTienda pedido) {
+        // Suma automática de los productos: precio de venta y costo de fábrica, línea por línea
         BigDecimal total = BigDecimal.ZERO;
-
         for (DetallePedidoTienda d : pedido.getDetalles()) {
+            BigDecimal precio = d.getPrecioUnitario() != null ? d.getPrecioUnitario() : BigDecimal.ZERO;
+            BigDecimal precioFabrica = d.getPrecioFabricaUnitario() != null ? d.getPrecioFabricaUnitario() : BigDecimal.ZERO;
             BigDecimal cantidad = BigDecimal.valueOf(d.getCantidad());
 
-            // Venta al cliente
-            BigDecimal precioVenta = d.getPrecioUnitario() != null ? d.getPrecioUnitario() : BigDecimal.ZERO;
-            BigDecimal subtotal = precioVenta.multiply(cantidad);
+            BigDecimal subtotal = precio.multiply(cantidad);
+            BigDecimal subtotalFabrica = precioFabrica.multiply(cantidad);
+
             d.setSubtotal(subtotal);
-            total = total.add(subtotal);
-
-            // Costo de fábrica (por línea)
-            BigDecimal precioFabrica = d.getPrecioFabricaUnitario() != null ? d.getPrecioFabricaUnitario() : BigDecimal.ZERO;
-            if (precioFabrica.compareTo(BigDecimal.ZERO) < 0) precioFabrica = BigDecimal.ZERO;
-            d.setPrecioFabricaUnitario(precioFabrica);
-            d.setSubtotalFabrica(precioFabrica.multiply(cantidad));
-
+            d.setSubtotalFabrica(subtotalFabrica);
             d.setPedidoTienda(pedido);
+
+            total = total.add(subtotal);
         }
         pedido.setTotal(total);
 
-        // Descuento
+        // Descuento (no puede ser negativo)
         BigDecimal descuento = pedido.getDescuento() != null ? pedido.getDescuento() : BigDecimal.ZERO;
         if (descuento.compareTo(BigDecimal.ZERO) < 0) descuento = BigDecimal.ZERO;
         pedido.setDescuento(descuento);
 
-        // Abono y saldo, calculados sobre precioCliente (total - descuento)
+        // Abono (no puede ser negativo)
         BigDecimal abono = pedido.getAbono() != null ? pedido.getAbono() : BigDecimal.ZERO;
         if (abono.compareTo(BigDecimal.ZERO) < 0) abono = BigDecimal.ZERO;
         pedido.setAbono(abono);
-        pedido.setSaldo(pedido.getPrecioCliente().subtract(abono));
+
+        // Saldo = precio real al cliente (total - descuento) - abono
+        BigDecimal saldo = pedido.getPrecioCliente().subtract(abono);
+        if (saldo.compareTo(BigDecimal.ZERO) < 0) saldo = BigDecimal.ZERO;
+        pedido.setSaldo(saldo);
     }
 
     private boolean puedeGestionarPedidos() {

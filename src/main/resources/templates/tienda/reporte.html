@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reporte de Ventas</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #1a0f2e;
+            --bg-card: #2a1b42;
+            --accent: #ec1561;
+            --accent-light: #ff4d94;
+            --gold: #ffc107;
+            --text-muted: #ffffff;
+        }
+        * { font-family: 'Poppins', sans-serif; }
+        body { background: linear-gradient(160deg, #1a0f2e 0%, #241536 100%); color: #fff; padding: 24px; }
+        .marca-header {
+            display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;
+            background: var(--bg-card); border: 1px solid rgba(236,21,97,0.35); border-radius: 14px;
+            padding: 16px 24px; margin-bottom: 20px; box-shadow: 0 4px 22px rgba(236,21,97,0.15);
+        }
+        .marca-header .logo-marca { display: flex; align-items: center; gap: 12px; }
+        .marca-header .logo-marca .icono {
+            width: 46px; height: 46px; background: linear-gradient(135deg, var(--accent), #a5107f);
+            border-radius: 50%; display: flex; align-items: center; justify-content: center;
+            font-size: 1.4rem; box-shadow: 0 0 0 3px rgba(236,21,97,0.25); flex-shrink: 0;
+        }
+        .marca-header .titulo-marca { font-weight: 800; font-size: 1.1rem; line-height: 1.1; letter-spacing: 0.3px; }
+        .marca-header .titulo-marca small {
+            display: block; font-weight: 600; font-size: 0.6rem; color: var(--gold);
+            letter-spacing: 1.5px; margin-top: 2px;
+        }
+        h2 { font-weight: 700; font-size: 1.4rem; }
+        .card-filtro {
+            background: var(--bg-card); border-radius: 14px; padding: 18px 20px;
+            box-shadow: 0 4px 22px rgba(0,0,0,0.3); margin-bottom: 20px;
+        }
+        .form-control, .form-select { background: #1e1330; border: 1px solid rgba(255,255,255,0.15); color: #fff; }
+        .form-control:focus, .form-select:focus {
+            background: #1e1330; border-color: var(--accent); color: #fff; box-shadow: 0 0 0 0.2rem rgba(236,21,97,0.25);
+        }
+        .form-label { color: var(--text-muted); font-size: 0.85rem; }
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent), #b81050) !important; border: none !important;
+            font-weight: 600; box-shadow: 0 3px 10px rgba(236,21,97,0.35);
+        }
+        .btn-primary:hover { filter: brightness(1.12); }
+        .btn-outline-secondary { color: var(--text-muted); border-color: rgba(255,255,255,0.25); }
+        .btn-outline-secondary:hover { background: rgba(255,255,255,0.1); color: #fff; }
+
+        /* ── Tarjetas de resumen ── */
+        .resumen-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin-bottom: 24px; }
+        .card-resumen {
+            background: var(--bg-card); border-radius: 12px; padding: 18px 20px;
+            border-left: 4px solid var(--accent); box-shadow: 0 3px 14px rgba(0,0,0,0.25);
+        }
+        .card-resumen .valor { font-size: 1.6rem; font-weight: 800; margin-top: 4px; }
+        .card-resumen .etiqueta { font-size: 0.78rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.85; }
+        .card-resumen.abonado { border-left-color: #2ecc71; }
+        .card-resumen.pendiente { border-left-color: var(--gold); }
+        .card-resumen.pedidos { border-left-color: #0dcaf0; }
+        .card-resumen.costo { border-left-color: #ff6b6b; }
+        .card-resumen.utilidad { border-left-color: #2ecc71; }
+
+        /* ── Tabla vendedores ── */
+        .table-wrapper {
+            background: var(--bg-card); border-radius: 14px; padding: 6px;
+            box-shadow: 0 4px 22px rgba(0,0,0,0.3); overflow-x: auto; margin-bottom: 24px;
+        }
+        table.table {
+            color: #f4f0fb; margin-bottom: 0;
+            --bs-table-bg: transparent; --bs-table-color: #f4f0fb;
+            --bs-table-hover-bg: rgba(236,21,97,0.10); --bs-table-hover-color: #ffffff;
+            --bs-table-border-color: rgba(255,255,255,0.10);
+        }
+        table.table thead { background: linear-gradient(90deg, var(--accent), #a5107f) !important; }
+        table.table thead th {
+            border: none; color: #000 !important; font-weight: 700; font-size: 0.78rem;
+            text-transform: uppercase; padding: 12px 14px;
+        }
+        table.table td { padding: 10px 14px; font-size: 0.9rem; }
+
+        h5.titulo-seccion { font-weight: 700; margin-bottom: 12px; margin-top: 6px; }
+        .card-vacio { background: var(--bg-card); border: 1px dashed rgba(255,255,255,0.2); color: var(--text-muted); border-radius: 12px; }
+
+        @media (max-width: 576px) {
+            body { padding: 12px; }
+            .marca-header { padding: 12px 16px; }
+            h2 { font-size: 1.15rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+
+        <div class="marca-header">
+            <div class="logo-marca">
+                <div class="icono">📊</div>
+                <div class="titulo-marca">
+                    PERSIANAS Y CORTINAS EXPRESS
+                    <small>REPORTE DE VENTAS</small>
+                </div>
+            </div>
+            <a href="/tienda/listado" class="btn btn-outline-secondary">← Volver al listado</a>
+        </div>
+
+        <h2 class="mb-3">📊 Reporte de Ventas</h2>
+
+        <div class="card-filtro">
+            <form method="get" th:action="@{/tienda/reporte}" class="row g-3 align-items-end">
+                <div class="col-md-4">
+                    <label class="form-label fw-bold">Desde</label>
+                    <input type="date" name="desde" th:value="${desde}" class="form-control">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-bold">Hasta</label>
+                    <input type="date" name="hasta" th:value="${hasta}" class="form-control">
+                </div>
+                <div class="col-md-4 d-flex gap-2">
+                    <button type="submit" class="btn btn-primary flex-fill">Generar reporte</button>
+                    <a href="/tienda/reporte" class="btn btn-outline-secondary">Ver todo</a>
+                </div>
+            </form>
+        </div>
+
+        <!-- ── Tarjetas de resumen general ── -->
+        <div class="resumen-cards">
+            <div class="card-resumen pedidos">
+                <div class="etiqueta">Pedidos en el período</div>
+                <div class="valor" th:text="${totalPedidos}"></div>
+            </div>
+            <div class="card-resumen">
+                <div class="etiqueta">Total vendido (a cliente)</div>
+                <div class="valor" th:text="${#numbers.formatDecimal(sumaTotal, 1, 'POINT', 0)}"></div>
+            </div>
+            <div class="card-resumen abonado">
+                <div class="etiqueta">Total abonado</div>
+                <div class="valor" th:text="${#numbers.formatDecimal(sumaAbonado, 1, 'POINT', 0)}"></div>
+            </div>
+            <div class="card-resumen pendiente">
+                <div class="etiqueta">Saldo pendiente</div>
+                <div class="valor" th:text="${#numbers.formatDecimal(sumaPendiente, 1, 'POINT', 0)}"></div>
+            </div>
+            <div class="card-resumen costo">
+                <div class="etiqueta">Costo de fábrica</div>
+                <div class="valor" th:text="${#numbers.formatDecimal(sumaCostoFabrica, 1, 'POINT', 0)}"></div>
+            </div>
+            <div class="card-resumen utilidad">
+                <div class="etiqueta">Utilidad estimada</div>
+                <div class="valor" th:text="${#numbers.formatDecimal(sumaUtilidad, 1, 'POINT', 0)}"></div>
+            </div>
+        </div>
+
+        <!-- ── Desglose por vendedor ── -->
+        <h5 class="titulo-seccion">👤 Ventas por vendedor</h5>
+        <div class="table-wrapper" th:if="${not #lists.isEmpty(resumenVendedores)}">
+            <table class="table table-hover align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Vendedor</th>
+                        <th>Pedidos</th>
+                        <th>Total vendido</th>
+                        <th>Utilidad estimada</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="v : ${resumenVendedores}">
+                        <td th:text="${v.vendedor}"></td>
+                        <td th:text="${v.cantidadPedidos}"></td>
+                        <td th:text="${#numbers.formatDecimal(v.totalVendido, 1, 'POINT', 0)}"></td>
+                        <td th:text="${#numbers.formatDecimal(v.utilidad, 1, 'POINT', 0)}"></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div th:if="${#lists.isEmpty(resumenVendedores)}" class="card-vacio text-center py-4 mb-4">
+            No hay ventas registradas en este período.
+        </div>
+
+    </div>
+</body>
+</html>

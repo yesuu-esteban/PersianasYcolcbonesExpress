@@ -55,11 +55,10 @@
             box-shadow: 0 4px 22px rgba(0,0,0,0.3); overflow-x: auto; -webkit-overflow-scrolling: touch;
         }
 
-        /* --- TABLA PRINCIPAL: fix de contraste con variables de Bootstrap --- */
         table.table {
             color: #f4f0fb;
             margin-bottom: 0;
-            min-width: 1550px;
+            min-width: 1650px;
             --bs-table-bg: transparent;
             --bs-table-color: #f4f0fb;
             --bs-table-striped-bg: rgba(255,255,255,0.04);
@@ -90,9 +89,7 @@
             border-color: rgba(255,255,255,0.08);
             font-size: 0.85rem;
             color: #f4f0fb !important;
-            white-space: nowrap;
         }
-        /* --- fin fix --- */
 
         .fila-detalle-productos { background-color: var(--bg-dark) !important; }
         .fila-detalle-productos .p-3 { background: var(--bg-dark); border-radius: 0 0 10px 10px; }
@@ -112,6 +109,7 @@
         }
         .form-control::placeholder { color: #8f84a8; }
         .form-select option { background: #1e1330; color: #fff; }
+        .badge-estado-pendiente { background-color: #495057; }
         .badge-estado-pedido    { background-color: #6c5b7b; }
         .badge-estado-bodega    { background: linear-gradient(135deg,#0dcaf0,#0b9fc0); color:#03171c; }
         .badge-estado-instalado { background: linear-gradient(135deg,var(--gold),#e0a800); color:#3a2c00; }
@@ -145,7 +143,10 @@
                     <small>PUNTO DE VENTA</small>
                 </div>
             </div>
-            <a th:if="${puedeCrearPedidos}" href="/tienda/nuevo" class="btn btn-primary">+ Nuevo Pedido</a>
+            <div class="d-flex gap-2">
+                <a href="/tienda/reporte" class="btn btn-outline-primary">📊 Reporte</a>
+                <a th:if="${puedeCrearPedidos}" href="/tienda/nuevo" class="btn btn-primary">+ Nuevo Pedido</a>
+            </div>
         </div>
 
         <h2 class="mb-3">🛒 Pedidos de Tienda</h2>
@@ -175,10 +176,11 @@
                     <th>Fabricante</th>
                     <th>Fecha pedido</th>
                     <th>Fecha entrega</th>
-                    <th>Costo Fábrica</th>
-                    <th>Total</th>
+                    <th>Total productos</th>
                     <th>Descuento</th>
-                    <th>Precio a Cliente</th>
+                    <th>Costo fábrica</th>
+                    <th>Precio cliente</th>
+                    <th>Utilidad</th>
                     <th>Abono</th>
                     <th>Saldo</th>
                     <th>Pago</th>
@@ -211,20 +213,20 @@
                                   th:text="${#temporals.format(p.fechaEntrega, 'dd/MM/yyyy HH:mm')}"></span>
                             <span th:unless="${p.fechaEntrega != null}" class="text-muted">Sin definir</span>
                         </td>
-                        <td th:text="'$ ' + ${#numbers.formatDecimal(p.costoFabricaTotal, 0, 'POINT', 0, 'NONE')}"></td>
-                        <td th:text="'$ ' + ${#numbers.formatDecimal(p.total, 0, 'POINT', 0, 'NONE')}"></td>
-                        <td th:text="'$ ' + ${#numbers.formatDecimal(p.descuento, 0, 'POINT', 0, 'NONE')}"></td>
-                        <td th:text="'$ ' + ${#numbers.formatDecimal(p.precioCliente, 0, 'POINT', 0, 'NONE')}"></td>
+                        <td th:text="${p.total}"></td>
+                        <td th:text="${p.descuento}"></td>
+                        <td th:text="${p.costoFabricaTotal}"></td>
+                        <td th:text="${p.precioCliente}"></td>
+                        <td th:text="${p.utilidadEstimada}"></td>
                         <td>
-                            <div class="mb-1 fw-bold"
-                                 th:text="'$ ' + ${#numbers.formatDecimal(p.abono, 0, 'POINT', 0, 'NONE')}"></div>
+                            <div class="mb-1 fw-bold" th:text="${p.abono}"></div>
                             <form th:action="@{/tienda/abonar/{id}(id=${p.id})}" method="post" class="d-flex gap-1">
                                 <input type="number" step="0.01" min="0.01" name="monto"
                                        placeholder="+ monto" class="form-control form-control-sm" style="width:90px;">
                                 <button type="submit" class="btn btn-sm btn-outline-success" title="Agregar abono">+</button>
                             </form>
                         </td>
-                        <td th:text="'$ ' + ${#numbers.formatDecimal(p.saldo, 0, 'POINT', 0, 'NONE')}"></td>
+                        <td th:text="${p.saldo}"></td>
                         <td>
                             <span class="badge"
                                   th:classappend="${p.estadoPago == 'Pagado Completo' ? 'badge-pagado' : 'badge-pendiente'}"
@@ -232,15 +234,16 @@
                         </td>
                         <td>
                             <span class="badge"
-                                  th:classappend="${p.estado == 'Pedido' ? 'badge-estado-pedido' :
+                                  th:classappend="${p.estado == 'Pendiente' ? 'badge-estado-pendiente' :
+                                                   (p.estado == 'Pedido' ? 'badge-estado-pedido' :
                                                    (p.estado == 'En Bodega' ? 'badge-estado-bodega' :
-                                                   (p.estado == 'Instalado' ? 'badge-estado-instalado' : 'badge-estado-terminado'))}"
+                                                   (p.estado == 'Instalado' ? 'badge-estado-instalado' : 'badge-estado-terminado')))}"
                                   th:text="${p.estado}"></span>
                         </td>
                         <td>
                             <form th:action="@{/tienda/actualizar-estado/{id}(id=${p.id})}" method="post" class="d-flex gap-1">
                                 <select name="estado" class="form-select form-select-sm" style="width:140px;">
-                                    <option value="Pendiente"  th:selected="${p.estado == 'Pendiente'}">Pendiente</option>
+                                    <option value="Pendiente" th:selected="${p.estado == 'Pendiente'}">Pendiente</option>
                                     <option value="Pedido"     th:selected="${p.estado == 'Pedido'}">Pedido</option>
                                     <option value="En Bodega"  th:selected="${p.estado == 'En Bodega'}">En Bodega</option>
                                     <option value="Instalado"  th:selected="${p.estado == 'Instalado'}">Instalado</option>
@@ -262,16 +265,16 @@
                             <div class="collapse" th:id="'detalle-' + ${p.id}">
                                 <div class="p-3">
                                     <p class="titulo-detalle-productos mb-2" style="font-size:0.85rem;">Productos del pedido</p>
-                                    <table class="table table-sm table-bordered tabla-productos-mini mb-0" style="max-width:900px;">
+                                    <table class="table table-sm table-bordered tabla-productos-mini mb-0" style="max-width:820px;">
                                         <thead>
                                             <tr>
                                                 <th>Producto</th>
                                                 <th>Material</th>
                                                 <th>Cantidad</th>
                                                 <th>Precio unitario</th>
-                                                <th>Precio Fábrica</th>
                                                 <th>Subtotal</th>
-                                                <th>Subtotal Fábrica</th>
+                                                <th>Precio fábrica (u.)</th>
+                                                <th>Subtotal fábrica</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -279,10 +282,10 @@
                                                 <td th:text="${d.producto}"></td>
                                                 <td th:text="${d.material}"></td>
                                                 <td th:text="${d.cantidad}"></td>
-                                                <td th:text="'$ ' + ${#numbers.formatDecimal(d.precioUnitario, 0, 'POINT', 0, 'NONE')}"></td>
-                                                <td th:text="'$ ' + ${#numbers.formatDecimal(d.precioFabricaUnitario, 0, 'POINT', 0, 'NONE')}"></td>
-                                                <td th:text="'$ ' + ${#numbers.formatDecimal(d.subtotal, 0, 'POINT', 0, 'NONE')}"></td>
-                                                <td th:text="'$ ' + ${#numbers.formatDecimal(d.subtotalFabrica, 0, 'POINT', 0, 'NONE')}"></td>
+                                                <td th:text="${d.precioUnitario}"></td>
+                                                <td th:text="${d.subtotal}"></td>
+                                                <td th:text="${d.precioFabricaUnitario}"></td>
+                                                <td th:text="${d.subtotalFabrica}"></td>
                                             </tr>
                                             <tr th:if="${#lists.isEmpty(p.detalles)}">
                                                 <td colspan="7" class="text-center text-muted">Sin productos registrados.</td>
