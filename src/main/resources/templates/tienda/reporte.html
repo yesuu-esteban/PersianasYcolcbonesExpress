@@ -134,23 +134,23 @@
             </div>
             <div class="card-resumen">
                 <div class="etiqueta">Total vendido (a cliente)</div>
-                <div class="valor" th:text="${#numbers.formatDecimal(sumaTotal, 1, 'POINT', 0)}"></div>
+                <div class="valor" th:text="${#numbers.formatDecimal(sumaTotal, 1, 0, 'POINT')}"></div>
             </div>
             <div class="card-resumen abonado">
                 <div class="etiqueta">Total abonado</div>
-                <div class="valor" th:text="${#numbers.formatDecimal(sumaAbonado, 1, 'POINT', 0)}"></div>
+                <div class="valor" th:text="${#numbers.formatDecimal(sumaAbonado, 1, 0, 'POINT')}"></div>
             </div>
             <div class="card-resumen pendiente">
                 <div class="etiqueta">Saldo pendiente</div>
-                <div class="valor" th:text="${#numbers.formatDecimal(sumaPendiente, 1, 'POINT', 0)}"></div>
+                <div class="valor" th:text="${#numbers.formatDecimal(sumaPendiente, 1, 0, 'POINT')}"></div>
             </div>
             <div class="card-resumen costo">
                 <div class="etiqueta">Costo de fábrica</div>
-                <div class="valor" th:text="${#numbers.formatDecimal(sumaCostoFabrica, 1, 'POINT', 0)}"></div>
+                <div class="valor" th:text="${#numbers.formatDecimal(sumaCostoFabrica, 1, 0, 'POINT')}"></div>
             </div>
             <div class="card-resumen utilidad">
                 <div class="etiqueta">Utilidad estimada</div>
-                <div class="valor" th:text="${#numbers.formatDecimal(sumaUtilidad, 1, 'POINT', 0)}"></div>
+                <div class="valor" th:text="${#numbers.formatDecimal(sumaUtilidad, 1, 0, 'POINT')}"></div>
             </div>
         </div>
 
@@ -170,8 +170,8 @@
                     <tr th:each="v : ${resumenVendedores}">
                         <td th:text="${v.vendedor}"></td>
                         <td th:text="${v.cantidadPedidos}"></td>
-                        <td th:text="${#numbers.formatDecimal(v.totalVendido, 1, 'POINT', 0)}"></td>
-                        <td th:text="${#numbers.formatDecimal(v.utilidad, 1, 'POINT', 0)}"></td>
+                        <td th:text="${#numbers.formatDecimal(v.totalVendido, 1, 0, 'POINT')}"></td>
+                        <td th:text="${#numbers.formatDecimal(v.utilidad, 1, 0, 'POINT')}"></td>
                     </tr>
                 </tbody>
             </table>
