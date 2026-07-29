@@ -303,9 +303,6 @@ public class InventarioServicio {
         double corteAncho = pedido.getCorteTelaAncho();
         double corteAlto = pedido.getCorteTelaAlto();
 
-        // Guardamos la medida ORIGINAL del retazo antes de recortarlo, para
-        // que el reporte siempre muestre de qué tamaño era la pieza de la
-        // que se cortó, sin importar si el retazo termina agotado o no.
         double anchoOriginal = retazo.getAncho();
         double altoOriginal = retazo.getAlto();
 
@@ -376,11 +373,6 @@ public class InventarioServicio {
         return materialUsadoRepository.save(r);
     }
 
-    /**
-     * Descuenta tela vendida directamente por metros lineales (Venta Directa),
-     * sin pasar por el cálculo de corte de fabricación. El área se calcula
-     * como ancho del rollo × metros vendidos.
-     */
     public MaterialUsado descontarTelaVentaDirecta(Pedido pedido, RolloTela rollo, double metros) {
         if (rollo.getLargoRestante() < metros - 0.001) {
             throw new MaterialInsuficienteException(
@@ -448,20 +440,12 @@ public class InventarioServicio {
     // VERIFICACIÓN PREVIA — respeta la selección manual del jefe
     // ═══════════════════════════════════════════════════════════════
 
-    /** Atajo sin selección manual (para compatibilidad con código existente). */
     public void verificarDisponibilidad(Pedido pedido) {
         verificarDisponibilidad(pedido, null);
     }
 
-    /**
-     * Verifica que hay material suficiente para el pedido.
-     * Si hay selección manual para un material, valida ESE rollo/retazo/pieza específico.
-     * Si no hay selección manual, usa la lógica automática (buscar la mejor opción disponible).
-     * No descuenta nada — solo lanza MaterialInsuficienteException si algo falta.
-     */
     public void verificarDisponibilidad(Pedido pedido, SeleccionManual sel) {
 
-        // 1. Tela: retazo manual > rollo manual > retazo automático > rollo automático
         if (sel != null && sel.retazoTelaId != null) {
             verificarRetazoManual(pedido, sel.retazoTelaId);
         } else if (sel != null && sel.rolloTelaId != null) {
@@ -477,7 +461,6 @@ public class InventarioServicio {
             }
         }
 
-        // 2. Tubo
         Insumo tubo = obtenerInsumoPorNombre("Tubo " + pedido.getTuboRecomendado());
         if (sel != null && sel.piezaTuboId != null) {
             verificarPiezaManual(sel.piezaTuboId, tubo, pedido.getCorteTuberia());
@@ -485,7 +468,6 @@ public class InventarioServicio {
             buscarMejorPieza(tubo, pedido.getCorteTuberia());
         }
 
-        // 3. Cabezal
         if (Boolean.TRUE.equals(pedido.getUsaCabezal())) {
             Insumo cabezal = obtenerInsumoPorNombre("Cabezal");
             if (sel != null && sel.piezaCabezalId != null) {
@@ -495,7 +477,6 @@ public class InventarioServicio {
             }
         }
 
-        // 4. Pesa
         Insumo pesa = obtenerInsumoPorNombre("Pesa");
         if (sel != null && sel.piezaPesaId != null) {
             verificarPiezaManual(sel.piezaPesaId, pesa, pedido.getCorteTuberia());
@@ -503,7 +484,6 @@ public class InventarioServicio {
             buscarMejorPieza(pesa, pedido.getCorteTuberia());
         }
 
-        // 5. Cuerda
         Insumo cuerda = obtenerInsumoPorNombre("Cuerda");
         if (sel != null && sel.piezaCuerdaId != null) {
             verificarPiezaManual(sel.piezaCuerdaId, cuerda, pedido.getMetrosCuerda());
@@ -511,7 +491,6 @@ public class InventarioServicio {
             buscarMejorPieza(cuerda, pedido.getMetrosCuerda());
         }
 
-        // 6. Control (siempre automático — no hay selección manual para controles)
         Insumo control = obtenerInsumoPorNombre(pedido.getTipoControl().trim());
         int stockControl = control.getStockUnidades() != null ? control.getStockUnidades() : 0;
         if (stockControl < 1) {
@@ -519,7 +498,6 @@ public class InventarioServicio {
                     "No hay stock de \"" + control.getNombre() + "\". Disponible: 0 unidades.");
         }
 
-        // 7. Pitillo
         if (Boolean.TRUE.equals(pedido.getUsaPitilloPesa())) {
             Insumo pitillo = obtenerInsumoPorNombre("Pitillo");
             if (sel != null && sel.piezaPitilloId != null) {
@@ -529,7 +507,6 @@ public class InventarioServicio {
             }
         }
 
-        // 8. Conector + Tope control
         if (Boolean.TRUE.equals(pedido.getUsaConectorTope())) {
             Insumo conector = obtenerInsumoPorNombre("Conector");
             int stockConector = conector.getStockUnidades() != null ? conector.getStockUnidades() : 0;
@@ -550,7 +527,6 @@ public class InventarioServicio {
             }
         }
 
-        // 9. Soportes (siempre 2)
         Insumo soporte = obtenerInsumoPorNombre("Soporte");
         int stockSoporte = soporte.getStockUnidades() != null ? soporte.getStockUnidades() : 0;
         if (stockSoporte < pedido.getCantidadSoportes()) {
@@ -559,7 +535,6 @@ public class InventarioServicio {
                     + " unidad(es), necesario: " + pedido.getCantidadSoportes() + ".");
         }
 
-        // 10. Tapas (solo con cabezal)
         if (Boolean.TRUE.equals(pedido.getUsaCabezal())) {
             Insumo tapa = obtenerInsumoPorNombre("Tapa");
             int stockTapa = tapa.getStockUnidades() != null ? tapa.getStockUnidades() : 0;
@@ -570,7 +545,6 @@ public class InventarioServicio {
             }
         }
 
-        // 11. Tope Pesa (siempre 2)
         Insumo topePesa = obtenerInsumoPorNombre("Tope Pesa");
         int stockTopePesa = topePesa.getStockUnidades() != null ? topePesa.getStockUnidades() : 0;
         if (stockTopePesa < pedido.getCantidadTopePesa()) {
@@ -579,7 +553,6 @@ public class InventarioServicio {
                     + " unidad(es), necesario: " + pedido.getCantidadTopePesa() + ".");
         }
 
-        // 12. Tornillos normales
         Insumo tornillo = obtenerInsumoPorNombre("Tornillo");
         int stockTornillo = tornillo.getStockUnidades() != null ? tornillo.getStockUnidades() : 0;
         if (stockTornillo < pedido.getCantidadTornillos()) {
@@ -588,7 +561,6 @@ public class InventarioServicio {
                     + " unidad(es), necesario: " + pedido.getCantidadTornillos() + ".");
         }
 
-        // 13. Tornillos perforantes (solo con cabezal)
         if (Boolean.TRUE.equals(pedido.getUsaCabezal())) {
             Insumo tornilloPerf = obtenerInsumoPorNombre("Tornillo Perforante");
             int stockTornilloPerf = tornilloPerf.getStockUnidades() != null ? tornilloPerf.getStockUnidades() : 0;
@@ -599,8 +571,6 @@ public class InventarioServicio {
             }
         }
     }
-
-    // ── Helpers de verificación manual ──────────────────────────
 
     private void verificarRetazoManual(Pedido pedido, int retazoId) {
         RetazoTela retazo = obtenerRetazoPorId(retazoId);
@@ -661,7 +631,6 @@ public class InventarioServicio {
 
     public void descontarMaterialDe(Pedido pedido, SeleccionManual sel) {
 
-        // 1. Tela: retazo manual > rollo manual > retazo automático > rollo automático
         if (sel != null && sel.retazoTelaId != null) {
             RetazoTela retazo = obtenerRetazoPorId(sel.retazoTelaId);
             descontarRetazo(pedido, retazo, true);
@@ -683,14 +652,12 @@ public class InventarioServicio {
             }
         }
 
-        // 2. Tubo
         Insumo tubo = obtenerInsumoPorNombre("Tubo " + pedido.getTuboRecomendado());
         PiezaInsumo piezaTubo = (sel != null && sel.piezaTuboId != null)
                 ? obtenerPiezaPorId(sel.piezaTuboId)
                 : buscarMejorPieza(tubo, pedido.getCorteTuberia());
         descontarInsumoConMedida(pedido, piezaTubo, pedido.getCorteTuberia(), sel != null && sel.piezaTuboId != null);
 
-        // 3. Cabezal
         if (Boolean.TRUE.equals(pedido.getUsaCabezal())) {
             Insumo cabezal = obtenerInsumoPorNombre("Cabezal");
             PiezaInsumo piezaCabezal = (sel != null && sel.piezaCabezalId != null)
@@ -700,14 +667,12 @@ public class InventarioServicio {
                     sel != null && sel.piezaCabezalId != null);
         }
 
-        // 4. Pesa
         Insumo pesa = obtenerInsumoPorNombre("Pesa");
         PiezaInsumo piezaPesa = (sel != null && sel.piezaPesaId != null)
                 ? obtenerPiezaPorId(sel.piezaPesaId)
                 : buscarMejorPieza(pesa, pedido.getCorteTuberia());
         descontarInsumoConMedida(pedido, piezaPesa, pedido.getCorteTuberia(), sel != null && sel.piezaPesaId != null);
 
-        // 5. Cuerda
         Insumo cuerda = obtenerInsumoPorNombre("Cuerda");
         PiezaInsumo piezaCuerda = (sel != null && sel.piezaCuerdaId != null)
                 ? obtenerPiezaPorId(sel.piezaCuerdaId)
@@ -715,10 +680,8 @@ public class InventarioServicio {
         descontarInsumoConMedida(pedido, piezaCuerda, pedido.getMetrosCuerda(),
                 sel != null && sel.piezaCuerdaId != null);
 
-        // 6. Control
         descontarInsumoPorUnidad(pedido, pedido.getTipoControl().trim(), 1);
 
-        // 7. Pitillo
         if (Boolean.TRUE.equals(pedido.getUsaPitilloPesa())) {
             Insumo pitillo = obtenerInsumoPorNombre("Pitillo");
             if (sel != null && sel.piezaPitilloId != null) {
@@ -738,7 +701,6 @@ public class InventarioServicio {
             }
         }
 
-        // 8. Conector + Tope control
         if (Boolean.TRUE.equals(pedido.getUsaConectorTope())) {
             descontarInsumoPorUnidad(pedido, "Conector", pedido.getCantidadConectores());
             if (pedido.getCantidadTopes() > 0) {
@@ -746,21 +708,16 @@ public class InventarioServicio {
             }
         }
 
-        // 9. Soportes
         descontarInsumoPorUnidad(pedido, "Soporte", pedido.getCantidadSoportes());
 
-        // 10. Tapas
         if (Boolean.TRUE.equals(pedido.getUsaCabezal())) {
             descontarInsumoPorUnidad(pedido, "Tapa", pedido.getCantidadTapas());
         }
 
-        // 11. Tope Pesa
         descontarInsumoPorUnidad(pedido, "Tope Pesa", pedido.getCantidadTopePesa());
 
-        // 12. Tornillos normales
         descontarInsumoPorUnidad(pedido, "Tornillo", pedido.getCantidadTornillos());
 
-        // 13. Tornillos perforantes
         if (Boolean.TRUE.equals(pedido.getUsaCabezal())) {
             descontarInsumoPorUnidad(pedido, "Tornillo Perforante", pedido.getCantidadTornillosPerforantes());
         }
@@ -770,12 +727,6 @@ public class InventarioServicio {
     // VENTA DIRECTA — verificación y descuento de ítems de tela suelta
     // ═══════════════════════════════════════════════════════════════
 
-    /**
-     * Verifica disponibilidad de una lista de ítems de tela vendida por metros.
-     * Si el ítem trae rolloId, valida ese rollo específico (color + metros).
-     * Si no, busca automáticamente por color + ancho comercial declarado.
-     * No descuenta nada, solo lanza excepción si algo falta.
-     */
     public void verificarItemsTelaVenta(List<ItemTelaVenta> items) {
         if (items == null) return;
         for (ItemTelaVenta it : items) {
@@ -793,15 +744,11 @@ public class InventarioServicio {
                             + rollo.getLargoRestante() + " m disponibles, " + it.metros + " m necesarios).");
                 }
             } else {
-                buscarMejorRollo(it.color, it.ancho, it.metros); // lanza MaterialInsuficienteException si no hay
+                buscarMejorRollo(it.color, it.ancho, it.metros);
             }
         }
     }
 
-    /**
-     * Descuenta del inventario real cada ítem de tela vendida por metros.
-     * Debe llamarse DESPUÉS de guardar el Pedido, para que ya tenga id.
-     */
     public void descontarItemsTelaVenta(Pedido pedido, List<ItemTelaVenta> items) {
         if (items == null) return;
         for (ItemTelaVenta it : items) {
@@ -817,13 +764,6 @@ public class InventarioServicio {
     // REVERSIÓN DE MATERIAL (para edición de pedidos)
     // ═══════════════════════════════════════════════════════════════
 
-    /**
-     * Revierte TODOS los descuentos de material de un pedido ya guardado.
-     * Devuelve metros/unidades a rollos, piezas e insumos.
-     * Los retazos que se borraron al usarse se recrean.
-     * Luego borra todos los registros MaterialUsado del pedido.
-     * Debe llamarse dentro de un contexto @Transactional.
-     */
     public void revertirMaterialDe(int pedidoId) {
         List<MaterialUsado> registros = materialUsadoRepository.findByPedidoIdOrderByFechaAsc(pedidoId);
         if (registros.isEmpty()) return;
@@ -854,7 +794,6 @@ public class InventarioServicio {
                     insumoRepository.save(insumo);
                 });
             }
-            // "EXTRA" puro (texto libre fuera de catálogo): no había nada que devolver.
         }
 
         materialUsadoRepository.deleteAll(registros);
@@ -868,7 +807,6 @@ public class InventarioServicio {
             String color;
             double ancho;
 
-            // Formato NUEVO: "Retazo COLOR (#ID) — medida original ANCHOm × ALTOm"
             int idxMedidaOriginal = desc.indexOf("medida original ");
             if (idxMedidaOriginal >= 0) {
                 int idxParentesis = desc.indexOf(" (#");
@@ -878,8 +816,6 @@ public class InventarioServicio {
                 String anchoTexto = medidas.split("×")[0].replace("m", "").trim();
                 ancho = Double.parseDouble(anchoTexto);
             } else {
-                // Formato HEREDADO (registros guardados antes de este cambio):
-                // "Retazo COLOR ANCHOm × ALTOm (#ID)"
                 String sinPrefijo = desc.substring("Retazo ".length());
                 int idxNumero = -1;
                 for (int i = 0; i < sinPrefijo.length(); i++) {
@@ -893,8 +829,6 @@ public class InventarioServicio {
                 ancho = Double.parseDouble(partes[0].trim());
             }
 
-            // El alto original siempre se recupera de metrosUsados + metrosSobrantes,
-            // independientemente del formato del texto (esto no cambió).
             double altoOriginal = redondear(m.getMetrosUsados() + m.getMetrosSobrantes());
             if (altoOriginal <= 0.001) return null;
 
@@ -1159,19 +1093,12 @@ public class InventarioServicio {
     // ALERTAS DE STOCK BAJO
     // ═══════════════════════════════════════════════════════════════
 
-    /**
-     * Calcula todas las alertas de stock bajo del inventario actual:
-     * rollos de tela (agrupados por color+ancho), insumos por unidad,
-     * e insumos por medida (piezas). No descuenta ni modifica nada,
-     * solo lee el estado actual.
-     */
     public List<AlertaInventario> obtenerAlertasInventario() {
         List<AlertaInventario> alertas = new ArrayList<>();
 
         alertas.addAll(alertasDeTela());
         alertas.addAll(alertasDeInsumos());
 
-        // Orden: primero lo más urgente (AGOTADO/CRITICO), después advertencias
         alertas.sort(Comparator.comparingInt(a -> nivelPrioridad(a.nivel)));
         return alertas;
     }
@@ -1191,19 +1118,17 @@ public class InventarioServicio {
 
         List<RolloTela> rollos = rolloTelaRepository.findAllByOrderByColorAscAnchoAscLargoRestanteAsc();
 
-        // Agrupar por color + ancho exacto (ej: "Blanco|1.83")
         Map<String, List<RolloTela>> agrupado = rollos.stream()
                 .collect(java.util.stream.Collectors.groupingBy(r -> r.getColor() + "|" + r.getAncho()));
 
         for (Map.Entry<String, List<RolloTela>> entry : agrupado.entrySet()) {
             List<RolloTela> grupo = entry.getValue();
 
-            // Solo nos importan los rollos que todavía tienen algo de material
             List<RolloTela> conMaterial = grupo.stream()
                     .filter(r -> !r.isAgotado())
                     .collect(java.util.stream.Collectors.toList());
 
-            if (conMaterial.isEmpty()) continue; // ya se muestra como "Agotados" en el resumen general
+            if (conMaterial.isEmpty()) continue;
 
             String color = grupo.get(0).getColor();
             double ancho = grupo.get(0).getAncho();
@@ -1230,13 +1155,19 @@ public class InventarioServicio {
                             "TELA"));
                 }
             }
-            // Si hay 2 o más rollos disponibles de ese color+ancho, no se alerta todavía.
         }
 
         return alertas;
     }
 
     // ── Alertas de insumos (por unidad y por medida/piezas) ─────────
+    //
+    // Para insumos POR MEDIDA (tubo, pesa, cuerda, etc.) ya no basta con
+    // sumar metros totales: si hay, por ejemplo, 3 tubos de 6m sin usar,
+    // suman 18m y nunca alertaba aunque en realidad solo quedan 3 piezas
+    // completas. Ahora se cuenta cuántas piezas están COMPLETAS (sin
+    // cortar, largoRestante ≈ largoInicial) contra cuántas son retazos
+    // parciales, y se alerta en función de eso además de los metros totales.
 
     private List<AlertaInventario> alertasDeInsumos() {
         List<AlertaInventario> alertas = new ArrayList<>();
@@ -1245,16 +1176,23 @@ public class InventarioServicio {
 
         for (Insumo insumo : insumos) {
             if (Boolean.TRUE.equals(insumo.getTieneMedida())) {
-                // ── Insumo por medida (tubo, cuerda, pesa, etc.): se suman los
-                //    METROS TOTALES restantes de todas las piezas con material
-                //    (antes se contaban piezas, lo cual distorsionaba la alerta
-                //    si había, por ejemplo, muchas piezas casi agotadas o pocas
-                //    piezas pero muy largas). El umbral es en metros.
+                // ── Insumo por medida (tubo, cuerda, pesa, etc.) ──
                 List<PiezaInsumo> piezas = piezaInsumoRepository.findByInsumoIdOrderByLargoRestanteAsc(insumo.getId());
-                double totalMetros = piezas.stream()
+
+                List<PiezaInsumo> conMaterial = piezas.stream()
                         .filter(p -> !p.isAgotada())
+                        .collect(java.util.stream.Collectors.toList());
+
+                double totalMetros = conMaterial.stream()
                         .mapToDouble(PiezaInsumo::getLargoRestante)
                         .sum();
+
+                // Pieza "completa" = todavía no se le ha cortado nada (llegó entera y sigue entera).
+                // Pieza "parcial" = ya se usó parte de ella, es un sobrante.
+                long piezasCompletas = conMaterial.stream()
+                        .filter(p -> p.getLargoRestante() >= p.getLargoInicial() - 0.01)
+                        .count();
+                long piezasParciales = conMaterial.size() - piezasCompletas;
 
                 double umbralCritico = (insumo.getUmbralAlerta() != null && insumo.getUmbralAlerta() > 0)
                         ? insumo.getUmbralAlerta()
@@ -1267,27 +1205,39 @@ public class InventarioServicio {
                             insumo.getNombre(),
                             "No hay material disponible de \"" + insumo.getNombre() + "\".",
                             "INSUMO_MEDIDA"));
-                } else if (totalMetros < umbralCritico) {
+
+                } else if (piezasCompletas == 0) {
+                    // Ya no quedan piezas enteras, solo retazos sueltos: aunque sumen varios
+                    // metros, para un pedido nuevo puede que ninguna alcance por sí sola.
                     alertas.add(new AlertaInventario(
                             NivelAlerta.CRITICO,
                             insumo.getNombre(),
-                            "Quedan solo " + redondear(totalMetros) + " m en total de \"" + insumo.getNombre() + "\" (en "
-                                    + piezas.stream().filter(p -> !p.isAgotada()).count() + " pieza(s)). Pedir ya.",
+                            "Ya no quedan piezas completas de \"" + insumo.getNombre() + "\", solo "
+                                    + piezasParciales + " retazo(s) sueltos (" + redondear(totalMetros)
+                                    + " m en total). Pedir ya.",
                             "INSUMO_MEDIDA"));
-                } else if (totalMetros < umbralAdvertencia) {
+
+                } else if (totalMetros < umbralCritico || piezasCompletas == 1) {
+                    alertas.add(new AlertaInventario(
+                            NivelAlerta.CRITICO,
+                            insumo.getNombre(),
+                            "Quedan solo " + piezasCompletas + " pieza(s) completa(s) y "
+                                    + piezasParciales + " retazo(s) de \"" + insumo.getNombre() + "\" ("
+                                    + redondear(totalMetros) + " m en total). Pedir ya.",
+                            "INSUMO_MEDIDA"));
+
+                } else if (totalMetros < umbralAdvertencia || piezasCompletas <= 2) {
                     alertas.add(new AlertaInventario(
                             NivelAlerta.ADVERTENCIA,
                             insumo.getNombre(),
-                            "Quedan " + redondear(totalMetros) + " m en total de \"" + insumo.getNombre() + "\". Conviene reponer pronto.",
+                            "Quedan " + piezasCompletas + " pieza(s) completa(s) y " + piezasParciales
+                                    + " retazo(s) de \"" + insumo.getNombre() + "\" (" + redondear(totalMetros)
+                                    + " m en total). Conviene reponer pronto.",
                             "INSUMO_MEDIDA"));
                 }
 
             } else {
-                // ── Insumo por unidad (ej: Control, Tornillo, Conector...):
-                //    umbralAlerta (si el jefe lo configuró) hace de umbral de
-                //    ADVERTENCIA; el umbral CRITICO es el 10% de ese valor
-                //    (mínimo 1), igual que el comportamiento por defecto de antes
-                //    (50 advertencia / 5 critico = 10%).
+                // ── Insumo por unidad (sin cambios) ──
                 int stock = insumo.getStockUnidades() != null ? insumo.getStockUnidades() : 0;
 
                 int umbralAdvertencia = (insumo.getUmbralAlerta() != null && insumo.getUmbralAlerta() > 0)
@@ -1323,12 +1273,11 @@ public class InventarioServicio {
     // INSUMOS EXTRA (agregados manualmente al pedido)
     // ═══════════════════════════════════════════════════════════════
 
-    /** Verifica que haya stock suficiente para TODOS los extras antes de guardar nada. */
     public void verificarExtras(List<ExtraInsumo> extras) {
         if (extras == null) return;
         for (ExtraInsumo ex : extras) {
             if (ex.cantidad <= 0) continue;
-            if (ex.insumoId == null) continue; // texto libre: no se valida contra inventario
+            if (ex.insumoId == null) continue;
 
             Insumo insumo = insumoRepository.findById(ex.insumoId)
                     .orElseThrow(() -> new MaterialInsuficienteException(
@@ -1354,25 +1303,12 @@ public class InventarioServicio {
         }
     }
 
-    /**
-     * Descuenta del inventario real cada extra y deja el registro en MaterialUsado
-     * (así aparece en el reporte como gasto real). Llamar DESPUÉS de guardar el pedido,
-     * para ya tener su id.
-     *
-     * A los extras que SÍ están en catálogo se les pone como tipoMaterial el nombre
-     * del insumo (igual que el material automático), para que revertirMaterialDe()
-     * pueda devolver el stock correctamente al editar/eliminar, y para que el reporte
-     * los agrupe junto con el resto del consumo de ese mismo insumo. Se distinguen
-     * como "extra" solo por la fuenteDescripcion y seleccionManual=true.
-     */
     public void procesarExtras(Pedido pedido, List<ExtraInsumo> extras) {
         if (extras == null) return;
         for (ExtraInsumo ex : extras) {
             if (ex.cantidad <= 0) continue;
 
             if (ex.insumoId == null) {
-                // No existe en el catálogo: queda registrado para el reporte,
-                // pero no hay de dónde descontarlo.
                 MaterialUsado r = new MaterialUsado();
                 r.setPedidoId(pedido.getId());
                 r.setTipoMaterial("EXTRA");
