@@ -580,7 +580,6 @@
         const PREFIJO_STORAGE = 'inventario_alerta_silenciada_';
 
         function claveStorage(key) {
-            // Clave de storage a partir de la clave de la alerta (título+mensaje).
             let hash = 0;
             for (let i = 0; i < key.length; i++) {
                 hash = ((hash << 5) - hash + key.charCodeAt(i)) | 0;
@@ -649,7 +648,6 @@
             }
 
             if (sinAlertasMensaje) {
-                // Solo mostramos "todo saludable" si además no hay nada silenciado esperando.
                 sinAlertasMensaje.style.display = (visibles === 0 && silenciadas === 0) ? '' : 'none';
             }
 
@@ -711,7 +709,6 @@
             urlCorregir: tr.dataset.urlCorregir
         }));
 
-        // Poblar el <select> de anchos dinámicamente según los datos reales
         const selAncho = document.getElementById('filtroRolloAncho');
         const anchosUnicos = Array.from(new Set(rollos.map(r => r.ancho))).sort((a, b) => parseFloat(a) - parseFloat(b));
         anchosUnicos.forEach(a => {
@@ -721,7 +718,6 @@
             selAncho.appendChild(opt);
         });
 
-        // Agrupar por color + ancho
         const grupos = {};
         rollos.forEach(r => {
             const key = r.color + '||' + r.ancho;
@@ -891,7 +887,6 @@
 
         if (retazos.length === 0) return;
 
-        // Agrupar por color
         const grupos = {};
         retazos.forEach(r => {
             if (!grupos[r.color]) grupos[r.color] = { color: r.color, items: [] };
@@ -1172,5 +1167,6 @@
         render();
     })();
     </script>
+    <script src="/js/token-nav.js"></script>
 </body>
 </html>
