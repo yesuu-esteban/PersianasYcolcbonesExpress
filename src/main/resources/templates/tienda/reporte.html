@@ -51,7 +51,6 @@
         .btn-outline-secondary { color: var(--text-muted); border-color: rgba(255,255,255,0.25); }
         .btn-outline-secondary:hover { background: rgba(255,255,255,0.1); color: #fff; }
 
-        /* ── Tarjetas de resumen ── */
         .resumen-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin-bottom: 24px; }
         .card-resumen {
             background: var(--bg-card); border-radius: 12px; padding: 18px 20px;
@@ -65,7 +64,6 @@
         .card-resumen.costo { border-left-color: #ff6b6b; }
         .card-resumen.utilidad { border-left-color: #2ecc71; }
 
-        /* ── Tabla vendedores ── */
         .table-wrapper {
             background: var(--bg-card); border-radius: 14px; padding: 6px;
             box-shadow: 0 4px 22px rgba(0,0,0,0.3); overflow-x: auto; margin-bottom: 24px;
@@ -134,23 +132,23 @@
             </div>
             <div class="card-resumen">
                 <div class="etiqueta">Total vendido (a cliente)</div>
-                <div class="valor" th:text="${#numbers.formatDecimal(sumaTotal, 1, 0, 'POINT')}"></div>
+                <div class="valor" th:text="${#numbers.formatDecimal(sumaTotal, 1, 'POINT', 0, 'NONE')}"></div>
             </div>
             <div class="card-resumen abonado">
                 <div class="etiqueta">Total abonado</div>
-                <div class="valor" th:text="${#numbers.formatDecimal(sumaAbonado, 1, 0, 'POINT')}"></div>
+                <div class="valor" th:text="${#numbers.formatDecimal(sumaAbonado, 1, 'POINT', 0, 'NONE')}"></div>
             </div>
             <div class="card-resumen pendiente">
                 <div class="etiqueta">Saldo pendiente</div>
-                <div class="valor" th:text="${#numbers.formatDecimal(sumaPendiente, 1, 0, 'POINT')}"></div>
+                <div class="valor" th:text="${#numbers.formatDecimal(sumaPendiente, 1, 'POINT', 0, 'NONE')}"></div>
             </div>
             <div class="card-resumen costo">
                 <div class="etiqueta">Costo de fábrica</div>
-                <div class="valor" th:text="${#numbers.formatDecimal(sumaCostoFabrica, 1, 0, 'POINT')}"></div>
+                <div class="valor" th:text="${#numbers.formatDecimal(sumaCostoFabrica, 1, 'POINT', 0, 'NONE')}"></div>
             </div>
             <div class="card-resumen utilidad">
                 <div class="etiqueta">Utilidad estimada</div>
-                <div class="valor" th:text="${#numbers.formatDecimal(sumaUtilidad, 1, 0, 'POINT')}"></div>
+                <div class="valor" th:text="${#numbers.formatDecimal(sumaUtilidad, 1, 'POINT', 0, 'NONE')}"></div>
             </div>
         </div>
 
@@ -170,8 +168,8 @@
                     <tr th:each="v : ${resumenVendedores}">
                         <td th:text="${v.vendedor}"></td>
                         <td th:text="${v.cantidadPedidos}"></td>
-                        <td th:text="${#numbers.formatDecimal(v.totalVendido, 1, 0, 'POINT')}"></td>
-                        <td th:text="${#numbers.formatDecimal(v.utilidad, 1, 0, 'POINT')}"></td>
+                        <td th:text="${#numbers.formatDecimal(v.totalVendido, 1, 'POINT', 0, 'NONE')}"></td>
+                        <td th:text="${#numbers.formatDecimal(v.utilidad, 1, 'POINT', 0, 'NONE')}"></td>
                     </tr>
                 </tbody>
             </table>
