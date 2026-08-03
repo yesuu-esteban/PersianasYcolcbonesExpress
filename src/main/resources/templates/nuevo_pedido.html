@@ -561,7 +561,18 @@
 
         try {
             const params = new URLSearchParams({ ancho, altura: alto, color, usaCabezal: cabezal, usaPitilloPesa: pitillo, usaConectorTope: conector, tipoTuboManual });
-            const d = await fetch('/taller/previsualizar-material?' + params).then(r => r.json());
+
+            // ── FIX: adjuntar el token JWT manualmente. fetch() no pasa por el
+            // listener de click/submit de token-nav.js, así que sin esto la
+            // petición sale sin autenticar, Spring Security la redirige a
+            // /login, el navegador recibe HTML en vez de JSON y r.json() truena
+            // (por eso siempre caía en "No se pudo consultar el inventario").
+            const token = sessionStorage.getItem('authToken');
+            if (token) params.set('token', token);
+
+            const resp = await fetch('/taller/previsualizar-material?' + params.toString());
+            if (!resp.ok) throw new Error('HTTP ' + resp.status);
+            const d = await resp.json();
 
             if (d.disponible) {
                 caja.className = 'previsualizacion ok';
@@ -605,7 +616,8 @@
                 caja.className = 'previsualizacion falta';
                 caja.innerHTML = '<strong>⚠ Falta material:</strong><br>' + d.faltantes.join('<br>');
             }
-        } catch {
+        } catch (e) {
+            console.error('Error consultando previsualización:', e);
             caja.className = 'previsualizacion falta';
             caja.innerHTML = '<span>No se pudo consultar el inventario.</span>';
         }
