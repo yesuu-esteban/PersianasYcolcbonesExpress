@@ -137,6 +137,15 @@
             font-weight: 600;
         }
 
+        .btn-volver-select {
+            font-size: 0.65rem;
+            color: var(--accent-light);
+            cursor: pointer;
+            text-decoration: underline;
+            margin-top: 2px;
+            display: inline-block;
+        }
+
         @media (max-width: 576px) {
             body { padding: 12px; }
             .marca-header { padding: 12px 16px; margin-bottom: 16px; }
@@ -236,6 +245,7 @@
         <h5 class="mb-1">Productos</h5>
         <p class="text-muted mb-3" style="font-size:0.82rem;">
             La cantidad y el precio unitario deben ser mayores a 0. El precio de fábrica es el costo que te cobra el fabricante por esa línea. El precio a cliente se calcula automáticamente (suma de productos − descuento).
+            Si el producto o material no está en la lista, elige <strong>"Otro (escribir)"</strong> y podrás escribirlo directamente.
         </p>
 
         <div class="table-responsive">
@@ -253,7 +263,7 @@
             <tbody id="cuerpoDetalles">
                 <tr th:each="detalle, iter : *{detalles}">
                     <td>
-                        <select class="form-select form-select-sm"
+                        <select class="form-select form-select-sm select-otro"
                                 th:field="*{detalles[__${iter.index}__].producto}">
                             <option value="">-- Selecciona --</option>
                             <option value="Panel Japonés">Panel Japonés</option>
@@ -262,15 +272,17 @@
                             <option value="Enrollable">Enrollable</option>
                             <option value="Vertical">Vertical</option>
                             <option value="Cortina en Onda">Cortina en Onda</option>
+                            <option value="Otro">Otro (escribir)</option>
                         </select>
                     </td>
                     <td>
-                        <select class="form-select form-select-sm"
+                        <select class="form-select form-select-sm select-otro"
                                 th:field="*{detalles[__${iter.index}__].material}">
                             <option value="">-- Selecciona --</option>
                             <option value="Poliéster">Poliéster</option>
                             <option value="Screen">Screen</option>
                             <option value="Blackout">Blackout</option>
+                            <option value="Otro">Otro (escribir)</option>
                         </select>
                     </td>
                     <td>
@@ -313,7 +325,7 @@
         const fila = `
             <tr>
                 <td>
-                    <select class="form-select form-select-sm" name="detalles[${idx}].producto">
+                    <select class="form-select form-select-sm select-otro" name="detalles[${idx}].producto">
                         <option value="">-- Selecciona --</option>
                         <option value="Panel Japonés">Panel Japonés</option>
                         <option value="Blackout">Blackout</option>
@@ -321,14 +333,16 @@
                         <option value="Enrollable">Enrollable</option>
                         <option value="Vertical">Vertical</option>
                         <option value="Cortina en Onda">Cortina en Onda</option>
+                        <option value="Otro">Otro (escribir)</option>
                     </select>
                 </td>
                 <td>
-                    <select class="form-select form-select-sm" name="detalles[${idx}].material">
+                    <select class="form-select form-select-sm select-otro" name="detalles[${idx}].material">
                         <option value="">-- Selecciona --</option>
                         <option value="Poliéster">Poliéster</option>
                         <option value="Screen">Screen</option>
                         <option value="Blackout">Blackout</option>
+                        <option value="Otro">Otro (escribir)</option>
                     </select>
                 </td>
                 <td><input type="number" class="form-control form-control-sm" name="detalles[${idx}].cantidad" value="1" min="1" step="1" required></td>
@@ -357,6 +371,40 @@
             preview.textContent = formatearPesos(input.value);
         }
     }
+
+    // Convierte el select en un campo de texto cuando se elige "Otro"
+    function activarModoEscritura(select) {
+        const nombreCampo = select.name;
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.className = 'form-control form-control-sm';
+        input.name = nombreCampo;
+        input.placeholder = 'Escribe aquí...';
+        input.required = select.required;
+
+        const volver = document.createElement('span');
+        volver.textContent = '↩ volver a la lista';
+        volver.className = 'btn-volver-select';
+        volver.addEventListener('click', function () {
+            select.style.display = '';
+            select.disabled = false;
+            select.value = '';
+            input.remove();
+            volver.remove();
+        });
+
+        select.insertAdjacentElement('afterend', input);
+        input.insertAdjacentElement('afterend', volver);
+        select.disabled = true;
+        select.style.display = 'none';
+        input.focus();
+    }
+
+    document.addEventListener('change', function (e) {
+        if (e.target.classList.contains('select-otro') && e.target.value === 'Otro') {
+            activarModoEscritura(e.target);
+        }
+    });
 
     document.addEventListener('input', function (e) {
         if (e.target.classList.contains('campo-dinero')) {
