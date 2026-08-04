@@ -1,6 +1,9 @@
 package Colcones_Persinas.proyecto_express.config;
 
+import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -47,6 +50,18 @@ public class LoginController {
 
             String destino = (esAdmin || esFabrica) ? "/taller/pedidos" : "/tienda/listado";
 
+            // Cookie con el token: el navegador la reenvía sola en cualquier request,
+            // incluyendo los redirect:/... que antes perdían la sesión.
+            ResponseCookie cookie = ResponseCookie.from("authToken", token)
+                .httpOnly(true)
+                .secure(true)      // Railway sirve por HTTPS; en local con http puro no viajará
+                .path("/")
+                .maxAge(8 * 60 * 60) // 8 horas, igual que la expiración del JWT
+                .sameSite("Lax")
+                .build();
+
+            // Seguimos guardando en sessionStorage para que token-nav.js siga
+            // funcionando igual en clicks/forms (no hace daño tenerlo duplicado).
             String html = """
                 <!DOCTYPE html>
                 <html>
@@ -54,18 +69,36 @@ public class LoginController {
                 <body>
                 <script>
                     sessionStorage.setItem('authToken', '%s');
-                    window.location.href = '%s?token=%s';
+                    window.location.href = '%s';
                 </script>
                 </body>
                 </html>
-                """.formatted(token, destino, token);
+                """.formatted(token, destino);
 
-            return ResponseEntity.ok(html);
+            return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, cookie.toString())
+                .body(html);
 
         } catch (BadCredentialsException e) {
             return ResponseEntity.status(302)
                 .header("Location", "/login?error=1")
                 .build();
         }
+    }
+
+    @GetMapping("/logout")
+    public ResponseEntity<Void> logout() {
+        ResponseCookie cookieBorrada = ResponseCookie.from("authToken", "")
+            .httpOnly(true)
+            .secure(true)
+            .path("/")
+            .maxAge(0)
+            .sameSite("Lax")
+            .build();
+
+        return ResponseEntity.status(302)
+            .header(HttpHeaders.SET_COOKIE, cookieBorrada.toString())
+            .header("Location", "/login")
+            .build();
     }
 }

@@ -3,6 +3,7 @@ package Colcones_Persinas.proyecto_express.config;
 import io.jsonwebtoken.Claims;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -52,14 +53,25 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     }
 
     private String obtenerToken(HttpServletRequest request) {
+        // 1. Query param (?token=...) — lo que agrega token-nav.js en clicks/formularios
         String tokenParam = request.getParameter("token");
         if (tokenParam != null && !tokenParam.isBlank()) {
             return tokenParam;
         }
 
+        // 2. Header Authorization: Bearer ... — para llamadas API si las hubiera
         String header = request.getHeader("Authorization");
         if (header != null && header.startsWith("Bearer ")) {
             return header.substring(7);
+        }
+
+        // 3. Cookie "authToken" — sobrevive automáticamente a cualquier redirect
+        if (request.getCookies() != null) {
+            for (Cookie c : request.getCookies()) {
+                if ("authToken".equals(c.getName()) && c.getValue() != null && !c.getValue().isBlank()) {
+                    return c.getValue();
+                }
+            }
         }
 
         return null;
