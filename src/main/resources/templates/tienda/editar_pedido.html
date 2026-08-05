@@ -184,23 +184,12 @@
             <tbody id="cuerpoDetalles">
                 <tr th:each="detalle, iter : *{detalles}">
                     <td>
-                        <select class="form-select form-select-sm" th:field="*{detalles[__${iter.index}__].producto}">
-                            <option value="">-- Selecciona --</option>
-                            <option value="Panel Japonés">Panel Japonés</option>
-                            <option value="Blackout">Blackout</option>
-                            <option value="Chic Elegante">Chic Elegante</option>
-                            <option value="Enrollable">Enrollable</option>
-                            <option value="Vertical">Vertical</option>
-                            <option value="Cortina en Onda">Cortina en Onda</option>
-                        </select>
+                        <input type="text" class="form-control form-control-sm text-uppercase" list="listaProductos"
+                               th:field="*{detalles[__${iter.index}__].producto}" placeholder="Escribe o elige...">
                     </td>
                     <td>
-                        <select class="form-select form-select-sm" th:field="*{detalles[__${iter.index}__].material}">
-                            <option value="">-- Selecciona --</option>
-                            <option value="Poliéster">Poliéster</option>
-                            <option value="Screen">Screen</option>
-                            <option value="Blackout">Blackout</option>
-                        </select>
+                        <input type="text" class="form-control form-control-sm text-uppercase" list="listaMateriales"
+                               th:field="*{detalles[__${iter.index}__].material}" placeholder="Escribe o elige...">
                     </td>
                     <td>
                         <input type="number" class="form-control form-control-sm" min="1" step="1" required
@@ -223,6 +212,20 @@
         </table>
         </div>
 
+        <datalist id="listaProductos">
+            <option value="PANEL JAPONÉS">
+            <option value="BLACKOUT">
+            <option value="CHIC ELEGANTE">
+            <option value="ENROLLABLE">
+            <option value="VERTICAL">
+            <option value="CORTINA EN ONDA">
+        </datalist>
+        <datalist id="listaMateriales">
+            <option value="POLIÉSTER">
+            <option value="SCREEN">
+            <option value="BLACKOUT">
+        </datalist>
+
         <button type="button" class="btn btn-sm btn-outline-dark mb-3" onclick="agregarFilaProducto()">
             + Agregar producto
         </button>
@@ -241,25 +244,8 @@
         const idx = indiceDetalle++;
         const fila = `
             <tr>
-                <td>
-                    <select class="form-select form-select-sm" name="detalles[${idx}].producto">
-                        <option value="">-- Selecciona --</option>
-                        <option value="Panel Japonés">Panel Japonés</option>
-                        <option value="Blackout">Blackout</option>
-                        <option value="Chic Elegante">Chic Elegante</option>
-                        <option value="Enrollable">Enrollable</option>
-                        <option value="Vertical">Vertical</option>
-                        <option value="Cortina en Onda">Cortina en Onda</option>
-                    </select>
-                </td>
-                <td>
-                    <select class="form-select form-select-sm" name="detalles[${idx}].material">
-                        <option value="">-- Selecciona --</option>
-                        <option value="Poliéster">Poliéster</option>
-                        <option value="Screen">Screen</option>
-                        <option value="Blackout">Blackout</option>
-                    </select>
-                </td>
+                <td><input type="text" class="form-control form-control-sm text-uppercase" list="listaProductos" name="detalles[${idx}].producto" placeholder="Escribe o elige..."></td>
+                <td><input type="text" class="form-control form-control-sm text-uppercase" list="listaMateriales" name="detalles[${idx}].material" placeholder="Escribe o elige..."></td>
                 <td><input type="number" class="form-control form-control-sm" name="detalles[${idx}].cantidad" value="1" min="1" step="1" required></td>
                 <td><input type="number" step="0.01" min="0.01" class="form-control form-control-sm" name="detalles[${idx}].precioUnitario" value="0.01" required></td>
                 <td><input type="number" step="0.01" min="0" class="form-control form-control-sm" name="detalles[${idx}].precioFabricaUnitario" value="0"></td>

@@ -216,11 +216,9 @@ public class PedidoTiendaControlador {
             pedidosFiltrados = pedidoTiendaRepository.findAll();
         }
 
-        // ── Totales generales ──
         int totalPedidos = pedidosFiltrados.size();
-
         BigDecimal sumaTotal = pedidosFiltrados.stream()
-                .map(PedidoTienda::getPrecioCliente)
+                .map(p -> p.getPrecioCliente() != null ? p.getPrecioCliente() : BigDecimal.ZERO)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         BigDecimal sumaAbonado = pedidosFiltrados.stream()
                 .map(p -> p.getAbono() != null ? p.getAbono() : BigDecimal.ZERO)
@@ -231,9 +229,10 @@ public class PedidoTiendaControlador {
         BigDecimal sumaCostoFabrica = pedidosFiltrados.stream()
                 .map(PedidoTienda::getCostoFabricaTotal)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
-        BigDecimal sumaUtilidad = sumaTotal.subtract(sumaCostoFabrica);
+        BigDecimal sumaUtilidad = pedidosFiltrados.stream()
+                .map(PedidoTienda::getUtilidadEstimada)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        // ── Desglose por vendedor ──
         Map<String, List<PedidoTienda>> porVendedor = pedidosFiltrados.stream()
                 .collect(Collectors.groupingBy(p ->
                         (p.getVendedor() == null || p.getVendedor().isBlank()) ? "Sin asignar" : p.getVendedor()));
@@ -241,9 +240,8 @@ public class PedidoTiendaControlador {
         List<Map<String, Object>> resumenVendedores = new ArrayList<>();
         for (Map.Entry<String, List<PedidoTienda>> entry : porVendedor.entrySet()) {
             List<PedidoTienda> lista = entry.getValue();
-
             BigDecimal sumaVendedor = lista.stream()
-                    .map(PedidoTienda::getPrecioCliente)
+                    .map(p -> p.getPrecioCliente() != null ? p.getPrecioCliente() : BigDecimal.ZERO)
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
             BigDecimal utilidadVendedor = lista.stream()
                     .map(PedidoTienda::getUtilidadEstimada)
@@ -289,17 +287,11 @@ public class PedidoTiendaControlador {
             if (precio == null || precio.compareTo(BigDecimal.ZERO) <= 0) {
                 errores.add("\"" + d.getProducto() + "\": el precio unitario debe ser mayor a 0.");
             }
-
-            BigDecimal precioFabrica = d.getPrecioFabricaUnitario();
-            if (precioFabrica != null && precioFabrica.compareTo(BigDecimal.ZERO) < 0) {
-                errores.add("\"" + d.getProducto() + "\": el precio de fábrica no puede ser negativo.");
-            }
         }
 
         return errores;
     }
 
-    /** Valida que el descuento (si se indicó) no sea negativo. */
     private List<String> validarPrecios(PedidoTienda pedido) {
         List<String> errores = new ArrayList<>();
 
@@ -311,38 +303,33 @@ public class PedidoTiendaControlador {
     }
 
     private void recalcularTotales(PedidoTienda pedido) {
-        // Suma automática de los productos: precio de venta y costo de fábrica, línea por línea
         BigDecimal total = BigDecimal.ZERO;
         for (DetallePedidoTienda d : pedido.getDetalles()) {
+            // Normaliza a mayúsculas lo que se guarda de aquí en adelante
+            if (d.getProducto() != null) d.setProducto(d.getProducto().trim().toUpperCase());
+            if (d.getMaterial() != null) d.setMaterial(d.getMaterial().trim().toUpperCase());
+
             BigDecimal precio = d.getPrecioUnitario() != null ? d.getPrecioUnitario() : BigDecimal.ZERO;
-            BigDecimal precioFabrica = d.getPrecioFabricaUnitario() != null ? d.getPrecioFabricaUnitario() : BigDecimal.ZERO;
-            BigDecimal cantidad = BigDecimal.valueOf(d.getCantidad());
-
-            BigDecimal subtotal = precio.multiply(cantidad);
-            BigDecimal subtotalFabrica = precioFabrica.multiply(cantidad);
-
+            BigDecimal subtotal = precio.multiply(BigDecimal.valueOf(d.getCantidad()));
             d.setSubtotal(subtotal);
-            d.setSubtotalFabrica(subtotalFabrica);
-            d.setPedidoTienda(pedido);
 
+            BigDecimal precioFab = d.getPrecioFabricaUnitario() != null ? d.getPrecioFabricaUnitario() : BigDecimal.ZERO;
+            d.setSubtotalFabrica(precioFab.multiply(BigDecimal.valueOf(d.getCantidad())));
+
+            d.setPedidoTienda(pedido);
             total = total.add(subtotal);
         }
         pedido.setTotal(total);
 
-        // Descuento (no puede ser negativo)
         BigDecimal descuento = pedido.getDescuento() != null ? pedido.getDescuento() : BigDecimal.ZERO;
         if (descuento.compareTo(BigDecimal.ZERO) < 0) descuento = BigDecimal.ZERO;
         pedido.setDescuento(descuento);
 
-        // Abono (no puede ser negativo)
         BigDecimal abono = pedido.getAbono() != null ? pedido.getAbono() : BigDecimal.ZERO;
         if (abono.compareTo(BigDecimal.ZERO) < 0) abono = BigDecimal.ZERO;
         pedido.setAbono(abono);
 
-        // Saldo = precio real al cliente (total - descuento) - abono
-        BigDecimal saldo = pedido.getPrecioCliente().subtract(abono);
-        if (saldo.compareTo(BigDecimal.ZERO) < 0) saldo = BigDecimal.ZERO;
-        pedido.setSaldo(saldo);
+        pedido.setSaldo(pedido.getPrecioCliente().subtract(abono));
     }
 
     private boolean puedeGestionarPedidos() {

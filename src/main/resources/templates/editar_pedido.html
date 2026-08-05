@@ -109,6 +109,16 @@
             </select>
         </div>
 
+        <div class="mb-3">
+            <label class="form-label fw-bold">Tipo de tubo</label>
+            <select name="tipoTuboManual" id="selectTipoTubo" class="form-select">
+                <option value="auto" th:selected="${pedido.tuboManualElegido == null}">⚡ Automático (según medida)</option>
+                <option value="R8"  th:selected="${pedido.tuboManualElegido == 'R8'}">Tubo R8</option>
+                <option value="R16" th:selected="${pedido.tuboManualElegido == 'R16'}">Tubo R16</option>
+                <option value="R24" th:selected="${pedido.tuboManualElegido == 'R24'}">Tubo R24</option>
+            </select>
+        </div>
+
         <div class="card mb-3 border-secondary-subtle">
             <div class="card-body pb-2">
                 <p class="fw-bold mb-2">Materiales opcionales</p>
@@ -163,18 +173,7 @@
                     </select>
                 </div>
 
-                <!-- Tipo de tubo: movido aquí adentro para que quede igual que en nuevo_pedido -->
-                <div class="col-md-6 col-lg-4">
-                    <label class="form-label">📏 Tipo de tubo</label>
-                    <select name="tipoTuboManual" id="selectTipoTubo" class="form-select form-select-sm">
-                        <option value="auto" th:selected="${pedido.tuboManualElegido == null}">⚡ Automático (según medida)</option>
-                        <option value="R8"  th:selected="${pedido.tuboManualElegido == 'R8'}">Tubo R8</option>
-                        <option value="R16" th:selected="${pedido.tuboManualElegido == 'R16'}">Tubo R16</option>
-                        <option value="R24" th:selected="${pedido.tuboManualElegido == 'R24'}">Tubo R24</option>
-                    </select>
-                </div>
-
-                <!-- Pieza de tubo -->
+                <!-- Tipo de tubo ya está arriba, pero el select de pieza de tubo va aquí -->
                 <div class="col-md-6 col-lg-4">
                     <label class="form-label">🔩 Pieza de tubo</label>
                     <select name="tuboManual" id="selectTubo" class="form-select form-select-sm">
@@ -502,7 +501,7 @@
     ckCabezal.addEventListener('change', disparar);
     ckPitillo.addEventListener('change', () => { actualizarSelectsManual(); disparar(); });
     ckConector.addEventListener('change', disparar);
-    selectTipoTubo.addEventListener('change', () => { actualizarSelectsManual(); disparar(); });
+    selectTipoTubo.addEventListener('change', disparar);
 
     // ════════════════════════════════════════════════════════════
     //  INSUMOS ADICIONALES (extras de toda la orden)
@@ -546,6 +545,15 @@
                 </select>
             </div>
         </div>`;
+    }
+
+    // ── Generadores de opciones de catálogo (faltaban en este archivo) ──
+    function opcionesCatalogo() {
+        let html = '<option value="libre">✏ Insumo fuera del catálogo (texto libre)</option>';
+        catalogoInsumos.forEach(ins => {
+            html += `<option value="${ins.id}">${ins.nombre}${ins.tieneMedida ? ' (por medida)' : ' (por unidad)'}</option>`;
+        });
+        return html;
     }
 
     function actualizarInfoExtra(select) {
@@ -612,6 +620,17 @@
         }
     }
 
+    function agregarFilaExtra(valSelect, valLibre, valCant) {
+        const cont = document.getElementById('contenedorExtras');
+        const idx = extraIndex++;
+        cont.insertAdjacentHTML('beforeend', filaExtraHtml(idx));
+        const filaCampos = cont.querySelector(`.fila-extra[data-indice="${idx}"]`);
+        const sel = filaCampos.querySelector('.select-extra-insumo');
+        if (valSelect) sel.value = valSelect;
+        if (valLibre) filaCampos.querySelector('input[name^="extraNombreLibre"]').value = valLibre;
+        if (valCant) filaCampos.querySelector('input[name^="extraCantidad"]').value = valCant;
+        actualizarInfoExtra(sel);
+    }
     function toggleLibre(select) {
         const fila = select.closest('.fila-extra');
         const campoLibre = fila.querySelector('.campo-libre-extra');
@@ -627,7 +646,6 @@
         if (valLibre) fila.querySelector('input[name="extraNombreLibre"]').value = valLibre;
         if (valCant) fila.querySelector('input[name="extraCantidad"]').value = valCant;
         toggleLibre(sel);
-        actualizarInfoExtra(sel);
     }
 
     // ── Inicialización ────────────────────────────────────────────

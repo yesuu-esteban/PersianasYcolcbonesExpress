@@ -8,12 +8,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg-dark: #1a0f2e;
-            --bg-card: #2a1b42;
-            --accent: #ec1561;
-            --accent-light: #ff4d94;
-            --gold: #ffc107;
-            --text-muted: #ffffff;
+            --bg-dark: #1a0f2e; --bg-card: #2a1b42; --accent: #ec1561;
+            --accent-light: #ff4d94; --gold: #ffc107; --text-muted: #ffffff;
         }
         * { font-family: 'Poppins', sans-serif; }
         body { background: linear-gradient(160deg, #1a0f2e 0%, #241536 100%); color: #fff; padding: 24px; }
@@ -54,43 +50,26 @@
             background: var(--bg-card); border-radius: 14px; padding: 6px;
             box-shadow: 0 4px 22px rgba(0,0,0,0.3); overflow-x: auto; -webkit-overflow-scrolling: touch;
         }
-
         table.table {
-            color: #f4f0fb;
-            margin-bottom: 0;
-            min-width: 1650px;
-            --bs-table-bg: transparent;
-            --bs-table-color: #f4f0fb;
-            --bs-table-striped-bg: rgba(255,255,255,0.04);
-            --bs-table-striped-color: #f4f0fb;
-            --bs-table-active-bg: rgba(236,21,97,0.18);
-            --bs-table-active-color: #ffffff;
-            --bs-table-hover-bg: rgba(236,21,97,0.10);
-            --bs-table-hover-color: #ffffff;
+            color: #f4f0fb; margin-bottom: 0; min-width: 1750px;
+            --bs-table-bg: transparent; --bs-table-color: #f4f0fb;
+            --bs-table-striped-bg: rgba(255,255,255,0.04); --bs-table-striped-color: #f4f0fb;
+            --bs-table-active-bg: rgba(236,21,97,0.18); --bs-table-active-color: #ffffff;
+            --bs-table-hover-bg: rgba(236,21,97,0.10); --bs-table-hover-color: #ffffff;
             --bs-table-border-color: rgba(255,255,255,0.10);
         }
         table.table thead {
             background-color: var(--accent) !important;
             background: linear-gradient(90deg, var(--accent), #a5107f) !important;
-            --bs-table-bg: transparent;
-            --bs-table-color: #000;
+            --bs-table-bg: transparent; --bs-table-color: #000;
         }
         table.table thead th {
             border: none; color: #000 !important; font-weight: 700; font-size: 0.75rem;
             text-transform: uppercase; letter-spacing: 0.4px; padding: 12px 10px; white-space: nowrap;
         }
-        table.table tbody tr {
-            border-color: rgba(255,255,255,0.08);
-            background-color: var(--bg-card);
-        }
+        table.table tbody tr { border-color: rgba(255,255,255,0.08); background-color: var(--bg-card); }
         table.table tbody tr:hover { background: rgba(236,21,97,0.08) !important; }
-        table.table td {
-            vertical-align: middle;
-            border-color: rgba(255,255,255,0.08);
-            font-size: 0.85rem;
-            color: #f4f0fb !important;
-        }
-
+        table.table td { vertical-align: middle; border-color: rgba(255,255,255,0.08); font-size: 0.85rem; color: #f4f0fb !important; }
         .fila-detalle-productos { background-color: var(--bg-dark) !important; }
         .fila-detalle-productos .p-3 { background: var(--bg-dark); border-radius: 0 0 10px 10px; }
         .titulo-detalle-productos { color: #ffffff !important; font-weight: 700; }
@@ -176,14 +155,13 @@
                     <th>Fabricante</th>
                     <th>Fecha pedido</th>
                     <th>Fecha entrega</th>
-                    <th>Total productos</th>
+                    <th>Total</th>
                     <th>Descuento</th>
-                    <th>Costo fábrica</th>
-                    <th>Precio cliente</th>
-                    <th>Utilidad</th>
+                    <th>Precio Cliente</th>
                     <th>Abono</th>
                     <th>Saldo</th>
                     <th>Pago</th>
+                    <th>Método de pago</th>
                     <th>Estado</th>
                     <th>Cambiar estado</th>
                     <th th:if="${puedeCrearPedidos}">Acciones</th>
@@ -215,9 +193,7 @@
                         </td>
                         <td th:text="${#numbers.formatDecimal(p.total, 1, 'POINT', 0, 'NONE')}"></td>
                         <td th:text="${#numbers.formatDecimal(p.descuento, 1, 'POINT', 0, 'NONE')}"></td>
-                        <td th:text="${#numbers.formatDecimal(p.costoFabricaTotal, 1, 'POINT', 0, 'NONE')}"></td>
                         <td th:text="${#numbers.formatDecimal(p.precioCliente, 1, 'POINT', 0, 'NONE')}"></td>
-                        <td th:text="${#numbers.formatDecimal(p.utilidadEstimada, 1, 'POINT', 0, 'NONE')}"></td>
                         <td>
                             <div class="mb-1 fw-bold" th:text="${#numbers.formatDecimal(p.abono, 1, 'POINT', 0, 'NONE')}"></div>
                             <form th:action="@{/tienda/abonar/{id}(id=${p.id})}" method="post" class="d-flex gap-1">
@@ -232,6 +208,7 @@
                                   th:classappend="${p.estadoPago == 'Pagado Completo' ? 'badge-pagado' : 'badge-pendiente'}"
                                   th:text="${p.estadoPago}"></span>
                         </td>
+                        <td th:text="${p.metodoPago}"></td>
                         <td>
                             <span class="badge"
                                   th:classappend="${p.estado == 'Pendiente' ? 'badge-estado-pendiente' :
@@ -271,9 +248,9 @@
                                                 <th>Producto</th>
                                                 <th>Material</th>
                                                 <th>Cantidad</th>
-                                                <th>Precio unitario</th>
+                                                <th>Precio venta</th>
                                                 <th>Subtotal</th>
-                                                <th>Precio fábrica (u.)</th>
+                                                <th>Precio fábrica</th>
                                                 <th>Subtotal fábrica</th>
                                             </tr>
                                         </thead>
