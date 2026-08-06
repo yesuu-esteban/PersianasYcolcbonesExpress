@@ -63,6 +63,42 @@
         .btn-outline-dark:hover { background: rgba(255,255,255,0.1); color: #fff; }
         .text-muted { color: var(--text-muted) !important; }
         .preview-precio { font-size: 0.72rem; color: #7ff0a8; margin-top: 2px; min-height: 14px; display: block; }
+
+        /* ── Desplegable personalizado ── */
+        .campo-desplegable { position: relative; }
+        .lista-opciones {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            z-index: 50;
+            background: #1e1330;
+            border: 1px solid var(--accent);
+            border-radius: 8px;
+            margin-top: 4px;
+            max-height: 220px;
+            overflow-y: auto;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+        }
+        .lista-opciones.abierta { display: block; }
+        .lista-opciones .opcion {
+            padding: 8px 12px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            color: #fff;
+        }
+        .lista-opciones .opcion:hover,
+        .lista-opciones .opcion.resaltada {
+            background: var(--accent);
+        }
+        .lista-opciones .sin-resultados {
+            padding: 8px 12px;
+            font-size: 0.8rem;
+            color: #8f84a8;
+            font-style: italic;
+        }
+
         @media (max-width: 576px) {
             body { padding: 12px; }
             .marca-header { padding: 12px 16px; margin-bottom: 16px; }
@@ -177,13 +213,17 @@
             </thead>
             <tbody id="cuerpoDetalles">
                 <tr th:each="detalle, iter : *{detalles}">
-                    <td>
-                        <input type="text" class="form-control form-control-sm text-uppercase" list="listaProductos"
+                    <td class="campo-desplegable">
+                        <input type="text" class="form-control form-control-sm text-uppercase campo-producto"
+                               autocomplete="off"
                                th:field="*{detalles[__${iter.index}__].producto}" placeholder="Escribe o elige...">
+                        <div class="lista-opciones"></div>
                     </td>
-                    <td>
-                        <input type="text" class="form-control form-control-sm text-uppercase" list="listaMateriales"
+                    <td class="campo-desplegable">
+                        <input type="text" class="form-control form-control-sm text-uppercase campo-material"
+                               autocomplete="off"
                                th:field="*{detalles[__${iter.index}__].material}" placeholder="Escribe o elige...">
+                        <div class="lista-opciones"></div>
                     </td>
                     <td>
                         <input type="number" class="form-control form-control-sm" min="1" step="1" required
@@ -205,24 +245,6 @@
         </table>
         </div>
 
-        <datalist id="listaProductos">
-            <option value="PERSIANA VERTICAL">
-            <option value="PANEL JAPONÉS">
-            <option value="SHEER ELEGANCE">
-            <option value="BLACKOUT ENROLLABLE">
-            <option value="MINI PERSIANA">
-            <option value="MACRO MADERA">
-            <option value="CORTINA DE ONDA SERENA">
-            <option value="TOLDOS VERTICALES">
-            <option value="ENROLLABLE">
-        </datalist>
-        <datalist id="listaMateriales">
-            <option value="POLIÉSTER">
-            <option value="MADERA">
-            <option value="BLACKOUT">
-            <option value="SCRIM">
-        </datalist>
-
         <button type="button" class="btn btn-sm btn-outline-dark mb-3" onclick="agregarFilaProducto()">
             + Agregar producto
         </button>
@@ -237,12 +259,26 @@
 <script th:inline="javascript">
     let indiceDetalle = /*[[${pedidoTienda.detalles.size()}]]*/ 0;
 
+    const OPCIONES_PRODUCTO = [
+        "PERSIANA VERTICAL", "PANEL JAPONÉS", "SHEER ELEGANCE", "BLACKOUT ENROLLABLE",
+        "MINI PERSIANA", "MACRO MADERA", "CORTINA DE ONDA SERENA", "TOLDOS VERTICALES", "ENROLLABLE"
+    ];
+    const OPCIONES_MATERIAL = ["POLIÉSTER", "MADERA", "BLACKOUT", "SCRIM"];
+
     function agregarFilaProducto() {
         const idx = indiceDetalle++;
         const fila = `
             <tr>
-                <td><input type="text" class="form-control form-control-sm text-uppercase" list="listaProductos" name="detalles[${idx}].producto" placeholder="Escribe o elige..."></td>
-                <td><input type="text" class="form-control form-control-sm text-uppercase" list="listaMateriales" name="detalles[${idx}].material" placeholder="Escribe o elige..."></td>
+                <td class="campo-desplegable">
+                    <input type="text" class="form-control form-control-sm text-uppercase campo-producto"
+                           autocomplete="off" name="detalles[${idx}].producto" placeholder="Escribe o elige...">
+                    <div class="lista-opciones"></div>
+                </td>
+                <td class="campo-desplegable">
+                    <input type="text" class="form-control form-control-sm text-uppercase campo-material"
+                           autocomplete="off" name="detalles[${idx}].material" placeholder="Escribe o elige...">
+                    <div class="lista-opciones"></div>
+                </td>
                 <td><input type="number" class="form-control form-control-sm" name="detalles[${idx}].cantidad" value="1" min="1" step="1" required></td>
                 <td>
                     <input type="number" step="0.01" min="0.01" class="form-control form-control-sm money-input" name="detalles[${idx}].precioUnitario" value="0.01" required>
@@ -256,6 +292,7 @@
             </tr>`;
         document.getElementById('cuerpoDetalles').insertAdjacentHTML('beforeend', fila);
         activarPreviewsPrecios();
+        activarDesplegables();
     }
 
     function formatearMiles(numero) {
@@ -279,7 +316,58 @@
         });
     }
 
-    document.addEventListener('DOMContentLoaded', activarPreviewsPrecios);
+    // ── Desplegable personalizado: escribe libre O elige de la lista ──
+    function activarDesplegable(input, opciones) {
+        if (input.dataset.desplegableActivo) return;
+        input.dataset.desplegableActivo = "1";
+
+        const contenedor = input.closest('.campo-desplegable');
+        const lista = contenedor.querySelector('.lista-opciones');
+
+        function renderizar(filtro) {
+            const texto = (filtro || '').toUpperCase();
+            const filtradas = opciones.filter(o => o.includes(texto));
+
+            lista.innerHTML = '';
+            if (filtradas.length === 0) {
+                lista.innerHTML = '<div class="sin-resultados">Sin sugerencias — se guardará lo que escribas</div>';
+            } else {
+                filtradas.forEach(op => {
+                    const div = document.createElement('div');
+                    div.className = 'opcion';
+                    div.textContent = op;
+                    div.addEventListener('mousedown', (e) => {
+                        e.preventDefault(); // evita que el input pierda foco antes del click
+                        input.value = op;
+                        lista.classList.remove('abierta');
+                    });
+                    lista.appendChild(div);
+                });
+            }
+        }
+
+        input.addEventListener('focus', () => {
+            renderizar(input.value);
+            lista.classList.add('abierta');
+        });
+        input.addEventListener('input', () => {
+            renderizar(input.value);
+            lista.classList.add('abierta');
+        });
+        input.addEventListener('blur', () => {
+            setTimeout(() => lista.classList.remove('abierta'), 100);
+        });
+    }
+
+    function activarDesplegables() {
+        document.querySelectorAll('.campo-producto').forEach(i => activarDesplegable(i, OPCIONES_PRODUCTO));
+        document.querySelectorAll('.campo-material').forEach(i => activarDesplegable(i, OPCIONES_MATERIAL));
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        activarPreviewsPrecios();
+        activarDesplegables();
+    });
 </script>
 <script src="/js/token-nav.js"></script>
 </body>
