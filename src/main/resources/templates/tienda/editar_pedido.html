@@ -83,6 +83,26 @@
         }
         .btn-volver-lista:hover { background: rgba(255,255,255,0.18); }
 
+        /* ── Cuadro resumen de total ── */
+        .resumen-total {
+            background: #1e1330;
+            border: 1px solid rgba(236,21,97,0.35);
+            border-radius: 12px;
+            padding: 16px 20px;
+            margin-bottom: 20px;
+        }
+        .resumen-total .fila-resumen {
+            display: flex; justify-content: space-between; align-items: center;
+            font-size: 0.9rem; padding: 4px 0; color: var(--text-muted);
+        }
+        .resumen-total .fila-resumen span:last-child { font-weight: 600; }
+        .resumen-total hr { margin: 8px 0; border-color: rgba(255,255,255,0.15); }
+        .resumen-total .fila-total {
+            display: flex; justify-content: space-between; align-items: center;
+            font-size: 1.15rem; font-weight: 800;
+        }
+        .resumen-total .fila-total span:last-child { color: var(--accent-light); }
+
         @media (max-width: 576px) {
             body { padding: 12px; }
             .marca-header { padding: 12px 16px; margin-bottom: 16px; }
@@ -265,7 +285,7 @@
                     </td>
                     <td>
                         <button type="button" class="btn btn-sm btn-outline-danger"
-                                onclick="this.closest('tr').remove()">✕</button>
+                                onclick="this.closest('tr').remove(); calcularTotales();">✕</button>
                     </td>
                 </tr>
             </tbody>
@@ -275,6 +295,22 @@
         <button type="button" class="btn btn-sm btn-outline-dark mb-3" onclick="agregarFilaProducto()">
             + Agregar producto
         </button>
+
+        <div class="resumen-total">
+            <div class="fila-resumen">
+                <span>Total productos</span>
+                <span id="totalProductos">$ 0</span>
+            </div>
+            <div class="fila-resumen">
+                <span>Descuento</span>
+                <span id="totalDescuento">$ 0</span>
+            </div>
+            <hr>
+            <div class="fila-total">
+                <span>Total a pagar</span>
+                <span id="totalAPagar">$ 0</span>
+            </div>
+        </div>
 
         <div class="mt-4">
             <button type="submit" class="btn btn-primary w-100">Guardar Cambios</button>
@@ -340,11 +376,38 @@
                     <input type="number" step="0.01" min="0" class="form-control form-control-sm money-input" name="detalles[${idx}].precioFabricaUnitario" value="0">
                     <small class="preview-precio"></small>
                 </td>
-                <td><button type="button" class="btn btn-sm btn-outline-danger" onclick="this.closest('tr').remove()">✕</button></td>
+                <td><button type="button" class="btn btn-sm btn-outline-danger" onclick="this.closest('tr').remove(); calcularTotales();">✕</button></td>
             </tr>`;
         document.getElementById('cuerpoDetalles').insertAdjacentHTML('beforeend', fila);
         activarPreviewsPrecios();
         activarSelectoresOtro();
+        calcularTotales();
+    }
+
+    // ── Cuadro resumen: suma cantidad × precio venta de cada producto, menos el descuento ──
+    function calcularTotales() {
+        let totalProductos = 0;
+
+        document.querySelectorAll('#cuerpoDetalles tr').forEach(fila => {
+            const inputCantidad = fila.querySelector('input[name$=".cantidad"]');
+            const inputPrecio = fila.querySelector('input[name$=".precioUnitario"]');
+            if (!inputCantidad || !inputPrecio) return;
+
+            const cantidad = parseFloat(inputCantidad.value) || 0;
+            const precio = parseFloat(inputPrecio.value) || 0;
+            totalProductos += cantidad * precio;
+        });
+
+        const inputDescuento = document.querySelector('input[name="descuento"]');
+        const descuento = inputDescuento ? (parseFloat(inputDescuento.value) || 0) : 0;
+        const totalAPagar = Math.max(totalProductos - descuento, 0);
+
+        const elTotalProductos = document.getElementById('totalProductos');
+        const elTotalDescuento = document.getElementById('totalDescuento');
+        const elTotalAPagar = document.getElementById('totalAPagar');
+        if (elTotalProductos) elTotalProductos.textContent = '$ ' + formatearMiles(totalProductos);
+        if (elTotalDescuento) elTotalDescuento.textContent = '$ ' + formatearMiles(descuento);
+        if (elTotalAPagar) elTotalAPagar.textContent = '$ ' + formatearMiles(totalAPagar);
     }
 
     function formatearMiles(numero) {
@@ -426,6 +489,8 @@
     document.addEventListener('DOMContentLoaded', () => {
         activarPreviewsPrecios();
         activarSelectoresOtro();
+        calcularTotales();
+        document.querySelector('form').addEventListener('input', calcularTotales);
     });
 </script>
 <script src="/js/token-nav.js"></script>
