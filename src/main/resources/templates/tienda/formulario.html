@@ -159,7 +159,8 @@
         <h5 class="mb-1">Productos</h5>
         <p class="text-muted mb-3" style="font-size:0.82rem;">
             Cantidad y precios deben ser mayores a 0. "Precio venta" es lo que se le cobra al cliente,
-            "Precio fábrica" es lo que te cobra el fabricante por esa línea.
+            "Precio fábrica" es lo que te cobra el fabricante por esa línea. Si el producto o material
+            que necesitas no aparece en las sugerencias, puedes escribirlo libremente.
         </p>
 
         <div class="table-responsive">
@@ -205,21 +206,21 @@
         </div>
 
         <datalist id="listaProductos">
+            <option value="PERSIANA VERTICAL">
             <option value="PANEL JAPONÉS">
-            <option value="BLACKOUT">
-            <option value="CHIC ELEGANTE">
+            <option value="SHEER ELEGANCE">
+            <option value="BLACKOUT ENROLLABLE">
+            <option value="MINI PERSIANA">
+            <option value="MACRO MADERA">
+            <option value="CORTINA DE ONDA SERENA">
+            <option value="TOLDOS VERTICALES">
             <option value="ENROLLABLE">
-            <option value="VERTICAL">
-            <option value="CORTINA EN ONDA">
-            <option value="ROMANA">
-            <option value="VENECIANA">
         </datalist>
         <datalist id="listaMateriales">
             <option value="POLIÉSTER">
-            <option value="SCREEN">
+            <option value="MADERA">
             <option value="BLACKOUT">
-            <option value="LINO">
-            <option value="SUNSCREEN">
+            <option value="SCRIM">
         </datalist>
 
         <button type="button" class="btn btn-sm btn-outline-dark mb-3" onclick="agregarFilaProducto()">
@@ -257,14 +258,13 @@
         activarPreviewsPrecios();
     }
 
-    // ── Vista previa formateada mientras se escribe un precio ──
     function formatearMiles(numero) {
         return new Intl.NumberFormat('es-CO', { maximumFractionDigits: 0 }).format(numero);
     }
 
     function activarPreviewsPrecios() {
         document.querySelectorAll('.money-input').forEach(input => {
-            if (input.dataset.previewActivo) return; // evita duplicar el listener
+            if (input.dataset.previewActivo) return;
             input.dataset.previewActivo = "1";
 
             const preview = input.parentElement.querySelector('.preview-precio');
@@ -275,7 +275,7 @@
                 }
             };
             input.addEventListener('input', actualizar);
-            actualizar(); // por si ya trae valor al cargar (editar)
+            actualizar();
         });
     }
 
