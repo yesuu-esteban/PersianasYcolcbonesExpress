@@ -65,40 +65,23 @@
         .text-muted { color: var(--text-muted) !important; }
         .preview-precio { font-size: 0.72rem; color: #7ff0a8; margin-top: 2px; min-height: 14px; display: block; }
 
-        /* ── Desplegable personalizado ── */
-        .campo-desplegable { position: relative; }
-        .lista-opciones {
-            display: none;
-            position: absolute;
-            top: 100%;
-            left: 0;
-            right: 0;
-            z-index: 50;
-            background: #1e1330;
-            border: 1px solid var(--accent);
-            border-radius: 8px;
-            margin-top: 4px;
-            max-height: 220px;
-            overflow-y: auto;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.5);
-        }
-        .lista-opciones.abierta { display: block; }
-        .lista-opciones .opcion {
-            padding: 8px 12px;
-            font-size: 0.85rem;
-            cursor: pointer;
+        /* ── Selector Producto/Material: select nativo + campo manual "Otro" ── */
+        .campo-selector { min-width: 150px; }
+        .form-select option[value="__OTRO__"] { color: var(--gold); }
+        .campo-manual { display: flex; align-items: center; gap: 6px; }
+        .campo-manual.d-none { display: none; }
+        .btn-volver-lista {
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.2);
             color: #fff;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            line-height: 1;
+            padding: 6px 9px;
+            cursor: pointer;
+            flex-shrink: 0;
         }
-        .lista-opciones .opcion:hover,
-        .lista-opciones .opcion.resaltada {
-            background: var(--accent);
-        }
-        .lista-opciones .sin-resultados {
-            padding: 8px 12px;
-            font-size: 0.8rem;
-            color: #8f84a8;
-            font-style: italic;
-        }
+        .btn-volver-lista:hover { background: rgba(255,255,255,0.18); }
 
         @media (max-width: 576px) {
             body { padding: 12px; }
@@ -205,8 +188,8 @@
         <h5 class="mb-1">Productos</h5>
         <p class="text-muted mb-3" style="font-size:0.82rem;">
             Cantidad y precios deben ser mayores a 0. "Precio venta" es lo que se le cobra al cliente,
-            "Precio fábrica" es lo que te cobra el fabricante por esa línea. Si el producto o material
-            que necesitas no aparece en las sugerencias, puedes escribirlo libremente.
+            "Precio fábrica" es lo que te cobra el fabricante por esa línea. Elige de la lista; si no está
+            lo que buscas, selecciona "Otro (escribir)" y escríbelo tú mismo.
         </p>
 
         <div class="table-responsive">
@@ -223,17 +206,48 @@
             </thead>
             <tbody id="cuerpoDetalles">
                 <tr th:each="detalle, iter : *{detalles}">
-                    <td class="campo-desplegable">
-                        <input type="text" class="form-control form-control-sm text-uppercase campo-producto"
-                               autocomplete="off"
-                               th:field="*{detalles[__${iter.index}__].producto}" placeholder="Escribe o elige...">
-                        <div class="lista-opciones"></div>
+                    <td>
+                        <div class="campo-selector">
+                            <select class="form-select form-select-sm text-uppercase campo-producto-select"
+                                    th:field="*{detalles[__${iter.index}__].producto}">
+                                <option value="">-- Selecciona --</option>
+                                <option value="PERSIANA VERTICAL">PERSIANA VERTICAL</option>
+                                <option value="PANEL JAPONÉS">PANEL JAPONÉS</option>
+                                <option value="SHEER ELEGANCE">SHEER ELEGANCE</option>
+                                <option value="BLACKOUT ENROLLABLE">BLACKOUT ENROLLABLE</option>
+                                <option value="MINI PERSIANA">MINI PERSIANA</option>
+                                <option value="MACRO MADERA">MACRO MADERA</option>
+                                <option value="CORTINA DE ONDA SERENA">CORTINA DE ONDA SERENA</option>
+                                <option value="TOLDOS VERTICALES">TOLDOS VERTICALES</option>
+                                <option value="ENROLLABLE">ENROLLABLE</option>
+                                <option value="__OTRO__">✏️ Otro (escribir)</option>
+                            </select>
+                            <div class="campo-manual d-none">
+                                <input type="text" class="form-control form-control-sm text-uppercase campo-producto-manual"
+                                       autocomplete="off" placeholder="Escribe el producto..."
+                                       th:field="*{detalles[__${iter.index}__].producto}">
+                                <button type="button" class="btn-volver-lista" title="Volver a la lista">↩</button>
+                            </div>
+                        </div>
                     </td>
-                    <td class="campo-desplegable">
-                        <input type="text" class="form-control form-control-sm text-uppercase campo-material"
-                               autocomplete="off"
-                               th:field="*{detalles[__${iter.index}__].material}" placeholder="Escribe o elige...">
-                        <div class="lista-opciones"></div>
+                    <td>
+                        <div class="campo-selector">
+                            <select class="form-select form-select-sm text-uppercase campo-material-select"
+                                    th:field="*{detalles[__${iter.index}__].material}">
+                                <option value="">-- Selecciona --</option>
+                                <option value="POLIÉSTER">POLIÉSTER</option>
+                                <option value="MADERA">MADERA</option>
+                                <option value="BLACKOUT">BLACKOUT</option>
+                                <option value="SCRIM">SCRIM</option>
+                                <option value="__OTRO__">✏️ Otro (escribir)</option>
+                            </select>
+                            <div class="campo-manual d-none">
+                                <input type="text" class="form-control form-control-sm text-uppercase campo-material-manual"
+                                       autocomplete="off" placeholder="Escribe el material..."
+                                       th:field="*{detalles[__${iter.index}__].material}">
+                                <button type="button" class="btn-volver-lista" title="Volver a la lista">↩</button>
+                            </div>
+                        </div>
                     </td>
                     <td>
                         <input type="number" class="form-control form-control-sm" min="1" step="1" required
@@ -278,19 +292,44 @@
     ];
     const OPCIONES_MATERIAL = ["POLIÉSTER", "MADERA", "BLACKOUT", "SCRIM"];
 
+    function construirOpcionesSelect(opciones) {
+        let html = '<option value="">-- Selecciona --</option>';
+        opciones.forEach(op => {
+            html += `<option value="${op}">${op}</option>`;
+        });
+        html += '<option value="__OTRO__">✏️ Otro (escribir)</option>';
+        return html;
+    }
+
     function agregarFilaProducto() {
         const idx = indiceDetalle++;
         const fila = `
             <tr>
-                <td class="campo-desplegable">
-                    <input type="text" class="form-control form-control-sm text-uppercase campo-producto"
-                           autocomplete="off" name="detalles[${idx}].producto" placeholder="Escribe o elige...">
-                    <div class="lista-opciones"></div>
+                <td>
+                    <div class="campo-selector">
+                        <select class="form-select form-select-sm text-uppercase campo-producto-select"
+                                name="detalles[${idx}].producto">
+                            ${construirOpcionesSelect(OPCIONES_PRODUCTO)}
+                        </select>
+                        <div class="campo-manual d-none">
+                            <input type="text" class="form-control form-control-sm text-uppercase campo-producto-manual"
+                                   autocomplete="off" name="detalles[${idx}].producto" placeholder="Escribe el producto..." disabled>
+                            <button type="button" class="btn-volver-lista" title="Volver a la lista">↩</button>
+                        </div>
+                    </div>
                 </td>
-                <td class="campo-desplegable">
-                    <input type="text" class="form-control form-control-sm text-uppercase campo-material"
-                           autocomplete="off" name="detalles[${idx}].material" placeholder="Escribe o elige...">
-                    <div class="lista-opciones"></div>
+                <td>
+                    <div class="campo-selector">
+                        <select class="form-select form-select-sm text-uppercase campo-material-select"
+                                name="detalles[${idx}].material">
+                            ${construirOpcionesSelect(OPCIONES_MATERIAL)}
+                        </select>
+                        <div class="campo-manual d-none">
+                            <input type="text" class="form-control form-control-sm text-uppercase campo-material-manual"
+                                   autocomplete="off" name="detalles[${idx}].material" placeholder="Escribe el material..." disabled>
+                            <button type="button" class="btn-volver-lista" title="Volver a la lista">↩</button>
+                        </div>
+                    </div>
                 </td>
                 <td><input type="number" class="form-control form-control-sm" name="detalles[${idx}].cantidad" value="1" min="1" step="1" required></td>
                 <td>
@@ -305,7 +344,7 @@
             </tr>`;
         document.getElementById('cuerpoDetalles').insertAdjacentHTML('beforeend', fila);
         activarPreviewsPrecios();
-        activarDesplegables();
+        activarSelectoresOtro();
     }
 
     function formatearMiles(numero) {
@@ -329,56 +368,64 @@
         });
     }
 
-    function activarDesplegable(input, opciones) {
-        if (input.dataset.desplegableActivo) return;
-        input.dataset.desplegableActivo = "1";
+    // ── Selector Producto/Material: select nativo + campo manual "Otro" ──
+    function inicializarSelectorOtro(select) {
+        if (select.dataset.otroInit) return;
+        select.dataset.otroInit = "1";
 
-        const contenedor = input.closest('.campo-desplegable');
-        const lista = contenedor.querySelector('.lista-opciones');
+        const wrapper = select.closest('.campo-selector');
+        const manualWrap = wrapper.querySelector('.campo-manual');
+        const manualInput = manualWrap.querySelector('input[type="text"]');
+        const btnVolver = manualWrap.querySelector('.btn-volver-lista');
 
-        function renderizar(filtro) {
-            const texto = (filtro || '').toUpperCase();
-            const filtradas = opciones.filter(o => o.includes(texto));
+        function mostrarManual(enfocar) {
+            select.classList.add('d-none');
+            select.disabled = true;
+            manualWrap.classList.remove('d-none');
+            manualInput.disabled = false;
+            if (enfocar) manualInput.focus();
+        }
 
-            lista.innerHTML = '';
-            if (filtradas.length === 0) {
-                lista.innerHTML = '<div class="sin-resultados">Sin sugerencias — se guardará lo que escribas</div>';
-            } else {
-                filtradas.forEach(op => {
-                    const div = document.createElement('div');
-                    div.className = 'opcion';
-                    div.textContent = op;
-                    div.addEventListener('mousedown', (e) => {
-                        e.preventDefault();
-                        input.value = op;
-                        lista.classList.remove('abierta');
-                    });
-                    lista.appendChild(div);
-                });
+        function mostrarSelect() {
+            manualWrap.classList.add('d-none');
+            manualInput.disabled = true;
+            manualInput.value = '';
+            select.classList.remove('d-none');
+            select.disabled = false;
+            select.value = '';
+        }
+
+        // Si el campo ya trae un valor libre (no está en las opciones), arrancar en modo manual.
+        // Esto pasa, por ejemplo, con pedidos ya guardados que usaron "Otro" antes de este cambio.
+        const opcionesDisponibles = Array.from(select.options).map(o => o.value);
+        const valorActual = (manualInput.value || '').trim();
+
+        if (valorActual !== '' && !opcionesDisponibles.includes(valorActual)) {
+            mostrarManual(false);
+        } else {
+            manualInput.disabled = true;
+            if (valorActual !== '') {
+                select.value = valorActual;
             }
         }
 
-        input.addEventListener('focus', () => {
-            renderizar(input.value);
-            lista.classList.add('abierta');
+        select.addEventListener('change', () => {
+            if (select.value === '__OTRO__') {
+                manualInput.value = '';
+                mostrarManual(true);
+            }
         });
-        input.addEventListener('input', () => {
-            renderizar(input.value);
-            lista.classList.add('abierta');
-        });
-        input.addEventListener('blur', () => {
-            setTimeout(() => lista.classList.remove('abierta'), 100);
-        });
+
+        btnVolver.addEventListener('click', () => mostrarSelect());
     }
 
-    function activarDesplegables() {
-        document.querySelectorAll('.campo-producto').forEach(i => activarDesplegable(i, OPCIONES_PRODUCTO));
-        document.querySelectorAll('.campo-material').forEach(i => activarDesplegable(i, OPCIONES_MATERIAL));
+    function activarSelectoresOtro() {
+        document.querySelectorAll('.campo-producto-select, .campo-material-select').forEach(inicializarSelectorOtro);
     }
 
     document.addEventListener('DOMContentLoaded', () => {
         activarPreviewsPrecios();
-        activarDesplegables();
+        activarSelectoresOtro();
     });
 </script>
 <script src="/js/token-nav.js"></script>
