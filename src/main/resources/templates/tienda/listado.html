@@ -30,8 +30,12 @@
             letter-spacing: 1.5px; margin-top: 2px;
         }
         h2 { font-weight: 700; font-size: 1.4rem; }
-        .barra-busqueda { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
-        .barra-busqueda input { flex: 1 1 260px; max-width: 340px; }
+
+        .card-filtro {
+            background: var(--bg-card); border-radius: 14px; padding: 18px 20px;
+            box-shadow: 0 4px 22px rgba(0,0,0,0.3); margin-bottom: 20px;
+        }
+
         .btn-primary, .btn-success {
             background: linear-gradient(135deg, var(--accent), #b81050) !important; border: none !important;
             font-weight: 600; box-shadow: 0 3px 10px rgba(236,21,97,0.35);
@@ -88,6 +92,7 @@
         }
         .form-control::placeholder { color: #8f84a8; }
         .form-select option { background: #1e1330; color: #fff; }
+        .form-label { color: var(--text-muted); font-size: 0.8rem; }
         .badge-estado-pendiente { background-color: #495057; }
         .badge-estado-pedido    { background-color: #6c5b7b; }
         .badge-estado-bodega    { background: linear-gradient(135deg,#0dcaf0,#0b9fc0); color:#03171c; }
@@ -106,8 +111,8 @@
             .marca-header .titulo-marca { font-size: 0.95rem; }
             .marca-header .titulo-marca small { font-size: 0.55rem; }
             h2 { font-size: 1.15rem; }
-            .barra-busqueda input { max-width: 100%; }
             .marca-header .btn { width: 100%; }
+            .card-filtro { padding: 14px 16px; }
         }
     </style>
 </head>
@@ -130,11 +135,36 @@
 
         <h2 class="mb-3">🛒 Pedidos de Tienda</h2>
 
-        <form method="get" th:action="@{/tienda/listado}" class="barra-busqueda">
-            <input type="text" name="buscar" th:value="${buscar}"
-                   class="form-control" placeholder="Buscar por nombre o cédula...">
-            <button type="submit" class="btn btn-outline-primary">🔍 Buscar</button>
-            <a th:if="${buscar != ''}" href="/tienda/listado" class="btn btn-outline-secondary">✕ Limpiar</a>
+        <form method="get" th:action="@{/tienda/listado}" class="card-filtro row g-3 align-items-end">
+            <div class="col-6 col-md-2">
+                <label class="form-label fw-bold">Nombre</label>
+                <input type="text" name="nombre" th:value="${nombre}" class="form-control" placeholder="Cliente...">
+            </div>
+            <div class="col-6 col-md-2">
+                <label class="form-label fw-bold">Cédula</label>
+                <input type="text" name="cedula" th:value="${cedula}" class="form-control" placeholder="Cédula...">
+            </div>
+            <div class="col-6 col-md-2">
+                <label class="form-label fw-bold">Dirección</label>
+                <input type="text" name="direccion" th:value="${direccion}" class="form-control" placeholder="Dirección...">
+            </div>
+            <div class="col-6 col-md-2">
+                <label class="form-label fw-bold">Fecha de entrega</label>
+                <input type="date" name="fechaEntrega" th:value="${fechaEntrega}" class="form-control">
+            </div>
+            <div class="col-6 col-md-2">
+                <label class="form-label fw-bold">Pago</label>
+                <select name="pagado" class="form-select">
+                    <option value="" th:selected="${pagado == ''}">Todos</option>
+                    <option value="si" th:selected="${pagado == 'si'}">Pagado</option>
+                    <option value="no" th:selected="${pagado == 'no'}">Pendiente</option>
+                </select>
+            </div>
+            <div class="col-6 col-md-2 d-flex gap-2">
+                <button type="submit" class="btn btn-outline-primary flex-fill">🔍 Buscar</button>
+                <a th:if="${nombre != '' or cedula != '' or direccion != '' or fechaEntrega != '' or pagado != ''}"
+                   href="/tienda/listado" class="btn btn-outline-secondary" title="Limpiar filtros">✕</a>
+            </div>
         </form>
 
         <div th:if="${mensaje}" class="alert alert-success" th:text="${mensaje}"></div>
@@ -170,12 +200,15 @@
             <tbody>
                 <th:block th:each="p, iter : ${pedidos}">
                     <tr>
-                        <td>
+                        <td class="d-flex gap-1">
                             <button type="button" class="btn btn-sm btn-outline-secondary btn-ver-detalle"
                                     th:data-bs-toggle="collapse"
-                                    th:data-bs-target="'#detalle-' + ${p.id}">
+                                    th:data-bs-target="'#detalle-' + ${p.id}"
+                                    title="Ver productos">
                                 🧾
                             </button>
+                            <a th:href="@{/tienda/imprimir/{id}(id=${p.id})}" target="_blank"
+                               class="btn btn-sm btn-outline-secondary" title="Imprimir pedido">🖨️</a>
                         </td>
                         <td th:text="${p.id}"></td>
                         <td th:text="${p.nombreCliente}"></td>

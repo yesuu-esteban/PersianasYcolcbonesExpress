@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pedido #<span th:text="${pedidoTienda.id}"></span> - Persianas y Cortinas Express</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --accent: #ec1561; --accent-dark: #a5107f; --gold: #b8860b;
+            --linea: #d9d9d9; --texto: #1a1a1a; --texto-suave: #555;
+        }
+        * { font-family: 'Poppins', sans-serif; }
+        body { background: #f2f2f2; color: var(--texto); padding: 24px; }
+        .hoja {
+            background: #fff; max-width: 850px; margin: 0 auto; padding: 36px 42px;
+            border-radius: 10px; box-shadow: 0 4px 18px rgba(0,0,0,0.12);
+        }
+        .encabezado {
+            display: flex; align-items: center; justify-content: space-between;
+            border-bottom: 3px solid var(--accent); padding-bottom: 16px; margin-bottom: 22px;
+        }
+        .encabezado .marca { display: flex; align-items: center; gap: 12px; }
+        .encabezado .icono {
+            width: 48px; height: 48px; background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+            border-radius: 50%; display: flex; align-items: center; justify-content: center;
+            font-size: 1.5rem; flex-shrink: 0; color: #fff;
+        }
+        .encabezado .titulo-marca { font-weight: 800; font-size: 1.15rem; line-height: 1.1; color: var(--texto); }
+        .encabezado .titulo-marca small {
+            display: block; font-weight: 600; font-size: 0.65rem; color: var(--gold);
+            letter-spacing: 1.5px; margin-top: 3px;
+        }
+        .encabezado .num-pedido { text-align: right; }
+        .encabezado .num-pedido .numero { font-size: 1.6rem; font-weight: 800; color: var(--accent); }
+        .encabezado .num-pedido .fecha { font-size: 0.78rem; color: var(--texto-suave); }
+
+        .bloque-titulo {
+            font-weight: 700; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.6px;
+            color: var(--accent-dark); margin: 22px 0 8px; border-bottom: 1px solid var(--linea); padding-bottom: 4px;
+        }
+        .datos-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px 24px; }
+        .dato { font-size: 0.9rem; padding: 3px 0; }
+        .dato .etiqueta { font-weight: 600; color: var(--texto-suave); font-size: 0.75rem; text-transform: uppercase; display: block; }
+        .dato .valor { font-size: 0.95rem; }
+
+        table.tabla-productos { width: 100%; border-collapse: collapse; font-size: 0.85rem; margin-top: 4px; }
+        table.tabla-productos th {
+            background: var(--accent); color: #fff; text-transform: uppercase; font-size: 0.7rem;
+            padding: 8px 10px; text-align: left; letter-spacing: 0.4px;
+        }
+        table.tabla-productos td { padding: 7px 10px; border-bottom: 1px solid var(--linea); }
+        table.tabla-productos tr:nth-child(even) td { background: #faf7f9; }
+
+        .resumen-pago { display: flex; justify-content: flex-end; margin-top: 18px; }
+        .caja-resumen { width: 300px; }
+        .caja-resumen .fila { display: flex; justify-content: space-between; padding: 5px 0; font-size: 0.92rem; }
+        .caja-resumen .fila.total { border-top: 2px solid var(--texto); margin-top: 4px; padding-top: 8px; font-weight: 700; font-size: 1.05rem; }
+        .caja-resumen .fila.saldo { font-weight: 700; color: var(--accent-dark); }
+
+        .estado-badge {
+            display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 0.75rem;
+            font-weight: 700; text-transform: uppercase; background: #eee; color: #333;
+        }
+        .estado-badge.pagado { background: #d4f7dd; color: #1e7a3c; }
+        .estado-badge.pendiente-pago { background: #fde3c4; color: #8a5a00; }
+
+        .pie {
+            margin-top: 30px; padding-top: 14px; border-top: 1px solid var(--linea);
+            font-size: 0.72rem; color: var(--texto-suave); text-align: center;
+        }
+
+        .barra-acciones { max-width: 850px; margin: 0 auto 16px; display: flex; gap: 10px; justify-content: flex-end; }
+        .barra-acciones .btn-primary { background: var(--accent); border: none; }
+        .barra-acciones .btn-primary:hover { background: var(--accent-dark); }
+
+        @media print {
+            body { background: #fff; padding: 0; }
+            .hoja { box-shadow: none; border-radius: 0; max-width: 100%; padding: 10px 20px; }
+            .no-imprimir { display: none !important; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="barra-acciones no-imprimir">
+        <a href="/tienda/listado" class="btn btn-outline-secondary">← Volver al listado</a>
+        <button type="button" class="btn btn-primary" onclick="window.print()">🖨️ Imprimir</button>
+    </div>
+
+    <div class="hoja">
+        <div class="encabezado">
+            <div class="marca">
+                <div class="icono">⚙️</div>
+                <div class="titulo-marca">
+                    PERSIANAS Y CORTINAS EXPRESS
+                    <small>PUNTO DE VENTA</small>
+                </div>
+            </div>
+            <div class="num-pedido">
+                <div class="numero">Pedido #<span th:text="${pedidoTienda.id}"></span></div>
+                <div class="fecha" th:text="${#temporals.format(pedidoTienda.fechaPedido, 'dd/MM/yyyy HH:mm')}"></div>
+            </div>
+        </div>
+
+        <div class="bloque-titulo">Datos del cliente</div>
+        <div class="datos-grid">
+            <div class="dato">
+                <span class="etiqueta">Cliente</span>
+                <span class="valor" th:text="${pedidoTienda.nombreCliente}"></span>
+            </div>
+            <div class="dato">
+                <span class="etiqueta">Cédula</span>
+                <span class="valor" th:text="${pedidoTienda.cedula != '' ? pedidoTienda.cedula : '—'}"></span>
+            </div>
+            <div class="dato">
+                <span class="etiqueta">Teléfono</span>
+                <span class="valor" th:text="${pedidoTienda.telefono != '' ? pedidoTienda.telefono : '—'}"></span>
+            </div>
+            <div class="dato">
+                <span class="etiqueta">Dirección</span>
+                <span class="valor" th:text="${pedidoTienda.direccion != '' ? pedidoTienda.direccion : '—'}"></span>
+            </div>
+            <div class="dato" style="grid-column: 1 / -1;" th:if="${pedidoTienda.descripcion != ''}">
+                <span class="etiqueta">Descripción</span>
+                <span class="valor" th:text="${pedidoTienda.descripcion}"></span>
+            </div>
+        </div>
+
+        <div class="bloque-titulo">Datos del pedido</div>
+        <div class="datos-grid">
+            <div class="dato">
+                <span class="etiqueta">Vendedor</span>
+                <span class="valor" th:text="${pedidoTienda.vendedor != '' ? pedidoTienda.vendedor : '—'}"></span>
+            </div>
+            <div class="dato">
+                <span class="etiqueta">Fabricante</span>
+                <span class="valor" th:text="${pedidoTienda.fabrica != '' ? pedidoTienda.fabrica : '—'}"></span>
+            </div>
+            <div class="dato">
+                <span class="etiqueta">Fecha de entrega</span>
+                <span class="valor"
+                      th:text="${pedidoTienda.fechaEntrega != null ? #temporals.format(pedidoTienda.fechaEntrega, 'dd/MM/yyyy HH:mm') : 'Sin definir'}"></span>
+            </div>
+            <div class="dato">
+                <span class="etiqueta">Estado del pedido</span>
+                <span class="valor" th:text="${pedidoTienda.estado}"></span>
+            </div>
+            <div class="dato">
+                <span class="etiqueta">Método de pago</span>
+                <span class="valor" th:text="${pedidoTienda.metodoPago != '' ? pedidoTienda.metodoPago : '—'}"></span>
+            </div>
+            <div class="dato">
+                <span class="etiqueta">Estado de pago</span>
+                <span class="valor">
+                    <span class="estado-badge"
+                          th:classappend="${pedidoTienda.estadoPago == 'Pagado Completo' ? 'pagado' : 'pendiente-pago'}"
+                          th:text="${pedidoTienda.estadoPago}"></span>
+                </span>
+            </div>
+        </div>
+
+        <div class="bloque-titulo">Productos</div>
+        <table class="tabla-productos">
+            <thead>
+                <tr>
+                    <th>Producto</th>
+                    <th>Material</th>
+                    <th>Cantidad</th>
+                    <th>Precio venta</th>
+                    <th>Subtotal</th>
+                    <th>Precio fábrica</th>
+                    <th>Subtotal fábrica</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:each="d : ${pedidoTienda.detalles}">
+                    <td th:text="${d.producto}"></td>
+                    <td th:text="${d.material}"></td>
+                    <td th:text="${d.cantidad}"></td>
+                    <td th:text="${#numbers.formatDecimal(d.precioUnitario, 1, 'POINT', 0, 'NONE')}"></td>
+                    <td th:text="${#numbers.formatDecimal(d.subtotal, 1, 'POINT', 0, 'NONE')}"></td>
+                    <td th:text="${#numbers.formatDecimal(d.precioFabricaUnitario, 1, 'POINT', 0, 'NONE')}"></td>
+                    <td th:text="${#numbers.formatDecimal(d.subtotalFabrica, 1, 'POINT', 0, 'NONE')}"></td>
+                </tr>
+                <tr th:if="${#lists.isEmpty(pedidoTienda.detalles)}">
+                    <td colspan="7" class="text-center text-muted">Sin productos registrados.</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="resumen-pago">
+            <div class="caja-resumen">
+                <div class="fila">
+                    <span>Total productos</span>
+                    <span th:text="${#numbers.formatDecimal(pedidoTienda.total, 1, 'POINT', 0, 'NONE')}"></span>
+                </div>
+                <div class="fila">
+                    <span>Descuento</span>
+                    <span th:text="'- ' + ${#numbers.formatDecimal(pedidoTienda.descuento, 1, 'POINT', 0, 'NONE')}"></span>
+                </div>
+                <div class="fila total">
+                    <span>Precio cliente</span>
+                    <span th:text="${#numbers.formatDecimal(pedidoTienda.precioCliente, 1, 'POINT', 0, 'NONE')}"></span>
+                </div>
+                <div class="fila">
+                    <span>Abonado</span>
+                    <span th:text="${#numbers.formatDecimal(pedidoTienda.abono, 1, 'POINT', 0, 'NONE')}"></span>
+                </div>
+                <div class="fila saldo">
+                    <span>Saldo pendiente</span>
+                    <span th:text="${#numbers.formatDecimal(pedidoTienda.saldo, 1, 'POINT', 0, 'NONE')}"></span>
+                </div>
+            </div>
+        </div>
+
+        <div class="pie">
+            Persianas y Cortinas Express — Documento generado el
+            <span th:text="${#temporals.format(#temporals.createNow(), 'dd/MM/yyyy HH:mm')}"></span>
+        </div>
+    </div>
+
+    <script src="/js/token-nav.js"></script>
+</body>
+</html>

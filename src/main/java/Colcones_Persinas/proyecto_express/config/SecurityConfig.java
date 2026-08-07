@@ -39,7 +39,7 @@ public class SecurityConfig {
                 .requestMatchers("/tienda/nuevo", "/tienda/guardar", "/tienda/editar/**", "/tienda/eliminar/**")
                     .hasAnyRole("TIENDA", "ADMIN")
 
-                // Resto de tienda (listado, ver detalle, abonar, cambiar estado):
+                // Resto de tienda (listado, ver detalle, imprimir, abonar, cambiar estado):
                 // vendedores, admin de tienda (solo lectura/estado/abono), y admin general
                 .requestMatchers("/tienda/**").hasAnyRole("TIENDA", "TIENDA_ADMIN", "ADMIN")
 

@@ -54,30 +54,59 @@ public class PedidoTiendaControlador {
         return "redirect:/tienda/listado";
     }
 
-    // ─── Listado con búsqueda por nombre o cédula ───────────────────────
+    // ─── Listado con filtros independientes (nombre, cédula, dirección, fecha de entrega, pago) ───
     @PreAuthorize("hasAnyRole('TIENDA','TIENDA_ADMIN','ADMIN')")
     @GetMapping("/listado")
     public String listarPedidos(
-            @RequestParam(required = false) String buscar,
+            @RequestParam(required = false) String nombre,
+            @RequestParam(required = false) String cedula,
+            @RequestParam(required = false) String direccion,
+            @RequestParam(required = false) String fechaEntrega,
+            @RequestParam(required = false) String pagado,
             Model model) {
 
-        List<PedidoTienda> todos = pedidoTiendaRepository.findAll();
+        // Siempre ordenado por ID ascendente: así la posición de cada pedido en la
+        // tabla nunca cambia por editar/crear otros pedidos.
+        List<PedidoTienda> todos = pedidoTiendaRepository.findAllByOrderByIdAsc();
 
-        List<PedidoTienda> pedidos;
-        if (buscar != null && !buscar.isBlank()) {
-            String q = buscar.trim().toLowerCase();
-            pedidos = todos.stream()
-                    .filter(p ->
-                        (p.getNombreCliente() != null && p.getNombreCliente().toLowerCase().contains(q)) ||
-                        (p.getCedula() != null && p.getCedula().toLowerCase().contains(q))
-                    )
-                    .collect(Collectors.toList());
-        } else {
-            pedidos = todos;
+        LocalDate fechaFiltro = null;
+        if (fechaEntrega != null && !fechaEntrega.isBlank()) {
+            try {
+                fechaFiltro = LocalDate.parse(fechaEntrega);
+            } catch (Exception ignored) {
+                // Si viene una fecha mal formada, simplemente no se filtra por fecha.
+            }
         }
+        final LocalDate fechaFiltroFinal = fechaFiltro;
+
+        List<PedidoTienda> pedidos = todos.stream()
+                .filter(p -> nombre == null || nombre.isBlank()
+                        || (p.getNombreCliente() != null
+                            && p.getNombreCliente().toLowerCase().contains(nombre.trim().toLowerCase())))
+                .filter(p -> cedula == null || cedula.isBlank()
+                        || (p.getCedula() != null
+                            && p.getCedula().toLowerCase().contains(cedula.trim().toLowerCase())))
+                .filter(p -> direccion == null || direccion.isBlank()
+                        || (p.getDireccion() != null
+                            && p.getDireccion().toLowerCase().contains(direccion.trim().toLowerCase())))
+                .filter(p -> fechaFiltroFinal == null
+                        || (p.getFechaEntrega() != null
+                            && p.getFechaEntrega().toLocalDate().equals(fechaFiltroFinal)))
+                .filter(p -> {
+                    if (pagado == null || pagado.isBlank()) return true;
+                    boolean esPagado = "Pagado Completo".equals(p.getEstadoPago());
+                    if (pagado.equalsIgnoreCase("si")) return esPagado;
+                    if (pagado.equalsIgnoreCase("no")) return !esPagado;
+                    return true;
+                })
+                .collect(Collectors.toList());
 
         model.addAttribute("pedidos", pedidos);
-        model.addAttribute("buscar", buscar != null ? buscar : "");
+        model.addAttribute("nombre", nombre != null ? nombre : "");
+        model.addAttribute("cedula", cedula != null ? cedula : "");
+        model.addAttribute("direccion", direccion != null ? direccion : "");
+        model.addAttribute("fechaEntrega", fechaEntrega != null ? fechaEntrega : "");
+        model.addAttribute("pagado", pagado != null ? pagado : "");
         model.addAttribute("puedeCrearPedidos", puedeGestionarPedidos());
         return "tienda/listado";
     }
@@ -108,6 +137,8 @@ public class PedidoTiendaControlador {
             return "redirect:/tienda/editar/" + id;
         }
 
+        // Se edita el mismo registro (mismo ID) que ya existía: nunca se crea uno nuevo
+        // ni se reasigna el ID, por eso su posición en el listado ordenado no cambia.
         PedidoTienda pedido = pedidoTiendaRepository.findById(id).orElseThrow();
 
         pedido.setNombreCliente(formPedido.getNombreCliente());
@@ -193,6 +224,15 @@ public class PedidoTiendaControlador {
         return "redirect:/tienda/listado";
     }
 
+    // ─── Vista de impresión de un pedido ────────────────────────────────
+    @PreAuthorize("hasAnyRole('TIENDA','TIENDA_ADMIN','ADMIN')")
+    @GetMapping("/imprimir/{id}")
+    public String imprimirPedido(@PathVariable("id") int id, Model model) {
+        PedidoTienda pedido = pedidoTiendaRepository.findById(id).orElseThrow();
+        model.addAttribute("pedidoTienda", pedido);
+        return "tienda/imprimir_pedido";
+    }
+
     // ─── Reporte de ventas por rango de fechas ──────────────────────────
     @PreAuthorize("hasAnyRole('TIENDA','TIENDA_ADMIN','ADMIN')")
     @GetMapping("/reporte")
@@ -207,13 +247,13 @@ public class PedidoTiendaControlador {
             LocalDateTime fechaDesde = LocalDate.parse(desde).atStartOfDay();
             LocalDateTime fechaHasta = LocalDate.parse(hasta).atTime(23, 59, 59);
 
-            pedidosFiltrados = pedidoTiendaRepository.findAll().stream()
+            pedidosFiltrados = pedidoTiendaRepository.findAllByOrderByIdAsc().stream()
                     .filter(p -> p.getFechaPedido() != null
                             && !p.getFechaPedido().isBefore(fechaDesde)
                             && !p.getFechaPedido().isAfter(fechaHasta))
                     .collect(Collectors.toList());
         } else {
-            pedidosFiltrados = pedidoTiendaRepository.findAll();
+            pedidosFiltrados = pedidoTiendaRepository.findAllByOrderByIdAsc();
         }
 
         int totalPedidos = pedidosFiltrados.size();
