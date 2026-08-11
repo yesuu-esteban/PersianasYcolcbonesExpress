@@ -209,6 +209,8 @@
                             </button>
                             <a th:href="@{/tienda/imprimir/{id}(id=${p.id})}" target="_blank"
                                class="btn btn-sm btn-outline-secondary" title="Imprimir pedido">🖨️</a>
+                            <a th:href="@{/tienda/compartir/{id}(id=${p.id})}" target="_blank"
+                               class="btn btn-sm btn-outline-success" title="Compartir por WhatsApp">📲</a>
                         </td>
                         <td th:text="${iter.count}"></td>
                         <td th:text="${p.nombreCliente}"></td>

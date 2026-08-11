@@ -86,6 +86,7 @@
 
     <div class="barra-acciones no-imprimir">
         <a href="/tienda/listado" class="btn btn-outline-secondary">← Volver al listado</a>
+        <a th:href="@{/tienda/compartir/{id}(id=${pedidoTienda.id})}" target="_blank" class="btn btn-success">📲 Compartir por WhatsApp</a>
         <button type="button" class="btn btn-primary" onclick="window.print()">🖨️ Imprimir</button>
     </div>
 

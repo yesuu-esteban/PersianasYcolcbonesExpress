@@ -233,6 +233,23 @@ public class PedidoTiendaControlador {
         return "tienda/imprimir_pedido";
     }
 
+    // ─── Compartir pedido por WhatsApp (sin descargar ni imprimir nada) ─
+    @PreAuthorize("hasAnyRole('TIENDA','TIENDA_ADMIN','ADMIN')")
+    @GetMapping("/compartir/{id}")
+    public String compartirWhatsapp(@PathVariable("id") int id) {
+        PedidoTienda pedido = pedidoTiendaRepository.findById(id).orElseThrow();
+
+        String mensaje = construirMensajeWhatsapp(pedido);
+        String textoCodificado = java.net.URLEncoder.encode(mensaje, java.nio.charset.StandardCharsets.UTF_8);
+
+        String telefono = limpiarTelefono(pedido.getTelefono());
+        String url = (telefono != null)
+                ? "https://wa.me/" + telefono + "?text=" + textoCodificado
+                : "https://wa.me/?text=" + textoCodificado;
+
+        return "redirect:" + url;
+    }
+
     // ─── Reporte de ventas por rango de fechas ──────────────────────────
     @PreAuthorize("hasAnyRole('TIENDA','TIENDA_ADMIN','ADMIN')")
     @GetMapping("/reporte")
@@ -370,6 +387,80 @@ public class PedidoTiendaControlador {
         pedido.setAbono(abono);
 
         pedido.setSaldo(pedido.getPrecioCliente().subtract(abono));
+    }
+
+    /**
+     * Deja el teléfono solo con dígitos y le agrega el indicativo de Colombia (57)
+     * si parece un celular local de 10 dígitos. Si el número ya trae indicativo
+     * (más de 10 dígitos) se deja tal cual. Si no hay teléfono válido, retorna null
+     * y wa.me simplemente abre el selector de contactos.
+     */
+    private String limpiarTelefono(String telefono) {
+        if (telefono == null || telefono.isBlank()) return null;
+        String digitos = telefono.replaceAll("[^0-9]", "");
+        if (digitos.isEmpty()) return null;
+        if (digitos.length() == 10) return "57" + digitos;
+        if (digitos.length() > 10) return digitos;
+        return null;
+    }
+
+    private String formatearMonto(BigDecimal monto) {
+        if (monto == null) monto = BigDecimal.ZERO;
+        return java.text.NumberFormat.getInstance(new java.util.Locale("es", "CO")).format(monto);
+    }
+
+    private String construirMensajeWhatsapp(PedidoTienda pedido) {
+        StringBuilder sb = new StringBuilder();
+
+        sb.append("*PERSIANAS Y CORTINAS EXPRESS*\n");
+        sb.append("Pedido #").append(pedido.getId()).append("\n\n");
+
+        sb.append("*Cliente:* ").append(pedido.getNombreCliente()).append("\n");
+        if (pedido.getCedula() != null && !pedido.getCedula().isBlank())
+            sb.append("*Cédula:* ").append(pedido.getCedula()).append("\n");
+        if (pedido.getDireccion() != null && !pedido.getDireccion().isBlank())
+            sb.append("*Dirección:* ").append(pedido.getDireccion()).append("\n");
+        if (pedido.getTelefono() != null && !pedido.getTelefono().isBlank())
+            sb.append("*Teléfono:* ").append(pedido.getTelefono()).append("\n");
+        if (pedido.getDescripcion() != null && !pedido.getDescripcion().isBlank())
+            sb.append("*Descripción:* ").append(pedido.getDescripcion()).append("\n");
+
+        sb.append("\n");
+        if (pedido.getFechaEntrega() != null) {
+            sb.append("*Fecha de entrega:* ")
+              .append(pedido.getFechaEntrega().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")))
+              .append("\n");
+        }
+        sb.append("*Estado del pedido:* ").append(pedido.getEstado()).append("\n\n");
+
+        sb.append("*Productos:*\n");
+        if (pedido.getDetalles() == null || pedido.getDetalles().isEmpty()) {
+            sb.append("Sin productos registrados.\n");
+        } else {
+            for (DetallePedidoTienda d : pedido.getDetalles()) {
+                sb.append("- ").append(d.getProducto());
+                if (d.getMaterial() != null && !d.getMaterial().isBlank()) {
+                    sb.append(" (").append(d.getMaterial()).append(")");
+                }
+                sb.append(" x").append(d.getCantidad());
+                sb.append(" — $").append(formatearMonto(d.getSubtotal())).append("\n");
+            }
+        }
+
+        sb.append("\n*Total:* $").append(formatearMonto(pedido.getTotal())).append("\n");
+        if (pedido.getDescuento() != null && pedido.getDescuento().compareTo(BigDecimal.ZERO) > 0) {
+            sb.append("*Descuento:* $").append(formatearMonto(pedido.getDescuento())).append("\n");
+        }
+        sb.append("*Precio cliente:* $").append(formatearMonto(pedido.getPrecioCliente())).append("\n");
+        sb.append("*Abonado:* $").append(formatearMonto(pedido.getAbono())).append("\n");
+        sb.append("*Saldo pendiente:* $").append(formatearMonto(pedido.getSaldo())).append("\n");
+        sb.append("*Estado de pago:* ").append(pedido.getEstadoPago()).append("\n");
+
+        if (pedido.getMetodoPago() != null && !pedido.getMetodoPago().isBlank()) {
+            sb.append("*Método de pago:* ").append(pedido.getMetodoPago()).append("\n");
+        }
+
+        return sb.toString();
     }
 
     private boolean puedeGestionarPedidos() {
