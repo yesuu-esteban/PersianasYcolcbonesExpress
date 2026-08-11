@@ -242,10 +242,9 @@ public class PedidoTiendaControlador {
         String mensaje = construirMensajeWhatsapp(pedido);
         String textoCodificado = java.net.URLEncoder.encode(mensaje, java.nio.charset.StandardCharsets.UTF_8);
 
-        String telefono = limpiarTelefono(pedido.getTelefono());
-        String url = (telefono != null)
-                ? "https://wa.me/" + telefono + "?text=" + textoCodificado
-                : "https://wa.me/?text=" + textoCodificado;
+        // Se deja siempre abierto (sin número fijo) para poder elegir a cualquier
+        // contacto de WhatsApp, no solo al teléfono guardado del cliente.
+        String url = "https://wa.me/?text=" + textoCodificado;
 
         return "redirect:" + url;
     }
@@ -387,21 +386,6 @@ public class PedidoTiendaControlador {
         pedido.setAbono(abono);
 
         pedido.setSaldo(pedido.getPrecioCliente().subtract(abono));
-    }
-
-    /**
-     * Deja el teléfono solo con dígitos y le agrega el indicativo de Colombia (57)
-     * si parece un celular local de 10 dígitos. Si el número ya trae indicativo
-     * (más de 10 dígitos) se deja tal cual. Si no hay teléfono válido, retorna null
-     * y wa.me simplemente abre el selector de contactos.
-     */
-    private String limpiarTelefono(String telefono) {
-        if (telefono == null || telefono.isBlank()) return null;
-        String digitos = telefono.replaceAll("[^0-9]", "");
-        if (digitos.isEmpty()) return null;
-        if (digitos.length() == 10) return "57" + digitos;
-        if (digitos.length() > 10) return digitos;
-        return null;
     }
 
     private String formatearMonto(BigDecimal monto) {
