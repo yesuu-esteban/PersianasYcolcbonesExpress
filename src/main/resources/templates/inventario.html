@@ -403,49 +403,72 @@
             </div>
         </div>
 
-        <!-- ───────────── INSUMOS POR UNIDAD ───────────── -->
+        <!-- ───────────── GESTIÓN DE INSUMOS (todos: por unidad y por medida) ───────────── -->
         <div class="seccion-card">
             <div class="seccion-header">
-                <h5 class="mb-0">🔧 Insumos por Unidad</h5>
+                <h5 class="mb-0">🔧 Insumos</h5>
                 <a href="/inventario/insumo/nuevo" class="btn btn-sm btn-light">+ Crear Insumo Nuevo</a>
             </div>
 
             <div class="filtros-bar">
+                <div>
+                    <label class="form-label d-block">Tipo</label>
+                    <select id="filtroInsumoTipo" class="form-select form-select-sm" style="min-width:150px;">
+                        <option value="">Todos</option>
+                        <option value="medida">Por medida</option>
+                        <option value="unidad">Por unidad</option>
+                    </select>
+                </div>
                 <div style="flex:1; min-width:200px;">
                     <label class="form-label d-block">Buscar por nombre</label>
-                    <input id="filtroInsumoUnidadNombre" type="text" class="form-control form-control-sm" placeholder="ej: soporte, tornillo...">
+                    <input id="filtroInsumoNombre" type="text" class="form-control form-control-sm" placeholder="ej: soporte, tornillo, tubo...">
                 </div>
                 <div>
-                    <button id="btnLimpiarFiltroInsumoUnidad" type="button" class="btn btn-sm btn-link filtro-chip-clear">Limpiar filtro</button>
+                    <button id="btnLimpiarFiltroInsumo" type="button" class="btn btn-sm btn-link filtro-chip-clear">Limpiar filtros</button>
                 </div>
             </div>
 
-            <div id="contadorInsumoUnidad" class="contador-resultados"></div>
+            <div id="contadorInsumo" class="contador-resultados"></div>
 
             <div class="tabla-scroll">
-                <table class="table table-hover tabla-inventario mb-0" id="tablaInsumosUnidad">
+                <table class="table table-hover tabla-inventario mb-0" id="tablaInsumos">
                     <thead>
                         <tr>
                             <th>#</th>
                             <th>Nombre</th>
+                            <th>Tipo</th>
                             <th>Descripción</th>
-                            <th>Stock</th>
+                            <th>Stock / Piezas</th>
                             <th>Acciones</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <tr th:each="ins : ${insumos}" th:if="${!ins.tieneMedida}"
-                            class="fila-insumo-unidad"
-                            th:classappend="${ins.stockUnidades != null and ins.stockUnidades == 0} ? 'fila-agotado' : ''"
-                            th:attr="data-nombre=${ins.nombre}">
+                        <tr th:each="ins : ${insumos}"
+                            class="fila-insumo"
+                            th:classappend="${!ins.tieneMedida and ins.stockUnidades != null and ins.stockUnidades == 0} ? 'fila-agotado' : ''"
+                            th:attr="data-nombre=${ins.nombre}, data-tipo=${ins.tieneMedida ? 'medida' : 'unidad'}">
                             <td><span class="id-pill" th:text="'#' + ${ins.id}"></span></td>
                             <td th:text="${ins.nombre}"></td>
+                            <td>
+                                <span th:if="${ins.tieneMedida}" class="badge badge-tipo-medida">Por medida</span>
+                                <span th:unless="${ins.tieneMedida}" class="badge badge-tipo-unidad">Por unidad</span>
+                            </td>
                             <td><small th:text="${ins.descripcion != null and !ins.descripcion.isEmpty() ? ins.descripcion : 'Sin descripción.'}"></small></td>
                             <td>
-                                <strong th:text="${ins.stockUnidades} + ' unidad(es)'"></strong>
+                                <strong th:if="${!ins.tieneMedida}" th:text="${ins.stockUnidades} + ' unidad(es)'"></strong>
+                                <strong th:if="${ins.tieneMedida}"
+                                        th:text="${piezasPorInsumo != null and piezasPorInsumo.get(ins.id) != null ? #lists.size(piezasPorInsumo.get(ins.id)) : 0} + ' pieza(s)'"></strong>
                             </td>
                             <td>
-                                <a th:href="@{/inventario/insumo/{id}/cargar(id=${ins.id})}" class="btn btn-sm btn-outline-primary">+ Cargar stock</a>
+                                <div class="d-flex gap-1 flex-wrap">
+                                    <a th:href="@{/inventario/insumo/{id}/cargar(id=${ins.id})}" class="btn btn-sm btn-outline-primary" title="Cargar stock">+ Stock</a>
+                                    <a th:href="@{/inventario/insumo/{id}/editar(id=${ins.id})}" class="btn btn-sm btn-outline-secondary" title="Editar insumo">✏️</a>
+                                    <form th:action="@{/inventario/insumo/eliminar/{id}(id=${ins.id})}" method="post" class="d-inline"
+                                          onsubmit="return confirm('¿Eliminar el insumo «' + this.dataset.nombre + '» y todas sus piezas? Esta acción no se puede deshacer.');"
+                                          th:attr="data-nombre=${ins.nombre}">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Eliminar insumo">🗑️</button>
+                                    </form>
+                                </div>
                             </td>
                         </tr>
                     </tbody>
