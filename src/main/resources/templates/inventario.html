@@ -5,22 +5,19 @@
     <title>Inventario de Materiales</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        .table-small { font-size: 0.88rem; }
-        .fila-retazo { background-color: #fff8e1 !important; }
-        .fila-agotado { background-color: #f8d7da !important; opacity: 0.7; }
-        .badge-retazo { background-color: #ffc107; color: #000; }
+        body { background-color: #f4f5f7; }
 
         .seccion-card {
             background: #fff;
             border-radius: 8px;
             box-shadow: 0 1px 3px rgba(0,0,0,.08);
             margin-bottom: 28px;
+            overflow: hidden;
         }
         .seccion-header {
             background-color: #343a40;
             color: #fff;
             padding: 12px 18px;
-            border-radius: 8px 8px 0 0;
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -52,87 +49,66 @@
             margin-bottom: 2px;
             color: #495057;
         }
-        .filtro-chip-clear {
-            font-size: 0.78rem;
-        }
-
-        /* ───────── Acordeón de grupos (color + ancho) ───────── */
-        .grupo-rollo {
-            border: 1px solid #e3e3e3;
-            border-radius: 6px;
-            margin: 10px 14px;
-            overflow: hidden;
-        }
-        .grupo-rollo:first-of-type { margin-top: 14px; }
-        .grupo-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 10px 14px;
-            cursor: pointer;
-            background: #f1f3f5;
-            user-select: none;
-            transition: background 0.15s ease;
-        }
-        .grupo-header:hover { background: #e7eaee; }
-        .grupo-header .chevron {
-            transition: transform 0.2s ease;
-            font-size: 0.8rem;
-            color: #6c757d;
-        }
-        .grupo-header.abierto .chevron {
-            transform: rotate(90deg);
-        }
-        .grupo-titulo {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            font-weight: 600;
-        }
-        .swatch-color {
-            width: 16px;
-            height: 16px;
-            border-radius: 4px;
-            border: 1px solid rgba(0,0,0,.15);
-            display: inline-block;
-            flex-shrink: 0;
-        }
-        .grupo-meta {
-            font-size: 0.82rem;
-            color: #6c757d;
-            font-weight: 400;
-        }
-        .grupo-body {
-            max-height: 0;
-            overflow: hidden;
-            transition: max-height 0.25s ease;
-        }
-        .grupo-body.abierto {
-            max-height: 2000px;
-        }
-        .grupo-resumen-badges .badge { font-size: 0.72rem; }
-
-        /* ───────── Grupos de insumos por nombre ───────── */
-        .grupo-insumo {
-            border: 1px solid #e3e3e3;
-            border-radius: 6px;
-            margin: 10px 14px;
-            overflow: hidden;
-        }
-        .grupo-insumo:first-of-type { margin-top: 14px; }
-
-        .badge-tipo-medida { background-color: #0dcaf0; color: #000; }
-        .badge-tipo-unidad { background-color: #6c757d; color: #fff; }
-
-        .oculto-por-filtro { display: none !important; }
+        .filtro-chip-clear { font-size: 0.78rem; }
 
         .contador-resultados {
             font-size: 0.8rem;
             color: #6c757d;
-            padding: 0 18px;
+            padding: 8px 18px 0;
         }
 
-        /* ───────── Panel de alertas de stock bajo ───────── */
+        /* ───────── Tablas de filas y columnas ───────── */
+        .tabla-scroll { max-height: 60vh; overflow-y: auto; }
+        table.tabla-inventario {
+            margin-bottom: 0;
+            font-size: 0.86rem;
+        }
+        table.tabla-inventario thead th {
+            position: sticky;
+            top: 0;
+            z-index: 3;
+            background-color: #212529;
+            color: #fff;
+            white-space: nowrap;
+            border-bottom: none;
+        }
+        table.tabla-inventario td { vertical-align: middle; }
+        table.tabla-inventario tbody tr:nth-of-type(even) { background-color: #fafbfc; }
+
+        .fila-retazo { background-color: #fff8e1 !important; }
+        .fila-agotado { background-color: #f8d7da !important; opacity: 0.75; }
+        .badge-retazo { background-color: #ffc107; color: #000; }
+        .badge-tipo-medida { background-color: #0dcaf0; color: #000; }
+        .badge-tipo-unidad { background-color: #6c757d; color: #fff; }
+
+        .swatch-color {
+            width: 14px;
+            height: 14px;
+            border-radius: 3px;
+            border: 1px solid rgba(0,0,0,.15);
+            display: inline-block;
+            flex-shrink: 0;
+            vertical-align: -2px;
+            margin-right: 6px;
+        }
+
+        .oculto-por-filtro { display: none !important; }
+
+        .id-pill {
+            display: inline-block;
+            background: #e9ecef;
+            color: #495057;
+            font-weight: 700;
+            font-size: 0.76rem;
+            padding: 1px 8px;
+            border-radius: 12px;
+            font-family: 'Courier New', monospace;
+        }
+
+        .form-corregir { display: flex; gap: 4px; align-items: center; }
+        .form-corregir input { width: 78px; }
+
+        /* ───────── Panel de alertas de stock bajo (igual que antes) ───────── */
         .panel-alertas {
             background: #fff;
             border-radius: 8px;
@@ -150,121 +126,35 @@
             background-color: #212529;
             color: #fff;
         }
-        .panel-alertas-header .chevron {
-            transition: transform 0.2s ease;
-            font-size: 0.8rem;
-        }
-        .panel-alertas-header.abierto .chevron {
-            transform: rotate(90deg);
-        }
-        .panel-alertas-body {
-            max-height: 0;
-            overflow: hidden;
-            transition: max-height 0.25s ease;
-        }
-        .panel-alertas-body.abierto {
-            max-height: 3000px;
-        }
-        .lista-alertas {
-            list-style: none;
-            margin: 0;
-            padding: 8px 10px;
-            display: flex;
-            flex-direction: column;
-            gap: 5px;
-        }
+        .panel-alertas-header .chevron { transition: transform 0.2s ease; font-size: 0.8rem; }
+        .panel-alertas-header.abierto .chevron { transform: rotate(90deg); }
+        .panel-alertas-body { max-height: 0; overflow: hidden; transition: max-height 0.25s ease; }
+        .panel-alertas-body.abierto { max-height: 3000px; }
+        .lista-alertas { list-style: none; margin: 0; padding: 8px 10px; display: flex; flex-direction: column; gap: 5px; }
         .item-alerta {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 6px 10px;
-            border-radius: 5px;
-            border-left: 4px solid transparent;
-            font-size: 0.82rem;
+            display: flex; align-items: center; gap: 8px; padding: 6px 10px;
+            border-radius: 5px; border-left: 4px solid transparent; font-size: 0.82rem;
         }
-        .item-alerta .icono-alerta {
-            font-size: 0.95rem;
-            line-height: 1;
-            flex-shrink: 0;
-        }
-        .item-alerta .texto-alerta {
-            flex: 1;
-            display: flex;
-            align-items: baseline;
-            flex-wrap: wrap;
-            gap: 4px;
-            min-width: 0;
-        }
-        .item-alerta .titulo-alerta {
-            font-weight: 700;
-            font-size: 0.83rem;
-        }
-        .item-alerta .mensaje-alerta {
-            color: #495057;
-            font-size: 0.79rem;
-        }
-        .item-alerta.nivel-agotado {
-            background-color: #2b2b2b;
-            border-left-color: #000;
-            color: #fff;
-        }
+        .item-alerta .icono-alerta { font-size: 0.95rem; line-height: 1; flex-shrink: 0; }
+        .item-alerta .texto-alerta { flex: 1; display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px; min-width: 0; }
+        .item-alerta .titulo-alerta { font-weight: 700; font-size: 0.83rem; }
+        .item-alerta .mensaje-alerta { color: #495057; font-size: 0.79rem; }
+        .item-alerta.nivel-agotado { background-color: #2b2b2b; border-left-color: #000; color: #fff; }
         .item-alerta.nivel-agotado .mensaje-alerta { color: #d6d6d6; }
-        .item-alerta.nivel-critico {
-            background-color: #f8d7da;
-            border-left-color: #dc3545;
-        }
-        .item-alerta.nivel-advertencia {
-            background-color: #fff3cd;
-            border-left-color: #ffc107;
-        }
+        .item-alerta.nivel-critico { background-color: #f8d7da; border-left-color: #dc3545; }
+        .item-alerta.nivel-advertencia { background-color: #fff3cd; border-left-color: #ffc107; }
         .btn-silenciar-alerta {
-            background: none;
-            border: none;
-            opacity: 0.55;
-            font-size: 0.85rem;
-            line-height: 1;
-            cursor: pointer;
-            padding: 3px 6px;
-            border-radius: 4px;
-            flex-shrink: 0;
-            color: inherit;
+            background: none; border: none; opacity: 0.55; font-size: 0.85rem; line-height: 1;
+            cursor: pointer; padding: 3px 6px; border-radius: 4px; flex-shrink: 0; color: inherit;
         }
-        .btn-silenciar-alerta:hover {
-            opacity: 1;
-            background: rgba(0,0,0,.08);
-        }
-        .item-alerta.nivel-agotado .btn-silenciar-alerta:hover {
-            background: rgba(255,255,255,.15);
-        }
-        .sin-alertas {
-            padding: 14px;
-            text-align: center;
-            color: #198754;
-            font-weight: 600;
-            font-size: 0.9rem;
-        }
-        .alertas-silenciadas-info {
-            font-size: 0.74rem;
-            color: #6c757d;
-            padding: 0 10px 8px;
-            text-align: right;
-        }
-        .alertas-silenciadas-info a {
-            font-size: 0.74rem;
-        }
-        .id-pill {
-            display: inline-block;
-            background: #e9ecef;
-            color: #495057;
-            font-weight: 700;
-            font-size: 0.76rem;
-            padding: 1px 8px;
-            border-radius: 12px;
-            font-family: 'Courier New', monospace;
-        }
+        .btn-silenciar-alerta:hover { opacity: 1; background: rgba(0,0,0,.08); }
+        .item-alerta.nivel-agotado .btn-silenciar-alerta:hover { background: rgba(255,255,255,.15); }
+        .sin-alertas { padding: 14px; text-align: center; color: #198754; font-weight: 600; font-size: 0.9rem; }
+        .alertas-silenciadas-info { font-size: 0.74rem; color: #6c757d; padding: 0 10px 8px; text-align: right; }
+        .alertas-silenciadas-info a { font-size: 0.74rem; }
     </style>
 </head>
-<body class="bg-light p-4">
+<body class="p-4">
     <div class="container-fluid">
         <div class="d-flex justify-content-between align-items-center mb-3">
             <h2>📦 Inventario de Materiales</h2>
@@ -317,6 +207,7 @@
             <span class="resumen-pill">Retazos de rollo (&lt; 3m): <strong th:text="${rollosRetazo}"></strong></span>
             <span class="resumen-pill">Agotados: <strong th:text="${rollosAgotados}"></strong></span>
             <span class="resumen-pill">✂ Retazos registrados: <strong th:text="${#lists.size(retazos)}"></strong></span>
+            <span class="resumen-pill">Piezas de insumo: <strong th:text="${#lists.size(piezas)}"></strong></span>
         </div>
 
         <!-- ───────────── ROLLOS DE TELA ───────────── -->
@@ -326,7 +217,6 @@
                 <a href="/inventario/rollo/nuevo" class="btn btn-sm btn-light">+ Agregar Rollo</a>
             </div>
 
-            <!-- Filtros -->
             <div class="filtros-bar">
                 <div>
                     <label class="form-label d-block">Color</label>
@@ -339,6 +229,7 @@
                     <label class="form-label d-block">Ancho</label>
                     <select id="filtroRolloAncho" class="form-select form-select-sm" style="min-width:110px;">
                         <option value="">Todos</option>
+                        <option th:each="a : ${anchos}" th:value="${a}" th:text="${a} + ' m'"></option>
                     </select>
                 </div>
                 <div>
@@ -353,39 +244,66 @@
                 <div>
                     <button id="btnLimpiarFiltroRollo" type="button" class="btn btn-sm btn-link filtro-chip-clear">Limpiar filtros</button>
                 </div>
-                <div class="ms-auto d-flex gap-2">
-                    <button id="btnExpandirTodosRollo" type="button" class="btn btn-sm btn-outline-secondary">Expandir todos</button>
-                    <button id="btnColapsarTodosRollo" type="button" class="btn btn-sm btn-outline-secondary">Colapsar todos</button>
-                </div>
             </div>
 
-            <div id="contadorRollo" class="contador-resultados pt-2"></div>
+            <div id="contadorRollo" class="contador-resultados"></div>
 
-            <!-- Contenedor de grupos: se construye con JS a partir de las filas ocultas de abajo -->
-            <div id="gruposRollosContainer"></div>
+            <div class="tabla-scroll">
+                <table class="table table-hover tabla-inventario mb-0" id="tablaRollos">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Color</th>
+                            <th>Ancho</th>
+                            <th>Área restante</th>
+                            <th>Largo (restante / inicial)</th>
+                            <th>Estado</th>
+                            <th>Ingreso</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="r : ${rollos}"
+                            th:classappend="${r.agotado} ? 'fila-agotado' : (${r.retazo} ? 'fila-retazo' : '')"
+                            class="fila-rollo"
+                            th:attr="data-color=${r.color}, data-ancho=${r.ancho},
+                                     data-estado=${r.agotado ? 'agotado' : (r.retazo ? 'retazo' : 'disponible')}">
+                            <td><span class="id-pill" th:text="'#' + ${r.id}"></span></td>
+                            <td>
+                                <span class="swatch-color" th:attr="data-color-nombre=${r.color}"></span>
+                                <span th:text="${r.color}"></span>
+                            </td>
+                            <td th:text="${r.ancho} + ' m'"></td>
+                            <td th:text="${#numbers.formatDecimal(r.areaRestante, 1, 2)} + ' m²'"></td>
+                            <td th:text="${#numbers.formatDecimal(r.largoRestante, 1, 2)} + ' / ' + ${#numbers.formatDecimal(r.largoInicial, 1, 0)} + ' m'"></td>
+                            <td>
+                                <span th:if="${r.agotado}" class="badge bg-danger">Agotado</span>
+                                <span th:if="${!r.agotado and r.retazo}" class="badge badge-retazo">Retazo</span>
+                                <span th:if="${!r.agotado and !r.retazo}" class="badge bg-success">Disponible</span>
+                            </td>
+                            <td><small th:text="${#temporals.format(r.fechaIngreso, 'dd/MM/yyyy HH:mm')}"></small></td>
+                            <td>
+                                <div class="d-flex gap-1 flex-wrap">
+                                    <form th:action="@{/inventario/rollo/{id}/corregir(id=${r.id})}" method="post" class="form-corregir">
+                                        <input type="number" step="0.01" min="0" th:max="${r.largoInicial}"
+                                               name="largoRestante" th:value="${#numbers.formatDecimal(r.largoRestante, 1, 2)}"
+                                               class="form-control form-control-sm" required>
+                                        <button type="submit" class="btn btn-sm btn-outline-primary" title="Corregir largo restante">💾</button>
+                                    </form>
+                                    <form th:action="@{/inventario/rollo/eliminar/{id}(id=${r.id})}" method="post" class="d-inline"
+                                          onsubmit="return confirm('¿Eliminar este rollo del inventario?');">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger">🗑️</button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
 
             <div th:if="${#lists.isEmpty(rollos)}" class="text-center text-muted py-4">
                 No hay rollos registrados todavía.
             </div>
-
-            <!-- Datos crudos (ocultos) que Thymeleaf sí sabe renderizar; el JS los agrupa visualmente -->
-            <table id="datosRollosRaw" style="display:none;">
-                <tbody>
-                    <tr th:each="r : ${rollos}"
-                        th:data-color="${r.color}"
-                        th:data-ancho="${r.ancho}"
-                        th:data-id="${r.id}"
-                        th:data-agotado="${r.agotado}"
-                        th:data-retazo="${r.retazo}"
-                        th:data-area="${#numbers.formatDecimal(r.areaRestante, 1, 2)}"
-                        th:data-largo-restante="${#numbers.formatDecimal(r.largoRestante, 1, 2)}"
-                        th:data-largo-inicial="${#numbers.formatDecimal(r.largoInicial, 1, 0)}"
-                        th:data-fecha="${#temporals.format(r.fechaIngreso, 'dd/MM/yyyy HH:mm')}"
-                        th:data-url-eliminar="@{/inventario/rollo/eliminar/{id}(id=${r.id})}"
-                        th:data-url-corregir="@{/inventario/rollo/{id}/corregir(id=${r.id})}">
-                    </tr>
-                </tbody>
-            </table>
         </div>
 
         <!-- ───────────── RETAZOS DE TELA ───────────── -->
@@ -394,7 +312,6 @@
                 <h5 class="mb-0">✂ Retazos de Tela</h5>
             </div>
 
-            <!-- Formulario para registrar un retazo nuevo: ancho y alto son medidas variables (sobrantes) -->
             <div class="p-3 border-bottom" style="background:#fffbea;">
                 <form th:action="@{/inventario/retazo/nuevo}" method="post" class="row g-2 align-items-end">
                     <div class="col-md-3">
@@ -418,7 +335,6 @@
                 </form>
             </div>
 
-            <!-- Filtros -->
             <div class="filtros-bar">
                 <div>
                     <label class="form-label d-block">Color</label>
@@ -438,107 +354,179 @@
                 <div>
                     <button id="btnLimpiarFiltroRetazo" type="button" class="btn btn-sm btn-link filtro-chip-clear">Limpiar filtros</button>
                 </div>
-                <div class="ms-auto d-flex gap-2">
-                    <button id="btnExpandirTodosRetazo" type="button" class="btn btn-sm btn-outline-secondary">Expandir todos</button>
-                    <button id="btnColapsarTodosRetazo" type="button" class="btn btn-sm btn-outline-secondary">Colapsar todos</button>
-                </div>
             </div>
 
-            <div id="contadorRetazo" class="contador-resultados pt-2"></div>
+            <div id="contadorRetazo" class="contador-resultados"></div>
 
-            <!-- Contenedor de grupos de retazos, agrupados por color (igual que los rollos) -->
-            <div id="gruposRetazosContainer"></div>
+            <div class="tabla-scroll">
+                <table class="table table-hover tabla-inventario mb-0" id="tablaRetazos">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Color</th>
+                            <th>Ancho</th>
+                            <th>Alto disponible</th>
+                            <th>Área</th>
+                            <th>Estado</th>
+                            <th>Ingreso</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="rt : ${retazos}"
+                            th:classappend="${rt.agotado} ? 'fila-agotado' : 'fila-retazo'"
+                            class="fila-retazo-item"
+                            th:attr="data-color=${rt.color}, data-estado=${rt.agotado ? 'agotado' : 'disponible'}">
+                            <td><span class="id-pill" th:text="'#' + ${rt.id}"></span></td>
+                            <td th:text="${rt.color}"></td>
+                            <td th:text="${rt.ancho} + ' m'"></td>
+                            <td><strong th:text="${#numbers.formatDecimal(rt.alto, 1, 2)} + ' m'"></strong></td>
+                            <td th:text="${#numbers.formatDecimal(rt.area, 1, 2)} + ' m²'"></td>
+                            <td>
+                                <span th:if="${rt.agotado}" class="badge bg-danger">Agotado</span>
+                                <span th:unless="${rt.agotado}" class="badge badge-retazo">Disponible</span>
+                            </td>
+                            <td><small th:text="${rt.fechaIngresoFormateada}"></small></td>
+                            <td>
+                                <form th:action="@{/inventario/retazo/eliminar/{id}(id=${rt.id})}" method="post" class="d-inline"
+                                      onsubmit="return confirm('¿Eliminar este retazo?');">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">🗑️</button>
+                                </form>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
 
             <div th:if="${#lists.isEmpty(retazos)}" class="text-center text-muted py-4">
                 No hay retazos registrados. Usa el formulario de arriba para agregar uno.
             </div>
-
-            <!-- Datos crudos (ocultos); el JS los agrupa visualmente por color -->
-            <table id="datosRetazosRaw" style="display:none;">
-                <tbody>
-                    <tr th:each="rt : ${retazos}"
-                        th:data-id="${rt.id}"
-                        th:data-color="${rt.color}"
-                        th:data-ancho="${rt.ancho}"
-                        th:data-alto="${#numbers.formatDecimal(rt.alto, 1, 2)}"
-                        th:data-area="${#numbers.formatDecimal(rt.area, 1, 2)}"
-                        th:data-agotado="${rt.agotado}"
-                        th:data-fecha="${rt.fechaIngresoFormateada}"
-                        th:data-url-eliminar="@{/inventario/retazo/eliminar/{id}(id=${rt.id})}">
-                    </tr>
-                </tbody>
-            </table>
         </div>
 
-        <!-- ───────────── INSUMOS ───────────── -->
+        <!-- ───────────── INSUMOS POR UNIDAD ───────────── -->
         <div class="seccion-card">
             <div class="seccion-header">
-                <h5 class="mb-0">🔧 Insumos</h5>
+                <h5 class="mb-0">🔧 Insumos por Unidad</h5>
                 <a href="/inventario/insumo/nuevo" class="btn btn-sm btn-light">+ Crear Insumo Nuevo</a>
             </div>
 
-            <!-- Filtros -->
             <div class="filtros-bar">
-                <div>
-                    <label class="form-label d-block">Tipo</label>
-                    <select id="filtroInsumoTipo" class="form-select form-select-sm" style="min-width:150px;">
-                        <option value="">Todos</option>
-                        <option value="medida">Por medida</option>
-                        <option value="unidad">Por unidad</option>
-                    </select>
-                </div>
-                <div style="flex:1; min-width:180px;">
+                <div style="flex:1; min-width:200px;">
                     <label class="form-label d-block">Buscar por nombre</label>
-                    <input id="filtroInsumoNombre" type="text" class="form-control form-control-sm" placeholder="ej: tubo, cabezal...">
+                    <input id="filtroInsumoUnidadNombre" type="text" class="form-control form-control-sm" placeholder="ej: soporte, tornillo...">
                 </div>
                 <div>
-                    <button id="btnLimpiarFiltroInsumo" type="button" class="btn btn-sm btn-link filtro-chip-clear">Limpiar filtros</button>
-                </div>
-                <div class="ms-auto d-flex gap-2">
-                    <button id="btnExpandirTodosInsumo" type="button" class="btn btn-sm btn-outline-secondary">Expandir todos</button>
-                    <button id="btnColapsarTodosInsumo" type="button" class="btn btn-sm btn-outline-secondary">Colapsar todos</button>
+                    <button id="btnLimpiarFiltroInsumoUnidad" type="button" class="btn btn-sm btn-link filtro-chip-clear">Limpiar filtro</button>
                 </div>
             </div>
 
-            <div id="contadorInsumo" class="contador-resultados pt-2"></div>
+            <div id="contadorInsumoUnidad" class="contador-resultados"></div>
 
-            <div id="gruposInsumosContainer"></div>
+            <div class="tabla-scroll">
+                <table class="table table-hover tabla-inventario mb-0" id="tablaInsumosUnidad">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Nombre</th>
+                            <th>Descripción</th>
+                            <th>Stock</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="ins : ${insumos}" th:if="${!ins.tieneMedida}"
+                            class="fila-insumo-unidad"
+                            th:classappend="${ins.stockUnidades != null and ins.stockUnidades == 0} ? 'fila-agotado' : ''"
+                            th:attr="data-nombre=${ins.nombre}">
+                            <td><span class="id-pill" th:text="'#' + ${ins.id}"></span></td>
+                            <td th:text="${ins.nombre}"></td>
+                            <td><small th:text="${ins.descripcion != null and !ins.descripcion.isEmpty() ? ins.descripcion : 'Sin descripción.'}"></small></td>
+                            <td>
+                                <strong th:text="${ins.stockUnidades} + ' unidad(es)'"></strong>
+                            </td>
+                            <td>
+                                <a th:href="@{/inventario/insumo/{id}/cargar(id=${ins.id})}" class="btn btn-sm btn-outline-primary">+ Cargar stock</a>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
 
             <div th:if="${#lists.isEmpty(insumos)}" class="text-center text-muted py-4">
                 No hay insumos registrados todavía.
             </div>
-
-            <!-- Datos crudos de insumos -->
-            <table id="datosInsumosRaw" style="display:none;">
-                <tbody>
-                    <tr th:each="ins : ${insumos}"
-                        th:data-id="${ins.id}"
-                        th:data-nombre="${ins.nombre}"
-                        th:data-tiene-medida="${ins.tieneMedida}"
-                        th:data-descripcion="${ins.descripcion}"
-                        th:data-stock-unidades="${ins.stockUnidades}"
-                        th:data-num-piezas="${piezasPorInsumo.get(ins.id) != null ? #lists.size(piezasPorInsumo.get(ins.id)) : 0}"
-                        th:data-url-cargar="@{/inventario/insumo/{id}/cargar(id=${ins.id})}">
-                    </tr>
-                </tbody>
-            </table>
         </div>
 
-        <!-- ───────────── PIEZAS DE INSUMOS CON MEDIDA (detalle, agrupado dentro de cada insumo arriba) ───────────── -->
-        <table id="datosPiezasRaw" style="display:none;">
-            <tbody>
-                <tr th:each="pz : ${piezas}"
-                    th:data-id="${pz.id}"
-                    th:data-insumo-id="${pz.insumo.id}"
-                    th:data-insumo-nombre="${pz.insumo.nombre}"
-                    th:data-agotada="${pz.agotada}"
-                    th:data-largo-restante="${#numbers.formatDecimal(pz.largoRestante, 1, 2)}"
-                    th:data-largo-inicial="${#numbers.formatDecimal(pz.largoInicial, 1, 2)}"
-                    th:data-fecha="${#temporals.format(pz.fechaIngreso, 'dd/MM/yyyy HH:mm')}"
-                    th:data-url-eliminar="@{/inventario/insumo/pieza/eliminar/{id}(id=${pz.id})}">
-                </tr>
-            </tbody>
-        </table>
+        <!-- ───────────── PIEZAS DE INSUMOS CON MEDIDA ───────────── -->
+        <div class="seccion-card">
+            <div class="seccion-header">
+                <h5 class="mb-0">📏 Insumos por Medida (tubos, cabezales, pesas, cuerdas, pitillo...)</h5>
+            </div>
+
+            <div class="filtros-bar">
+                <div>
+                    <label class="form-label d-block">Insumo</label>
+                    <select id="filtroPiezaInsumo" class="form-select form-select-sm" style="min-width:170px;">
+                        <option value="">Todos</option>
+                        <option th:each="ins : ${insumos}" th:if="${ins.tieneMedida}"
+                                th:value="${ins.nombre}" th:text="${ins.nombre}"></option>
+                    </select>
+                </div>
+                <div>
+                    <label class="form-label d-block">Estado</label>
+                    <select id="filtroPiezaEstado" class="form-select form-select-sm" style="min-width:130px;">
+                        <option value="">Todos</option>
+                        <option value="disponible">Disponible</option>
+                        <option value="agotada">Agotada</option>
+                    </select>
+                </div>
+                <div>
+                    <button id="btnLimpiarFiltroPieza" type="button" class="btn btn-sm btn-link filtro-chip-clear">Limpiar filtros</button>
+                </div>
+            </div>
+
+            <div id="contadorPieza" class="contador-resultados"></div>
+
+            <div class="tabla-scroll">
+                <table class="table table-hover tabla-inventario mb-0" id="tablaPiezas">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Insumo</th>
+                            <th>Largo (restante / inicial)</th>
+                            <th>Estado</th>
+                            <th>Ingreso</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="pz : ${piezas}"
+                            th:classappend="${pz.agotada} ? 'fila-agotado' : ''"
+                            class="fila-pieza"
+                            th:attr="data-insumo=${pz.insumo.nombre}, data-estado=${pz.agotada ? 'agotada' : 'disponible'}">
+                            <td><span class="id-pill" th:text="'#' + ${pz.id}"></span></td>
+                            <td th:text="${pz.insumo.nombre}"></td>
+                            <td><strong th:text="${#numbers.formatDecimal(pz.largoRestante, 1, 2)} + ' / ' + ${#numbers.formatDecimal(pz.largoInicial, 1, 2)} + ' m'"></strong></td>
+                            <td>
+                                <span th:if="${pz.agotada}" class="badge bg-danger">Agotada</span>
+                                <span th:unless="${pz.agotada}" class="badge bg-success">Disponible</span>
+                            </td>
+                            <td><small th:text="${#temporals.format(pz.fechaIngreso, 'dd/MM/yyyy HH:mm')}"></small></td>
+                            <td>
+                                <form th:action="@{/inventario/insumo/pieza/eliminar/{id}(id=${pz.id})}" method="post" class="d-inline"
+                                      onsubmit="return confirm('¿Eliminar esta pieza del inventario?');">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">🗑️</button>
+                                </form>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div th:if="${#lists.isEmpty(piezas)}" class="text-center text-muted py-4">
+                No hay piezas registradas todavía.
+            </div>
+        </div>
 
     </div>
 
@@ -548,19 +536,15 @@
     const MAPA_COLORES = {
         'blanco': '#ffffff', 'negro': '#1a1a1a', 'rojo': '#d32f2f', 'azul': '#1976d2',
         'verde': '#388e3c', 'amarillo': '#fbc02d', 'naranja': '#f57c00', 'morado': '#7b1fa2',
-        'rosado': '#ec407a', 'rosa': '#ec407a', 'gris': '#9e9e9e', 'beige': '#e8dcc8',
-        'café': '#6d4c41', 'marron': '#6d4c41', 'celeste': '#4fc3f7', 'turquesa': '#26a69a',
-        'crema': '#fff3d6', 'vino': '#7b1e1e', 'dorado': '#cda434', 'plateado': '#c0c0c0'
+        'rosado': '#ec407a', 'rosa': '#ec407a', 'gris': '#9e9e9e', 'fawn': '#c9a876',
+        'vainilla': '#f3e5ab', 'beige': '#e8dcc8', 'café': '#6d4c41', 'marron': '#6d4c41',
+        'celeste': '#4fc3f7', 'turquesa': '#26a69a', 'crema': '#fff3d6', 'vino': '#7b1e1e',
+        'dorado': '#cda434', 'plateado': '#c0c0c0'
     };
-    function colorSwatch(nombreColor) {
-        const key = (nombreColor || '').toLowerCase().trim();
-        return MAPA_COLORES[key] || '#cccccc';
-    }
-    function escapeHtml(str) {
-        return (str ?? '').toString()
-            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;');
-    }
+    document.querySelectorAll('.swatch-color[data-color-nombre]').forEach(el => {
+        const key = (el.dataset.colorNombre || '').toLowerCase().trim();
+        el.style.background = MAPA_COLORES[key] || '#cccccc';
+    });
 
     // ════════════════════════════════════════════════════════════
     //  PANEL DE ALERTAS → acordeón + silenciar individualmente (7 días)
@@ -688,484 +672,95 @@
     })();
 
     // ════════════════════════════════════════════════════════════
-    //  ROLLOS DE TELA → agrupados por Color + Ancho, en acordeón
+    //  Filtro genérico: recorre filas de una tabla y las oculta
+    //  según los valores seleccionados en los <select>/<input> dados.
     // ════════════════════════════════════════════════════════════
-    (function initRollos() {
-        const filas = Array.from(document.querySelectorAll('#datosRollosRaw tbody tr'));
-        const contenedor = document.getElementById('gruposRollosContainer');
-        if (!contenedor) return;
+    function crearFiltro(filaSelector, filtros, contadorId, etiquetaSingular, etiquetaPlural) {
+        const filas = Array.from(document.querySelectorAll(filaSelector));
+        const contador = document.getElementById(contadorId);
 
-        const rollos = filas.map(tr => ({
-            id: tr.dataset.id,
-            color: tr.dataset.color,
-            ancho: tr.dataset.ancho,
-            agotado: tr.dataset.agotado === 'true',
-            retazo: tr.dataset.retazo === 'true',
-            area: tr.dataset.area,
-            largoRestante: tr.dataset.largoRestante,
-            largoInicial: tr.dataset.largoInicial,
-            fecha: tr.dataset.fecha,
-            urlEliminar: tr.dataset.urlEliminar,
-            urlCorregir: tr.dataset.urlCorregir
-        }));
-
-        const selAncho = document.getElementById('filtroRolloAncho');
-        const anchosUnicos = Array.from(new Set(rollos.map(r => r.ancho))).sort((a, b) => parseFloat(a) - parseFloat(b));
-        anchosUnicos.forEach(a => {
-            const opt = document.createElement('option');
-            opt.value = a;
-            opt.textContent = a + ' m';
-            selAncho.appendChild(opt);
-        });
-
-        const grupos = {};
-        rollos.forEach(r => {
-            const key = r.color + '||' + r.ancho;
-            if (!grupos[key]) grupos[key] = { color: r.color, ancho: r.ancho, items: [] };
-            grupos[key].items.push(r);
-        });
-
-        const clavesOrdenadas = Object.keys(grupos).sort((a, b) => {
-            const ga = grupos[a], gb = grupos[b];
-            return ga.color.localeCompare(gb.color) || (parseFloat(ga.ancho) - parseFloat(gb.ancho));
-        });
-
-        function estadoDe(r) {
-            if (r.agotado) return 'agotado';
-            if (r.retazo) return 'retazo';
-            return 'disponible';
-        }
+        function normaliza(v) { return (v || '').toString().trim().toLowerCase(); }
 
         function render() {
-            const fColor = document.getElementById('filtroRolloColor').value;
-            const fAncho = document.getElementById('filtroRolloAncho').value;
-            const fEstado = document.getElementById('filtroRolloEstado').value;
-
-            contenedor.innerHTML = '';
-            let totalVisible = 0;
-            let grupoCount = 0;
-
-            clavesOrdenadas.forEach(key => {
-                const g = grupos[key];
-                if (fColor && g.color !== fColor) return;
-                if (fAncho && g.ancho !== fAncho) return;
-
-                const itemsFiltrados = g.items.filter(r => !fEstado || estadoDe(r) === fEstado);
-                if (itemsFiltrados.length === 0) return;
-
-                grupoCount++;
-                totalVisible += itemsFiltrados.length;
-
-                const disponibles = itemsFiltrados.filter(r => estadoDe(r) === 'disponible').length;
-                const retazos = itemsFiltrados.filter(r => estadoDe(r) === 'retazo').length;
-                const agotados = itemsFiltrados.filter(r => estadoDe(r) === 'agotado').length;
-                const areaTotal = itemsFiltrados.reduce((sum, r) => sum + (parseFloat(r.area.replace(',', '.')) || 0), 0);
-
-                const div = document.createElement('div');
-                div.className = 'grupo-rollo';
-
-                const badges = [];
-                if (disponibles) badges.push(`<span class="badge bg-success">${disponibles} disponible(s)</span>`);
-                if (retazos) badges.push(`<span class="badge badge-retazo">${retazos} retazo(s)</span>`);
-                if (agotados) badges.push(`<span class="badge bg-danger">${agotados} agotado(s)</span>`);
-
-                let filasHtml = '';
-                itemsFiltrados.forEach(r => {
-                    const estClase = r.agotado ? 'fila-agotado' : (r.retazo ? 'fila-retazo' : '');
-                    let estBadge = '<span class="badge bg-success">Disponible</span>';
-                    if (r.agotado) estBadge = '<span class="badge bg-danger">Agotado</span>';
-                    else if (r.retazo) estBadge = '<span class="badge badge-retazo">Retazo</span>';
-
-                    filasHtml += `
-                        <tr class="${estClase}">
-                            <td><span class="id-pill">#${escapeHtml(r.id)}</span></td>
-                            <td>${escapeHtml(r.area)} m²<br><small class="text-muted">${escapeHtml(r.largoRestante)} / ${escapeHtml(r.largoInicial)} m lineales</small></td>
-                            <td>${estBadge}</td>
-                            <td><small>${escapeHtml(r.fecha)}</small></td>
-                            <td class="d-flex gap-1 flex-wrap">
-                                <form action="${escapeHtml(r.urlCorregir)}" method="post" class="d-flex gap-1 align-items-center">
-                                    <input type="number" step="0.01" min="0" max="${escapeHtml(r.largoInicial)}"
-                                           name="largoRestante" value="${escapeHtml(r.largoRestante)}"
-                                           class="form-control form-control-sm" style="width:80px;" required>
-                                    <button type="submit" class="btn btn-sm btn-outline-primary" title="Corregir largo restante">💾</button>
-                                    <button type="submit" class="btn btn-sm btn-outline-warning btn-agotar-rollo" title="Marcar agotado (0 m)">⛔</button>
-                                </form>
-                                <form action="${escapeHtml(r.urlEliminar)}" method="post" class="d-inline"
-                                      onsubmit="return confirm('¿Eliminar este rollo del inventario?');">
-                                    <button type="submit" class="btn btn-sm btn-outline-danger">🗑️</button>
-                                </form>
-                            </td>
-                        </tr>`;
-                });
-
-                div.innerHTML = `
-                    <div class="grupo-header" role="button">
-                        <div class="grupo-titulo">
-                            <span class="chevron">▶</span>
-                            <span class="swatch-color" style="background:${colorSwatch(g.color)};"></span>
-                            <span>${escapeHtml(g.color)} — ${escapeHtml(g.ancho)} m de ancho</span>
-                            <span class="grupo-meta">(${itemsFiltrados.length} rollo${itemsFiltrados.length !== 1 ? 's' : ''} · ${areaTotal.toFixed(2)} m² en total)</span>
-                        </div>
-                        <div class="grupo-resumen-badges d-flex gap-1">${badges.join(' ')}</div>
-                    </div>
-                    <div class="grupo-body">
-                        <table class="table table-hover align-middle table-small mb-0">
-                            <thead class="table-light">
-                                <tr><th>#</th><th>Área restante</th><th>Estado</th><th>Ingreso</th><th>Acciones</th></tr>
-                            </thead>
-                            <tbody>${filasHtml}</tbody>
-                        </table>
-                    </div>`;
-
-                const header = div.querySelector('.grupo-header');
-                const body = div.querySelector('.grupo-body');
-                header.addEventListener('click', () => {
-                    header.classList.toggle('abierto');
-                    body.classList.toggle('abierto');
-                });
-
-                contenedor.appendChild(div);
-            });
-
-            document.getElementById('contadorRollo').textContent =
-                grupoCount === 0
-                    ? 'Ningún rollo coincide con los filtros seleccionados.'
-                    : `Mostrando ${grupoCount} grupo(s) — ${totalVisible} rollo(s) en total.`;
-        }
-
-        ['filtroRolloColor', 'filtroRolloAncho', 'filtroRolloEstado'].forEach(id => {
-            document.getElementById(id).addEventListener('change', render);
-        });
-        document.getElementById('btnLimpiarFiltroRollo').addEventListener('click', () => {
-            document.getElementById('filtroRolloColor').value = '';
-            document.getElementById('filtroRolloAncho').value = '';
-            document.getElementById('filtroRolloEstado').value = '';
-            render();
-        });
-        document.getElementById('btnExpandirTodosRollo').addEventListener('click', () => {
-            document.querySelectorAll('#gruposRollosContainer .grupo-header').forEach(h => h.classList.add('abierto'));
-            document.querySelectorAll('#gruposRollosContainer .grupo-body').forEach(b => b.classList.add('abierto'));
-        });
-        document.getElementById('btnColapsarTodosRollo').addEventListener('click', () => {
-            document.querySelectorAll('#gruposRollosContainer .grupo-header').forEach(h => h.classList.remove('abierto'));
-            document.querySelectorAll('#gruposRollosContainer .grupo-body').forEach(b => b.classList.remove('abierto'));
-        });
-
-
-        contenedor.addEventListener('click', (e) => {
-            const btn = e.target.closest('.btn-agotar-rollo');
-            if (!btn) return;
-            e.preventDefault();
-            if (!window.confirm('¿Marcar este rollo como agotado (largo restante = 0)?')) return;
-            const form = btn.closest('form');
-            const input = form.querySelector('input[name="largoRestante"]');
-            if (input) input.value = '0';
-            form.submit();
-        });
-
-        render();
-    })();
-
-    // ════════════════════════════════════════════════════════════
-    //  RETAZOS DE TELA → agrupados por Color, en acordeón (igual que rollos)
-    // ════════════════════════════════════════════════════════════
-    (function initRetazos() {
-        const filas = Array.from(document.querySelectorAll('#datosRetazosRaw tbody tr'));
-        const contenedor = document.getElementById('gruposRetazosContainer');
-        if (!contenedor) return;
-
-        const retazos = filas.map(tr => ({
-            id: tr.dataset.id,
-            color: tr.dataset.color,
-            ancho: tr.dataset.ancho,
-            alto: tr.dataset.alto,
-            area: tr.dataset.area,
-            agotado: tr.dataset.agotado === 'true',
-            fecha: tr.dataset.fecha,
-            urlEliminar: tr.dataset.urlEliminar
-        }));
-
-        if (retazos.length === 0) return;
-
-        const grupos = {};
-        retazos.forEach(r => {
-            if (!grupos[r.color]) grupos[r.color] = { color: r.color, items: [] };
-            grupos[r.color].items.push(r);
-        });
-
-        const clavesOrdenadas = Object.keys(grupos).sort((a, b) => grupos[a].color.localeCompare(grupos[b].color));
-
-        function render() {
-            const fColor = document.getElementById('filtroRetazoColor').value;
-            const fEstado = document.getElementById('filtroRetazoEstado').value;
-
-            contenedor.innerHTML = '';
-            let totalVisible = 0;
-            let grupoCount = 0;
-
-            clavesOrdenadas.forEach(key => {
-                const g = grupos[key];
-                if (fColor && g.color !== fColor) return;
-
-                const itemsFiltrados = g.items.filter(r => {
-                    const estado = r.agotado ? 'agotado' : 'disponible';
-                    return !fEstado || estado === fEstado;
-                });
-                if (itemsFiltrados.length === 0) return;
-
-                grupoCount++;
-                totalVisible += itemsFiltrados.length;
-
-                const disponibles = itemsFiltrados.filter(r => !r.agotado).length;
-                const agotados = itemsFiltrados.filter(r => r.agotado).length;
-                const areaTotal = itemsFiltrados.reduce((sum, r) => sum + (parseFloat(r.area.replace(',', '.')) || 0), 0);
-
-                const div = document.createElement('div');
-                div.className = 'grupo-rollo';
-
-                const badges = [];
-                if (disponibles) badges.push(`<span class="badge badge-retazo">${disponibles} disponible(s)</span>`);
-                if (agotados) badges.push(`<span class="badge bg-danger">${agotados} agotado(s)</span>`);
-
-                let filasHtml = '';
-                itemsFiltrados.forEach(r => {
-                    const estClase = r.agotado ? 'fila-agotado' : 'fila-retazo';
-                    const estBadge = r.agotado
-                        ? '<span class="badge bg-danger">Agotado</span>'
-                        : '<span class="badge badge-retazo">Disponible</span>';
-
-                    filasHtml += `
-                        <tr class="${estClase}">
-                            <td><span class="id-pill">#${escapeHtml(r.id)}</span></td>
-                            <td>${escapeHtml(r.ancho)} m</td>
-                            <td><strong>${escapeHtml(r.alto)} m</strong></td>
-                            <td>${escapeHtml(r.area)} m²</td>
-                            <td>${estBadge}</td>
-                            <td><small>${escapeHtml(r.fecha)}</small></td>
-                            <td>
-                                <form action="${escapeHtml(r.urlEliminar)}" method="post" class="d-inline"
-                                      onsubmit="return confirm('¿Eliminar este retazo?');">
-                                    <button type="submit" class="btn btn-sm btn-outline-danger">🗑️</button>
-                                </form>
-                            </td>
-                        </tr>`;
-                });
-
-                div.innerHTML = `
-                    <div class="grupo-header" role="button">
-                        <div class="grupo-titulo">
-                            <span class="chevron">▶</span>
-                            <span class="swatch-color" style="background:${colorSwatch(g.color)};"></span>
-                            <span>${escapeHtml(g.color)}</span>
-                            <span class="grupo-meta">(${itemsFiltrados.length} retazo${itemsFiltrados.length !== 1 ? 's' : ''} · ${areaTotal.toFixed(2)} m² en total)</span>
-                        </div>
-                        <div class="grupo-resumen-badges d-flex gap-1">${badges.join(' ')}</div>
-                    </div>
-                    <div class="grupo-body">
-                        <table class="table table-hover align-middle table-small mb-0">
-                            <thead class="table-light">
-                                <tr><th>#</th><th>Ancho</th><th>Alto disponible</th><th>Área</th><th>Estado</th><th>Ingreso</th><th>Acciones</th></tr>
-                            </thead>
-                            <tbody>${filasHtml}</tbody>
-                        </table>
-                    </div>`;
-
-                const header = div.querySelector('.grupo-header');
-                const body = div.querySelector('.grupo-body');
-                header.addEventListener('click', () => {
-                    header.classList.toggle('abierto');
-                    body.classList.toggle('abierto');
-                });
-
-                contenedor.appendChild(div);
-            });
-
-            document.getElementById('contadorRetazo').textContent =
-                grupoCount === 0
-                    ? 'Ningún retazo coincide con los filtros seleccionados.'
-                    : `Mostrando ${grupoCount} grupo(s) — ${totalVisible} retazo(s) en total.`;
-        }
-
-        document.getElementById('filtroRetazoColor').addEventListener('change', render);
-        document.getElementById('filtroRetazoEstado').addEventListener('change', render);
-        document.getElementById('btnLimpiarFiltroRetazo').addEventListener('click', () => {
-            document.getElementById('filtroRetazoColor').value = '';
-            document.getElementById('filtroRetazoEstado').value = '';
-            render();
-        });
-        document.getElementById('btnExpandirTodosRetazo').addEventListener('click', () => {
-            document.querySelectorAll('#gruposRetazosContainer .grupo-header').forEach(h => h.classList.add('abierto'));
-            document.querySelectorAll('#gruposRetazosContainer .grupo-body').forEach(b => b.classList.add('abierto'));
-        });
-        document.getElementById('btnColapsarTodosRetazo').addEventListener('click', () => {
-            document.querySelectorAll('#gruposRetazosContainer .grupo-header').forEach(h => h.classList.remove('abierto'));
-            document.querySelectorAll('#gruposRetazosContainer .grupo-body').forEach(b => b.classList.remove('abierto'));
-        });
-
-        render();
-    })();
-
-    // ════════════════════════════════════════════════════════════
-    //  INSUMOS → agrupados por Nombre, con filtro por Tipo y por texto.
-    //  Cada grupo, si "tieneMedida", despliega sus piezas individuales adentro.
-    // ════════════════════════════════════════════════════════════
-    (function initInsumos() {
-        const filasInsumo = Array.from(document.querySelectorAll('#datosInsumosRaw tbody tr'));
-        const filasPieza = Array.from(document.querySelectorAll('#datosPiezasRaw tbody tr'));
-        const contenedor = document.getElementById('gruposInsumosContainer');
-        if (!contenedor || filasInsumo.length === 0) return;
-
-        const insumos = filasInsumo.map(tr => ({
-            id: tr.dataset.id,
-            nombre: tr.dataset.nombre,
-            tieneMedida: tr.dataset.tieneMedida === 'true',
-            descripcion: tr.dataset.descripcion,
-            stockUnidades: tr.dataset.stockUnidades,
-            numPiezas: tr.dataset.numPiezas,
-            urlCargar: tr.dataset.urlCargar
-        }));
-
-        const piezasPorInsumo = {};
-        filasPieza.forEach(tr => {
-            const insId = tr.dataset.insumoId;
-            if (!piezasPorInsumo[insId]) piezasPorInsumo[insId] = [];
-            piezasPorInsumo[insId].push({
-                id: tr.dataset.id,
-                agotada: tr.dataset.agotada === 'true',
-                largoRestante: tr.dataset.largoRestante,
-                largoInicial: tr.dataset.largoInicial,
-                fecha: tr.dataset.fecha,
-                urlEliminar: tr.dataset.urlEliminar
-            });
-        });
-
-        const insumosOrdenados = insumos.slice().sort((a, b) => a.nombre.localeCompare(b.nombre));
-
-        function render() {
-            const fTipo = document.getElementById('filtroInsumoTipo').value;
-            const fNombre = document.getElementById('filtroInsumoNombre').value.toLowerCase().trim();
-
-            contenedor.innerHTML = '';
             let visibles = 0;
-
-            insumosOrdenados.forEach(ins => {
-                const tipoMatch = !fTipo || (fTipo === 'medida' && ins.tieneMedida) || (fTipo === 'unidad' && !ins.tieneMedida);
-                const nombreMatch = !fNombre || ins.nombre.toLowerCase().includes(fNombre);
-                if (!tipoMatch || !nombreMatch) return;
-
-                visibles++;
-                const piezas = piezasPorInsumo[ins.id] || [];
-
-                const div = document.createElement('div');
-                div.className = 'grupo-insumo';
-
-                const badgeTipo = ins.tieneMedida
-                    ? '<span class="badge badge-tipo-medida">Por medida</span>'
-                    : '<span class="badge badge-tipo-unidad">Por unidad</span>';
-
-                let stockTexto = ins.tieneMedida
-                    ? `${piezas.length} pieza(s)`
-                    : `${ins.stockUnidades} unidad(es)`;
-
-                let cuerpoInterno = '';
-                if (ins.tieneMedida) {
-                    const disponibles = piezas.filter(p => !p.agotada).length;
-                    const agotadas = piezas.filter(p => p.agotada).length;
-
-                    let filasPiezasHtml = '';
-                    piezas.forEach(p => {
-                        const estClase = p.agotada ? 'fila-agotado' : '';
-                        const estBadge = p.agotada
-                            ? '<span class="badge bg-danger">Agotada</span>'
-                            : '<span class="badge bg-success">Disponible</span>';
-                        filasPiezasHtml += `
-                            <tr class="${estClase}">
-                                <td><span class="id-pill">#${escapeHtml(p.id)}</span></td>
-                                <td><strong>${escapeHtml(p.largoRestante)} / ${escapeHtml(p.largoInicial)} m</strong></td>
-                                <td>${estBadge}</td>
-                                <td><small>${escapeHtml(p.fecha)}</small></td>
-                                <td>
-                                    <form action="${escapeHtml(p.urlEliminar)}" method="post" class="d-inline"
-                                          onsubmit="return confirm('¿Eliminar esta pieza del inventario?');">
-                                        <button type="submit" class="btn btn-sm btn-outline-danger">🗑️</button>
-                                    </form>
-                                </td>
-                            </tr>`;
-                    });
-
-                    if (piezas.length === 0) {
-                        filasPiezasHtml = `<tr><td colspan="5" class="text-center text-muted py-2">Sin piezas registradas todavía.</td></tr>`;
+            filas.forEach(fila => {
+                let coincide = true;
+                for (const f of filtros) {
+                    const valorFiltro = normaliza(document.getElementById(f.controlId).value);
+                    if (!valorFiltro) continue;
+                    const valorFila = normaliza(fila.dataset[f.dataKey]);
+                    if (f.modo === 'contiene') {
+                        if (!valorFila.includes(valorFiltro)) { coincide = false; break; }
+                    } else {
+                        if (valorFila !== valorFiltro) { coincide = false; break; }
                     }
-
-                    cuerpoInterno = `
-                        <div class="grupo-body">
-                            <table class="table table-hover align-middle table-small mb-0">
-                                <thead class="table-light">
-                                    <tr><th>#</th><th>Largo restante</th><th>Estado</th><th>Ingreso</th><th>Acciones</th></tr>
-                                </thead>
-                                <tbody>${filasPiezasHtml}</tbody>
-                            </table>
-                        </div>`;
-
-                    div.dataset.disponibles = disponibles;
-                    div.dataset.agotadas = agotadas;
-                } else {
-                    cuerpoInterno = `
-                        <div class="grupo-body">
-                            <div class="p-3">
-                                <p class="mb-1"><strong>Stock actual:</strong> ${escapeHtml(ins.stockUnidades)} unidad(es)</p>
-                                <p class="mb-0 text-muted"><small>${escapeHtml(ins.descripcion || 'Sin descripción.')}</small></p>
-                            </div>
-                        </div>`;
                 }
-
-                div.innerHTML = `
-                    <div class="grupo-header" role="button">
-                        <div class="grupo-titulo">
-                            <span class="chevron">▶</span>
-                            <span class="id-pill">#${escapeHtml(ins.id)}</span>
-                            <span>${escapeHtml(ins.nombre)}</span>
-                            ${badgeTipo}
-                            <span class="grupo-meta">(${stockTexto})</span>
-                        </div>
-                        <a href="${escapeHtml(ins.urlCargar)}" class="btn btn-sm btn-outline-primary" onclick="event.stopPropagation();">+ Cargar stock</a>
-                    </div>
-                    ${cuerpoInterno}`;
-
-                const header = div.querySelector('.grupo-header');
-                const body = div.querySelector('.grupo-body');
-                header.addEventListener('click', () => {
-                    header.classList.toggle('abierto');
-                    body.classList.toggle('abierto');
-                });
-
-                contenedor.appendChild(div);
+                fila.classList.toggle('oculto-por-filtro', !coincide);
+                if (coincide) visibles++;
             });
-
-            document.getElementById('contadorInsumo').textContent =
-                visibles === 0
-                    ? 'Ningún insumo coincide con los filtros seleccionados.'
-                    : `Mostrando ${visibles} insumo(s).`;
+            if (contador) {
+                contador.textContent = visibles === 0
+                    ? `Ningún ${etiquetaSingular} coincide con los filtros seleccionados.`
+                    : `Mostrando ${visibles} ${visibles === 1 ? etiquetaSingular : etiquetaPlural}.`;
+            }
         }
 
-        document.getElementById('filtroInsumoTipo').addEventListener('change', render);
-        document.getElementById('filtroInsumoNombre').addEventListener('input', render);
-        document.getElementById('btnLimpiarFiltroInsumo').addEventListener('click', () => {
-            document.getElementById('filtroInsumoTipo').value = '';
-            document.getElementById('filtroInsumoNombre').value = '';
-            render();
-        });
-        document.getElementById('btnExpandirTodosInsumo').addEventListener('click', () => {
-            document.querySelectorAll('#gruposInsumosContainer .grupo-header').forEach(h => h.classList.add('abierto'));
-            document.querySelectorAll('#gruposInsumosContainer .grupo-body').forEach(b => b.classList.add('abierto'));
-        });
-        document.getElementById('btnColapsarTodosInsumo').addEventListener('click', () => {
-            document.querySelectorAll('#gruposInsumosContainer .grupo-header').forEach(h => h.classList.remove('abierto'));
-            document.querySelectorAll('#gruposInsumosContainer .grupo-body').forEach(b => b.classList.remove('abierto'));
+        filtros.forEach(f => {
+            const el = document.getElementById(f.controlId);
+            if (el) el.addEventListener(f.evento || 'change', render);
         });
 
         render();
-    })();
+        return render;
+    }
+
+    // Rollos
+    crearFiltro('#tablaRollos .fila-rollo', [
+        { controlId: 'filtroRolloColor', dataKey: 'color' },
+        { controlId: 'filtroRolloAncho', dataKey: 'ancho' },
+        { controlId: 'filtroRolloEstado', dataKey: 'estado' }
+    ], 'contadorRollo', 'rollo', 'rollos');
+
+    document.getElementById('btnLimpiarFiltroRollo').addEventListener('click', () => {
+        document.getElementById('filtroRolloColor').value = '';
+        document.getElementById('filtroRolloAncho').value = '';
+        document.getElementById('filtroRolloEstado').value = '';
+        document.getElementById('filtroRolloColor').dispatchEvent(new Event('change'));
+    });
+
+    // Retazos
+    crearFiltro('#tablaRetazos .fila-retazo-item', [
+        { controlId: 'filtroRetazoColor', dataKey: 'color' },
+        { controlId: 'filtroRetazoEstado', dataKey: 'estado' }
+    ], 'contadorRetazo', 'retazo', 'retazos');
+
+    document.getElementById('btnLimpiarFiltroRetazo').addEventListener('click', () => {
+        document.getElementById('filtroRetazoColor').value = '';
+        document.getElementById('filtroRetazoEstado').value = '';
+        document.getElementById('filtroRetazoColor').dispatchEvent(new Event('change'));
+    });
+
+    // Insumos por unidad
+    crearFiltro('#tablaInsumosUnidad .fila-insumo-unidad', [
+        { controlId: 'filtroInsumoUnidadNombre', dataKey: 'nombre', modo: 'contiene', evento: 'input' }
+    ], 'contadorInsumoUnidad', 'insumo', 'insumos');
+
+    document.getElementById('btnLimpiarFiltroInsumoUnidad').addEventListener('click', () => {
+        document.getElementById('filtroInsumoUnidadNombre').value = '';
+        document.getElementById('filtroInsumoUnidadNombre').dispatchEvent(new Event('input'));
+    });
+
+    // Piezas de insumos con medida
+    crearFiltro('#tablaPiezas .fila-pieza', [
+        { controlId: 'filtroPiezaInsumo', dataKey: 'insumo' },
+        { controlId: 'filtroPiezaEstado', dataKey: 'estado' }
+    ], 'contadorPieza', 'pieza', 'piezas');
+
+    document.getElementById('btnLimpiarFiltroPieza').addEventListener('click', () => {
+        document.getElementById('filtroPiezaInsumo').value = '';
+        document.getElementById('filtroPiezaEstado').value = '';
+        document.getElementById('filtroPiezaInsumo').dispatchEvent(new Event('change'));
+    });
     </script>
     <script src="/js/token-nav.js"></script>
 </body>

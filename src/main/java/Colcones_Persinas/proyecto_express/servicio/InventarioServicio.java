@@ -20,7 +20,12 @@ public class InventarioServicio {
     private final MaterialUsadoRepository materialUsadoRepository;
     private final RetazoTelaRepository retazoTelaRepository;
 
-    private static final double UMBRAL_DESCARTE_PITILLO = 0.05;
+    // Si al usar una pieza (tubo, cabezal, pesa, cuerda, pitillo, extra, etc.)
+    // el sobrante que queda es igual o menor a este valor, la pieza se
+    // considera un retazo inservible y se borra automáticamente del
+    // inventario en vez de quedar como una "pieza fantasma" de 0.30m que
+    // nadie va a poder usar nunca.
+    private static final double UMBRAL_DESCARTE_PIEZA = 0.40;
     private static final List<Double> ANCHOS_COMERCIALES = Arrays.asList(1.83, 2.50, 3.00);
 
     public InventarioServicio(RolloTelaRepository rolloTelaRepository,
@@ -283,7 +288,7 @@ public class InventarioServicio {
         r.setMetrosUsados(metros);
         r.setSeleccionManual(manual);
 
-        if (sobrante <= UMBRAL_DESCARTE_PITILLO) {
+        if (sobrante <= UMBRAL_DESCARTE_PIEZA) {
             r.setMetrosSobrantes(0.0);
             piezaInsumoRepository.delete(pieza);
         } else {
@@ -396,14 +401,21 @@ public class InventarioServicio {
         return materialUsadoRepository.save(r);
     }
 
+    /**
+     * Descuenta metros de una pieza de insumo (tubo, cabezal, pesa, cuerda, etc.)
+     * Si al descontar el sobrante que queda es igual o menor a UMBRAL_DESCARTE_PIEZA,
+     * la pieza se borra automáticamente en vez de quedar como un retazo inservible
+     * ocupando espacio en el inventario.
+     */
     public MaterialUsado descontarInsumoConMedida(Pedido pedido, PiezaInsumo pieza, double metros, boolean manual) {
         if (pieza.getLargoRestante() < metros - 0.001) {
             throw new MaterialInsuficienteException(
                     "Pieza #" + pieza.getId() + " (" + pieza.getInsumo().getNombre() + ") no tiene suficiente material ("
                     + pieza.getLargoRestante() + " m disponibles, " + metros + " m necesarios).");
         }
-        pieza.setLargoRestante(redondear(pieza.getLargoRestante() - metros));
-        piezaInsumoRepository.save(pieza);
+
+        double sobrante = redondear(pieza.getLargoRestante() - metros);
+
         MaterialUsado r = new MaterialUsado();
         r.setPedidoId(pedido.getId());
         r.setTipoMaterial(pieza.getInsumo().getNombre().toUpperCase().replace(" ", "_"));
@@ -411,8 +423,17 @@ public class InventarioServicio {
         r.setFuenteDescripcion(pieza.getInsumo().getNombre() + " (#" + pieza.getId()
                 + ", pieza original de " + redondear(pieza.getLargoInicial()) + " m)");
         r.setMetrosUsados(metros);
-        r.setMetrosSobrantes(pieza.getLargoRestante());
         r.setSeleccionManual(manual);
+
+        if (sobrante <= UMBRAL_DESCARTE_PIEZA) {
+            r.setMetrosSobrantes(0.0);
+            piezaInsumoRepository.delete(pieza);
+        } else {
+            pieza.setLargoRestante(sobrante);
+            piezaInsumoRepository.save(pieza);
+            r.setMetrosSobrantes(sobrante);
+        }
+
         return materialUsadoRepository.save(r);
     }
 
@@ -1343,7 +1364,7 @@ public class InventarioServicio {
                     r.setSeleccionManual(true);
 
                     double sobrante = redondear(p.getLargoRestante() - aUsar);
-                    if (sobrante <= 0.001) {
+                    if (sobrante <= UMBRAL_DESCARTE_PIEZA) {
                         r.setMetrosSobrantes(0.0);
                         piezaInsumoRepository.delete(p);
                     } else {
