@@ -7,30 +7,30 @@
         * { box-sizing: border-box; margin: 0; padding: 0; overflow-wrap: break-word; word-break: break-word; }
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            padding: 10px 14px;
+            padding: 6px 10px;
             background: #fff;
-            font-size: 0.82rem;
+            font-size: 0.68rem;
         }
 
         /* ── Encabezado ── */
         .encabezado-reporte {
             background: #212529;
             color: #fff;
-            border-radius: 5px;
-            padding: 7px 14px;
+            border-radius: 4px;
+            padding: 4px 10px;
             display: flex;
             justify-content: space-between;
             align-items: center;
             flex-wrap: wrap;
-            gap: 8px 20px;
-            margin-bottom: 10px;
+            gap: 4px 16px;
+            margin-bottom: 5px;
         }
-        .encabezado-reporte .titulo { font-size: 0.95rem; font-weight: 700; flex-shrink: 0; }
-        .encabezado-reporte .partes { display: flex; gap: 20px; font-size: 0.78rem; flex-wrap: wrap; min-width: 0; }
-        .encabezado-reporte .partes span { min-width: 0; max-width: 240px; }
+        .encabezado-reporte .titulo { font-size: 0.82rem; font-weight: 700; flex-shrink: 0; }
+        .encabezado-reporte .partes { display: flex; gap: 14px; font-size: 0.66rem; flex-wrap: wrap; min-width: 0; }
+        .encabezado-reporte .partes span { min-width: 0; max-width: 220px; }
         .encabezado-reporte .partes span strong {
-            display: block; font-size: 0.68rem; text-transform: uppercase;
-            letter-spacing: 0.05em; opacity: 0.65; margin-bottom: 1px;
+            display: block; font-size: 0.58rem; text-transform: uppercase;
+            letter-spacing: 0.05em; opacity: 0.65; margin-bottom: 0;
         }
 
         /* ── Cuadrícula de etiquetas: 2 col ──
@@ -42,34 +42,34 @@
         .grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 8px;
-            margin-bottom: 8px;
+            gap: 5px;
+            margin-bottom: 5px;
         }
         .etiqueta {
-            border: 1.5px solid #333;
-            border-radius: 5px;
-            padding: 8px 11px;
+            border: 1px solid #333;
+            border-radius: 4px;
+            padding: 5px 8px;
             page-break-inside: avoid;
             min-width: 0;
         }
         .etiqueta h3 {
-            font-size: 0.82rem;
+            font-size: 0.70rem;
             font-weight: 700;
-            border-bottom: 1.5px solid #333;
-            padding-bottom: 4px;
-            margin-bottom: 7px;
+            border-bottom: 1px solid #333;
+            padding-bottom: 2px;
+            margin-bottom: 4px;
         }
         .etiqueta p {
-            margin-bottom: 3px;
-            line-height: 1.35;
+            margin-bottom: 1px;
+            line-height: 1.2;
             display: flex;
             flex-wrap: wrap;
-            column-gap: 6px;
-            row-gap: 2px;
+            column-gap: 5px;
+            row-gap: 0;
         }
         .etiqueta p strong {
             flex: 0 0 auto;
-            min-width: 108px;
+            min-width: 82px;
         }
         .etiqueta p > span,
         .etiqueta p > .badge,
@@ -87,22 +87,24 @@
 
         /* ── Badges ── */
         .badge {
-            display: inline-block; padding: 1px 8px;
-            border-radius: 4px; font-size: 0.70rem; font-weight: 700; color: #fff;
+            display: inline-block; padding: 0 6px;
+            border-radius: 3px; font-size: 0.62rem; font-weight: 700; color: #fff;
         }
         .badge-con   { background: #198754; }
         .badge-sin   { background: #212529; }
-        .valor-mando { font-size: 1rem; font-weight: 700; color: #c0392b; }
+        .valor-mando { font-size: 0.78rem; font-weight: 700; color: #c0392b; }
 
         /* Badge de identificador (#id) + medida original de la pieza/rollo/retazo.
-           Ya NO usa white-space:nowrap: si el texto es largo, el badge crece a
-           dos líneas en vez de desbordarse fuera de su caja. */
+           Ya NO usa white-space:nowrap: si el texto es largo (p.ej. una advertencia
+           de sustituto), el badge crece a varias líneas en vez de desbordarse, pero
+           en fuente chica para que ocupe el mínimo espacio vertical posible. */
         .badge-id-original {
             display: inline-block;
-            padding: 1px 7px;
-            margin-left: 4px;
-            border-radius: 4px;
-            font-size: 0.70rem;
+            padding: 0 5px;
+            margin-left: 3px;
+            border-radius: 3px;
+            font-size: 0.60rem;
+            line-height: 1.25;
             font-weight: 700;
             font-family: 'Consolas', monospace;
             background: #e3f2fd;
@@ -113,42 +115,42 @@
 
         .fila-cabezal {
             background: #e8f5e9;
-            border-left: 3px solid #198754;
+            border-left: 2px solid #198754;
             border-radius: 3px;
-            padding: 3px 7px;
-            margin-top: 4px;
-            font-size: 0.80rem;
+            padding: 1px 6px;
+            margin-top: 2px;
+            font-size: 0.66rem;
             display: flex;
             flex-wrap: wrap;
-            column-gap: 6px;
+            column-gap: 5px;
         }
-        .fila-cabezal strong { flex: 0 0 auto; min-width: 108px; }
+        .fila-cabezal strong { flex: 0 0 auto; min-width: 82px; }
 
         /* Origen tela */
         .fila-origen-tela {
-            margin-top: 7px; padding: 6px 9px;
-            border-radius: 4px; font-size: 0.78rem;
+            margin-top: 3px; padding: 3px 6px;
+            border-radius: 3px; font-size: 0.64rem;
         }
         .fila-origen-tela p {
-            margin-bottom: 2px;
+            margin-bottom: 1px;
             display: flex;
             flex-wrap: wrap;
             align-items: baseline;
-            column-gap: 5px;
-            row-gap: 2px;
+            column-gap: 4px;
+            row-gap: 0;
         }
-        .origen-rollo  { background: #eaf2fd; border-left: 3px solid #1976d2; }
-        .origen-retazo { background: #fff8e1; border-left: 3px solid #f57c00; }
+        .origen-rollo  { background: #eaf2fd; border-left: 2px solid #1976d2; }
+        .origen-retazo { background: #fff8e1; border-left: 2px solid #f57c00; }
         .badge-origen {
-            display: inline-block; padding: 1px 6px; border-radius: 4px;
-            font-size: 0.65rem; font-weight: 700; margin-left: 5px; color: #fff;
+            display: inline-block; padding: 0 5px; border-radius: 3px;
+            font-size: 0.56rem; font-weight: 700; margin-left: 3px; color: #fff;
             flex-shrink: 0;
         }
         .badge-rollo-origen  { background: #1976d2; }
         .badge-retazo-origen { background: #f57c00; }
         .badge-seleccion {
-            display: inline-block; padding: 1px 7px; border-radius: 4px;
-            font-size: 0.70rem; font-weight: 700;
+            display: inline-block; padding: 0 5px; border-radius: 3px;
+            font-size: 0.60rem; font-weight: 700;
             flex-shrink: 0;
         }
         .badge-seleccion-manual { background: #6f42c1; color: #fff; }
@@ -157,42 +159,43 @@
         /* Tabla de material: table-layout fixed reparte el ancho entre columnas
            según % definido, así una descripción larga no ensancha la tabla más
            allá de la hoja — el texto hace salto de línea dentro de su celda. */
-        .tabla-material { border-collapse: collapse; width: 100%; font-size: 0.75rem; table-layout: fixed; }
+        .tabla-material { border-collapse: collapse; width: 100%; font-size: 0.62rem; table-layout: fixed; }
         .tabla-material th, .tabla-material td {
-            border: 1px solid #ccc; padding: 3px 6px; text-align: left;
+            border: 1px solid #ccc; padding: 1px 5px; text-align: left;
             overflow-wrap: break-word; word-break: break-word;
+            line-height: 1.25;
         }
-        .tabla-material th { background: #f0f0f0; font-size: 0.72rem; }
+        .tabla-material th { background: #f0f0f0; font-size: 0.60rem; }
         .tabla-material th:nth-child(1), .tabla-material td:nth-child(1) { width: 10%; }
-        .tabla-material th:nth-child(2), .tabla-material td:nth-child(2) { width: 28%; }
-        .tabla-material th:nth-child(3), .tabla-material td:nth-child(3) { width: 22%; }
-        .tabla-material th:nth-child(4), .tabla-material td:nth-child(4) { width: 10%; }
-        .tabla-material th:nth-child(5), .tabla-material td:nth-child(5) { width: 8%; }
+        .tabla-material th:nth-child(2), .tabla-material td:nth-child(2) { width: 26%; }
+        .tabla-material th:nth-child(3), .tabla-material td:nth-child(3) { width: 24%; }
+        .tabla-material th:nth-child(4), .tabla-material td:nth-child(4) { width: 9%; }
+        .tabla-material th:nth-child(5), .tabla-material td:nth-child(5) { width: 7%; }
         .tabla-material th:nth-child(6), .tabla-material td:nth-child(6) { width: 12%; }
-        .tabla-material th:nth-child(7), .tabla-material td:nth-child(7) { width: 10%; }
+        .tabla-material th:nth-child(7), .tabla-material td:nth-child(7) { width: 12%; }
         .tabla-material tr.fila-tela-rollo  { background: #eaf2fd; }
         .tabla-material tr.fila-tela-retazo { background: #fff8e1; }
         .tabla-material tr.fila-extra       { background: #f0f7ff; }
-        .sin-material { color: #888; font-style: italic; font-size: 0.78rem; }
+        .sin-material { color: #888; font-style: italic; font-size: 0.66rem; }
 
         /* Resumen de material específico (tubo y pesa reales) */
         .fila-pieza {
             background: #f8f9fa;
-            border-left: 3px solid #6c757d;
+            border-left: 2px solid #6c757d;
             border-radius: 3px;
-            padding: 3px 7px;
-            margin-top: 4px;
-            font-size: 0.78rem;
+            padding: 1px 6px;
+            margin-top: 2px;
+            font-size: 0.64rem;
             display: flex;
             flex-wrap: wrap;
-            column-gap: 6px;
+            column-gap: 5px;
         }
-        .fila-pieza strong { flex: 0 0 auto; min-width: 108px; }
+        .fila-pieza strong { flex: 0 0 auto; min-width: 82px; }
 
         @media print {
-            body { padding: 6px 10px; }
+            body { padding: 4px 8px; }
             .no-print { display: none; }
-            @page { size: letter portrait; margin: 8mm; }
+            @page { size: letter portrait; margin: 6mm; }
         }
     </style>
 </head>
@@ -333,9 +336,9 @@
 
             <!-- Extras si los hay, cada uno con su badge de #id y medida original -->
             <div th:if="${extrasHistorial != null and not #lists.isEmpty(extrasHistorial)}"
-                 style="margin-top:7px; padding-top:6px; border-top:1px dashed #aaa;">
-                <p style="font-weight:700; font-size:0.75rem; margin-bottom:4px;">➕ Insumos adicionales:</p>
-                <p th:each="e : ${extrasHistorial}" style="margin-bottom:2px; font-size:0.78rem; display:flex; flex-wrap:wrap; column-gap:4px;">
+                 style="margin-top:3px; padding-top:3px; border-top:1px dashed #aaa;">
+                <p style="font-weight:700; font-size:0.64rem; margin-bottom:1px;">➕ Insumos adicionales:</p>
+                <p th:each="e : ${extrasHistorial}" style="margin-bottom:0; font-size:0.62rem; display:flex; flex-wrap:wrap; column-gap:3px;">
                     · <span th:text="${#strings.contains(e.fuenteDescripcion,'(')} ? ${#strings.substringBefore(e.fuenteDescripcion,'(')} : ${e.fuenteDescripcion}"></span>
                     <span class="badge-id-original"
                           th:if="${#strings.contains(e.fuenteDescripcion,'(')}"
@@ -348,7 +351,7 @@
         <!-- 5: Material completo (tabla ancha) -->
         <div class="etiqueta etiqueta-full">
             <h3>📋 Registro de material utilizado</h3>
-            <div style="display:flex;gap:8px 20px;margin-bottom:7px;font-size:0.75rem;background:#f8f9fa;border-radius:4px;padding:5px 9px;flex-wrap:wrap;">
+            <div style="display:flex;gap:4px 16px;margin-bottom:3px;font-size:0.62rem;background:#f8f9fa;border-radius:4px;padding:2px 7px;flex-wrap:wrap;">
                 <span style="min-width:0;"><strong>Dist.:</strong> <span th:text="${pedido.nombreDecorador}"></span></span>
                 <span style="min-width:0;"><strong>Cliente:</strong> <span th:text="${pedido.nombreClienteFinal}"></span></span>
                 <span style="min-width:0;"><strong>Desc.:</strong> <span th:text="${pedido.descripcion}"></span></span>
