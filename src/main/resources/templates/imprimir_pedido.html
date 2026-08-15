@@ -399,7 +399,11 @@
 
     </div><!-- /grid -->
 
-    <div class="no-print" style="margin-top:8px;">
+    <div class="no-print" style="margin-top:8px; display:flex; gap:8px;">
+        <button onclick="window.history.length > 1 ? window.history.back() : (window.location.href='/taller/pedidos')"
+                style="padding:6px 18px;font-size:0.85rem;cursor:pointer;border:1px solid #6c757d;border-radius:4px;background:#fff;color:#333;">
+            ← Volver
+        </button>
         <button onclick="window.print()"
                 style="padding:6px 18px;font-size:0.85rem;cursor:pointer;border:1px solid #333;border-radius:4px;background:#212529;color:#fff;">
             🖨️ Imprimir
