@@ -158,16 +158,19 @@
         <div class="row g-3 mb-3">
             <div class="col-md-4">
                 <label class="form-label fw-bold">Vendedor</label>
-                <select th:field="*{vendedor}" class="form-select" required>
-                    <option value="">-- Selecciona --</option>
-                    <option value="Fabián Andrés">Fabián Andrés</option>
-                    <option value="Carlos Andrés">El Mono</option>
-                    <option value="Otro">Otro (escribir)</option>
-                </select>
-                <div class="campo-manual d-none">
-                    <input type="text" class="form-control campo-vendedor-manual" autocomplete="off"
-                           placeholder="Escribe el nombre del vendedor..." th:field="*{vendedor}">
-                    <button type="button" class="btn-volver-lista" title="Volver a la lista">↩</button>
+                <!-- Agregamos la clase "campo-vendedor-select" y "campo-selector" -->
+                <div class="campo-selector">
+                    <select th:field="*{vendedor}" class="form-select campo-vendedor-select" required>
+                        <option value="">-- Selecciona --</option>
+                        <option value="Fabián Andrés">Fabián Andrés</option>
+                        <option value="Carlos Andrés">El Mono</option>
+                        <option value="__OTRO__">✏️ Otro (escribir)</option>
+                    </select>
+                    <div class="campo-manual d-none">
+                        <input type="text" class="form-control campo-vendedor-manual" autocomplete="off"
+                               placeholder="Escribe el nombre del vendedor..." th:field="*{vendedor}" disabled>
+                        <button type="button" class="btn-volver-lista" title="Volver a la lista">↩</button>
+                    </div>
                 </div>
             </div>
             <div class="col-md-4">
