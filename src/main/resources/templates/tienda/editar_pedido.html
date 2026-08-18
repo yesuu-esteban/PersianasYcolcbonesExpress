@@ -162,7 +162,13 @@
                     <option value="">-- Selecciona --</option>
                     <option value="Fabián Andrés">Fabián Andrés</option>
                     <option value="Carlos Andrés">El Mono</option>
+                    <option value="Otro">Otro (escribir)</option>
                 </select>
+                <div class="campo-manual d-none">
+                    <input type="text" class="form-control campo-vendedor-manual" autocomplete="off"
+                           placeholder="Escribe el nombre del vendedor..." th:field="*{vendedor}">
+                    <button type="button" class="btn-volver-lista" title="Volver a la lista">↩</button>
+                </div>
             </div>
             <div class="col-md-4">
                 <label class="form-label fw-bold">Fabricante</label>
@@ -483,7 +489,7 @@
     }
 
     function activarSelectoresOtro() {
-        document.querySelectorAll('.campo-producto-select, .campo-material-select').forEach(inicializarSelectorOtro);
+        document.querySelectorAll('.campo-producto-select, .campo-material-select, .campo-vendedor-select').forEach(inicializarSelectorOtro);
     }
 
     document.addEventListener('DOMContentLoaded', () => {
