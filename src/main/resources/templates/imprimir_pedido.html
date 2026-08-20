@@ -33,24 +33,30 @@
             letter-spacing: 0.05em; opacity: 0.65; margin-bottom: 0;
         }
 
-        /* ── Cuadrícula de etiquetas: 2 col ──
-           min-width:0 en los hijos del grid es la pieza clave: sin esto, un grid
-           item nunca se achica por debajo del ancho de su contenido, así que un
-           texto largo sin espacios (o muchos badges seguidos) empuja la columna
-           y rompe todo el layout. Con min-width:0, el texto simplemente hace
-           salto de línea y la caja crece hacia abajo en vez de desbordarse. */
+        /* ── Columnas tipo "periódico" en vez de grid rígido ──
+           Con display:grid de 2 columnas, cada FILA se estira a la altura de la
+           caja más alta de esa fila — si "Identificación" es corta y "Perfilería"
+           es larga, la corta queda con un hueco vacío enorme (espacio desperdiciado)
+           y además, si el contenido varía mucho de un pedido a otro, el acomodo se
+           ve distinto cada vez ("se buguea"). Con columns:2, cada caja fluye de
+           forma independiente y solo ocupa el alto que necesita — se reparte solo,
+           sin depender de su vecina. */
         .grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 5px;
+            columns: 2;
+            column-gap: 6px;
             margin-bottom: 5px;
         }
         .etiqueta {
             border: 1px solid #333;
             border-radius: 4px;
             padding: 5px 8px;
+            margin-bottom: 6px;
+            break-inside: avoid;
+            -webkit-column-break-inside: avoid;
             page-break-inside: avoid;
             min-width: 0;
+            display: inline-block;
+            width: 100%;
         }
         .etiqueta h3 {
             font-size: 0.70rem;
@@ -80,9 +86,10 @@
             min-width: 0;
         }
 
-        /* Etiqueta ancha (tabla material) */
+        /* Etiqueta ancha (tabla material): ocupa las 2 columnas completas */
         .etiqueta-full {
-            grid-column: 1 / -1;
+            column-span: all;
+            -webkit-column-span: all;
         }
 
         /* ── Badges ── */
