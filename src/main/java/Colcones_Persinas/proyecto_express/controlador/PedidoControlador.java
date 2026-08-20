@@ -112,7 +112,7 @@ public class PedidoControlador {
         p.setUsaCabezal(usaCabezal);
         p.setUsaPitilloPesa(usaPitilloPesa);
         p.setUsaConectorTope(usaConectorTope);
-        p.setTuboManualElegido(tipoTuboManual);
+        p.setTuboManualElegido(normalizarTuboManual(tipoTuboManual));
         p.calcularFichaTecnica();
         return inventarioServicio.previsualizar(p);
     }
@@ -395,7 +395,14 @@ public class PedidoControlador {
         pedido.setUsaCabezal(usaCabezal);
         pedido.setUsaPitilloPesa(usaPitilloPesa);
         pedido.setUsaConectorTope(usaConectorTope);
-        pedido.setTuboManualElegido(tipoTuboManual);
+
+        // ── FIX: antes esto guardaba el texto literal "auto" cuando el select
+        // quedaba en modo automático, en vez de null. calcularFichaTecnica()
+        // espera null para recalcular el tubo automáticamente; con la cadena
+        // "auto" ahí metida, la selección manual del tipo de tubo (R8/R16/R24)
+        // quedaba inconsistente y el pedido se quedaba "pegado" al tubo previo.
+        // Ahora se normaliza igual que en guardarListaPedidos (leerTextoOpcionalFila). ──
+        pedido.setTuboManualElegido(normalizarTuboManual(tipoTuboManual));
         pedido.calcularFichaTecnica();
         if (estado != null && !estado.isBlank()) {
             pedido.setEstado(estado);
@@ -605,6 +612,17 @@ public class PedidoControlador {
     private Integer parsearIdManual(String valor) {
         if (valor == null || valor.isBlank() || "auto".equalsIgnoreCase(valor.trim())) return null;
         try { return Integer.parseInt(valor.trim()); } catch (NumberFormatException e) { return null; }
+    }
+
+    /**
+     * Normaliza el valor del select de tipo de tubo (R8/R16/R24/"auto") a lo que
+     * espera Pedido.calcularFichaTecnica(): null cuando es automático, o el texto
+     * elegido (recortado) cuando es manual. Se usa tanto en la previsualización
+     * AJAX como al editar, igual que ya se hacía al crear (leerTextoOpcionalFila).
+     */
+    private String normalizarTuboManual(String valor) {
+        if (valor == null || valor.isBlank() || "auto".equalsIgnoreCase(valor.trim())) return null;
+        return valor.trim();
     }
 
     // ─── Actualizar estado ────────────────────────────────────────────────
