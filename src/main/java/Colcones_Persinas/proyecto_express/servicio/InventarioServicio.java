@@ -20,7 +20,17 @@ public class InventarioServicio {
     private final MaterialUsadoRepository materialUsadoRepository;
     private final RetazoTelaRepository retazoTelaRepository;
 
-    private static final double UMBRAL_DESCARTE_PITILLO = 0.05;
+    private static final double UMBRAL_DESCARTE_RETAZO = 0.05;
+
+    /**
+     * Umbral general de descarte automático: cualquier pieza, rollo o insumo con
+     * medida que, DESPUÉS DE USARSE en un pedido, quede con menos de esto,
+     * se elimina solo del inventario (ya no sirve para nada práctico).
+     * Esto SOLO aplica al descontar/cortar material — nunca al crearlo o
+     * cargarlo manualmente, eso se respeta tal cual lo registre el jefe.
+     */
+    private static final double UMBRAL_DESCARTE_PIEZA = 0.40;
+
     private static final List<Double> ANCHOS_COMERCIALES = Arrays.asList(1.83, 2.50, 3.00);
 
     public InventarioServicio(RolloTelaRepository rolloTelaRepository,
@@ -283,7 +293,9 @@ public class InventarioServicio {
         r.setMetrosUsados(metros);
         r.setSeleccionManual(manual);
 
-        if (sobrante <= UMBRAL_DESCARTE_PITILLO) {
+        // Umbral general: si tras usarla queda muy poquito, ya no sirve de nada
+        // práctico y se descarta automáticamente del inventario.
+        if (sobrante < UMBRAL_DESCARTE_PIEZA) {
             r.setMetrosSobrantes(0.0);
             piezaInsumoRepository.delete(pieza);
         } else {
@@ -322,7 +334,7 @@ public class InventarioServicio {
         }
 
         double sobrante = redondear(retazo.getAlto() - altoUsado);
-        if (sobrante <= 0.05) {
+        if (sobrante <= UMBRAL_DESCARTE_RETAZO) {
             retazoTelaRepository.delete(retazo);
         } else {
             retazo.setAlto(sobrante);
@@ -351,8 +363,7 @@ public class InventarioServicio {
                     "Rollo #" + rollo.getId() + " no tiene suficiente material ("
                     + rollo.getLargoRestante() + " m disponibles, " + metros + " m necesarios).");
         }
-        rollo.setLargoRestante(redondear(rollo.getLargoRestante() - metros));
-        rolloTelaRepository.save(rollo);
+        double restante = redondear(rollo.getLargoRestante() - metros);
 
         String fuente = "Rollo " + rollo.getColor() + " " + rollo.getAncho() + "m (#" + rollo.getId()
                 + ", rollo original de " + redondear(rollo.getLargoInicial()) + " m)";
@@ -367,9 +378,18 @@ public class InventarioServicio {
         r.setRolloTelaId(rollo.getId());
         r.setFuenteDescripcion(fuente);
         r.setMetrosUsados(metros);
-        r.setMetrosSobrantes(rollo.getLargoRestante());
         r.setMetrosCuadrados(redondear(pedido.getCorteTelaAncho() * pedido.getCorteTelaAlto()));
         r.setSeleccionManual(manual);
+
+        // Si al rollo le queda muy poca tela útil, se descarta automáticamente.
+        if (restante < UMBRAL_DESCARTE_PIEZA) {
+            r.setMetrosSobrantes(0.0);
+            rolloTelaRepository.delete(rollo);
+        } else {
+            rollo.setLargoRestante(restante);
+            rolloTelaRepository.save(rollo);
+            r.setMetrosSobrantes(restante);
+        }
         return materialUsadoRepository.save(r);
     }
 
@@ -379,8 +399,7 @@ public class InventarioServicio {
                     "Rollo #" + rollo.getId() + " no tiene suficiente material ("
                     + rollo.getLargoRestante() + " m disponibles, " + metros + " m necesarios).");
         }
-        rollo.setLargoRestante(redondear(rollo.getLargoRestante() - metros));
-        rolloTelaRepository.save(rollo);
+        double restante = redondear(rollo.getLargoRestante() - metros);
 
         MaterialUsado r = new MaterialUsado();
         r.setPedidoId(pedido.getId());
@@ -390,9 +409,17 @@ public class InventarioServicio {
                 + "m (#" + rollo.getId() + ", rollo original de " + redondear(rollo.getLargoInicial())
                 + " m) — venta directa");
         r.setMetrosUsados(metros);
-        r.setMetrosSobrantes(rollo.getLargoRestante());
         r.setMetrosCuadrados(redondear(rollo.getAncho() * metros));
         r.setSeleccionManual(false);
+
+        if (restante < UMBRAL_DESCARTE_PIEZA) {
+            r.setMetrosSobrantes(0.0);
+            rolloTelaRepository.delete(rollo);
+        } else {
+            rollo.setLargoRestante(restante);
+            rolloTelaRepository.save(rollo);
+            r.setMetrosSobrantes(restante);
+        }
         return materialUsadoRepository.save(r);
     }
 
@@ -402,8 +429,8 @@ public class InventarioServicio {
                     "Pieza #" + pieza.getId() + " (" + pieza.getInsumo().getNombre() + ") no tiene suficiente material ("
                     + pieza.getLargoRestante() + " m disponibles, " + metros + " m necesarios).");
         }
-        pieza.setLargoRestante(redondear(pieza.getLargoRestante() - metros));
-        piezaInsumoRepository.save(pieza);
+        double sobrante = redondear(pieza.getLargoRestante() - metros);
+
         MaterialUsado r = new MaterialUsado();
         r.setPedidoId(pedido.getId());
         r.setTipoMaterial(pieza.getInsumo().getNombre().toUpperCase().replace(" ", "_"));
@@ -411,8 +438,17 @@ public class InventarioServicio {
         r.setFuenteDescripcion(pieza.getInsumo().getNombre() + " (#" + pieza.getId()
                 + ", pieza original de " + redondear(pieza.getLargoInicial()) + " m)");
         r.setMetrosUsados(metros);
-        r.setMetrosSobrantes(pieza.getLargoRestante());
         r.setSeleccionManual(manual);
+
+        // Umbral general de descarte automático tras el corte (tubos, pesas, cuerdas, etc.).
+        if (sobrante < UMBRAL_DESCARTE_PIEZA) {
+            r.setMetrosSobrantes(0.0);
+            piezaInsumoRepository.delete(pieza);
+        } else {
+            pieza.setLargoRestante(sobrante);
+            piezaInsumoRepository.save(pieza);
+            r.setMetrosSobrantes(sobrante);
+        }
         return materialUsadoRepository.save(r);
     }
 
@@ -1010,15 +1046,37 @@ public class InventarioServicio {
         }
     }
 
+    /**
+     * Ancho comercial de rollo necesario (1.83 / 2.50 / 3.00 m).
+     *
+     * Regla del taller: lo que tiene que caber DENTRO del ancho del rollo es
+     * el LARGO de la persiana (el alto/caída de la tela — corteTelaAlto), NO
+     * la medida más chica entre ancho y alto. El ancho de la persiana se corta
+     * a lo largo del rollo (que trae 30 m, prácticamente sin límite de
+     * longitud), así que ese no es el que restringe qué ancho comercial hace
+     * falta.
+     *
+     * Si el largo es mayor a 3.00 m (el rollo comercial más ancho que se
+     * maneja), es un caso especial que no se resuelve con un solo corte
+     * estándar (requiere revisión manual aparte); aquí se sigue devolviendo
+     * 3.00 y, si ningún rollo de 3.00 m alcanza, la búsqueda de material
+     * terminará señalando que no hay suficiente tela disponible.
+     */
     public double anchoComercialDe(Pedido pedido) {
-        double menor = Math.min(pedido.getCorteTelaAncho(), pedido.getCorteTelaAlto());
-        if (menor <= 1.83) return 1.83;
-        if (menor <= 2.50) return 2.50;
+        double largo = pedido.getCorteTelaAlto();
+        if (largo <= 1.83) return 1.83;
+        if (largo <= 2.50) return 2.50;
         return 3.00;
     }
 
+    /**
+     * Metros lineales que se consumen del rollo: el ANCHO de la persiana
+     * (corteTelaAncho), porque ese es el que se corta a lo largo del rollo.
+     * El LARGO (corteTelaAlto) es el que determina qué ancho comercial de
+     * rollo hace falta (ver anchoComercialDe) — no cuánto se descuenta.
+     */
     public double metrosADescontarDeRollo(Pedido pedido) {
-        return Math.max(pedido.getCorteTelaAncho(), pedido.getCorteTelaAlto());
+        return pedido.getCorteTelaAncho();
     }
 
     private double redondear(double v) {
@@ -1343,7 +1401,7 @@ public class InventarioServicio {
                     r.setSeleccionManual(true);
 
                     double sobrante = redondear(p.getLargoRestante() - aUsar);
-                    if (sobrante <= 0.001) {
+                    if (sobrante < UMBRAL_DESCARTE_PIEZA) {
                         r.setMetrosSobrantes(0.0);
                         piezaInsumoRepository.delete(p);
                     } else {
