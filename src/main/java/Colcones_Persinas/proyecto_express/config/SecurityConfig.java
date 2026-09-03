@@ -32,8 +32,9 @@ public class SecurityConfig {
             .csrf(csrf -> csrf.disable())
             .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                // Permisos públicos para recursos estáticos y vistas de acceso/login
-                .requestMatchers("/css/**", "/js/**", "/images/**", "/login", "/login-jwt", "/", "/vista").permitAll()
+                // Solo login y recursos estáticos son públicos.
+                // "/" y "/portal" ahora exigen sesión (caen en anyRequest().authenticated()).
+                .requestMatchers("/css/**", "/js/**", "/images/**", "/login", "/login-jwt").permitAll()
 
                 // Gestión de pedidos de tienda
                 .requestMatchers("/tienda/nuevo", "/tienda/guardar", "/tienda/editar/**", "/tienda/eliminar/**")

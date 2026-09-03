@@ -43,12 +43,9 @@ public class LoginController {
             UserDetails userDetails = (UserDetails) auth.getPrincipal();
             String token = jwtService.generarToken(userDetails);
 
-            boolean esAdmin = userDetails.getAuthorities().stream()
-                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
-            boolean esFabrica = userDetails.getAuthorities().stream()
-                .anyMatch(a -> a.getAuthority().equals("ROLE_FABRICA"));
-
-            String destino = (esAdmin || esFabrica) ? "/taller/pedidos" : "/tienda/listado";
+            // Todos los roles caen primero en el portal; ahí cada quien ve
+            // activos solo los módulos a los que tiene acceso (sec:authorize).
+            String destino = "/portal";
 
             // Cookie con el token: el navegador la reenvía sola en cualquier request,
             // incluyendo los redirect:/... que antes perdían la sesión.

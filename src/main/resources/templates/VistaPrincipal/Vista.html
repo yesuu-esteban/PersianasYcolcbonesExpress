@@ -1,13 +1,12 @@
 <!DOCTYPE html>
-<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<html lang="es" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Persianas y Colchones Express — Portal</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    
-    <!-- CSS incrustado directamente para pruebas -->
+
     <style>
         :root {
             --carbon: #121110;
@@ -195,6 +194,23 @@
             color: var(--brass);
         }
 
+        /* Estado bloqueado (sin acceso o módulo no disponible) */
+        .module-card--locked {
+            cursor: default;
+            opacity: 0.45;
+            pointer-events: none;
+        }
+
+        .module-card--locked:hover {
+            transform: none;
+            border-color: var(--border-color);
+            box-shadow: none;
+        }
+
+        .module-action--locked {
+            color: var(--cream-muted);
+        }
+
         /* Footer */
         .portal-footer {
             text-align: center;
@@ -242,7 +258,7 @@
 
     <!-- Contenido Principal Estilo Portal -->
     <main class="portal-main">
-        
+
         <section class="portal-hero">
             <div class="hero-text">
                 <h1>Panel de Control General</h1>
@@ -252,7 +268,8 @@
 
         <div class="module-grid">
 
-            <a class="module-card" th:href="@{/tienda}">
+            <!-- TIENDA: activa para vendedor, tienda_admin y admin -->
+            <a class="module-card" th:href="@{/tienda/listado}" sec:authorize="hasAnyRole('TIENDA','TIENDA_ADMIN','ADMIN')">
                 <div class="module-content">
                     <span class="module-category">Módulo Comercial</span>
                     <h2>Tienda</h2>
@@ -260,8 +277,17 @@
                     <span class="module-action">Acceder al módulo &rarr;</span>
                 </div>
             </a>
+            <div class="module-card module-card--locked" sec:authorize="!hasAnyRole('TIENDA','TIENDA_ADMIN','ADMIN')">
+                <div class="module-content">
+                    <span class="module-category">Módulo Comercial</span>
+                    <h2>Tienda</h2>
+                    <p>Gestión de pedidos de tienda, atención y puntos de venta.</p>
+                    <span class="module-action module-action--locked">Sin acceso</span>
+                </div>
+            </div>
 
-            <a class="module-card" th:href="@{/fabrica}">
+            <!-- FÁBRICA: activa para jefe (fabrica) y admin -->
+            <a class="module-card" th:href="@{/taller/pedidos}" sec:authorize="hasAnyRole('FABRICA','ADMIN')">
                 <div class="module-content">
                     <span class="module-category">Módulo de Operaciones</span>
                     <h2>Fábrica</h2>
@@ -269,15 +295,24 @@
                     <span class="module-action">Acceder al módulo &rarr;</span>
                 </div>
             </a>
+            <div class="module-card module-card--locked" sec:authorize="!hasAnyRole('FABRICA','ADMIN')">
+                <div class="module-content">
+                    <span class="module-category">Módulo de Operaciones</span>
+                    <h2>Fábrica</h2>
+                    <p>Control de insumos, rollos de tela, retazos y piezas de producción.</p>
+                    <span class="module-action module-action--locked">Sin acceso</span>
+                </div>
+            </div>
 
-            <a class="module-card" th:href="@{/factura}">
+            <!-- FACTURACIÓN: bloqueada para todos por ahora -->
+            <div class="module-card module-card--locked">
                 <div class="module-content">
                     <span class="module-category">Módulo Financiero</span>
                     <h2>Facturación</h2>
                     <p>Emisión de comprobantes, control de cobros y reportes.</p>
-                    <span class="module-action">Acceder al módulo &rarr;</span>
+                    <span class="module-action module-action--locked">Próximamente</span>
                 </div>
-            </a>
+            </div>
 
         </div>
     </main>
