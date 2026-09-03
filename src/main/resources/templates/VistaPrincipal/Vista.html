@@ -66,6 +66,12 @@
             gap: 30px;
         }
 
+        .header-right-authenticated {
+            display: flex;
+            align-items: center;
+            gap: 30px;
+        }
+
         .user-welcome {
             font-size: 0.9rem;
             color: var(--cream-muted);
@@ -91,6 +97,23 @@
             background: var(--brass);
             border-color: var(--brass);
             color: var(--carbon);
+        }
+
+        .portal-login-btn {
+            color: var(--carbon);
+            background: var(--brass);
+            border: 1px solid var(--brass);
+            padding: 8px 20px;
+            border-radius: 4px;
+            text-decoration: none;
+            font-size: 0.85rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .portal-login-btn:hover {
+            background: var(--brass-hover);
+            border-color: var(--brass-hover);
         }
 
         /* Main Container */
@@ -194,7 +217,7 @@
             color: var(--brass);
         }
 
-        /* Estado bloqueado (sin acceso o módulo no disponible) */
+        /* Estado bloqueado (sin sesión o sin el rol requerido) */
         .module-card--locked {
             cursor: default;
             opacity: 0.45;
@@ -233,6 +256,10 @@
                 flex-direction: column;
                 gap: 10px;
             }
+            .header-right-authenticated {
+                flex-direction: column;
+                gap: 10px;
+            }
             .portal-main {
                 padding: 30px 20px;
             }
@@ -251,8 +278,11 @@
             <span class="portal-brand-subtitle">Express • Portal Interno</span>
         </div>
         <div class="header-right">
-            <span class="user-welcome">Bienvenido, <strong th:text="${#authentication.name}">Usuario</strong></span>
-            <a class="portal-logout" th:href="@{/logout}">Cerrar sesión</a>
+            <div class="header-right-authenticated" sec:authorize="isAuthenticated()">
+                <span class="user-welcome">Bienvenido, <strong th:text="${#authentication.name}">Usuario</strong></span>
+                <a class="portal-logout" th:href="@{/logout}">Cerrar sesión</a>
+            </div>
+            <a class="portal-login-btn" sec:authorize="!isAuthenticated()" th:href="@{/login}">Iniciar sesión</a>
         </div>
     </header>
 

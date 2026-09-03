@@ -32,9 +32,9 @@ public class SecurityConfig {
             .csrf(csrf -> csrf.disable())
             .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                // Solo login y recursos estáticos son públicos.
-                // "/" y "/portal" ahora exigen sesión (caen en anyRequest().authenticated()).
-                .requestMatchers("/css/**", "/js/**", "/images/**", "/login", "/login-jwt").permitAll()
+                // El portal es público: cualquiera lo ve, pero las tarjetas
+                // aparecen bloqueadas hasta iniciar sesión (lo decide sec:authorize en Vista.html).
+                .requestMatchers("/css/**", "/js/**", "/images/**", "/login", "/login-jwt", "/", "/portal").permitAll()
 
                 // Gestión de pedidos de tienda
                 .requestMatchers("/tienda/nuevo", "/tienda/guardar", "/tienda/editar/**", "/tienda/eliminar/**")
