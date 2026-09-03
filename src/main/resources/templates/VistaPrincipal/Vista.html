@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vista Principal</title>
+<!-- Bootstrap (opcional si lo usas) -->
+    <link rel="stylesheet" th:href="@{/css/bootstrap.min.css}">
+    
+    <!-- Tu archivo Vista.css conectado con Thymeleaf -->
+    <link rel="stylesheet" th:href="@{/css/Vista.css}">
+</head>
+<body>
+
+    <header class = " site-header">
+        <div class="container">
+            <h1>Bienvenido a la Vista Principal</h1>
+        </div>
+        <nav class = "main.nav">
+            <ul>
+                <li><a href="/inicio">Inicio</a></li>
+                <li><a href="/acerca">Acerca de</a></li>
+                <li><a href="/contacto">Contacto</a></li>
+            </ul>
+        </nav>
+    </header>
+
+</body>
+</html>
