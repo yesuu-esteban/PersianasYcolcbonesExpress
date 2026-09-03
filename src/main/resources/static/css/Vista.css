@@ -1,0 +1,215 @@
+:root {
+    --carbon: #121110;
+    --carbon-light: #1c1a18;
+    --carbon-card: #181614;
+    --cream: #F4EFE6;
+    --cream-muted: #b8b2a7;
+    --brass: #C5A059;
+    --brass-hover: #d6b26d;
+    --border-color: rgba(244, 239, 230, 0.08);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    background: var(--carbon);
+    color: var(--cream);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Header */
+.portal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 24px 60px;
+    background: var(--carbon-light);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.portal-brand-container {
+    display: flex;
+    flex-direction: column;
+}
+
+.portal-brand-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    color: var(--cream);
+}
+
+.portal-brand-subtitle {
+    font-size: 0.8rem;
+    font-weight: 400;
+    color: var(--brass);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+}
+
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 30px;
+}
+
+.user-welcome {
+    font-size: 0.9rem;
+    color: var(--cream-muted);
+}
+
+.user-welcome strong {
+    color: var(--cream);
+}
+
+.portal-logout {
+    color: var(--cream);
+    background: transparent;
+    border: 1px solid var(--border-color);
+    padding: 8px 16px;
+    border-radius: 4px;
+    text-decoration: none;
+    font-size: 0.85rem;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.portal-logout:hover {
+    background: var(--brass);
+    border-color: var(--brass);
+    color: var(--carbon);
+}
+
+/* Main Container */
+.portal-main {
+    max-width: 1300px;
+    width: 100%;
+    margin: 0 auto;
+    padding: 60px 40px;
+    flex: 1;
+}
+
+/* Hero Section Interna */
+.portal-hero {
+    margin-bottom: 50px;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 30px;
+}
+
+.portal-hero h1 {
+    font-size: 2.2rem;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    margin-bottom: 10px;
+}
+
+.portal-hero p {
+    color: var(--cream-muted);
+    font-size: 1.05rem;
+    max-width: 600px;
+}
+
+/* Cuadrícula de Módulos (Grid) */
+.module-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 30px;
+}
+
+/* Tarjetas de Módulos */
+.module-card {
+    position: relative;
+    background: var(--carbon-card);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 40px 32px;
+    text-decoration: none;
+    color: var(--cream);
+    overflow: hidden;
+    transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.4s ease, box-shadow 0.4s ease;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    min-height: 280px;
+}
+
+.module-card:hover {
+    transform: translateY(-6px);
+    border-color: var(--brass);
+    box-shadow: 0 15px 30px rgba(0, 0, 0, 0.4);
+}
+
+.module-content {
+    position: relative;
+    z-index: 2;
+}
+
+.module-category {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: var(--brass);
+    font-weight: 600;
+    display: block;
+    margin-bottom: 12px;
+}
+
+.module-card h2 {
+    font-size: 1.75rem;
+    font-weight: 600;
+    margin-bottom: 12px;
+    letter-spacing: -0.01em;
+}
+
+.module-card p {
+    color: var(--cream-muted);
+    font-size: 0.95rem;
+    line-height: 1.5;
+    margin-bottom: 24px;
+}
+
+.module-action {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--cream);
+    display: inline-flex;
+    align-items: center;
+    transition: color 0.3s ease;
+}
+
+.module-card:hover .module-action {
+    color: var(--brass);
+}
+
+/* Footer */
+.portal-footer {
+    text-align: center;
+    padding: 24px;
+    font-size: 0.85rem;
+    color: var(--cream-muted);
+    border-top: 1px solid var(--border-color);
+    background: var(--carbon-light);
+}
+
+/* Responsivo para celulares */
+@media (max-width: 768px) {
+    .portal-header {
+        padding: 20px;
+        flex-direction: column;
+        gap: 15px;
+        text-align: center;
+    }
+    .header-right {
+        flex-direction: column;
+        gap: 10px;
+    }
+    .portal-main {
+        padding: 30px 20px;
+    }
+    .portal-hero h1 {
+        font-size: 1.8rem;
+    }
+}

@@ -1,29 +1,290 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vista Principal</title>
-<!-- Bootstrap (opcional si lo usas) -->
-    <link rel="stylesheet" th:href="@{/css/bootstrap.min.css}">
+    <title>Persianas y Colchones Express — Portal</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     
-    <!-- Tu archivo Vista.css conectado con Thymeleaf -->
-    <link rel="stylesheet" th:href="@{/css/Vista.css}">
+    <!-- CSS incrustado directamente para pruebas -->
+    <style>
+        :root {
+            --carbon: #121110;
+            --carbon-light: #1c1a18;
+            --carbon-card: #181614;
+            --cream: #F4EFE6;
+            --cream-muted: #b8b2a7;
+            --brass: #C5A059;
+            --brass-hover: #d6b26d;
+            --border-color: rgba(244, 239, 230, 0.08);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            background: var(--carbon);
+            color: var(--cream);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Header */
+        .portal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 24px 60px;
+            background: var(--carbon-light);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .portal-brand-container {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .portal-brand-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            color: var(--cream);
+        }
+
+        .portal-brand-subtitle {
+            font-size: 0.8rem;
+            font-weight: 400;
+            color: var(--brass);
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 30px;
+        }
+
+        .user-welcome {
+            font-size: 0.9rem;
+            color: var(--cream-muted);
+        }
+
+        .user-welcome strong {
+            color: var(--cream);
+        }
+
+        .portal-logout {
+            color: var(--cream);
+            background: transparent;
+            border: 1px solid var(--border-color);
+            padding: 8px 16px;
+            border-radius: 4px;
+            text-decoration: none;
+            font-size: 0.85rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .portal-logout:hover {
+            background: var(--brass);
+            border-color: var(--brass);
+            color: var(--carbon);
+        }
+
+        /* Main Container */
+        .portal-main {
+            max-width: 1300px;
+            width: 100%;
+            margin: 0 auto;
+            padding: 60px 40px;
+            flex: 1;
+        }
+
+        /* Hero Section Interna */
+        .portal-hero {
+            margin-bottom: 50px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 30px;
+        }
+
+        .portal-hero h1 {
+            font-size: 2.2rem;
+            font-weight: 600;
+            letter-spacing: -0.02em;
+            margin-bottom: 10px;
+        }
+
+        .portal-hero p {
+            color: var(--cream-muted);
+            font-size: 1.05rem;
+            max-width: 600px;
+        }
+
+        /* Cuadrícula de Módulos (Grid) */
+        .module-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 30px;
+        }
+
+        /* Tarjetas de Módulos */
+        .module-card {
+            position: relative;
+            background: var(--carbon-card);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 40px 32px;
+            text-decoration: none;
+            color: var(--cream);
+            overflow: hidden;
+            transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.4s ease, box-shadow 0.4s ease;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            min-height: 280px;
+        }
+
+        .module-card:hover {
+            transform: translateY(-6px);
+            border-color: var(--brass);
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.4);
+        }
+
+        .module-content {
+            position: relative;
+            z-index: 2;
+        }
+
+        .module-category {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+            color: var(--brass);
+            font-weight: 600;
+            display: block;
+            margin-bottom: 12px;
+        }
+
+        .module-card h2 {
+            font-size: 1.75rem;
+            font-weight: 600;
+            margin-bottom: 12px;
+            letter-spacing: -0.01em;
+        }
+
+        .module-card p {
+            color: var(--cream-muted);
+            font-size: 0.95rem;
+            line-height: 1.5;
+            margin-bottom: 24px;
+        }
+
+        .module-action {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--cream);
+            display: inline-flex;
+            align-items: center;
+            transition: color 0.3s ease;
+        }
+
+        .module-card:hover .module-action {
+            color: var(--brass);
+        }
+
+        /* Footer */
+        .portal-footer {
+            text-align: center;
+            padding: 24px;
+            font-size: 0.85rem;
+            color: var(--cream-muted);
+            border-top: 1px solid var(--border-color);
+            background: var(--carbon-light);
+        }
+
+        /* Responsivo para celulares */
+        @media (max-width: 768px) {
+            .portal-header {
+                padding: 20px;
+                flex-direction: column;
+                gap: 15px;
+                text-align: center;
+            }
+            .header-right {
+                flex-direction: column;
+                gap: 10px;
+            }
+            .portal-main {
+                padding: 30px 20px;
+            }
+            .portal-hero h1 {
+                font-size: 1.8rem;
+            }
+        }
+    </style>
 </head>
 <body>
 
-    <header class = " site-header">
-        <div class="container">
-            <h1>Bienvenido a la Vista Principal</h1>
+    <!-- Header Corporativo -->
+    <header class="portal-header">
+        <div class="portal-brand-container">
+            <span class="portal-brand-title">Persianas & Colchones</span>
+            <span class="portal-brand-subtitle">Express • Portal Interno</span>
         </div>
-        <nav class = "main.nav">
-            <ul>
-                <li><a href="/inicio">Inicio</a></li>
-                <li><a href="/acerca">Acerca de</a></li>
-                <li><a href="/contacto">Contacto</a></li>
-            </ul>
-        </nav>
+        <div class="header-right">
+            <span class="user-welcome">Bienvenido, <strong th:text="${#authentication.name}">Usuario</strong></span>
+            <a class="portal-logout" th:href="@{/logout}">Cerrar sesión</a>
+        </div>
     </header>
+
+    <!-- Contenido Principal Estilo Portal -->
+    <main class="portal-main">
+        
+        <section class="portal-hero">
+            <div class="hero-text">
+                <h1>Panel de Control General</h1>
+                <p>Selecciona el módulo operativo al que deseas ingresar para gestionar inventarios, producción, tiendas o facturación.</p>
+            </div>
+        </section>
+
+        <div class="module-grid">
+
+            <a class="module-card" th:href="@{/tienda}">
+                <div class="module-content">
+                    <span class="module-category">Módulo Comercial</span>
+                    <h2>Tienda</h2>
+                    <p>Gestión de pedidos de tienda, atención y puntos de venta.</p>
+                    <span class="module-action">Acceder al módulo &rarr;</span>
+                </div>
+            </a>
+
+            <a class="module-card" th:href="@{/fabrica}">
+                <div class="module-content">
+                    <span class="module-category">Módulo de Operaciones</span>
+                    <h2>Fábrica</h2>
+                    <p>Control de insumos, rollos de tela, retazos y piezas de producción.</p>
+                    <span class="module-action">Acceder al módulo &rarr;</span>
+                </div>
+            </a>
+
+            <a class="module-card" th:href="@{/factura}">
+                <div class="module-content">
+                    <span class="module-category">Módulo Financiero</span>
+                    <h2>Facturación</h2>
+                    <p>Emisión de comprobantes, control de cobros y reportes.</p>
+                    <span class="module-action">Acceder al módulo &rarr;</span>
+                </div>
+            </a>
+
+        </div>
+    </main>
+
+    <footer class="portal-footer">
+        <p>&copy; 2026 Persianas y Colchones Express. Todos los derechos reservados.</p>
+    </footer>
 
 </body>
 </html>
