@@ -13,9 +13,12 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeSet;
 import java.util.stream.Collectors;
 
 import Colcones_Persinas.proyecto_express.modelo.PedidoTienda;
@@ -25,6 +28,9 @@ import Colcones_Persinas.proyecto_express.repository.PedidoTiendaRepository;
 @Controller
 @RequestMapping("/tienda")
 public class PedidoTiendaControlador {
+
+    // Cuántos pedidos se muestran por página en el listado.
+    private static final int TAMANO_PAGINA = 10;
 
     @Autowired
     private PedidoTiendaRepository pedidoTiendaRepository;
@@ -54,7 +60,7 @@ public class PedidoTiendaControlador {
         return "redirect:/tienda/listado";
     }
 
-    // ─── Listado con filtros independientes (nombre, cédula, dirección, fecha de entrega, pago) ───
+    // ─── Listado con filtros (nombre, cédula, dirección, fecha de entrega, pago, mes, año) y paginación ───
     @PreAuthorize("hasAnyRole('TIENDA','TIENDA_ADMIN','ADMIN')")
     @GetMapping("/listado")
     public String listarPedidos(
@@ -63,11 +69,33 @@ public class PedidoTiendaControlador {
             @RequestParam(required = false) String direccion,
             @RequestParam(required = false) String fechaEntrega,
             @RequestParam(required = false) String pagado,
+            @RequestParam(required = false) String mes,
+            @RequestParam(required = false) String anio,
+            @RequestParam(required = false, defaultValue = "0") int pagina,
             Model model) {
 
-        // Siempre ordenado por ID ascendente: así la posición de cada pedido en la
-        // tabla nunca cambia por editar/crear otros pedidos.
-        List<PedidoTienda> todos = pedidoTiendaRepository.findAllByOrderByIdAsc();
+        // Orden por fecha de pedido descendente: el más nuevo siempre queda primero.
+        // (En caso de empate de fecha, se desempata por id descendente).
+        List<PedidoTienda> todos = pedidoTiendaRepository.findAllByOrderByFechaPedidoDescIdDesc();
+
+        // Años disponibles para el filtro, calculados sobre TODOS los pedidos
+        // (sin aplicar los demás filtros), para que el desplegable no cambie según
+        // lo que ya se esté filtrando.
+        TreeSet<Integer> aniosDisponibles = new TreeSet<>(Collections.reverseOrder());
+        for (PedidoTienda p : todos) {
+            if (p.getFechaPedido() != null) {
+                aniosDisponibles.add(p.getFechaPedido().getYear());
+            }
+        }
+        int anioActual = LocalDate.now().getYear();
+        aniosDisponibles.add(anioActual); // para poder filtrar el año en curso aunque aún no haya pedidos
+
+        Map<Integer, String> meses = new LinkedHashMap<>();
+        String[] nombresMeses = {"Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+                "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"};
+        for (int i = 0; i < 12; i++) {
+            meses.put(i + 1, nombresMeses[i]);
+        }
 
         LocalDate fechaFiltro = null;
         if (fechaEntrega != null && !fechaEntrega.isBlank()) {
@@ -79,7 +107,10 @@ public class PedidoTiendaControlador {
         }
         final LocalDate fechaFiltroFinal = fechaFiltro;
 
-        List<PedidoTienda> pedidos = todos.stream()
+        Integer mesFiltro = parseEnteroSeguro(mes);
+        Integer anioFiltro = parseEnteroSeguro(anio);
+
+        List<PedidoTienda> pedidosFiltrados = todos.stream()
                 .filter(p -> nombre == null || nombre.isBlank()
                         || (p.getNombreCliente() != null
                             && p.getNombreCliente().toLowerCase().contains(nombre.trim().toLowerCase())))
@@ -99,14 +130,40 @@ public class PedidoTiendaControlador {
                     if (pagado.equalsIgnoreCase("no")) return !esPagado;
                     return true;
                 })
+                // Filtro por mes de la fecha del pedido (1 = Enero ... 12 = Diciembre)
+                .filter(p -> mesFiltro == null
+                        || (p.getFechaPedido() != null && p.getFechaPedido().getMonthValue() == mesFiltro))
+                // Filtro por año de la fecha del pedido
+                .filter(p -> anioFiltro == null
+                        || (p.getFechaPedido() != null && p.getFechaPedido().getYear() == anioFiltro))
                 .collect(Collectors.toList());
 
-        model.addAttribute("pedidos", pedidos);
+        // ─── Paginación: máximo TAMANO_PAGINA pedidos por página ───
+        int totalPedidosFiltrados = pedidosFiltrados.size();
+        int totalPaginas = (int) Math.ceil((double) totalPedidosFiltrados / TAMANO_PAGINA);
+        if (totalPaginas == 0) totalPaginas = 1;
+
+        int paginaActual = Math.max(0, Math.min(pagina, totalPaginas - 1));
+
+        int desde = paginaActual * TAMANO_PAGINA;
+        int hasta = Math.min(desde + TAMANO_PAGINA, totalPedidosFiltrados);
+        List<PedidoTienda> pedidosPagina = (desde < hasta)
+                ? pedidosFiltrados.subList(desde, hasta)
+                : new ArrayList<>();
+
+        model.addAttribute("pedidos", pedidosPagina);
         model.addAttribute("nombre", nombre != null ? nombre : "");
         model.addAttribute("cedula", cedula != null ? cedula : "");
         model.addAttribute("direccion", direccion != null ? direccion : "");
         model.addAttribute("fechaEntrega", fechaEntrega != null ? fechaEntrega : "");
         model.addAttribute("pagado", pagado != null ? pagado : "");
+        model.addAttribute("mes", mesFiltro);
+        model.addAttribute("anio", anioFiltro);
+        model.addAttribute("meses", meses);
+        model.addAttribute("anios", aniosDisponibles);
+        model.addAttribute("paginaActual", paginaActual);
+        model.addAttribute("totalPaginas", totalPaginas);
+        model.addAttribute("totalPedidosFiltrados", totalPedidosFiltrados);
         model.addAttribute("puedeCrearPedidos", puedeGestionarPedidos());
         return "tienda/listado";
     }
@@ -138,7 +195,8 @@ public class PedidoTiendaControlador {
         }
 
         // Se edita el mismo registro (mismo ID) que ya existía: nunca se crea uno nuevo
-        // ni se reasigna el ID, por eso su posición en el listado ordenado no cambia.
+        // ni se reasigna el ID. La posición en el listado la determina la fecha del
+        // pedido (más nuevo primero), no el ID, así que editar no cambia el orden.
         PedidoTienda pedido = pedidoTiendaRepository.findById(id).orElseThrow();
 
         pedido.setNombreCliente(formPedido.getNombreCliente());
@@ -263,13 +321,13 @@ public class PedidoTiendaControlador {
             LocalDateTime fechaDesde = LocalDate.parse(desde).atStartOfDay();
             LocalDateTime fechaHasta = LocalDate.parse(hasta).atTime(23, 59, 59);
 
-            pedidosFiltrados = pedidoTiendaRepository.findAllByOrderByIdAsc().stream()
+            pedidosFiltrados = pedidoTiendaRepository.findAllByOrderByFechaPedidoDescIdDesc().stream()
                     .filter(p -> p.getFechaPedido() != null
                             && !p.getFechaPedido().isBefore(fechaDesde)
                             && !p.getFechaPedido().isAfter(fechaHasta))
                     .collect(Collectors.toList());
         } else {
-            pedidosFiltrados = pedidoTiendaRepository.findAllByOrderByIdAsc();
+            pedidosFiltrados = pedidoTiendaRepository.findAllByOrderByFechaPedidoDescIdDesc();
         }
 
         int totalPedidos = pedidosFiltrados.size();
@@ -328,6 +386,15 @@ public class PedidoTiendaControlador {
     }
 
     // ─── Helpers ────────────────────────────────────────────────────────
+    private Integer parseEnteroSeguro(String valor) {
+        if (valor == null || valor.isBlank()) return null;
+        try {
+            return Integer.parseInt(valor.trim());
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
     private List<String> validarProductos(List<DetallePedidoTienda> detalles) {
         List<String> errores = new ArrayList<>();
         if (detalles == null) return errores;
