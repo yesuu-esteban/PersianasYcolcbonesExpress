@@ -13,4 +13,11 @@ public interface PedidoTiendaRepository extends JpaRepository<PedidoTienda, Inte
      * inserción/actualización interno de la base de datos).
      */
     List<PedidoTienda> findAllByOrderByIdAsc();
+
+    /**
+     * Devuelve todos los pedidos ordenados por fecha de pedido descendente
+     * (el más nuevo primero); en caso de empate de fecha, se desempata por
+     * ID descendente.
+     */
+    List<PedidoTienda> findAllByOrderByFechaPedidoDescIdDesc();
 }
