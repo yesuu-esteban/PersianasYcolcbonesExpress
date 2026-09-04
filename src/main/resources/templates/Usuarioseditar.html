@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Editar Usuario</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --carbon: #121110; --carbon-light: #1c1a18; --carbon-card: #181614;
+            --cream: #F4EFE6; --cream-muted: #b8b2a7; --brass: #C5A059; --brass-hover: #d6b26d;
+            --border-color: rgba(244, 239, 230, 0.08); --danger: #e05a5a; --success: #6fbf73;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', system-ui, sans-serif; }
+        body { background: var(--carbon); color: var(--cream); min-height: 100vh; padding: 40px 24px; }
+        .contenedor { max-width: 480px; margin: 0 auto; }
+        .volver { color: var(--cream-muted); text-decoration: none; font-size: 0.85rem; }
+        .volver:hover { color: var(--brass); }
+        h1 { font-size: 1.4rem; font-weight: 600; margin: 14px 0 22px; }
+        h2 { font-size: 1rem; font-weight: 600; margin: 28px 0 14px; color: var(--brass); }
+        .tarjeta { background: var(--carbon-card); border: 1px solid var(--border-color); border-radius: 10px; padding: 26px; }
+        .campo { margin-bottom: 16px; }
+        label { display: block; font-size: 0.82rem; color: var(--cream-muted); margin-bottom: 6px; }
+        input, select {
+            width: 100%; padding: 10px 12px; background: var(--carbon-light);
+            border: 1px solid var(--border-color); border-radius: 6px; color: var(--cream); font-size: 0.9rem;
+        }
+        input:focus, select:focus { outline: none; border-color: var(--brass); }
+        .fila-check { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
+        .fila-check input { width: auto; }
+        .btn {
+            display: inline-block; width: 100%; padding: 11px; border-radius: 6px; border: none;
+            font-weight: 600; font-size: 0.9rem; cursor: pointer; margin-top: 6px;
+        }
+        .btn-brass { background: var(--brass); color: var(--carbon); }
+        .btn-brass:hover { background: var(--brass-hover); }
+        .btn-outline { background: transparent; border: 1px solid var(--border-color); color: var(--cream); }
+        .btn-outline:hover { background: rgba(244,239,230,0.06); }
+        .alerta { padding: 12px 16px; border-radius: 6px; margin-bottom: 18px; font-size: 0.9rem; }
+        .alerta-error { background: rgba(224,90,90,0.12); border: 1px solid var(--danger); color: #ffb3b3; }
+        small.ayuda { display: block; color: var(--cream-muted); font-size: 0.75rem; margin-top: 4px; }
+    </style>
+</head>
+<body>
+    <div class="contenedor">
+        <a class="volver" href="/usuarios">&larr; Volver a usuarios</a>
+        <h1>Editar usuario: <span th:text="${usuario.username}"></span></h1>
+
+        <div th:if="${error}" class="alerta alerta-error" th:text="${error}"></div>
+
+        <div class="tarjeta">
+            <form th:action="@{/usuarios/{id}/editar(id=${usuario.id})}" method="post">
+                <div class="campo">
+                    <label>Nombre completo</label>
+                    <input type="text" name="nombreCompleto" th:value="${usuario.nombreCompleto}">
+                </div>
+                <div class="campo">
+                    <label>Correo</label>
+                    <input type="email" name="email" th:value="${usuario.email}" placeholder="usuario@correo.com">
+                    <small class="ayuda">Sin correo, este usuario no puede usar "¿Olvidaste tu contraseña?".</small>
+                </div>
+                <div class="campo">
+                    <label>Rol</label>
+                    <select name="rol" required>
+                        <option th:each="r : ${roles}" th:value="${r}" th:text="${r}"
+                                th:selected="${r == usuario.rol}"></option>
+                    </select>
+                </div>
+                <div class="fila-check">
+                    <input type="checkbox" name="activo" id="activo" value="true" th:checked="${usuario.activo}">
+                    <label for="activo" style="margin:0;">Cuenta activa (puede iniciar sesión)</label>
+                </div>
+                <button type="submit" class="btn btn-brass">Guardar cambios</button>
+            </form>
+        </div>
+
+        <h2>🔑 Restablecer contraseña</h2>
+        <div class="tarjeta">
+            <form th:action="@{/usuarios/{id}/resetear-password(id=${usuario.id})}" method="post">
+                <div class="campo">
+                    <label>Nueva contraseña</label>
+                    <input type="password" name="nuevaPassword" required minlength="6">
+                    <small class="ayuda">Mínimo 6 caracteres. El usuario no necesita saber la anterior.</small>
+                </div>
+                <div class="campo">
+                    <label>Confirmar nueva contraseña</label>
+                    <input type="password" name="confirmarPassword" required minlength="6">
+                </div>
+                <button type="submit" class="btn btn-outline">Restablecer contraseña</button>
+            </form>
+        </div>
+    </div>
+</body>
+</html>

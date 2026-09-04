@@ -8,11 +8,8 @@ import org.springframework.security.config.annotation.authentication.configurati
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.core.userdetails.User;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
@@ -34,7 +31,10 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 // El portal es público: cualquiera lo ve, pero las tarjetas
                 // aparecen bloqueadas hasta iniciar sesión (lo decide sec:authorize en Vista.html).
-                .requestMatchers("/css/**", "/js/**", "/images/**", "/login", "/login-jwt", "/", "/portal").permitAll()
+                // "/recuperar-password/**" también es público: es precisamente el flujo
+                // para gente que NO puede iniciar sesión porque olvidó su contraseña.
+                .requestMatchers("/css/**", "/js/**", "/images/**", "/login", "/login-jwt",
+                        "/recuperar-password", "/recuperar-password/**", "/", "/portal").permitAll()
 
                 // Gestión de pedidos de tienda
                 .requestMatchers("/tienda/nuevo", "/tienda/guardar", "/tienda/editar/**", "/tienda/eliminar/**")
@@ -45,6 +45,12 @@ public class SecurityConfig {
 
                 // Fábrica
                 .requestMatchers("/taller/**", "/inventario/**", "/reportes/**").hasAnyRole("FABRICA", "ADMIN")
+
+                // Cada usuario logueado (cualquier rol) gestiona su propia cuenta
+                .requestMatchers("/mi-cuenta/**").authenticated()
+
+                // Administración de usuarios: solo ADMIN
+                .requestMatchers("/usuarios/**").hasRole("ADMIN")
 
                 .anyRequest().authenticated()
             )
@@ -61,10 +67,12 @@ public class SecurityConfig {
         return config.getAuthenticationManager();
     }
 
+    // Ahora se conecta a UsuarioDetailsService (busca en la tabla `usuario`)
+    // en vez del InMemoryUserDetailsManager que tenía los usuarios hardcodeados.
     @Bean
-    public DaoAuthenticationProvider authenticationProvider(InMemoryUserDetailsManager uds) {
+    public DaoAuthenticationProvider authenticationProvider(UsuarioDetailsService usuarioDetailsService) {
         DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
-        provider.setUserDetailsService(uds);
+        provider.setUserDetailsService(usuarioDetailsService);
         provider.setPasswordEncoder(passwordEncoder());
         return provider;
     }
@@ -72,34 +80,5 @@ public class SecurityConfig {
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
-    }
-
-    @Bean
-    public InMemoryUserDetailsManager userDetailsService() {
-        UserDetails jefeFabrica = User.builder()
-            .username("jefe")
-            .password(passwordEncoder().encode("123456"))
-            .roles("FABRICA")
-            .build();
-
-        UserDetails vendedor = User.builder()
-            .username("vendedor1")
-            .password(passwordEncoder().encode("123456"))
-            .roles("TIENDA")
-            .build();
-
-        UserDetails adminTienda = User.builder()
-            .username("Tienda")
-            .password(passwordEncoder().encode("express"))
-            .roles("TIENDA_ADMIN")
-            .build();
-
-        UserDetails admin = User.builder()
-            .username("admin")
-            .password(passwordEncoder().encode("123456"))
-            .roles("ADMIN")
-            .build();
-
-        return new InMemoryUserDetailsManager(jefeFabrica, vendedor, adminTienda, admin);
     }
 }
