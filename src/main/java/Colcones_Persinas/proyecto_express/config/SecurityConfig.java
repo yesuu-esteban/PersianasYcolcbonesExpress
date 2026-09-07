@@ -33,8 +33,7 @@ public class SecurityConfig {
                 // aparecen bloqueadas hasta iniciar sesión (lo decide sec:authorize en Vista.html).
                 // "/recuperar-password/**" también es público: es precisamente el flujo
                 // para gente que NO puede iniciar sesión porque olvidó su contraseña.
-                .requestMatchers("/css/**", "/js/**", "/images/**", "/login", "/login-jwt",
-                        "/recuperar-password", "/recuperar-password/**", "/", "/portal").permitAll()
+                .requestMatchers("/css/**", "/js/**", "/images/**", "/login", "/login-jwt", "/", "/portal").permitAll()
 
                 // Gestión de pedidos de tienda
                 .requestMatchers("/tienda/nuevo", "/tienda/guardar", "/tienda/editar/**", "/tienda/eliminar/**")

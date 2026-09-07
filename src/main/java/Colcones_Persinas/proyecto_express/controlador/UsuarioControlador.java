@@ -55,7 +55,6 @@ public class UsuarioControlador {
             @RequestParam String confirmarPassword,
             @RequestParam String rol,
             @RequestParam(required = false) String nombreCompleto,
-            @RequestParam(required = false) String email,
             RedirectAttributes redirectAttributes) {
 
         String usernameLimpio = username == null ? "" : username.trim();
@@ -86,7 +85,6 @@ public class UsuarioControlador {
         usuario.setPassword(passwordEncoder.encode(password));
         usuario.setRol(rol);
         usuario.setNombreCompleto(nombreCompleto != null ? nombreCompleto.trim() : "");
-        usuario.setEmail(email != null ? email.trim() : "");
         usuario.setActivo(true);
         usuarioRepository.save(usuario);
 
@@ -109,7 +107,6 @@ public class UsuarioControlador {
             @PathVariable("id") int id,
             @RequestParam String rol,
             @RequestParam(required = false) String nombreCompleto,
-            @RequestParam(required = false) String email,
             @RequestParam(required = false, defaultValue = "false") boolean activo,
             RedirectAttributes redirectAttributes) {
 
@@ -135,7 +132,6 @@ public class UsuarioControlador {
 
         usuario.setRol(rol);
         usuario.setNombreCompleto(nombreCompleto != null ? nombreCompleto.trim() : "");
-        usuario.setEmail(email != null ? email.trim() : "");
         usuario.setActivo(activo);
         usuarioRepository.save(usuario);
 
@@ -198,12 +194,10 @@ public class UsuarioControlador {
     @PostMapping("/mi-cuenta/actualizar")
     public String actualizarMiInformacion(
             @RequestParam(required = false) String nombreCompleto,
-            @RequestParam(required = false) String email,
             RedirectAttributes redirectAttributes) {
 
         Usuario usuario = obtenerUsuarioActual();
         usuario.setNombreCompleto(nombreCompleto != null ? nombreCompleto.trim() : "");
-        usuario.setEmail(email != null ? email.trim() : "");
         usuarioRepository.save(usuario);
 
         redirectAttributes.addFlashAttribute("mensaje", "Tu información fue actualizada.");

@@ -30,12 +30,8 @@ public class LoginController {
     @GetMapping("/login")
     public String mostrarLogin(
             @RequestParam(required = false) String error,
-            @RequestParam(required = false) String recuperada,
             Model model) {
         model.addAttribute("error", error != null ? "Usuario o contraseña incorrectos." : null);
-        model.addAttribute("mensaje", recuperada != null
-                ? "Tu contraseña fue actualizada. Ya puedes iniciar sesión con la nueva."
-                : null);
         return "login";
     }
 

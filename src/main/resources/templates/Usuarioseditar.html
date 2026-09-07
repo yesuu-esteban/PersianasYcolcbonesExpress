@@ -55,11 +55,6 @@
                     <input type="text" name="nombreCompleto" th:value="${usuario.nombreCompleto}">
                 </div>
                 <div class="campo">
-                    <label>Correo</label>
-                    <input type="email" name="email" th:value="${usuario.email}" placeholder="usuario@correo.com">
-                    <small class="ayuda">Sin correo, este usuario no puede usar "¿Olvidaste tu contraseña?".</small>
-                </div>
-                <div class="campo">
                     <label>Rol</label>
                     <select name="rol" required>
                         <option th:each="r : ${roles}" th:value="${r}" th:text="${r}"
