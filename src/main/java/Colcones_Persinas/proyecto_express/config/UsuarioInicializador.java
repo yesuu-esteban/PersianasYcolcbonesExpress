@@ -7,14 +7,18 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
 /**
- * Crea los mismos 4 usuarios que antes vivían hardcodeados en SecurityConfig
- * (InMemoryUserDetailsManager), pero solo la primera vez que arranca la app
- * con la tabla `usuario` vacía. Así:
+ * Garantiza que ciertos usuarios existan en la base de datos.
  *
- *  - Nadie se queda sin poder entrar al desplegar este cambio.
- *  - Si ya cambiaste alguna contraseña desde /mi-cuenta o /usuarios, este
- *    runner NO la vuelve a pisar en el próximo arranque (solo actúa cuando
- *    count() == 0).
+ * A diferencia de la versión anterior (que solo corría si la tabla estaba
+ * vacía con count() == 0), este runner revisa CADA usuario individualmente
+ * con findByUsernameIgnoreCase(...). Así:
+ *
+ *  - Si el usuario YA existe, no se toca (ni contraseña, ni rol, ni nada).
+ *  - Si el usuario NO existe, se crea con los datos indicados aquí.
+ *
+ * Para agregar un usuario nuevo sin afectar los que ya tienes: agrega una
+ * línea "crearSiNoExiste(...)" más abajo con sus datos, y en el próximo
+ * arranque de la app se creará solo si no existía ya.
  */
 @Component
 public class UsuarioInicializador implements CommandLineRunner {
@@ -29,15 +33,23 @@ public class UsuarioInicializador implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
-        if (usuarioRepository.count() > 0) return;
+        // ── Usuarios originales (se respetan tal cual, no se tocan) ──
+        crearSiNoExiste("jefe", "123456", "FABRICA", "Jefe de Fábrica");
+        crearSiNoExiste("vendedor1", "123456", "TIENDA", "Vendedor 1");
+        crearSiNoExiste("Tienda", "express", "TIENDA_ADMIN", "Administrador de Tienda");
+        crearSiNoExiste("admin", "123456", "ADMIN", "Administrador General");
 
-        crear("jefe", "123456", "FABRICA", "Jefe de Fábrica");
-        crear("vendedor1", "123456", "TIENDA", "Vendedor 1");
-        crear("Tienda", "express", "TIENDA_ADMIN", "Administrador de Tienda");
-        crear("admin", "123456", "ADMIN", "Administrador General");
+        // ── Usuarios nuevos ──
+        crearSiNoExiste("vendedor2", "123456", "TIENDA", "Vendedor 2");
+        crearSiNoExiste("jefe2", "123456", "FABRICA", "Jefe de Fábrica 2");
+        crearSiNoExiste("tiendaadmin2", "123456", "TIENDA_ADMIN", "Administrador de Tienda 2");
+        crearSiNoExiste("admin2", "123456", "ADMIN", "Administrador General 2");
     }
 
-    private void crear(String username, String password, String rol, String nombreCompleto) {
+    private void crearSiNoExiste(String username, String password, String rol, String nombreCompleto) {
+        if (usuarioRepository.findByUsernameIgnoreCase(username).isPresent()) {
+            return; // ya existe: no se toca
+        }
         Usuario usuario = new Usuario();
         usuario.setUsername(username);
         usuario.setPassword(passwordEncoder.encode(password));
