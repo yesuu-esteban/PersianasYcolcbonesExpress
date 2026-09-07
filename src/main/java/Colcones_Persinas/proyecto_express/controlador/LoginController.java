@@ -15,7 +15,6 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
-
 import Colcones_Persinas.proyecto_express.config.JwtService;
 
 @Controller
@@ -49,17 +48,13 @@ public class LoginController {
             UserDetails userDetails = (UserDetails) auth.getPrincipal();
             String token = jwtService.generarToken(userDetails);
 
-            // Todos los roles caen primero en el portal; ahí cada quien ve
-            // activos solo los módulos a los que tiene acceso (sec:authorize).
             String destino = "/portal";
 
-            // ── FIX: la cookie "secure" solo se marca así si la conexión
-            // realmente es HTTPS (request.isSecure()). Antes estaba fijo en
-            // "true", así que en local por http:// el navegador la descartaba
-            // en silencio: nunca se guardaba, nunca se enviaba, y cualquier
-            // request que dependiera solo de la cookie (sin ?token= en la URL)
-            // terminaba sin autenticar y te mandaba a /login. En Railway
-            // (https) el comportamiento sigue siendo exactamente igual que antes.
+            // Con server.forward-headers-strategy=framework en application.properties,
+            // request.isSecure() ahora refleja correctamente si el cliente original
+            // usó HTTPS, aunque Railway termine el TLS antes de reenviar la petición
+            // internamente por HTTP. Sin esa propiedad, isSecure() podía devolver
+            // false de forma inconsistente detrás del proxy.
             boolean esHttps = request.isSecure();
 
             ResponseCookie cookie = ResponseCookie.from("authToken", token)
@@ -70,14 +65,15 @@ public class LoginController {
                 .sameSite("Lax")
                 .build();
 
-            // Seguimos guardando en sessionStorage para que token-nav.js siga
-            // funcionando igual en clicks/forms (no hace daño tenerlo duplicado).
-            //
-            // ── FIX extra: además de sessionStorage, mandamos el token también
-            // como ?token= en la primera navegación al portal. Así la PRIMERA
-            // carga de /portal ya llega autenticada sin depender de que la
-            // cookie se haya guardado a tiempo (evita el "parpadeo" de ver el
-            // portal como si no hubieras iniciado sesión justo después de loguearte).
+            // ── FIX: usamos localStorage en vez de sessionStorage.
+            // sessionStorage se borra al cerrar la pestaña Y NO se comparte entre
+            // pestañas nuevas (cada pestaña tiene su propio sessionStorage aislado).
+            // Eso hacía que, al abrir una pestaña nueva o refrescar en ciertos
+            // escenarios, el token "desapareciera" del lado del cliente y
+            // token-nav.js ya no tuviera nada que adjuntar a los links, dejando
+            // la autenticación dependiendo 100% de la cookie (que si fallaba,
+            // mandaba directo a /login). localStorage persiste entre pestañas y
+            // recargas hasta que se borre explícitamente (lo hacemos en /logout).
             String destinoConToken = destino + "?token=" + token;
 
             String html = """
@@ -86,7 +82,7 @@ public class LoginController {
                 <head><meta charset="UTF-8"></head>
                 <body>
                 <script>
-                    sessionStorage.setItem('authToken', '%s');
+                    localStorage.setItem('authToken', '%s');
                     window.location.href = '%s';
                 </script>
                 </body>
@@ -105,7 +101,7 @@ public class LoginController {
     }
 
     @GetMapping("/logout")
-    public ResponseEntity<Void> logout(HttpServletRequest request) {
+    public ResponseEntity<String> logout(HttpServletRequest request) {
         boolean esHttps = request.isSecure();
 
         ResponseCookie cookieBorrada = ResponseCookie.from("authToken", "")
@@ -116,9 +112,26 @@ public class LoginController {
             .sameSite("Lax")
             .build();
 
-        return ResponseEntity.status(302)
+        // Como el token también vive en localStorage (client-side), un simple
+        // redirect 302 no lo borra ahí. Devolvemos una página intermedia que
+        // limpia localStorage antes de mandar al login, para que "Cerrar sesión"
+        // sí cierre sesión de verdad en ambos lados.
+        String html = """
+            <!DOCTYPE html>
+            <html>
+            <head><meta charset="UTF-8"></head>
+            <body>
+            <script>
+                localStorage.removeItem('authToken');
+                window.location.href = '/login';
+            </script>
+            </body>
+            </html>
+            """;
+
+        return ResponseEntity.ok()
             .header(HttpHeaders.SET_COOKIE, cookieBorrada.toString())
-            .header("Location", "/login")
-            .build();
+            .contentType(MediaType.TEXT_HTML)
+            .body(html);
     }
 }
