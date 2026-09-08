@@ -19,49 +19,38 @@ import java.util.stream.Collectors;
 
 @Controller
 @RequestMapping("/recibos")
-@PreAuthorize("hasAnyRole('TIENDA','TIENDA_ADMIN','FABRICA','ADMIN')")
 public class ReciboCajaControlador {
 
     @Autowired
     private ReciboCajaRepository reciboCajaRepository;
 
-    @GetMapping
-    public String listar(
-            @RequestParam(required = false) String origen,
+    // ═══════════════════════════════════════════════════════════════
+    // RECIBOS DE TIENDA
+    // ═══════════════════════════════════════════════════════════════
+
+    @PreAuthorize("hasAnyRole('TIENDA','TIENDA_ADMIN','ADMIN')")
+    @GetMapping("/tienda")
+    public String listarTienda(
             @RequestParam(required = false) String cliente,
             @RequestParam(required = false) String desde,
             @RequestParam(required = false) String hasta,
             Model model) {
-
-        List<ReciboCaja> todos = reciboCajaRepository.findAllByOrderByIdDesc();
-
-        LocalDate fDesde = (desde != null && !desde.isBlank()) ? LocalDate.parse(desde) : null;
-        LocalDate fHasta = (hasta != null && !hasta.isBlank()) ? LocalDate.parse(hasta) : null;
-
-        List<ReciboCaja> filtrados = todos.stream()
-                .filter(r -> origen == null || origen.isBlank() || origen.equalsIgnoreCase(r.getOrigen()))
-                .filter(r -> cliente == null || cliente.isBlank()
-                        || (r.getCliente() != null && r.getCliente().toLowerCase().contains(cliente.trim().toLowerCase())))
-                .filter(r -> fDesde == null || (r.getFecha() != null && !r.getFecha().toLocalDate().isBefore(fDesde)))
-                .filter(r -> fHasta == null || (r.getFecha() != null && !r.getFecha().toLocalDate().isAfter(fHasta)))
-                .collect(Collectors.toList());
-
-        model.addAttribute("recibos", filtrados);
-        model.addAttribute("origen", origen != null ? origen : "");
-        model.addAttribute("cliente", cliente != null ? cliente : "");
-        model.addAttribute("desde", desde != null ? desde : "");
-        model.addAttribute("hasta", hasta != null ? hasta : "");
-        return "recibo/listado";
+        cargarListado("TIENDA", cliente, desde, hasta, model);
+        model.addAttribute("titulo", "Recibos de Tienda");
+        model.addAttribute("urlNuevo", "/recibos/tienda/nuevo");
+        model.addAttribute("urlBase", "/recibos/tienda");
+        return "recibo/tienda/listado";
     }
 
-    @GetMapping("/nuevo")
-    public String nuevo(Model model) {
-        model.addAttribute("origenSugerido", origenSegunRol());
-        return "recibo/nuevo";
+    @PreAuthorize("hasAnyRole('TIENDA','TIENDA_ADMIN','ADMIN')")
+    @GetMapping("/tienda/nuevo")
+    public String nuevoTienda(Model model) {
+        return "recibo/tienda/nuevo";
     }
 
-    @PostMapping("/guardar")
-    public String guardar(
+    @PreAuthorize("hasAnyRole('TIENDA','TIENDA_ADMIN','ADMIN')")
+    @PostMapping("/tienda/guardar")
+    public String guardarTienda(
             @RequestParam String cliente,
             @RequestParam(required = false) String direccion,
             @RequestParam(required = false) String cedula,
@@ -72,9 +61,132 @@ public class ReciboCajaControlador {
             @RequestParam List<Integer> cantidades,
             RedirectAttributes redirectAttributes) {
 
+        Integer id = guardarRecibo("TIENDA", cliente, direccion, cedula, telefono, abono,
+                nombresProducto, precios, cantidades, redirectAttributes);
+
+        if (id == null) return "redirect:/recibos/tienda/nuevo";
+
+        redirectAttributes.addFlashAttribute("mensaje", "Recibo de tienda generado correctamente.");
+        return "redirect:/recibos/imprimir/" + id;
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // RECIBOS DE FÁBRICA
+    // ═══════════════════════════════════════════════════════════════
+
+    @PreAuthorize("hasAnyRole('FABRICA','ADMIN')")
+    @GetMapping("/fabrica")
+    public String listarFabrica(
+            @RequestParam(required = false) String cliente,
+            @RequestParam(required = false) String desde,
+            @RequestParam(required = false) String hasta,
+            Model model) {
+        cargarListado("FABRICA", cliente, desde, hasta, model);
+        model.addAttribute("titulo", "Recibos de Fábrica");
+        model.addAttribute("urlNuevo", "/recibos/fabrica/nuevo");
+        model.addAttribute("urlBase", "/recibos/fabrica");
+        return "recibo/fabrica/listado";
+    }
+
+    @PreAuthorize("hasAnyRole('FABRICA','ADMIN')")
+    @GetMapping("/fabrica/nuevo")
+    public String nuevoFabrica(Model model) {
+        return "recibo/fabrica/nuevo";
+    }
+
+    @PreAuthorize("hasAnyRole('FABRICA','ADMIN')")
+    @PostMapping("/fabrica/guardar")
+    public String guardarFabrica(
+            @RequestParam String cliente,
+            @RequestParam(required = false) String direccion,
+            @RequestParam(required = false) String cedula,
+            @RequestParam(required = false) String telefono,
+            @RequestParam(required = false, defaultValue = "0") BigDecimal abono,
+            @RequestParam List<String> nombresProducto,
+            @RequestParam List<BigDecimal> precios,
+            @RequestParam List<Integer> cantidades,
+            RedirectAttributes redirectAttributes) {
+
+        Integer id = guardarRecibo("FABRICA", cliente, direccion, cedula, telefono, abono,
+                nombresProducto, precios, cantidades, redirectAttributes);
+
+        if (id == null) return "redirect:/recibos/fabrica/nuevo";
+
+        redirectAttributes.addFlashAttribute("mensaje", "Recibo de fábrica generado correctamente.");
+        return "redirect:/recibos/imprimir/" + id;
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // COMUNES (imprimir / eliminar) — con control de acceso por origen
+    // ═══════════════════════════════════════════════════════════════
+
+    @PreAuthorize("hasAnyRole('TIENDA','TIENDA_ADMIN','FABRICA','ADMIN')")
+    @GetMapping("/imprimir/{id}")
+    public String imprimir(@PathVariable("id") int id, Model model) {
+        ReciboCaja recibo = reciboCajaRepository.findById(id).orElseThrow();
+
+        if (!puedeVerRecibo(recibo)) {
+            return "redirect:/recibos/" + (tieneRol("FABRICA") ? "fabrica" : "tienda")
+                    + "?error=Sin+acceso+a+ese+recibo";
+        }
+
+        model.addAttribute("recibo", recibo);
+        return "recibo/imprimir";
+    }
+
+    @PreAuthorize("hasAnyRole('TIENDA','TIENDA_ADMIN','FABRICA','ADMIN')")
+    @PostMapping("/eliminar/{id}")
+    public String eliminar(@PathVariable("id") int id, RedirectAttributes redirectAttributes) {
+        ReciboCaja recibo = reciboCajaRepository.findById(id).orElseThrow();
+        String origen = recibo.getOrigen();
+        String volverA = "FABRICA".equals(origen) ? "/recibos/fabrica" : "/recibos/tienda";
+
+        if (!puedeVerRecibo(recibo)) {
+            redirectAttributes.addFlashAttribute("error", "No tienes acceso para eliminar ese recibo.");
+            return "redirect:" + volverA;
+        }
+
+        try {
+            reciboCajaRepository.deleteById(id);
+            redirectAttributes.addFlashAttribute("mensaje", "Recibo eliminado.");
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("error", "No se pudo eliminar el recibo: " + e.getMessage());
+        }
+        return "redirect:" + volverA;
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // HELPERS INTERNOS
+    // ═══════════════════════════════════════════════════════════════
+
+    private void cargarListado(String origenFijo, String cliente, String desde, String hasta, Model model) {
+        List<ReciboCaja> todos = reciboCajaRepository.findAllByOrderByIdDesc().stream()
+                .filter(r -> origenFijo.equalsIgnoreCase(r.getOrigen()))
+                .collect(Collectors.toList());
+
+        LocalDate fDesde = (desde != null && !desde.isBlank()) ? LocalDate.parse(desde) : null;
+        LocalDate fHasta = (hasta != null && !hasta.isBlank()) ? LocalDate.parse(hasta) : null;
+
+        List<ReciboCaja> filtrados = todos.stream()
+                .filter(r -> cliente == null || cliente.isBlank()
+                        || (r.getCliente() != null && r.getCliente().toLowerCase().contains(cliente.trim().toLowerCase())))
+                .filter(r -> fDesde == null || (r.getFecha() != null && !r.getFecha().toLocalDate().isBefore(fDesde)))
+                .filter(r -> fHasta == null || (r.getFecha() != null && !r.getFecha().toLocalDate().isAfter(fHasta)))
+                .collect(Collectors.toList());
+
+        model.addAttribute("recibos", filtrados);
+        model.addAttribute("cliente", cliente != null ? cliente : "");
+        model.addAttribute("desde", desde != null ? desde : "");
+        model.addAttribute("hasta", hasta != null ? hasta : "");
+    }
+
+    private Integer guardarRecibo(String origen, String cliente, String direccion, String cedula, String telefono,
+                                   BigDecimal abono, List<String> nombresProducto, List<BigDecimal> precios,
+                                   List<Integer> cantidades, RedirectAttributes redirectAttributes) {
+
         if (cliente == null || cliente.isBlank()) {
             redirectAttributes.addFlashAttribute("error", "Debes indicar el nombre del cliente.");
-            return "redirect:/recibos/nuevo";
+            return null;
         }
 
         ReciboCaja recibo = new ReciboCaja();
@@ -82,7 +194,7 @@ public class ReciboCajaControlador {
         recibo.setDireccion(direccion != null ? direccion.trim() : "");
         recibo.setCedula(cedula != null ? cedula.trim() : "");
         recibo.setTelefono(telefono != null ? telefono.trim() : "");
-        recibo.setOrigen(origenSegunRol());
+        recibo.setOrigen(origen);
         recibo.setCreadoPor(nombreUsuarioActual());
 
         BigDecimal total = BigDecimal.ZERO;
@@ -108,7 +220,7 @@ public class ReciboCajaControlador {
         if (recibo.getItems().isEmpty()) {
             redirectAttributes.addFlashAttribute("error",
                     "Ningún producto válido fue agregado (verifica precio y cantidad).");
-            return "redirect:/recibos/nuevo";
+            return null;
         }
 
         recibo.setTotal(total);
@@ -118,30 +230,16 @@ public class ReciboCajaControlador {
         recibo.setSaldo(total.subtract(abonoSeguro));
 
         reciboCajaRepository.save(recibo);
-
-        redirectAttributes.addFlashAttribute("mensaje", "Recibo #" + recibo.getNumero() + " generado correctamente.");
-        return "redirect:/recibos/imprimir/" + recibo.getId();
+        return recibo.getId();
     }
 
-    @GetMapping("/imprimir/{id}")
-    public String imprimir(@PathVariable("id") int id, Model model) {
-        ReciboCaja recibo = reciboCajaRepository.findById(id).orElseThrow();
-        model.addAttribute("recibo", recibo);
-        return "recibo/imprimir";
+    private boolean puedeVerRecibo(ReciboCaja recibo) {
+        if (tieneRol("ADMIN")) return true;
+        if ("TIENDA".equals(recibo.getOrigen())) return tieneRol("TIENDA") || tieneRol("TIENDA_ADMIN");
+        if ("FABRICA".equals(recibo.getOrigen())) return tieneRol("FABRICA");
+        return false;
     }
 
-    @PostMapping("/eliminar/{id}")
-    public String eliminar(@PathVariable("id") int id, RedirectAttributes redirectAttributes) {
-        try {
-            reciboCajaRepository.deleteById(id);
-            redirectAttributes.addFlashAttribute("mensaje", "Recibo eliminado.");
-        } catch (Exception e) {
-            redirectAttributes.addFlashAttribute("error", "No se pudo eliminar el recibo: " + e.getMessage());
-        }
-        return "redirect:/recibos";
-    }
-
-    // ─── Helpers ──────────────────────────────────────────────────
     private String nombreUsuarioActual() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         return auth != null ? auth.getName() : "desconocido";
@@ -151,11 +249,5 @@ public class ReciboCajaControlador {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth == null) return false;
         return auth.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_" + rol));
-    }
-
-    private String origenSegunRol() {
-        if (tieneRol("FABRICA")) return "FABRICA";
-        if (tieneRol("TIENDA") || tieneRol("TIENDA_ADMIN")) return "TIENDA";
-        return "ADMIN";
     }
 }

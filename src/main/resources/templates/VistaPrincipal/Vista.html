@@ -335,20 +335,38 @@
                 </div>
             </div>
 
-            <!-- RECIBOS: activa para tienda, tienda_admin, fabrica y admin -->
-            <a class="module-card" th:href="@{/recibos}" sec:authorize="hasAnyRole('TIENDA','TIENDA_ADMIN','FABRICA','ADMIN')">
+            <!-- RECIBOS DE TIENDA -->
+            <a class="module-card" th:href="@{/recibos/tienda}" sec:authorize="hasAnyRole('TIENDA','TIENDA_ADMIN','ADMIN')">
                 <div class="module-content">
                     <span class="module-category">Módulo de Caja</span>
-                    <h2>Recibos</h2>
-                    <p>Genera recibos de caja y consulta el historial, tanto de tienda como de fábrica.</p>
+                    <h2>Recibos Tienda</h2>
+                    <p>Genera y consulta los recibos de caja generados desde el punto de venta.</p>
                     <span class="module-action">Acceder al módulo &rarr;</span>
                 </div>
             </a>
-            <div class="module-card module-card--locked" sec:authorize="!hasAnyRole('TIENDA','TIENDA_ADMIN','FABRICA','ADMIN')">
+            <div class="module-card module-card--locked" sec:authorize="!hasAnyRole('TIENDA','TIENDA_ADMIN','ADMIN')">
                 <div class="module-content">
                     <span class="module-category">Módulo de Caja</span>
-                    <h2>Recibos</h2>
-                    <p>Genera recibos de caja y consulta el historial, tanto de tienda como de fábrica.</p>
+                    <h2>Recibos Tienda</h2>
+                    <p>Genera y consulta los recibos de caja generados desde el punto de venta.</p>
+                    <span class="module-action module-action--locked">Sin acceso</span>
+                </div>
+            </div>
+
+            <!-- RECIBOS DE FÁBRICA -->
+            <a class="module-card" th:href="@{/recibos/fabrica}" sec:authorize="hasAnyRole('FABRICA','ADMIN')">
+                <div class="module-content">
+                    <span class="module-category">Módulo de Caja</span>
+                    <h2>Recibos Fábrica</h2>
+                    <p>Genera y consulta los recibos de caja generados desde el taller de fábrica.</p>
+                    <span class="module-action">Acceder al módulo &rarr;</span>
+                </div>
+            </a>
+            <div class="module-card module-card--locked" sec:authorize="!hasAnyRole('FABRICA','ADMIN')">
+                <div class="module-content">
+                    <span class="module-category">Módulo de Caja</span>
+                    <h2>Recibos Fábrica</h2>
+                    <p>Genera y consulta los recibos de caja generados desde el taller de fábrica.</p>
                     <span class="module-action module-action--locked">Sin acceso</span>
                 </div>
             </div>

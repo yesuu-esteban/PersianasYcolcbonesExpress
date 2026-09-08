@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nuevo Recibo de Tienda</title>
+    <style>
+        * { box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; background-color: #f4f4f9; margin: 0; padding: 20px; }
+        .container { background: white; width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #ccc; border-radius: 5px; }
+        .barra-superior { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+        .barra-superior a { font-size: 13px; color: #555; text-decoration: none; }
+        .barra-superior a:hover { color: #000; }
+        .badge-origen { display: inline-block; font-size: 11px; font-weight: bold; padding: 3px 10px; border-radius: 12px; color: #fff; background-color: #0dcaf0; color: #03171c; }
+        .alerta { padding: 10px 14px; border-radius: 4px; margin-bottom: 14px; font-size: 13px; }
+        .alerta-error { background: #f8d7da; border: 1px solid #dc3545; color: #842029; }
+        fieldset { border: 1px solid #ccc; padding: 10px; border-radius: 4px; margin-bottom: 16px; }
+        legend { font-weight: bold; padding: 0 6px; }
+        label { font-size: 13px; color: #333; display: block; margin-top: 8px; }
+        input[type="text"], input[type="tel"], input[type="number"] { width: 100%; padding: 6px; margin-top: 4px; border: 1px solid #ccc; border-radius: 4px; }
+        .fila-producto-form { display: flex; gap: 8px; margin-bottom: 8px; align-items: center; }
+        .fila-producto-form input { margin-top: 0; }
+        .fila-producto-form .col-nombre { flex: 2; }
+        .fila-producto-form .col-precio { flex: 1; max-width: 110px; }
+        .fila-producto-form .col-cant { flex: 1; max-width: 80px; }
+        .btn-eliminar-producto { background-color: #dc3545; color: white; border: none; border-radius: 4px; padding: 6px 10px; cursor: pointer; font-size: 12px; flex-shrink: 0; }
+        .btn-agregar-producto { border: 1px dashed #999; background: #fafafa; border-radius: 4px; padding: 6px 12px; cursor: pointer; font-size: 13px; margin-top: 4px; }
+        .btn-agregar-producto:hover { background: #f0f0f0; }
+        .totales { margin-top: 10px; padding-top: 10px; border-top: 1px solid #ddd; }
+        .totales p { font-size: 15px; margin: 6px 0; }
+        .btn-generar { width: 100%; background-color: #28a712; color: white; padding: 12px; font-size: 15px; font-weight: bold; border: none; border-radius: 4px; cursor: pointer; margin-top: 16px; }
+        .btn-generar:hover { background-color: #1f8a0d; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="barra-superior">
+            <h3 style="margin:0;">🧾 Nuevo Recibo de Tienda</h3>
+            <a href="/recibos/tienda">← Ver listado</a>
+        </div>
+
+        <p style="font-size:13px; color:#555; margin-top:-8px; margin-bottom:16px;">
+            <span class="badge-origen">TIENDA</span>
+        </p>
+
+        <div th:if="${error}" class="alerta alerta-error" th:text="${error}"></div>
+
+        <form th:action="@{/recibos/tienda/guardar}" method="post" id="formRecibo">
+            <fieldset>
+                <legend>Datos del Cliente</legend>
+                <label for="cliente">Cliente:</label>
+                <input type="text" id="cliente" name="cliente" required>
+                <label for="direccion">Dirección:</label>
+                <input type="text" id="direccion" name="direccion">
+                <label for="cedula">Cédula:</label>
+                <input type="text" id="cedula" name="cedula">
+                <label for="telefono">Teléfono:</label>
+                <input type="tel" id="telefono" name="telefono">
+            </fieldset>
+
+            <fieldset>
+                <legend>Productos</legend>
+                <div id="contenedorProductos">
+                    <div class="fila-producto-form">
+                        <input type="text" name="nombresProducto" class="col-nombre" placeholder="Nombre del producto" required>
+                        <input type="number" name="precios" class="col-precio" step="0.01" min="0.01" placeholder="Precio" required>
+                        <input type="number" name="cantidades" class="col-cant" min="1" value="1" placeholder="Cant.">
+                        <button type="button" class="btn-eliminar-producto" onclick="eliminarFila(this)">Quitar</button>
+                    </div>
+                </div>
+                <button type="button" class="btn-agregar-producto" onclick="agregarFila()">+ Añadir Producto</button>
+            </fieldset>
+
+            <div class="totales">
+                <p><strong>Total General: $<span id="lblTotalGeneral">0.00</span></strong></p>
+                <label for="abono">Abono:</label>
+                <input type="number" id="abono" name="abono" step="0.01" min="0" value="0">
+                <label for="saldo">Saldo pendiente:</label>
+                <input type="number" id="saldo" readonly>
+            </div>
+
+            <button type="submit" class="btn-generar">Generar Recibo</button>
+        </form>
+    </div>
+
+    <script>
+        function formatearMoneda(valor) {
+            return valor.toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+        function recalcularTotales() {
+            let total = 0;
+            document.querySelectorAll('.fila-producto-form').forEach(fila => {
+                const precio = parseFloat(fila.querySelector('input[name="precios"]').value) || 0;
+                const cantidad = parseFloat(fila.querySelector('input[name="cantidades"]').value) || 0;
+                total += precio * cantidad;
+            });
+            const abono = parseFloat(document.getElementById('abono').value) || 0;
+            const saldo = total - abono;
+            document.getElementById('lblTotalGeneral').textContent = formatearMoneda(total);
+            document.getElementById('saldo').value = saldo.toFixed(2);
+        }
+        function engancharFila(fila) {
+            fila.querySelectorAll('input[name="precios"], input[name="cantidades"]').forEach(input => {
+                input.addEventListener('input', recalcularTotales);
+            });
+        }
+        function agregarFila() {
+            const contenedor = document.getElementById('contenedorProductos');
+            const div = document.createElement('div');
+            div.className = 'fila-producto-form';
+            div.innerHTML = `
+                <input type="text" name="nombresProducto" class="col-nombre" placeholder="Nombre del producto" required>
+                <input type="number" name="precios" class="col-precio" step="0.01" min="0.01" placeholder="Precio" required>
+                <input type="number" name="cantidades" class="col-cant" min="1" value="1" placeholder="Cant.">
+                <button type="button" class="btn-eliminar-producto" onclick="eliminarFila(this)">Quitar</button>
+            `;
+            contenedor.appendChild(div);
+            engancharFila(div);
+        }
+        function eliminarFila(boton) {
+            const contenedor = document.getElementById('contenedorProductos');
+            if (contenedor.children.length > 1) {
+                boton.closest('.fila-producto-form').remove();
+            }
+            recalcularTotales();
+        }
+        document.getElementById('abono').addEventListener('input', recalcularTotales);
+        document.querySelectorAll('.fila-producto-form').forEach(engancharFila);
+        recalcularTotales();
+    </script>
+    <script src="/js/token-nav.js"></script>
+</body>
+</html>

@@ -2,46 +2,38 @@
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <title>Recibos de Caja</title>
+    <title>Recibos de Fábrica</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body class="bg-light p-4">
 <div class="container">
     <div class="d-flex justify-content-between align-items-center mb-3">
-        <h2>🧾 Recibos de Caja</h2>
+        <h2>🧾 Recibos de Fábrica</h2>
         <div class="d-flex gap-2">
             <a href="/portal" class="btn btn-outline-secondary">← Portal</a>
-            <a href="/recibos/nuevo" class="btn btn-primary">+ Nuevo Recibo</a>
+            <a href="/recibos/fabrica/nuevo" class="btn btn-primary">+ Nuevo Recibo</a>
         </div>
     </div>
 
     <div th:if="${mensaje}" class="alert alert-success" th:text="${mensaje}"></div>
     <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
 
-    <form method="get" th:action="@{/recibos}" class="row g-2 align-items-end mb-3">
-        <div class="col-md-3">
-            <label class="form-label">Origen</label>
-            <select name="origen" class="form-select">
-                <option value="" th:selected="${origen == ''}">Todos</option>
-                <option value="TIENDA" th:selected="${origen == 'TIENDA'}">Tienda</option>
-                <option value="FABRICA" th:selected="${origen == 'FABRICA'}">Fábrica</option>
-            </select>
-        </div>
-        <div class="col-md-3">
+    <form method="get" th:action="@{/recibos/fabrica}" class="row g-2 align-items-end mb-3">
+        <div class="col-md-4">
             <label class="form-label">Cliente</label>
             <input type="text" name="cliente" th:value="${cliente}" class="form-control" placeholder="Nombre...">
         </div>
-        <div class="col-md-2">
+        <div class="col-md-3">
             <label class="form-label">Desde</label>
             <input type="date" name="desde" th:value="${desde}" class="form-control">
         </div>
-        <div class="col-md-2">
+        <div class="col-md-3">
             <label class="form-label">Hasta</label>
             <input type="date" name="hasta" th:value="${hasta}" class="form-control">
         </div>
         <div class="col-md-2 d-flex gap-2">
             <button type="submit" class="btn btn-outline-primary flex-fill">Filtrar</button>
-            <a href="/recibos" class="btn btn-outline-secondary">✕</a>
+            <a href="/recibos/fabrica" class="btn btn-outline-secondary">✕</a>
         </div>
     </form>
 
@@ -49,14 +41,13 @@
         <table class="table table-hover align-middle mb-0">
             <thead class="table-dark">
                 <tr>
-                    <th>#</th><th>Origen</th><th>Cliente</th><th>Cédula</th><th>Teléfono</th>
+                    <th>#</th><th>Cliente</th><th>Cédula</th><th>Teléfono</th>
                     <th>Fecha</th><th>Total</th><th>Abono</th><th>Saldo</th><th>Generado por</th><th>Acciones</th>
                 </tr>
             </thead>
             <tbody>
                 <tr th:each="r : ${recibos}">
                     <td th:text="${r.numero}"></td>
-                    <td><span class="badge" th:classappend="${r.origen == 'FABRICA'} ? 'bg-dark' : 'bg-info text-dark'" th:text="${r.origen}"></span></td>
                     <td th:text="${r.cliente}"></td>
                     <td th:text="${r.cedula}"></td>
                     <td th:text="${r.telefono}"></td>
@@ -74,7 +65,7 @@
                     </td>
                 </tr>
                 <tr th:if="${#lists.isEmpty(recibos)}">
-                    <td colspan="11" class="text-center text-muted py-3">No hay recibos que coincidan con los filtros.</td>
+                    <td colspan="10" class="text-center text-muted py-3">No hay recibos de fábrica registrados.</td>
                 </tr>
             </tbody>
         </table>

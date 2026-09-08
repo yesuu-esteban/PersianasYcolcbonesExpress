@@ -51,8 +51,8 @@ public class SecurityConfig {
                 // Administración de usuarios: solo ADMIN
                 .requestMatchers("/usuarios/**").hasRole("ADMIN")
 
-                .requestMatchers("/recibos/**").hasAnyRole("TIENDA", "TIENDA_ADMIN", "FABRICA", "ADMIN")
-
+                .requestMatchers("/recibos/**").authenticated()
+                
                 .anyRequest().authenticated()
             )
             .formLogin(login -> login.disable())
