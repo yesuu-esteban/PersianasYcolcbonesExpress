@@ -35,12 +35,12 @@ public class UsuarioInicializador implements CommandLineRunner {
     public void run(String... args) {
         // ── Usuarios originales (se respetan tal cual, no se tocan) ──
         crearSiNoExiste("jefe", "123456", "FABRICA", "Jefe de Fábrica");
-        crearSiNoExiste("vendedor1", "123456", "TIENDA", "Vendedor 1");
+        crearSiNoExiste("Fabian", "123456", "TIENDA", "Fabian Vendedor");
         crearSiNoExiste("Tienda", "express", "TIENDA_ADMIN", "Administrador de Tienda");
         crearSiNoExiste("admin", "123456", "ADMIN", "Administrador General");
 
         // ── Usuarios nuevos ──
-        crearSiNoExiste("vendedor2", "123456", "TIENDA", "Vendedor 2");
+        crearSiNoExiste("Mono", "123456", "TIENDA", "Mono Vendedor ");
         crearSiNoExiste("jefe2", "123456", "FABRICA", "Jefe de Fábrica 2");
         crearSiNoExiste("tiendaadmin2", "123456", "TIENDA_ADMIN", "Administrador de Tienda 2");
         crearSiNoExiste("admin2", "123456", "ADMIN", "Administrador General 2");
