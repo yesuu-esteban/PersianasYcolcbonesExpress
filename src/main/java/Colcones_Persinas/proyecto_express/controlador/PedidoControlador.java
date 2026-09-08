@@ -16,11 +16,15 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeSet;
 import java.util.stream.Collectors;
 
 @Controller
@@ -37,10 +41,17 @@ public class PedidoControlador {
     @GetMapping("/pedidos")
     public String verProduccion(
             @RequestParam(name = "estado", required = false) String estado,
+            @RequestParam(name = "desde", required = false) String desde,
+            @RequestParam(name = "hasta", required = false) String hasta,
+            @RequestParam(name = "anio", required = false) Integer anio,
+            @RequestParam(name = "pagina", required = false, defaultValue = "0") int pagina,
             Model model) {
         try {
-            List<Pedido> todos = pedidoRepository.findAll(Sort.by("nombreDecorador"));
-            if (todos == null) todos = new java.util.ArrayList<>();
+            List<Pedido> todos = pedidoRepository.findAll(
+                 Sort.by(Sort.Direction.DESC, "fechaCreacion")
+                    .and(Sort.by(Sort.Direction.DESC, "id"))
+            );
+            if (todos == null) todos = new ArrayList<>();
 
             long totalTodos          = todos.size();
             long totalPendiente      = todos.stream().filter(p -> "Pendiente".equals(p.getEstado())).count();
@@ -54,17 +65,63 @@ public class PedidoControlador {
             model.addAttribute("totalListoEnsamblar", totalListoEnsamblar);
             model.addAttribute("totalListoDespacho",  totalListoDespacho);
 
+            // ── Años disponibles para el filtro (sobre TODOS los pedidos, sin aplicar los demás filtros) ──
+            TreeSet<Integer> aniosDisponibles = new TreeSet<>(Collections.reverseOrder());
+            for (Pedido p : todos) {
+                if (p.getFechaCreacion() != null) {
+                    aniosDisponibles.add(p.getFechaCreacion().getYear());
+                }
+            }
+            aniosDisponibles.add(LocalDate.now().getYear());
+            model.addAttribute("aniosDisponibles", aniosDisponibles);
+
             final String estadoFiltro = (estado == null || estado.isBlank() || "Todos".equalsIgnoreCase(estado))
                     ? "Todos" : estado;
 
-            List<Pedido> pedidos = "Todos".equals(estadoFiltro) ? todos : todos.stream()
+            List<Pedido> pedidosEstado = "Todos".equals(estadoFiltro) ? todos : todos.stream()
                     .filter(p -> estadoFiltro.equals(p.getEstado())).collect(Collectors.toList());
 
-            model.addAttribute("pedidos",      pedidos);
-            model.addAttribute("estadoActivo", estadoFiltro);
+            // ── Filtro por fecha (rango desde/hasta) y por año ──
+            LocalDate fechaDesde = (desde != null && !desde.isBlank()) ? LocalDate.parse(desde) : null;
+            LocalDate fechaHasta = (hasta != null && !hasta.isBlank()) ? LocalDate.parse(hasta) : null;
+
+            List<Pedido> pedidosFiltrados = pedidosEstado.stream()
+                    .filter(p -> fechaDesde == null
+                            || (p.getFechaCreacion() != null && !p.getFechaCreacion().toLocalDate().isBefore(fechaDesde)))
+                    .filter(p -> fechaHasta == null
+                            || (p.getFechaCreacion() != null && !p.getFechaCreacion().toLocalDate().isAfter(fechaHasta)))
+                    .filter(p -> anio == null
+                            || (p.getFechaCreacion() != null && p.getFechaCreacion().getYear() == anio))
+                    .collect(Collectors.toList());
+
+            // ── Paginación: máximo 10 pedidos por página ──
+            int tamanoPagina = 10;
+            int totalFiltrados = pedidosFiltrados.size();
+            int totalPaginas = (int) Math.ceil((double) totalFiltrados / tamanoPagina);
+            if (totalPaginas == 0) totalPaginas = 1;
+            int paginaActual = Math.max(0, Math.min(pagina, totalPaginas - 1));
+            int desdeIdx = paginaActual * tamanoPagina;
+            int hastaIdx = Math.min(desdeIdx + tamanoPagina, totalFiltrados);
+            List<Pedido> pedidosPagina = (desdeIdx < hastaIdx)
+                    ? pedidosFiltrados.subList(desdeIdx, hastaIdx)
+                    : new ArrayList<>();
+
+            model.addAttribute("pedidos",         pedidosPagina);
+            model.addAttribute("estadoActivo",    estadoFiltro);
+            model.addAttribute("desde",           desde != null ? desde : "");
+            model.addAttribute("hasta",           hasta != null ? hasta : "");
+            model.addAttribute("anio",            anio);
+            model.addAttribute("paginaActual",    paginaActual);
+            model.addAttribute("totalPaginas",    totalPaginas);
+            model.addAttribute("totalFiltrados",  totalFiltrados);
+
+            // ── Conteo de pedidos por distribuidor, solo dentro de esta página (para el encabezado del grupo) ──
+            Map<String, Long> conteoPorDecorador = pedidosPagina.stream()
+                    .collect(Collectors.groupingBy(Pedido::getNombreDecorador, Collectors.counting()));
+            model.addAttribute("conteoPorDecorador", conteoPorDecorador);
 
             Map<Integer, String> telaUsadaPorPedido = new HashMap<>();
-            for (Pedido p : pedidos) {
+            for (Pedido p : pedidosPagina) {
                 inventarioServicio.getHistorialDePedido(p.getId()).stream()
                         .filter(m -> "TELA".equals(m.getTipoMaterial()) || "RETAZO".equals(m.getTipoMaterial()))
                         .findFirst()
@@ -74,9 +131,16 @@ public class PedidoControlador {
 
         } catch (Exception e) {
             System.err.println("Error al cargar pedidos: " + e.getMessage());
-            model.addAttribute("pedidos",            new java.util.ArrayList<Pedido>());
+            model.addAttribute("pedidos",            new ArrayList<Pedido>());
             model.addAttribute("estadoActivo",       "Todos");
             model.addAttribute("telaUsadaPorPedido", new HashMap<>());
+            model.addAttribute("conteoPorDecorador", new HashMap<>());
+            model.addAttribute("aniosDisponibles",   new TreeSet<Integer>());
+            model.addAttribute("paginaActual", 0);
+            model.addAttribute("totalPaginas", 1);
+            model.addAttribute("totalFiltrados", 0);
+            model.addAttribute("desde", "");
+            model.addAttribute("hasta", "");
         }
         return "pedidos";
     }
@@ -141,8 +205,8 @@ public class PedidoControlador {
             return "redirect:/taller/nuevo";
         }
 
-        List<Pedido> pedidosDelLote = new java.util.ArrayList<>();
-        List<InventarioServicio.SeleccionManual> seleccionesDelLote = new java.util.ArrayList<>();
+        List<Pedido> pedidosDelLote = new ArrayList<>();
+        List<InventarioServicio.SeleccionManual> seleccionesDelLote = new ArrayList<>();
 
         for (int i = 0; i < n; i++) {
             boolean tieneCabezal    = leerBooleanoFila(allParams, "cabezales",       i, false);
@@ -287,7 +351,7 @@ public class PedidoControlador {
 
     /** Lee los ítems de tela vendida por metros desde los parámetros indexados del formulario. */
     private List<InventarioServicio.ItemTelaVenta> leerItemsTelaVenta(Map<String, String> allParams) {
-        List<InventarioServicio.ItemTelaVenta> items = new java.util.ArrayList<>();
+        List<InventarioServicio.ItemTelaVenta> items = new ArrayList<>();
         int i = 0;
         while (allParams.containsKey("ventaTelaMetros[" + i + "]")) {
             String metrosStr = allParams.getOrDefault("ventaTelaMetros[" + i + "]", "").trim();
@@ -310,7 +374,7 @@ public class PedidoControlador {
 
     /** Reconstruye la lista de ExtraInsumo desde allParams, solo para VALIDAR antes de guardar el pedido. */
     private List<InventarioServicio.ExtraInsumo> leerExtrasComoLista(Map<String, String> allParams) {
-        List<InventarioServicio.ExtraInsumo> lista = new java.util.ArrayList<>();
+        List<InventarioServicio.ExtraInsumo> lista = new ArrayList<>();
         int i = 0;
         while (allParams.containsKey("extraCantidad[" + i + "]")) {
             String cantidadStr = allParams.getOrDefault("extraCantidad[" + i + "]", "").trim();
@@ -722,4 +786,4 @@ public class PedidoControlador {
         model.addAttribute("hasta", hasta != null ? hasta : "");
         return "reporte_materiales";
     }
-}               
+}

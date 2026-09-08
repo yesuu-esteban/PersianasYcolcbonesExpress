@@ -6,29 +6,40 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         .table-small { font-size: 0.85rem; }
-        .ficha-box { 
-            background-color: #f8f9fa; 
-            border-left: 4px solid #343a40; 
-            padding: 10px; 
-            min-width: 190px; 
+        .ficha-box {
+            background-color: #f8f9fa;
+            border-left: 4px solid #343a40;
+            padding: 10px;
+            min-width: 190px;
             display: block;
         }
-        .cliente-group-border { border-top: 4px solid #343a40 !important; }
         .badge-sistema { font-size: 0.75rem; }
-        .nav-pills .nav-link {
-            color: #343a40;
-            background-color: #e9ecef;
-            margin-right: 6px;
-        }
-        .nav-pills .nav-link.active {
-            background-color: #343a40;
-            color: #fff;
-        }
-        .nav-pills .nav-link .badge {
-            font-weight: 700;
-        }
-        /* Tela real: resalta sutilmente cuando viene del historial */
+        .nav-pills .nav-link { color: #343a40; background-color: #e9ecef; margin-right: 6px; }
+        .nav-pills .nav-link.active { background-color: #343a40; color: #fff; }
+        .nav-pills .nav-link .badge { font-weight: 700; }
         .tela-real { color: #0a5c30; font-style: italic; }
+
+        /* ── Filtros ── */
+        .filtros-bar {
+            background: #fff; border: 1px solid #dee2e6; border-radius: 8px;
+            padding: 14px 18px; margin-bottom: 18px;
+            display: flex; gap: 14px; align-items: end; flex-wrap: wrap;
+        }
+        .filtros-bar label { font-size: 0.78rem; font-weight: 600; color: #495057; display: block; margin-bottom: 3px; }
+
+        /* ── Grupo por distribuidor (acordeón) ── */
+        .grupo-cliente { border: 1px solid #dee2e6; border-radius: 6px; margin-bottom: 14px; overflow: hidden; background: #fff; }
+        .grupo-cliente-header {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 10px 16px; background: #343a40; color: #fff; cursor: pointer; user-select: none;
+        }
+        .grupo-cliente-header .chevron { transition: transform 0.2s ease; margin-right: 8px; }
+        .grupo-cliente-header.abierto .chevron { transform: rotate(90deg); }
+        .grupo-cliente-body { max-height: 0; overflow: hidden; transition: max-height 0.25s ease; }
+        .grupo-cliente-body.abierto { max-height: 6000px; }
+
+        /* ── Paginación ── */
+        .paginacion-wrap { display: flex; justify-content: center; align-items: center; gap: 6px; margin-top: 18px; flex-wrap: wrap; }
     </style>
 </head>
 <body class="bg-light p-4">
@@ -48,89 +59,103 @@
         <ul class="nav nav-pills mb-3">
             <li class="nav-item">
                 <a class="nav-link" th:classappend="${estadoActivo == 'Todos'} ? 'active'"
-                   th:href="@{/taller/pedidos(estado='Todos')}">
+                   th:href="@{/taller/pedidos(estado='Todos', desde=${desde}, hasta=${hasta}, anio=${anio})}">
                     Todos <span class="badge bg-light text-dark ms-1" th:text="${totalTodos}"></span>
                 </a>
             </li>
             <li class="nav-item">
                 <a class="nav-link" th:classappend="${estadoActivo == 'Pendiente'} ? 'active'"
-                   th:href="@{/taller/pedidos(estado='Pendiente')}">
+                   th:href="@{/taller/pedidos(estado='Pendiente', desde=${desde}, hasta=${hasta}, anio=${anio})}">
                     Pendiente <span class="badge bg-light text-dark ms-1" th:text="${totalPendiente}"></span>
                 </a>
             </li>
             <li class="nav-item">
                 <a class="nav-link" th:classappend="${estadoActivo == 'En Proceso'} ? 'active'"
-                   th:href="@{/taller/pedidos(estado='En Proceso')}">
+                   th:href="@{/taller/pedidos(estado='En Proceso', desde=${desde}, hasta=${hasta}, anio=${anio})}">
                     En Proceso <span class="badge bg-light text-dark ms-1" th:text="${totalEnProceso}"></span>
                 </a>
             </li>
             <li class="nav-item">
                 <a class="nav-link" th:classappend="${estadoActivo == 'Listo para Ensamblar'} ? 'active'"
-                   th:href="@{/taller/pedidos(estado='Listo para Ensamblar')}">
+                   th:href="@{/taller/pedidos(estado='Listo para Ensamblar', desde=${desde}, hasta=${hasta}, anio=${anio})}">
                     Listo para Ensamblar <span class="badge bg-light text-dark ms-1" th:text="${totalListoEnsamblar}"></span>
                 </a>
             </li>
             <li class="nav-item">
                 <a class="nav-link" th:classappend="${estadoActivo == 'Listo para Despacho'} ? 'active'"
-                   th:href="@{/taller/pedidos(estado='Listo para Despacho')}">
+                   th:href="@{/taller/pedidos(estado='Listo para Despacho', desde=${desde}, hasta=${hasta}, anio=${anio})}">
                     Listo para Despacho <span class="badge bg-light text-dark ms-1" th:text="${totalListoDespacho}"></span>
                 </a>
             </li>
         </ul>
 
-        <table class="table table-hover shadow-sm bg-white align-middle table-small">
-            <thead class="table-dark">
-                <tr>
-                    <th>Distribuidor</th>
-                    <th>Cliente</th>
-                    <th>Descripción</th>
-                    <th>Sistema</th>
-                    <th>Mando</th>
-                    <th>Medida Final</th>
-                    <th>Ficha Técnica</th>
-                    <th>Creado</th>
-                    <th>Estado</th>
-                    <th>Acciones</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr th:each="p, iterStat : ${pedidos}" 
-                    th:classappend="${iterStat.index > 0 and p.nombreDecorador != pedidos[iterStat.index-1].nombreDecorador} ? 'cliente-group-border' : ''">
-                    
-                    <td class="fw-bold">
-                        <span th:if="${iterStat.index == 0 or p.nombreDecorador != pedidos[iterStat.index-1].nombreDecorador}" 
-                              th:text="${p.nombreDecorador}"></span>
-                    </td>
-                    <td th:text="${p.nombreClienteFinal}"></td>
-                    <td th:text="${p.descripcion}"></td>
-                    
-                    <td class="text-center">
-                        <span class="badge badge-sistema" 
-                              th:classappend="${p.usaCabezal} ? 'bg-success' : 'bg-dark'" 
-                              th:text="${p.tipoSistema}">
-                        </span>
-                    </td>
+        <!-- ───────── Buscador por fecha y año ───────── -->
+        <form method="get" th:action="@{/taller/pedidos}" class="filtros-bar">
+            <input type="hidden" name="estado" th:value="${estadoActivo}">
+            <div>
+                <label>Desde</label>
+                <input type="date" name="desde" th:value="${desde}" class="form-control form-control-sm">
+            </div>
+            <div>
+                <label>Hasta</label>
+                <input type="date" name="hasta" th:value="${hasta}" class="form-control form-control-sm">
+            </div>
+            <div>
+                <label>Año</label>
+                <select name="anio" class="form-select form-select-sm">
+                    <option value="">Todos</option>
+                    <option th:each="a : ${aniosDisponibles}" th:value="${a}" th:text="${a}"
+                            th:selected="${anio != null and anio == a}"></option>
+                </select>
+            </div>
+            <div>
+                <button type="submit" class="btn btn-sm btn-dark">Filtrar</button>
+                <a th:href="@{/taller/pedidos(estado=${estadoActivo})}" class="btn btn-sm btn-outline-secondary">Limpiar</a>
+            </div>
+            <div class="ms-auto text-muted" style="font-size:0.82rem;">
+                <span th:text="${totalFiltrados}"></span> pedido(s) encontrados
+            </div>
+        </form>
 
-                    <td class="text-center">
-                        <span class="badge bg-info text-dark" th:text="${p.ladoControl}"></span>
-                    </td>
-                    
-                    <td><strong th:text="${p.ancho + 'm x ' + p.altura + 'm'}"></strong></td>
-                    
-                    <td>
+        <!-- ───────── Grupos colapsables por distribuidor ───────── -->
+        <div id="gruposPedidos"></div>
+
+        <div th:if="${#lists.isEmpty(pedidos)}" class="alert alert-light border text-center text-muted">
+            No hay pedidos que coincidan con los filtros seleccionados.
+        </div>
+
+        <!-- ── Paginación ── -->
+        <div class="paginacion-wrap" th:if="${totalPaginas > 1}">
+            <a class="btn btn-sm btn-outline-dark" th:if="${paginaActual > 0}"
+               th:href="@{/taller/pedidos(estado=${estadoActivo}, desde=${desde}, hasta=${hasta}, anio=${anio}, pagina=${paginaActual - 1})}">← Anterior</a>
+            <span th:each="i : ${#numbers.sequence(0, totalPaginas - 1)}">
+                <a th:href="@{/taller/pedidos(estado=${estadoActivo}, desde=${desde}, hasta=${hasta}, anio=${anio}, pagina=${i})}"
+                   th:classappend="${i == paginaActual} ? 'btn-dark' : 'btn-outline-dark'"
+                   class="btn btn-sm" th:text="${i + 1}"></a>
+            </span>
+            <a class="btn btn-sm btn-outline-dark" th:if="${paginaActual < totalPaginas - 1}"
+               th:href="@{/taller/pedidos(estado=${estadoActivo}, desde=${desde}, hasta=${hasta}, anio=${anio}, pagina=${paginaActual + 1})}">Siguiente →</a>
+        </div>
+
+        <!-- Datos crudos ocultos: Thymeleaf renderiza el detalle completo aquí, JS los reagrupa por distribuidor -->
+        <table id="datosPedidosRaw" style="display:none;">
+            <tbody>
+                <tr th:each="p : ${pedidos}" th:data-grupo="${p.nombreDecorador}">
+                    <td class="col-cliente" th:text="${p.nombreClienteFinal}"></td>
+                    <td class="col-descripcion" th:text="${p.descripcion}"></td>
+                    <td class="col-sistema" th:text="${p.tipoSistema}" th:data-cabezal="${p.usaCabezal}"></td>
+                    <td class="col-mando" th:text="${p.ladoControl}"></td>
+                    <td class="col-medida" th:text="${p.ancho + 'm x ' + p.altura + 'm'}"></td>
+                    <td class="col-ficha">
                         <div class="ficha-box">
                             <strong>Cant:</strong> <span th:text="${p.cantidad}"></span><br>
                             <strong>Color:</strong> <span th:text="${p.colorTelaDeseado}"></span><br>
                             <strong>Tela:</strong> <span th:text="${#numbers.formatDecimal(p.corteTelaAncho, 1, 3) + ' x ' + #numbers.formatDecimal(p.corteTelaAlto, 1, 3)}"></span>m<br>
-
-                            <!-- ── Rollo/Retazo: muestra el real si existe en historial, si no el teórico ── -->
                             <strong>Rollo:</strong>
                             <span th:if="${telaUsadaPorPedido != null and telaUsadaPorPedido.get(p.id) != null}"
-                                  class="tela-real"
-                                  th:text="${telaUsadaPorPedido.get(p.id)}"></span>
+                                  class="tela-real" th:text="${telaUsadaPorPedido.get(p.id)}"></span>
                             <span th:unless="${telaUsadaPorPedido != null and telaUsadaPorPedido.get(p.id) != null}"
                                   th:text="${p.rolloTela}"></span><br>
-
                             <strong>Tubo (<span th:text="${p.tuboRecomendado}"></span>):</strong> <span th:text="${#numbers.formatDecimal(p.corteTuberia, 1, 3)}"></span>m<br>
                             <th:block th:if="${p.usaCabezal}">
                                 <strong>Cabezal:</strong> <span th:text="${#numbers.formatDecimal(p.medidaCabezal, 1, 3)}"></span>m<br>
@@ -139,49 +164,32 @@
                             <strong>Control:</strong> <span th:text="${p.tipoControl}"></span>
                         </div>
                     </td>
-                    
-                    <td class="text-center">
+                    <td class="col-creado">
                         <small class="text-muted" th:text="${p.fechaCreacionFormateada}"></small>
                         <br>
                         <small class="text-muted fst-italic"
                                th:if="${p.fechaActualizacion != null and p.fechaCreacion != p.fechaActualizacion}"
                                th:text="'Act: ' + ${p.fechaActualizacionFormateada}"></small>
                     </td>
-
-                    <td>
-                        <span class="badge" 
-                              th:classappend="${p.estado == 'Listo para Despacho' ? 'bg-success' : (p.estado == 'En Proceso' ? 'bg-warning text-dark' : 'bg-secondary')}"
-                              th:text="${p.estado}">
-                        </span>
-                    </td>
-                    
-                    <td>
-                        <form th:action="@{/taller/actualizar/{id}/tela(id=${p.id})}" method="post" class="d-inline">
-                            <input type="hidden" name="estadoFiltro" th:value="${estadoActivo}">
-                            <button type="submit" th:classappend="${p.telaCortada} ? 'btn-info' : 'btn-outline-info'" class="btn btn-sm">Tela</button>
-                        </form>
-                        <form th:action="@{/taller/actualizar/{id}/perfileria(id=${p.id})}" method="post" class="d-inline">
-                            <input type="hidden" name="estadoFiltro" th:value="${estadoActivo}">
-                            <button type="submit" th:classappend="${p.perfileriaCortada} ? 'btn-warning' : 'btn-outline-warning'" class="btn btn-sm">Perfiles</button>
-                        </form>
-                        <form th:action="@{/taller/actualizar/{id}/ensamblado(id=${p.id})}" method="post" class="d-inline">
-                            <input type="hidden" name="estadoFiltro" th:value="${estadoActivo}">
-                            <button type="submit" th:classappend="${p.ensamblado} ? 'btn-success' : 'btn-outline-success'" class="btn btn-sm">Ensamblado</button>
-                        </form>
-                        <a th:href="@{/taller/imprimir/{id}(id=${p.id})}" target="_blank" class="btn btn-sm btn-dark ms-2">🖨️</a>
-                        <a th:href="@{/taller/editar/{id}(id=${p.id})}" class="btn btn-sm btn-outline-primary ms-1">✏️</a>
-                        <button type="button" class="btn btn-sm btn-outline-danger ms-1"
-                                data-bs-toggle="modal"
-                                data-bs-target="#modalEliminar"
-                                th:attr="data-id=${p.id}, data-desc=${p.nombreClienteFinal + ' - ' + p.descripcion}">🗑️</button>
+                    <td class="col-estado" th:text="${p.estado}"></td>
+                    <td class="col-acciones"
+                        th:data-id="${p.id}"
+                        th:data-cliente="${p.nombreClienteFinal}"
+                        th:data-descripcion="${p.descripcion}"
+                        th:data-tela-cortada="${p.telaCortada}"
+                        th:data-perfileria-cortada="${p.perfileriaCortada}"
+                        th:data-ensamblado="${p.ensamblado}"
+                        th:data-url-tela="@{/taller/actualizar/{id}/tela(id=${p.id})}"
+                        th:data-url-perfileria="@{/taller/actualizar/{id}/perfileria(id=${p.id})}"
+                        th:data-url-ensamblado="@{/taller/actualizar/{id}/ensamblado(id=${p.id})}"
+                        th:data-url-imprimir="@{/taller/imprimir/{id}(id=${p.id})}"
+                        th:data-url-editar="@{/taller/editar/{id}(id=${p.id})}"
+                        th:data-url-eliminar="@{/taller/eliminar/{id}(id=${p.id})}"
+                        th:data-estado-filtro="${estadoActivo}">
                     </td>
                 </tr>
             </tbody>
         </table>
-
-        <div th:if="${#lists.isEmpty(pedidos)}" class="alert alert-light border text-center text-muted">
-            No hay pedidos en esta categoría.
-        </div>
     </div>
 
     <!-- Modal de confirmación para eliminar -->
@@ -208,14 +216,112 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        const modalEliminar = document.getElementById('modalEliminar');
-        modalEliminar.addEventListener('show.bs.modal', function (event) {
-            const boton = event.relatedTarget;
-            const id = boton.getAttribute('data-id');
-            const desc = boton.getAttribute('data-desc');
-            document.getElementById('modalEliminarDesc').textContent = desc;
-            document.getElementById('formEliminar').action = '/taller/eliminar/' + id;
-        });
+        function escapeHtml(str) {
+            return (str ?? '').toString()
+                .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        }
+
+        (function construirGrupos() {
+            const filas = Array.from(document.querySelectorAll('#datosPedidosRaw tbody tr'));
+            const contenedor = document.getElementById('gruposPedidos');
+            if (!contenedor || filas.length === 0) return;
+
+            // Agrupa manteniendo el orden en que llegaron (ya vienen ordenados por distribuidor desde el backend)
+            const grupos = [];
+            const indicePorGrupo = {};
+            filas.forEach(tr => {
+                const nombreGrupo = tr.dataset.grupo || 'Sin distribuidor';
+                if (!(nombreGrupo in indicePorGrupo)) {
+                    indicePorGrupo[nombreGrupo] = grupos.length;
+                    grupos.push({ nombre: nombreGrupo, filas: [] });
+                }
+                grupos[indicePorGrupo[nombreGrupo]].filas.push(tr);
+            });
+
+            grupos.forEach((grupo, idx) => {
+                const div = document.createElement('div');
+                div.className = 'grupo-cliente';
+
+                let filasHtml = '';
+                grupo.filas.forEach(tr => {
+                    const acc = tr.querySelector('.col-acciones');
+                    const sistemaTd = tr.querySelector('.col-sistema');
+                    const esCabezal = sistemaTd.dataset.cabezal === 'true';
+                    const estadoTexto = tr.querySelector('.col-estado').textContent;
+                    const badgeEstadoClase = estadoTexto === 'Listo para Despacho' ? 'bg-success'
+                        : (estadoTexto === 'En Proceso' ? 'bg-warning text-dark' : 'bg-secondary');
+
+                    filasHtml += `
+                        <tr>
+                            <td>${tr.querySelector('.col-cliente').innerHTML}</td>
+                            <td>${tr.querySelector('.col-descripcion').innerHTML}</td>
+                            <td class="text-center">
+                                <span class="badge badge-sistema ${esCabezal ? 'bg-success' : 'bg-dark'}">${escapeHtml(sistemaTd.textContent)}</span>
+                            </td>
+                            <td class="text-center"><span class="badge bg-info text-dark">${tr.querySelector('.col-mando').innerHTML}</span></td>
+                            <td><strong>${tr.querySelector('.col-medida').innerHTML}</strong></td>
+                            <td>${tr.querySelector('.col-ficha').innerHTML}</td>
+                            <td class="text-center">${tr.querySelector('.col-creado').innerHTML}</td>
+                            <td><span class="badge ${badgeEstadoClase}">${escapeHtml(estadoTexto)}</span></td>
+                            <td>
+                                <form action="${escapeHtml(acc.dataset.urlTela)}" method="post" class="d-inline">
+                                    <input type="hidden" name="estadoFiltro" value="${escapeHtml(acc.dataset.estadoFiltro)}">
+                                    <button type="submit" class="btn btn-sm ${acc.dataset.telaCortada === 'true' ? 'btn-info' : 'btn-outline-info'}">Tela</button>
+                                </form>
+                                <form action="${escapeHtml(acc.dataset.urlPerfileria)}" method="post" class="d-inline">
+                                    <input type="hidden" name="estadoFiltro" value="${escapeHtml(acc.dataset.estadoFiltro)}">
+                                    <button type="submit" class="btn btn-sm ${acc.dataset.perfileriaCortada === 'true' ? 'btn-warning' : 'btn-outline-warning'}">Perfiles</button>
+                                </form>
+                                <form action="${escapeHtml(acc.dataset.urlEnsamblado)}" method="post" class="d-inline">
+                                    <input type="hidden" name="estadoFiltro" value="${escapeHtml(acc.dataset.estadoFiltro)}">
+                                    <button type="submit" class="btn btn-sm ${acc.dataset.ensamblado === 'true' ? 'btn-success' : 'btn-outline-success'}">Ensamblado</button>
+                                </form>
+                                <a href="${escapeHtml(acc.dataset.urlImprimir)}" target="_blank" class="btn btn-sm btn-dark ms-2">🖨️</a>
+                                <a href="${escapeHtml(acc.dataset.urlEditar)}" class="btn btn-sm btn-outline-primary ms-1">✏️</a>
+                                <button type="button" class="btn btn-sm btn-outline-danger ms-1 btn-eliminar-pedido"
+                                        data-id="${escapeHtml(acc.dataset.id)}"
+                                        data-desc="${escapeHtml(acc.dataset.cliente + ' - ' + acc.dataset.descripcion)}"
+                                        data-url="${escapeHtml(acc.dataset.urlEliminar)}">🗑️</button>
+                            </td>
+                        </tr>`;
+                });
+
+                div.innerHTML = `
+                    <div class="grupo-cliente-header abierto" role="button">
+                        <span><span class="chevron">▶</span><strong>${escapeHtml(grupo.nombre)}</strong></span>
+                        <span class="badge bg-light text-dark">${grupo.filas.length} pedido(s)</span>
+                    </div>
+                    <div class="grupo-cliente-body abierto">
+                        <table class="table table-hover table-small mb-0 align-middle">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>Cliente</th><th>Descripción</th><th>Sistema</th><th>Mando</th>
+                                    <th>Medida Final</th><th>Ficha Técnica</th><th>Creado</th><th>Estado</th><th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>${filasHtml}</tbody>
+                        </table>
+                    </div>`;
+
+                const header = div.querySelector('.grupo-cliente-header');
+                const body = div.querySelector('.grupo-cliente-body');
+                header.addEventListener('click', () => {
+                    header.classList.toggle('abierto');
+                    body.classList.toggle('abierto');
+                });
+
+                contenedor.appendChild(div);
+            });
+
+            // Botón eliminar (delegado, ya que las filas se generaron dinámicamente)
+            contenedor.addEventListener('click', (e) => {
+                const btn = e.target.closest('.btn-eliminar-pedido');
+                if (!btn) return;
+                document.getElementById('modalEliminarDesc').textContent = btn.dataset.desc;
+                document.getElementById('formEliminar').action = btn.dataset.url;
+                new bootstrap.Modal(document.getElementById('modalEliminar')).show();
+            });
+        })();
     </script>
     <script src="/js/token-nav.js"></script>
 </body>
