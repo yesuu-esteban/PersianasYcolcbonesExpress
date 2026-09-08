@@ -53,17 +53,15 @@ public class PedidoControlador {
             );
             if (todos == null) todos = new ArrayList<>();
 
-            long totalTodos          = todos.size();
-            long totalPendiente      = todos.stream().filter(p -> "Pendiente".equals(p.getEstado())).count();
-            long totalEnProceso      = todos.stream().filter(p -> "En Proceso".equals(p.getEstado())).count();
-            long totalListoEnsamblar = todos.stream().filter(p -> "Listo para Ensamblar".equals(p.getEstado())).count();
-            long totalListoDespacho  = todos.stream().filter(p -> "Listo para Despacho".equals(p.getEstado())).count();
+            long totalTodos      = todos.size();
+            long totalPendiente  = todos.stream().filter(p -> "Pendiente".equals(p.getEstado())).count();
+            long totalFinalizado = todos.stream().filter(p -> "Finalizado".equals(p.getEstado())).count();
+            long totalDespachado = todos.stream().filter(p -> "Despachado".equals(p.getEstado())).count();
 
-            model.addAttribute("totalTodos",          totalTodos);
-            model.addAttribute("totalPendiente",      totalPendiente);
-            model.addAttribute("totalEnProceso",      totalEnProceso);
-            model.addAttribute("totalListoEnsamblar", totalListoEnsamblar);
-            model.addAttribute("totalListoDespacho",  totalListoDespacho);
+            model.addAttribute("totalTodos",      totalTodos);
+            model.addAttribute("totalPendiente",  totalPendiente);
+            model.addAttribute("totalFinalizado", totalFinalizado);
+            model.addAttribute("totalDespachado", totalDespachado);
 
             // ── Años disponibles para el filtro (sobre TODOS los pedidos, sin aplicar los demás filtros) ──
             TreeSet<Integer> aniosDisponibles = new TreeSet<>(Collections.reverseOrder());
@@ -314,10 +312,9 @@ public class PedidoControlador {
         pedido.setUsaCabezal(false);
         pedido.setUsaPitilloPesa(false);
         pedido.setUsaConectorTope(false);
-        pedido.calcularEstadoGeneral(); // deja estado = "Vendido"
-        pedido.setTelaCortada(true);
-        pedido.setPerfileriaCortada(true);
         pedido.setEnsamblado(true);
+        pedido.setDespachado(true);
+        pedido.calcularEstadoGeneral(); // deja estado = "Vendido"
 
         List<InventarioServicio.ItemTelaVenta> itemsTela = leerItemsTelaVenta(allParams);
         List<InventarioServicio.ExtraInsumo> extras = leerExtrasComoLista(allParams);
@@ -698,13 +695,19 @@ public class PedidoControlador {
             RedirectAttributes redirectAttributes) {
         Pedido pedido = pedidoRepository.findById(id).orElseThrow();
         switch (accion.toLowerCase()) {
-            case "tela":      pedido.setTelaCortada(!pedido.getTelaCortada()); break;
-            case "perfileria": pedido.setPerfileriaCortada(!pedido.getPerfileriaCortada()); break;
             case "ensamblado":
-                if (Boolean.TRUE.equals(pedido.getTelaCortada()) && Boolean.TRUE.equals(pedido.getPerfileriaCortada())) {
-                    pedido.setEnsamblado(!pedido.getEnsamblado());
+                pedido.setEnsamblado(!pedido.getEnsamblado());
+                // Si se desmarca "ensamblado", el pedido ya no puede seguir "despachado"
+                if (!Boolean.TRUE.equals(pedido.getEnsamblado())) {
+                    pedido.setDespachado(false);
+                }
+                break;
+            case "despachado":
+                if (Boolean.TRUE.equals(pedido.getEnsamblado())) {
+                    pedido.setDespachado(!pedido.getDespachado());
                 } else {
-                    redirectAttributes.addFlashAttribute("error", "¡Error! Primero debes cortar la tela y los perfiles.");
+                    redirectAttributes.addFlashAttribute("error",
+                            "¡Error! Primero debes finalizar (ensamblar) el pedido.");
                 }
                 break;
         }

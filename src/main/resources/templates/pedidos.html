@@ -70,21 +70,15 @@
                 </a>
             </li>
             <li class="nav-item">
-                <a class="nav-link" th:classappend="${estadoActivo == 'En Proceso'} ? 'active'"
-                   th:href="@{/taller/pedidos(estado='En Proceso', desde=${desde}, hasta=${hasta}, anio=${anio})}">
-                    En Proceso <span class="badge bg-light text-dark ms-1" th:text="${totalEnProceso}"></span>
+                <a class="nav-link" th:classappend="${estadoActivo == 'Finalizado'} ? 'active'"
+                   th:href="@{/taller/pedidos(estado='Finalizado', desde=${desde}, hasta=${hasta}, anio=${anio})}">
+                    Finalizado <span class="badge bg-light text-dark ms-1" th:text="${totalFinalizado}"></span>
                 </a>
             </li>
             <li class="nav-item">
-                <a class="nav-link" th:classappend="${estadoActivo == 'Listo para Ensamblar'} ? 'active'"
-                   th:href="@{/taller/pedidos(estado='Listo para Ensamblar', desde=${desde}, hasta=${hasta}, anio=${anio})}">
-                    Listo para Ensamblar <span class="badge bg-light text-dark ms-1" th:text="${totalListoEnsamblar}"></span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" th:classappend="${estadoActivo == 'Listo para Despacho'} ? 'active'"
-                   th:href="@{/taller/pedidos(estado='Listo para Despacho', desde=${desde}, hasta=${hasta}, anio=${anio})}">
-                    Listo para Despacho <span class="badge bg-light text-dark ms-1" th:text="${totalListoDespacho}"></span>
+                <a class="nav-link" th:classappend="${estadoActivo == 'Despachado'} ? 'active'"
+                   th:href="@{/taller/pedidos(estado='Despachado', desde=${desde}, hasta=${hasta}, anio=${anio})}">
+                    Despachado <span class="badge bg-light text-dark ms-1" th:text="${totalDespachado}"></span>
                 </a>
             </li>
         </ul>
@@ -176,12 +170,10 @@
                         th:data-id="${p.id}"
                         th:data-cliente="${p.nombreClienteFinal}"
                         th:data-descripcion="${p.descripcion}"
-                        th:data-tela-cortada="${p.telaCortada}"
-                        th:data-perfileria-cortada="${p.perfileriaCortada}"
                         th:data-ensamblado="${p.ensamblado}"
-                        th:data-url-tela="@{/taller/actualizar/{id}/tela(id=${p.id})}"
-                        th:data-url-perfileria="@{/taller/actualizar/{id}/perfileria(id=${p.id})}"
+                        th:data-despachado="${p.despachado}"
                         th:data-url-ensamblado="@{/taller/actualizar/{id}/ensamblado(id=${p.id})}"
+                        th:data-url-despachado="@{/taller/actualizar/{id}/despachado(id=${p.id})}"
                         th:data-url-imprimir="@{/taller/imprimir/{id}(id=${p.id})}"
                         th:data-url-editar="@{/taller/editar/{id}(id=${p.id})}"
                         th:data-url-eliminar="@{/taller/eliminar/{id}(id=${p.id})}"
@@ -248,8 +240,9 @@
                     const sistemaTd = tr.querySelector('.col-sistema');
                     const esCabezal = sistemaTd.dataset.cabezal === 'true';
                     const estadoTexto = tr.querySelector('.col-estado').textContent;
-                    const badgeEstadoClase = estadoTexto === 'Listo para Despacho' ? 'bg-success'
-                        : (estadoTexto === 'En Proceso' ? 'bg-warning text-dark' : 'bg-secondary');
+                    const badgeEstadoClase = estadoTexto === 'Despachado' ? 'bg-success'
+                        : (estadoTexto === 'Finalizado' ? 'bg-info text-dark' : 'bg-secondary');
+                    const yaEnsamblado = acc.dataset.ensamblado === 'true';
 
                     filasHtml += `
                         <tr>
@@ -264,17 +257,14 @@
                             <td class="text-center">${tr.querySelector('.col-creado').innerHTML}</td>
                             <td><span class="badge ${badgeEstadoClase}">${escapeHtml(estadoTexto)}</span></td>
                             <td>
-                                <form action="${escapeHtml(acc.dataset.urlTela)}" method="post" class="d-inline">
-                                    <input type="hidden" name="estadoFiltro" value="${escapeHtml(acc.dataset.estadoFiltro)}">
-                                    <button type="submit" class="btn btn-sm ${acc.dataset.telaCortada === 'true' ? 'btn-info' : 'btn-outline-info'}">Tela</button>
-                                </form>
-                                <form action="${escapeHtml(acc.dataset.urlPerfileria)}" method="post" class="d-inline">
-                                    <input type="hidden" name="estadoFiltro" value="${escapeHtml(acc.dataset.estadoFiltro)}">
-                                    <button type="submit" class="btn btn-sm ${acc.dataset.perfileriaCortada === 'true' ? 'btn-warning' : 'btn-outline-warning'}">Perfiles</button>
-                                </form>
                                 <form action="${escapeHtml(acc.dataset.urlEnsamblado)}" method="post" class="d-inline">
                                     <input type="hidden" name="estadoFiltro" value="${escapeHtml(acc.dataset.estadoFiltro)}">
-                                    <button type="submit" class="btn btn-sm ${acc.dataset.ensamblado === 'true' ? 'btn-success' : 'btn-outline-success'}">Ensamblado</button>
+                                    <button type="submit" class="btn btn-sm ${yaEnsamblado ? 'btn-success' : 'btn-outline-success'}">Finalizar</button>
+                                </form>
+                                <form action="${escapeHtml(acc.dataset.urlDespachado)}" method="post" class="d-inline">
+                                    <input type="hidden" name="estadoFiltro" value="${escapeHtml(acc.dataset.estadoFiltro)}">
+                                    <button type="submit" class="btn btn-sm ${acc.dataset.despachado === 'true' ? 'btn-primary' : 'btn-outline-primary'}"
+                                            ${!yaEnsamblado ? 'disabled title="Primero debes finalizar el pedido"' : ''}>Despachar</button>
                                 </form>
                                 <a href="${escapeHtml(acc.dataset.urlImprimir)}" target="_blank" class="btn btn-sm btn-dark ms-2">🖨️</a>
                                 <a href="${escapeHtml(acc.dataset.urlEditar)}" class="btn btn-sm btn-outline-primary ms-1">✏️</a>

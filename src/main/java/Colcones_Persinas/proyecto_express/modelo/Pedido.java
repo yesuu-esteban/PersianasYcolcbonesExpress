@@ -58,14 +58,25 @@ public class Pedido {
     @Column(name = "usa_cabezal", nullable = false)
     private Boolean usaCabezal = false;
 
-    @Column(nullable = false)
-    private Boolean telaCortada = false;
-
-    @Column(nullable = false)
-    private Boolean perfileriaCortada = false;
-
+    /**
+     * Marca que el pedido ya fue ensamblado en el taller.
+     * Es lo que hace pasar el estado de "Pendiente" a "Finalizado".
+     */
     @Column(nullable = false)
     private Boolean ensamblado = false;
+
+    /**
+     * Marca que el pedido ya salió despachado de la fábrica.
+     * Solo tiene sentido activarlo si el pedido ya está ensamblado.
+     * Es lo que hace pasar el estado de "Finalizado" a "Despachado".
+     *
+     * IMPORTANTE — columnDefinition con DEFAULT:
+     * igual que con "tipo", si esta columna se crea con un ALTER TABLE
+     * automático sobre una tabla que ya tiene filas, necesita un valor por
+     * defecto a nivel de base de datos para no romper el ALTER.
+     */
+    @Column(name = "despachado", nullable = false, columnDefinition = "BOOLEAN DEFAULT false")
+    private Boolean despachado = false;
 
     @Column(name = "usa_pitillo_pesa", nullable = false)
     private Boolean usaPitilloPesa = true;
@@ -269,20 +280,23 @@ public class Pedido {
                             + " | " + getRolloTela();
     }
 
+    /**
+     * Estados del pedido:
+     *   Pendiente  → recién creado, todavía no se ha ensamblado.
+     *   Finalizado → ya se ensambló en el taller.
+     *   Despachado → ya salió de la fábrica.
+     * (Las ventas directas no pasan por este flujo, quedan como "Vendido").
+     */
     public void calcularEstadoGeneral() {
-        // Las ventas directas se consideran completadas de inmediato:
-        // no pasan por el flujo de tela/perfilería/ensamblado.
         if (isVentaDirecta()) {
             this.estado = "Vendido";
             return;
         }
 
-        if (Boolean.TRUE.equals(ensamblado)) {
-            this.estado = "Listo para Despacho";
-        } else if (Boolean.TRUE.equals(telaCortada) && Boolean.TRUE.equals(perfileriaCortada)) {
-            this.estado = "Listo para Ensamblar";
-        } else if (Boolean.TRUE.equals(telaCortada) || Boolean.TRUE.equals(perfileriaCortada)) {
-            this.estado = "En Proceso";
+        if (Boolean.TRUE.equals(despachado)) {
+            this.estado = "Despachado";
+        } else if (Boolean.TRUE.equals(ensamblado)) {
+            this.estado = "Finalizado";
         } else {
             this.estado = "Pendiente";
         }
