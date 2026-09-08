@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Recibo #<span th:text="${recibo.numero}"></span></title>
+    <style>
+        body { font-family: Arial, sans-serif; background:#f4f4f9; padding:20px; }
+        .recibo-caja { background:white; width:700px; padding:20px; border:2px solid #000; font-size:12px; margin:0 auto; color:#000; }
+        .recibo-header { display:flex; justify-content:space-between; align-items:flex-start; border-bottom:2px solid #000; padding-bottom:10px; margin-bottom:10px; }
+        .logo-titulo h2 { margin:0; font-size:18px; color:#1b4d3e; }
+        .slogan { margin:2px 0 5px; font-size:10px; font-weight:bold; }
+        .direcciones { font-size:10px; line-height:1.3; }
+        .cuadro-recibo { border:2px solid #000; text-align:center; width:140px; background:#ddd; padding:5px; font-weight:bold; font-size:12px; }
+        .cuadro-recibo .numero-recibo { margin:4px 0 0; font-size:20px; color:#b30000; }
+        .badge-origen { display:inline-block; font-size:10px; padding:2px 6px; border-radius:4px; margin-top:4px; color:#fff; }
+        .badge-origen.tienda { background:#0dcaf0; color:#03171c; }
+        .badge-origen.fabrica { background:#343a40; }
+        table { width:100%; border-collapse:collapse; border:1px solid #000; margin-bottom:5px; }
+        td, th { border:1px solid #000; padding:5px; font-size:11px; }
+        th { background:#333; color:#fff; text-align:center; }
+        .numerica { text-align:right; }
+        .etiqueta-total { font-weight:bold; text-align:right; background:#f2f2f2; width:25%; }
+        .valor-total { width:25%; text-align:right; font-weight:bold; }
+        .celda-firma { height:60px; vertical-align:bottom; font-size:10px; }
+        .pie-legal { font-size:9px; text-align:center; margin-top:5px; font-style:italic; }
+        .botones-accion { text-align:center; margin-top:14px; }
+        @media print { body { background:#fff; } .no-print { display:none !important; } .recibo-caja { border:none; } }
+    </style>
+</head>
+<body>
+    <div class="recibo-caja">
+        <div class="recibo-header">
+            <div class="logo-titulo">
+                <h2>PERSIANAS Y COLCHONES EXPRESS</h2>
+                <p class="slogan">SOLUCIONES RÁPIDAS, CALIDAD ÚNICA</p>
+                <p class="direcciones">
+                    📍 Sede Granada: Calle 8 #23-16 Local 6<br>
+                    📍 Sede Av. Bolívar: Cra 14 #12N-05<br>
+                    Celular: 3041354963 - 3122065950 - 3148660215
+                </p>
+            </div>
+            <div class="cuadro-recibo">
+                <p class="titulo-caja">RECIBO DE CAJA</p>
+                <p class="numero-recibo" th:text="'Nº ' + ${recibo.numero}"></p>
+                <span class="badge-origen" th:classappend="${recibo.origen == 'FABRICA'} ? 'fabrica' : 'tienda'" th:text="${recibo.origen}"></span>
+            </div>
+        </div>
+
+        <table>
+            <tr>
+                <td colspan="2"><strong>CLIENTE:</strong> <span th:text="${recibo.cliente}"></span></td>
+                <td colspan="2"><strong>FECHA:</strong> <span th:text="${recibo.fechaFormateada}"></span></td>
+            </tr>
+            <tr>
+                <td colspan="2"><strong>DIRECCIÓN:</strong> <span th:text="${recibo.direccion}"></span></td>
+                <td><strong>CÉDULA:</strong> <span th:text="${recibo.cedula}"></span></td>
+                <td><strong>TELÉFONO:</strong> <span th:text="${recibo.telefono}"></span></td>
+            </tr>
+            <tr>
+                <td colspan="2"><strong>ABONO:</strong> $<span th:text="${#numbers.formatDecimal(recibo.abono, 1, 'POINT', 2, 'COMMA')}"></span></td>
+                <td colspan="2"><strong>SALDO:</strong> $<span th:text="${#numbers.formatDecimal(recibo.saldo, 1, 'POINT', 2, 'COMMA')}"></span></td>
+            </tr>
+        </table>
+
+        <table>
+            <thead><tr><th>CANT.</th><th>DESCRIPCIÓN</th><th>VR. UNIT.</th><th>VR. TOTAL</th></tr></thead>
+            <tbody>
+                <tr th:each="it : ${recibo.items}">
+                    <td class="numerica" th:text="${it.cantidad}"></td>
+                    <td th:text="${it.nombre}"></td>
+                    <td class="numerica" th:text="${#numbers.formatDecimal(it.precio, 1, 'POINT', 2, 'COMMA')}"></td>
+                    <td class="numerica" th:text="${#numbers.formatDecimal(it.totalLinea, 1, 'POINT', 2, 'COMMA')}"></td>
+                </tr>
+            </tbody>
+        </table>
+
+        <table>
+            <tr>
+                <td class="celda-firma" rowspan="2"><span>FIRMA Y SELLO</span></td>
+                <td class="etiqueta-total">SUBTOTAL</td>
+                <td class="valor-total" th:text="${#numbers.formatDecimal(recibo.total, 1, 'POINT', 2, 'COMMA')}"></td>
+            </tr>
+            <tr>
+                <td class="etiqueta-total">TOTAL</td>
+                <td class="valor-total" th:text="${#numbers.formatDecimal(recibo.total, 1, 'POINT', 2, 'COMMA')}"></td>
+            </tr>
+        </table>
+
+        <div class="pie-legal">
+            <p>Este documento se asimila a una letra de cambio para todos los efectos legales. Artículo N° 774 del Código de Comercio.</p>
+        </div>
+
+        <div class="botones-accion no-print">
+            <button type="button" onclick="window.print()" style="background:#007bff;color:#fff;padding:8px 15px;border:none;cursor:pointer;">Imprimir</button>
+            <a href="/recibos" style="background:#6c757d;color:#fff;padding:8px 15px;text-decoration:none;">← Volver al listado</a>
+        </div>
+    </div>
+</body>
+</html>

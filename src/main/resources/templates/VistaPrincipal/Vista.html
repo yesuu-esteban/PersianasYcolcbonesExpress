@@ -335,6 +335,24 @@
                 </div>
             </div>
 
+            <!-- RECIBOS: activa para tienda, tienda_admin, fabrica y admin -->
+            <a class="module-card" th:href="@{/recibos}" sec:authorize="hasAnyRole('TIENDA','TIENDA_ADMIN','FABRICA','ADMIN')">
+                <div class="module-content">
+                    <span class="module-category">Módulo de Caja</span>
+                    <h2>Recibos</h2>
+                    <p>Genera recibos de caja y consulta el historial, tanto de tienda como de fábrica.</p>
+                    <span class="module-action">Acceder al módulo &rarr;</span>
+                </div>
+            </a>
+            <div class="module-card module-card--locked" sec:authorize="!hasAnyRole('TIENDA','TIENDA_ADMIN','FABRICA','ADMIN')">
+                <div class="module-content">
+                    <span class="module-category">Módulo de Caja</span>
+                    <h2>Recibos</h2>
+                    <p>Genera recibos de caja y consulta el historial, tanto de tienda como de fábrica.</p>
+                    <span class="module-action module-action--locked">Sin acceso</span>
+                </div>
+            </div>
+
             <!-- FACTURACIÓN: bloqueada para todos por ahora -->
             <div class="module-card module-card--locked">
                 <div class="module-content">

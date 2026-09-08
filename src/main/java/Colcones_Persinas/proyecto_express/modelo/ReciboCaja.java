@@ -1,0 +1,70 @@
+package Colcones_Persinas.proyecto_express.modelo;
+
+import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.List;
+
+@Entity
+@Table(name = "recibo_caja")
+@Getter 
+@Setter
+public class ReciboCaja {
+
+    /** El primer recibo generado saldrá como NUMERO_INICIAL + 1 (igual que el consecutivo viejo). */
+    private static final int NUMERO_INICIAL = 431;
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private int id;
+
+    /** "TIENDA" o "FABRICA": desde qué módulo se generó el recibo. */
+    @Column(nullable = false)
+    private String origen = "TIENDA";
+
+    @Column(name = "creado_por")
+    private String creadoPor = "";
+
+    private String cliente = "";
+    private String direccion = "";
+    private String cedula = "";
+    private String telefono = "";
+
+    @Column(name = "fecha")
+    private LocalDateTime fecha;
+
+    private BigDecimal total = BigDecimal.ZERO;
+    private BigDecimal abono = BigDecimal.ZERO;
+    private BigDecimal saldo = BigDecimal.ZERO;
+
+    @OneToMany(mappedBy = "recibo", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<ReciboCajaItem> items = new ArrayList<>();
+
+    @PrePersist
+    protected void alCrear() {
+        if (this.fecha == null) this.fecha = LocalDateTime.now();
+    }
+
+    public void agregarItem(ReciboCajaItem item) {
+        items.add(item);
+        item.setRecibo(this);
+    }
+
+    /** Número visible del recibo, calculado a partir del id autoincremental. */
+    @Transient
+    public int getNumero() {
+        return this.id + NUMERO_INICIAL;
+    }
+
+    private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+
+    @Transient
+    public String getFechaFormateada() {
+        return this.fecha != null ? this.fecha.format(FMT) : "";
+    }
+}
