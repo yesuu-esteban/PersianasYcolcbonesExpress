@@ -86,6 +86,7 @@ public class InventarioServicio {
         public String tornilloInfo;
         public String tornilloPerforanteInfo;
         public String acopleInfo;
+        public String terminalInfo;
         public List<String> faltantes = new ArrayList<>();
     }
 
@@ -545,6 +546,14 @@ public class InventarioServicio {
             }
         }
 
+        Insumo terminal = obtenerInsumoPorNombre("Terminal");
+        int stockTerminal = terminal.getStockUnidades() != null ? terminal.getStockUnidades() : 0;
+        if (stockTerminal < pedido.getCantidadTerminal()) {
+            throw new MaterialInsuficienteException(
+                    "No hay suficiente \"Terminal\". Disponible: " + stockTerminal
+                    + " unidad(es), necesario: " + pedido.getCantidadTerminal() + ".");
+        }
+
         if (Boolean.TRUE.equals(pedido.getUsaPitilloPesa())) {
             Insumo pitillo = obtenerInsumoPorNombre("Pitillo");
             if (sel != null && sel.piezaPitilloId != null) {
@@ -732,6 +741,8 @@ public class InventarioServicio {
         if (pedido.getCantidadAcoples() > 0) {
             descontarInsumoPorUnidad(pedido, "Acople", pedido.getCantidadAcoples());
         }
+
+        descontarInsumoPorUnidad(pedido, "Terminal", pedido.getCantidadTerminal());
 
         if (Boolean.TRUE.equals(pedido.getUsaPitilloPesa())) {
             Insumo pitillo = obtenerInsumoPorNombre("Pitillo");
@@ -1051,6 +1062,14 @@ public class InventarioServicio {
                 res.acopleInfo = "Acople ×" + necesario + " · quedarían " + (stock - necesario);
             });
         }
+
+        intentar(res, () -> {
+            Insumo terminal = obtenerInsumoPorNombre("Terminal");
+            int stock = terminal.getStockUnidades() != null ? terminal.getStockUnidades() : 0;
+            int necesario = pedido.getCantidadTerminal();
+            if (stock < necesario) throw new MaterialInsuficienteException("Sin stock suficiente de \"Terminal\".");
+            res.terminalInfo = "Terminal ×" + necesario + " · quedarían " + (stock - necesario);
+        });
 
         if (Boolean.TRUE.equals(pedido.getUsaPitilloPesa())) {
             intentar(res, () -> {

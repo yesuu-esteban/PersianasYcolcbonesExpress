@@ -207,13 +207,24 @@ public class Pedido {
     }
 
     /**
-     * El Control R24 es especial: además de la unidad de control en sí
-     * (que ya se descuenta como cualquier otro control), necesita 2 acoples
-     * adicionales. Para cualquier otro control, esto es 0.
+     * Los acoples dependen SOLO del ancho de corte (>= 2.0m), sin importar
+     * el alto ni qué control termine asignado. Un pedido puede ser muy
+     * ancho pero no tan alto — el tubo se queda en R16, pero el control
+     * igual necesita los acoples grandes por el ancho.
      */
     @Transient
     public int getCantidadAcoples() {
-        return "Control R24".equals(this.tipoControl) ? 2 : 0;
+        return getCorteTelaAncho() >= 2.0 ? 2 : 0;
+    }
+
+    /**
+     * Terminal: acompañante fijo del control. Obligatorio en TODO pedido de
+     * fabricación (blackout/enrollable), sin importar ancho, alto, tubo o
+     * control — siempre 1 unidad.
+     */
+    @Transient
+    public int getCantidadTerminal() {
+        return 1;
     }
 
     /**
@@ -336,9 +347,12 @@ public class Pedido {
         // 2. Tipo de control:
         //    - Tubo R8 → siempre Control R8 A.
         //    - Corte de tela >= 2.00m de ancho Y >= 2.50m de largo → Control R24
-        //      (control especial: viene con soportes más grandes y necesita 2 acoples
-        //      adicionales, ver getCantidadAcoples()).
+        //      (control especial: viene con soportes más grandes).
         //    - Resto → Control R16 o R8 B según ancho, como antes.
+        //    Nota: los ACOPLES ya no dependen de qué control quede asignado
+        //    aquí — se calculan aparte solo con el ancho (ver getCantidadAcoples()),
+        //    porque un pedido muy ancho pero no tan alto se queda en Control R16
+        //    y aun así necesita los acoples grandes por el ancho.
         if ("R8".equalsIgnoreCase(this.tuboRecomendado)) {
             this.tipoControl = "Control R8 A";
         } else if (getCorteTelaAncho() >= 2.0 && getCorteTelaAlto() >= 2.50) {
@@ -379,4 +393,4 @@ public class Pedido {
             this.estado = "Pendiente";
         }
     }
-}   
+}

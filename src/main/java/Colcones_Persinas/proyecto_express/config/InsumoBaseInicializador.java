@@ -26,7 +26,8 @@ public class InsumoBaseInicializador implements CommandLineRunner {
         crearSiNoExiste("Pesa",                  true,  "Pesa inferior, se corta a la misma medida que el tubo.");
         crearSiNoExiste("Control R16",           false, "Control para pedidos con ancho > 1.50 m. Se maneja por unidad.");
         crearSiNoExiste("Control R24",           false, "Control especial para pedidos con corte de tela >= 2.00m ancho y >= 2.50m largo. Soportes más grandes. Se maneja por unidad.");
-        crearSiNoExiste("Acople",                false, "Acople necesario junto con el Control R24 (2 por pedido). Se maneja por unidad.");
+        crearSiNoExiste("Acople",                false, "Acople necesario cuando el ancho de corte es >= 2.00m (2 por pedido), sin importar qué control termine asignado. Se maneja por unidad.");
+        crearSiNoExiste("Terminal",              false, "Terminal acompañante del control. Obligatorio en TODO pedido de fabricación, sin importar ancho, alto o tipo de control/tubo. Se maneja por unidad.");
         crearSiNoExiste("Control R8 A", false, "Control para pedidos con Tubo R8. Se maneja por unidad.");
         crearSiNoExiste("Control R8 B",          false, "Control para pedidos con ancho <= 1.50 m. Se maneja por unidad.");
         crearSiNoExiste("Soporte",               false, "Soporte de instalación. Se usan 2 en todo pedido, con o sin cabezal.");
