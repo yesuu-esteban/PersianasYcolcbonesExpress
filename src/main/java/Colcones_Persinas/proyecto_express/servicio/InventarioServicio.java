@@ -797,6 +797,42 @@ public class InventarioServicio {
     }
 
     // ═══════════════════════════════════════════════════════════════
+    // RIEL DE ONDA SERENA — verificación y descuento de sus 3 cortes
+    // (riel, riel de pines, y cuerda si lleva polea). Los accesorios
+    // (poleas, terminal/control, tapas, bastón) van por el mecanismo
+    // genérico de ExtraInsumo, ya existente, sin cambios.
+    // ═══════════════════════════════════════════════════════════════
+
+    public void verificarRielOndaSerena(Pedido pedido) {
+        Insumo riel = obtenerInsumoPorNombre("Riel Onda Serena");
+        buscarMejorPieza(riel, pedido.getCorteRiel());
+
+        Insumo rielPines = obtenerInsumoPorNombre("Riel de Pines");
+        buscarMejorPieza(rielPines, pedido.getCorteRielPines());
+
+        if (Boolean.TRUE.equals(pedido.getUsaPolea())) {
+            Insumo cuerdaOnda = obtenerInsumoPorNombre("Cuerda Onda Serena");
+            buscarMejorPieza(cuerdaOnda, pedido.getCorteCuerdaOnda());
+        }
+    }
+
+    public void descontarRielOndaSerena(Pedido pedido) {
+        Insumo riel = obtenerInsumoPorNombre("Riel Onda Serena");
+        PiezaInsumo piezaRiel = buscarMejorPieza(riel, pedido.getCorteRiel());
+        descontarInsumoConMedida(pedido, piezaRiel, pedido.getCorteRiel(), false);
+
+        Insumo rielPines = obtenerInsumoPorNombre("Riel de Pines");
+        PiezaInsumo piezaPines = buscarMejorPieza(rielPines, pedido.getCorteRielPines());
+        descontarInsumoConMedida(pedido, piezaPines, pedido.getCorteRielPines(), false);
+
+        if (Boolean.TRUE.equals(pedido.getUsaPolea())) {
+            Insumo cuerdaOnda = obtenerInsumoPorNombre("Cuerda Onda Serena");
+            PiezaInsumo piezaCuerda = buscarMejorPieza(cuerdaOnda, pedido.getCorteCuerdaOnda());
+            descontarInsumoConMedida(pedido, piezaCuerda, pedido.getCorteCuerdaOnda(), false);
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════
     // REVERSIÓN DE MATERIAL (para edición de pedidos)
     // ═══════════════════════════════════════════════════════════════
 

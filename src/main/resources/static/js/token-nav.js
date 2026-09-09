@@ -1,4 +1,6 @@
 (function () {
+    'use strict';
+
     function getToken() {
         return localStorage.getItem('authToken');
     }
@@ -19,6 +21,7 @@
         return url + separador + 'token=' + encodeURIComponent(token);
     }
 
+    // Intercepción de clics en enlaces <a>
     document.addEventListener('click', function (e) {
         const link = e.target.closest('a[href]');
         if (!link) return;
@@ -30,18 +33,20 @@
         window.location.href = agregarTokenAUrl(href);
     });
 
+    // Intercepción de envíos de formularios para inyectar token como input hidden
     document.addEventListener('submit', function (e) {
         const form = e.target;
         if (!(form instanceof HTMLFormElement)) return;
         const token = getToken();
         if (!token) return;
 
-        if (!form.querySelector('input[name="token"]')) {
-            const input = document.createElement('input');
-            input.type = 'hidden';
-            input.name = 'token';
-            input.value = token;
-            form.appendChild(input);
+        let inputToken = form.querySelector('input[name="token"]');
+        if (!inputToken) {
+            inputToken = document.createElement('input');
+            inputToken.type = 'hidden';
+            inputToken.name = 'token';
+            form.appendChild(inputToken);
         }
+        inputToken.value = token;
     }, true);
 })();

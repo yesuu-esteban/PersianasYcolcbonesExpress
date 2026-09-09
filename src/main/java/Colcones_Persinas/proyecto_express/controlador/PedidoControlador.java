@@ -284,13 +284,6 @@ public class PedidoControlador {
     // VENTA DIRECTA
     // ═══════════════════════════════════════════════════════════════
 
-    /**
-     * Guarda una Venta Directa: no pasa por fabricación ni ficha técnica.
-     * Descuenta tela vendida por metros (rollo elegido o automático por color+ancho)
-     * y descuenta insumos del catálogo reutilizando ExtraInsumo/verificarExtras/procesarExtras,
-     * igual que el resto del sistema. Queda registrado en MaterialUsado, por lo que
-     * aparece automáticamente en los reportes de consumo.
-     */
     @PostMapping("/guardar-venta-directa")
     @org.springframework.transaction.annotation.Transactional
     public String guardarVentaDirecta(
@@ -397,10 +390,98 @@ public class PedidoControlador {
         try { return Double.parseDouble(texto); } catch (NumberFormatException e) { return porDefecto; }
     }
 
+    // ═══════════════════════════════════════════════════════════════
+    // RIEL DE ONDA SERENA
+    // ═══════════════════════════════════════════════════════════════
+
+    @PostMapping("/guardar-riel-onda")
+    @org.springframework.transaction.annotation.Transactional
+    public String guardarRielOnda(
+            @RequestParam String nombreDecorador,
+            @RequestParam String nombreClienteFinal,
+            @RequestParam(required = false) String descripcion,
+            @RequestParam(required = false, defaultValue = "1") int cantidad,
+            @RequestParam double ancho,
+            @RequestParam(required = false) Double altura,
+            @RequestParam(required = false, defaultValue = "false") boolean usaPolea,
+            @RequestParam Map<String, String> allParams,
+            RedirectAttributes redirectAttributes) {
+
+        if (nombreDecorador == null || nombreDecorador.isBlank()
+                || nombreClienteFinal == null || nombreClienteFinal.isBlank()) {
+            redirectAttributes.addFlashAttribute("error", "Debes indicar distribuidor y cliente.");
+            return "redirect:/taller/nuevo";
+        }
+        if (ancho <= 0) {
+            redirectAttributes.addFlashAttribute("error", "El ancho debe ser mayor a 0.");
+            return "redirect:/taller/nuevo";
+        }
+
+        List<Pedido> pedidosDelLote = new ArrayList<>();
+        for (int j = 0; j < Math.max(cantidad, 1); j++) {
+            Pedido p = new Pedido();
+            p.setTipo("RIEL_ONDA_SERENA");
+            p.setNombreDecorador(nombreDecorador);
+            p.setNombreClienteFinal(nombreClienteFinal);
+            p.setDescripcion(descripcion != null ? descripcion : "");
+            p.setAncho(ancho);
+            p.setAltura(altura != null ? altura : 0.0);
+            p.setUsaPolea(usaPolea);
+            p.setUsaCabezal(false);
+            p.setUsaPitilloPesa(false);
+            p.setUsaConectorTope(false);
+            p.calcularFichaTecnica();
+            p.calcularEstadoGeneral();
+            pedidosDelLote.add(p);
+        }
+
+        try {
+            for (Pedido p : pedidosDelLote) {
+                inventarioServicio.verificarRielOndaSerena(p);
+            }
+            List<InventarioServicio.ExtraInsumo> extras = leerExtrasComoLista(allParams);
+            inventarioServicio.verificarExtras(extras);
+        } catch (InventarioServicio.MaterialInsuficienteException e) {
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
+            return "redirect:/taller/nuevo";
+        }
+
+        try {
+            for (int i = 0; i < pedidosDelLote.size(); i++) {
+                Pedido p = pedidosDelLote.get(i);
+                pedidoRepository.save(p);
+                inventarioServicio.descontarRielOndaSerena(p);
+                if (i == 0) {
+                    procesarExtras(p, allParams);
+                }
+            }
+        } catch (InventarioServicio.MaterialInsuficienteException e) {
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
+            return "redirect:/taller/nuevo";
+        }
+
+        redirectAttributes.addFlashAttribute("mensaje",
+                pedidosDelLote.size() + " pedido(s) de Riel de Onda Serena creados correctamente.");
+        return "redirect:/taller/pedidos";
+    }
+
     // ─── Formulario editar ────────────────────────────────────────────────
     @GetMapping("/editar/{id}")
-    public String mostrarFormularioEditar(@PathVariable("id") int id, Model model) {
+    public String mostrarFormularioEditar(@PathVariable("id") int id, Model model, RedirectAttributes redirectAttributes) {
         Pedido pedido = pedidoRepository.findById(id).orElseThrow();
+
+        // La edición con selección manual de piezas (retazos, tubos, etc.) hoy
+        // solo está construida para pedidos de Fabricación. Venta Directa ya no
+        // pasa por aquí (no tiene botón de editar) y Riel de Onda Serena aún no
+        // tiene su propio formulario de edición, así que se bloquea con un
+        // mensaje claro en vez de dejar que el formulario se rompa a medias.
+        if (pedido.isRielOndaSerena()) {
+            redirectAttributes.addFlashAttribute("error",
+                    "La edición de pedidos de Riel de Onda Serena todavía no está disponible. "
+                    + "Elimina el pedido y créalo de nuevo si necesitas corregir algo.");
+            return "redirect:/taller/pedidos";
+        }
+
         model.addAttribute("pedido",            pedido);
         model.addAttribute("listaColores",       Arrays.asList("Blanco", "Gris", "Fawn", "Vainilla"));
         model.addAttribute("rollosDisponibles",  inventarioServicio.getTodosLosRollos());
@@ -445,6 +526,15 @@ public class PedidoControlador {
             RedirectAttributes redirectAttributes) {
 
         Pedido pedido = pedidoRepository.findById(id).orElseThrow();
+
+        // Salvaguarda: si por alguna razón se llega aquí con un pedido de riel
+        // (por ejemplo, un POST directo sin pasar por el formulario), no se
+        // intenta aplicar la lógica de fabricación (tela/tubo) que rompería.
+        if (pedido.isRielOndaSerena()) {
+            redirectAttributes.addFlashAttribute("error",
+                    "La edición de pedidos de Riel de Onda Serena todavía no está disponible.");
+            return "redirect:/taller/pedidos";
+        }
 
         pedido.setNombreDecorador(nombreDecorador);
         pedido.setNombreClienteFinal(nombreClienteFinal);
@@ -546,7 +636,8 @@ public class PedidoControlador {
      * En todos los casos queda un registro MaterialUsado con tipoMaterial = "EXTRA".
      *
      * Reutilizado tanto por fabricación normal (guardar-lista, editar) como por
-     * Venta Directa (guardar-venta-directa), sin ninguna diferencia entre los dos flujos.
+     * Venta Directa (guardar-venta-directa) y Riel de Onda Serena
+     * (guardar-riel-onda), sin ninguna diferencia entre los flujos.
      */
    private void procesarExtras(Pedido pedido, Map<String, String> allParams) {
         int i = 0;
@@ -726,36 +817,51 @@ public class PedidoControlador {
         List<MaterialUsado> historial = inventarioServicio.getHistorialDePedido(id);
         model.addAttribute("historialMaterial", historial);
 
-        // ── Tela: primer registro TELA o RETAZO ──────────────────
-        MaterialUsado materialTela = historial.stream()
-                .filter(m -> "TELA".equals(m.getTipoMaterial()) || "RETAZO".equals(m.getTipoMaterial()))
-                .findFirst().orElse(null);
-        model.addAttribute("materialTela", materialTela);
-        model.addAttribute("esRetazo", materialTela != null && "RETAZO".equals(materialTela.getTipoMaterial()));
+        if (p.isRielOndaSerena()) {
+            // ── Riel de Onda Serena: busca sus propios 3 cortes en el historial ──
+            MaterialUsado materialRiel = historial.stream()
+                    .filter(m -> "RIEL_ONDA_SERENA".equals(m.getTipoMaterial()))
+                    .findFirst().orElse(null);
+            model.addAttribute("materialRiel", materialRiel);
 
-        // ── Tubo: registro cuya fuente empieza por "Tubo" ────────
-        String nombreTubo = "Tubo " + p.getTuboRecomendado();
-        MaterialUsado materialTubo = historial.stream()
-                .filter(m -> m.getFuenteDescripcion() != null
-                        && m.getFuenteDescripcion().toLowerCase().startsWith("tubo"))
-                .findFirst().orElse(null);
-        model.addAttribute("materialTubo", materialTubo);
+            MaterialUsado materialRielPines = historial.stream()
+                    .filter(m -> "RIEL_DE_PINES".equals(m.getTipoMaterial()))
+                    .findFirst().orElse(null);
+            model.addAttribute("materialRielPines", materialRielPines);
 
-        // ── Pesa ─────────────────────────────────────────────────
-        MaterialUsado materialPesa = historial.stream()
-                .filter(m -> m.getFuenteDescripcion() != null
-                        && m.getFuenteDescripcion().toLowerCase().startsWith("pesa"))
-                .findFirst().orElse(null);
-        model.addAttribute("materialPesa", materialPesa);
+            MaterialUsado materialCuerdaOnda = historial.stream()
+                    .filter(m -> "CUERDA_ONDA_SERENA".equals(m.getTipoMaterial()))
+                    .findFirst().orElse(null);
+            model.addAttribute("materialCuerdaOnda", materialCuerdaOnda);
 
-        // ── Cabezal ───────────────────────────────────────────────
-        MaterialUsado materialCabezal = historial.stream()
-                .filter(m -> m.getFuenteDescripcion() != null
-                        && m.getFuenteDescripcion().toLowerCase().startsWith("cabezal"))
-                .findFirst().orElse(null);
-        model.addAttribute("materialCabezal", materialCabezal);
+        } else {
+            // ── Fabricación normal (enrollable / blackout): tela, tubo, pesa, cabezal ──
+            MaterialUsado materialTela = historial.stream()
+                    .filter(m -> "TELA".equals(m.getTipoMaterial()) || "RETAZO".equals(m.getTipoMaterial()))
+                    .findFirst().orElse(null);
+            model.addAttribute("materialTela", materialTela);
+            model.addAttribute("esRetazo", materialTela != null && "RETAZO".equals(materialTela.getTipoMaterial()));
 
-        // ── Extras ───────────────────────────────────────────────
+            MaterialUsado materialTubo = historial.stream()
+                    .filter(m -> m.getFuenteDescripcion() != null
+                            && m.getFuenteDescripcion().toLowerCase().startsWith("tubo"))
+                    .findFirst().orElse(null);
+            model.addAttribute("materialTubo", materialTubo);
+
+            MaterialUsado materialPesa = historial.stream()
+                    .filter(m -> m.getFuenteDescripcion() != null
+                            && m.getFuenteDescripcion().toLowerCase().startsWith("pesa"))
+                    .findFirst().orElse(null);
+            model.addAttribute("materialPesa", materialPesa);
+
+            MaterialUsado materialCabezal = historial.stream()
+                    .filter(m -> m.getFuenteDescripcion() != null
+                            && m.getFuenteDescripcion().toLowerCase().startsWith("cabezal"))
+                    .findFirst().orElse(null);
+            model.addAttribute("materialCabezal", materialCabezal);
+        }
+
+        // ── Extras (comunes a todos los tipos de pedido) ──
         List<MaterialUsado> extrasHistorial = historial.stream()
                 .filter(m -> "EXTRA".equals(m.getTipoMaterial()))
                 .collect(Collectors.toList());
@@ -788,90 +894,5 @@ public class PedidoControlador {
         model.addAttribute("desde", desde != null ? desde : "");
         model.addAttribute("hasta", hasta != null ? hasta : "");
         return "reporte_materiales";
-    }
-
-
-    @PostMapping("/guardar-riel-onda-serena")
-    @org.springframework.transaction.annotation.Transactional
-    public String guardarRielOndaSerena(
-            @RequestParam String nombreDecorador,
-            @RequestParam String nombreClienteFinal,
-            @RequestParam(required = false) String descripcion,
-            @RequestParam int cantidad,
-            @RequestParam double ancho,
-            @RequestParam double altura,
-            @RequestParam(required = false, defaultValue = "false") boolean usaPolea,
-            @RequestParam(required = false) String terminalPolea,
-            @RequestParam(required = false) Double largoImpresion,
-            @RequestParam Map<String, String> allParams,
-            RedirectAttributes redirectAttributes) {
-
-        if (nombreDecorador == null || nombreDecorador.isBlank()
-                || nombreClienteFinal == null || nombreClienteFinal.isBlank()) {
-            redirectAttributes.addFlashAttribute("error",
-                    "Debes indicar el distribuidor y el cliente final.");
-            return "redirect:/taller/nuevo";
-        }
-
-        // ── Validación: terminalPolea obligatorio y válido SOLO si usaPolea = true ──
-        String terminalNormalizado = null;
-        if (usaPolea) {
-            if (terminalPolea == null || terminalPolea.isBlank()) {
-                redirectAttributes.addFlashAttribute("error",
-                        "Debes elegir Terminal o Control de Polea cuando el riel lleva polea.");
-                return "redirect:/taller/nuevo";
-            }
-            String t = terminalPolea.trim().toUpperCase();
-            if (!t.equals("TERMINAL") && !t.equals("CONTROL_POLEA")) {
-                redirectAttributes.addFlashAttribute("error",
-                        "Valor inválido para terminal/control de polea.");
-                return "redirect:/taller/nuevo";
-            }
-            terminalNormalizado = t;
-        }
-        // Si usaPolea = false, terminalPolea se descarta (no aplica con bastón).
-
-        List<Pedido> pedidosDelLote = new ArrayList<>();
-
-        for (int j = 0; j < Math.max(cantidad, 1); j++) {
-            Pedido p = new Pedido();
-            p.setTipo("RIEL_ONDA_SERENA");
-            p.setNombreDecorador(nombreDecorador);
-            p.setNombreClienteFinal(nombreClienteFinal);
-            p.setDescripcion(cantidad > 1
-                    ? (descripcion != null ? descripcion : "") + " (" + (j + 1) + "/" + cantidad + ")"
-                    : (descripcion != null ? descripcion : ""));
-            p.setAncho(ancho);
-            p.setAltura(altura);
-            p.setCantidad(1);
-            p.setUsaCabezal(false); // el riel nunca usa cabezal
-            p.setUsaPolea(usaPolea);
-            p.setTerminalPolea(terminalNormalizado);
-            p.setLargoImpresion(largoImpresion);
-            p.calcularFichaTecnica();
-            p.calcularEstadoGeneral();
-            pedidosDelLote.add(p);
-        }
-
-        // Guardar y procesar extras (riel de pines, tapas/bastón/poleas, terminal/control)
-        // como insumos extra, reutilizando el mismo mecanismo que fabricación/venta directa.
-        try {
-            for (int i = 0; i < pedidosDelLote.size(); i++) {
-                Pedido p = pedidosDelLote.get(i);
-                pedidoRepository.save(p);
-                // Los extras vienen en el allParams global (no por fila), solo se
-                // procesan una vez por lote para no duplicar el descuento.
-                if (i == 0) {
-                    procesarExtras(p, allParams);
-                }
-            }
-        } catch (InventarioServicio.MaterialInsuficienteException e) {
-            redirectAttributes.addFlashAttribute("error", e.getMessage());
-            return "redirect:/taller/nuevo";
-        }
-
-        redirectAttributes.addFlashAttribute("mensaje",
-                pedidosDelLote.size() + " pedido(s) de Riel de Onda Serena creados correctamente.");
-        return "redirect:/taller/pedidos";
     }
 }

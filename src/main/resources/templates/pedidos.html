@@ -136,10 +136,14 @@
         <!-- Datos crudos ocultos: Thymeleaf renderiza el detalle completo aquí, JS los reagrupa por distribuidor -->
         <table id="datosPedidosRaw" style="display:none;">
             <tbody>
-                <tr th:each="p : ${pedidos}" th:data-grupo="${p.nombreDecorador}">
+                <tr th:each="p : ${pedidos}" th:data-grupo="${p.nombreDecorador}" th:data-tipo="${p.tipo}"
+                    th:data-usa-polea="${p.usaPolea}"
+                    th:data-corte-riel="${#numbers.formatDecimal(p.corteRiel, 1, 3)}"
+                    th:data-corte-riel-pines="${#numbers.formatDecimal(p.corteRielPines, 1, 3)}"
+                    th:data-corte-cuerda-onda="${#numbers.formatDecimal(p.corteCuerdaOnda, 1, 3)}">
                     <td class="col-cliente" th:text="${p.nombreClienteFinal}"></td>
                     <td class="col-descripcion" th:text="${p.descripcion}"></td>
-                    <td class="col-sistema" th:text="${p.tipoSistema}" th:data-cabezal="${p.usaCabezal}"></td>
+                    <td class="col-sistema" th:text="${p.isRielOndaSerena() ? 'RIEL ONDA SERENA' : p.tipoSistema}" th:data-cabezal="${p.usaCabezal}"></td>
                     <td class="col-mando" th:text="${p.ladoControl}"></td>
                     <td class="col-medida" th:text="${p.ancho + 'm x ' + p.altura + 'm'}"></td>
                     <td class="col-ficha">
@@ -241,21 +245,33 @@
                     const acc = tr.querySelector('.col-acciones');
                     const sistemaTd = tr.querySelector('.col-sistema');
                     const esCabezal = sistemaTd.dataset.cabezal === 'true';
+                    const esRiel = tr.dataset.tipo === 'RIEL_ONDA_SERENA';
                     const estadoTexto = tr.querySelector('.col-estado').textContent;
                     const badgeEstadoClase = estadoTexto === 'Despachado' ? 'bg-success'
                         : (estadoTexto === 'Finalizado' ? 'bg-info text-dark' : 'bg-secondary');
                     const yaEnsamblado = acc.dataset.ensamblado === 'true';
+
+                    const celdaFicha = esRiel
+                        ? `<div class="ficha-box">
+                            <strong>Tipo:</strong> Riel de Onda Serena<br>
+                            <strong>Riel:</strong> ${tr.dataset.corteRiel} m<br>
+                            <strong>Riel de pines:</strong> ${tr.dataset.corteRielPines} m<br>
+                            ${tr.dataset.usaPolea === 'true'
+                                ? `<strong>Cuerda onda:</strong> ${tr.dataset.corteCuerdaOnda} m<br><strong>Config:</strong> Con polea`
+                                : `<strong>Config:</strong> Sin polea (tapas + bastón)`}
+                           </div>`
+                        : tr.querySelector('.col-ficha').innerHTML;
 
                     filasHtml += `
                         <tr>
                             <td>${tr.querySelector('.col-cliente').innerHTML}</td>
                             <td>${tr.querySelector('.col-descripcion').innerHTML}</td>
                             <td class="text-center">
-                                <span class="badge badge-sistema ${esCabezal ? 'bg-success' : 'bg-dark'}">${escapeHtml(sistemaTd.textContent)}</span>
+                                <span class="badge badge-sistema ${esCabezal ? 'bg-success' : (esRiel ? 'bg-primary' : 'bg-dark')}">${escapeHtml(sistemaTd.textContent)}</span>
                             </td>
                             <td class="text-center"><span class="badge bg-info text-dark">${tr.querySelector('.col-mando').innerHTML}</span></td>
                             <td><strong>${tr.querySelector('.col-medida').innerHTML}</strong></td>
-                            <td>${tr.querySelector('.col-ficha').innerHTML}</td>
+                            <td>${celdaFicha}</td>
                             <td class="text-center">${tr.querySelector('.col-creado').innerHTML}</td>
                             <td><span class="badge ${badgeEstadoClase}">${escapeHtml(estadoTexto)}</span></td>
                             <td>
@@ -269,7 +285,7 @@
                                             ${!yaEnsamblado ? 'disabled title="Primero debes finalizar el pedido"' : ''}>Despachar</button>
                                 </form>
                                 <a href="${escapeHtml(acc.dataset.urlImprimir)}" target="_blank" class="btn btn-sm btn-dark ms-2">🖨️</a>
-                                <a href="${escapeHtml(acc.dataset.urlEditar)}" class="btn btn-sm btn-outline-primary ms-1">✏️</a>
+                                <a href="${escapeHtml(acc.dataset.urlEditar)}" class="btn btn-sm btn-outline-primary ms-1" ${esRiel ? 'title="Edición de riel aún no disponible"' : ''}>✏️</a>
                                 <button type="button" class="btn btn-sm btn-outline-danger ms-1 btn-eliminar-pedido"
                                         data-id="${escapeHtml(acc.dataset.id)}"
                                         data-desc="${escapeHtml(acc.dataset.cliente + ' - ' + acc.dataset.descripcion)}"
