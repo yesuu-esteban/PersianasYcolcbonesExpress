@@ -285,7 +285,7 @@
                           class="badge bg-danger ms-1"
                           th:text="${#lists.size(alertasInventario)}"></span>
                 </div>
-                <span class="text-white-50" style="font-size:0.8rem;">Tela, tubos, pitillo y demás insumos con poco stock</span>
+                <span class="text-white-50" style="font-size:0.8rem;">Tela, tubos, riel, pitillo y demás insumos con poco stock</span>
             </div>
             <div class="panel-alertas-body abierto" id="panelAlertasBody">
                 <ul class="lista-alertas" id="listaAlertas" th:if="${not #lists.isEmpty(alertasInventario)}">
@@ -297,6 +297,8 @@
                               th:text="${a.nivel.name() == 'AGOTADO'} ? '⛔' : (${a.nivel.name() == 'CRITICO'} ? '🔴' : '🟡')"></span>
                         <span class="texto-alerta">
                             <span class="titulo-alerta" th:text="${a.titulo}"></span>
+                            <span th:if="${a.titulo == 'Riel Onda Serena' or a.titulo == 'Riel de Pines' or a.titulo == 'Cuerda Onda Serena'}"
+                                  class="badge bg-primary" style="font-size:0.62rem;">🪟 Riel</span>
                             <span class="mensaje-alerta" th:text="${a.mensaje}"></span>
                         </span>
                         <button type="button" class="btn-silenciar-alerta" title="Silenciar esta alerta por 7 días">🔇</button>
@@ -489,7 +491,7 @@
                 </div>
                 <div style="flex:1; min-width:180px;">
                     <label class="form-label d-block">Buscar por nombre</label>
-                    <input id="filtroInsumoNombre" type="text" class="form-control form-control-sm" placeholder="ej: tubo, cabezal...">
+                    <input id="filtroInsumoNombre" type="text" class="form-control form-control-sm" placeholder="ej: tubo, cabezal, riel...">
                 </div>
                 <div>
                     <button id="btnLimpiarFiltroInsumo" type="button" class="btn btn-sm btn-link filtro-chip-clear">Limpiar filtros</button>
