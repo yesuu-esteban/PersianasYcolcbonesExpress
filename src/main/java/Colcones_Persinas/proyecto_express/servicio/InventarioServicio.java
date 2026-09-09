@@ -85,6 +85,7 @@ public class InventarioServicio {
         public String topePesaInfo;
         public String tornilloInfo;
         public String tornilloPerforanteInfo;
+        public String acopleInfo;
         public List<String> faltantes = new ArrayList<>();
     }
 
@@ -534,6 +535,16 @@ public class InventarioServicio {
                     "No hay stock de \"" + control.getNombre() + "\". Disponible: 0 unidades.");
         }
 
+        if (pedido.getCantidadAcoples() > 0) {
+            Insumo acople = obtenerInsumoPorNombre("Acople");
+            int stockAcople = acople.getStockUnidades() != null ? acople.getStockUnidades() : 0;
+            if (stockAcople < pedido.getCantidadAcoples()) {
+                throw new MaterialInsuficienteException(
+                        "No hay suficiente \"Acople\". Disponible: " + stockAcople
+                        + " unidad(es), necesario: " + pedido.getCantidadAcoples() + ".");
+            }
+        }
+
         if (Boolean.TRUE.equals(pedido.getUsaPitilloPesa())) {
             Insumo pitillo = obtenerInsumoPorNombre("Pitillo");
             if (sel != null && sel.piezaPitilloId != null) {
@@ -717,6 +728,10 @@ public class InventarioServicio {
                 sel != null && sel.piezaCuerdaId != null);
 
         descontarInsumoPorUnidad(pedido, pedido.getTipoControl().trim(), 1);
+
+        if (pedido.getCantidadAcoples() > 0) {
+            descontarInsumoPorUnidad(pedido, "Acople", pedido.getCantidadAcoples());
+        }
 
         if (Boolean.TRUE.equals(pedido.getUsaPitilloPesa())) {
             Insumo pitillo = obtenerInsumoPorNombre("Pitillo");
@@ -988,6 +1003,16 @@ public class InventarioServicio {
             if (stock < 1) throw new MaterialInsuficienteException("Sin stock de \"" + control.getNombre() + "\".");
             res.controlInfo = control.getNombre() + " · quedarían " + (stock - 1) + " unidad(es)";
         });
+
+        if (pedido.getCantidadAcoples() > 0) {
+            intentar(res, () -> {
+                Insumo acople = obtenerInsumoPorNombre("Acople");
+                int stock = acople.getStockUnidades() != null ? acople.getStockUnidades() : 0;
+                int necesario = pedido.getCantidadAcoples();
+                if (stock < necesario) throw new MaterialInsuficienteException("Sin stock suficiente de \"Acople\".");
+                res.acopleInfo = "Acople ×" + necesario + " · quedarían " + (stock - necesario);
+            });
+        }
 
         if (Boolean.TRUE.equals(pedido.getUsaPitilloPesa())) {
             intentar(res, () -> {

@@ -19,12 +19,15 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
 @Controller
 @RequestMapping("/recibos")
 public class ReciboCajaControlador {
+
+    private static final int TAMANO_PAGINA = 10;
 
     @Autowired
     private ReciboCajaRepository reciboCajaRepository;
@@ -42,8 +45,9 @@ public class ReciboCajaControlador {
             @RequestParam(required = false) String cliente,
             @RequestParam(required = false) String desde,
             @RequestParam(required = false) String hasta,
+            @RequestParam(required = false, defaultValue = "0") int pagina,
             Model model) {
-        cargarListado("TIENDA", cliente, desde, hasta, model);
+        cargarListado("TIENDA", cliente, desde, hasta, pagina, model);
         return "recibo/tienda/listado";
     }
 
@@ -89,8 +93,9 @@ public class ReciboCajaControlador {
             @RequestParam(required = false) String cliente,
             @RequestParam(required = false) String desde,
             @RequestParam(required = false) String hasta,
+            @RequestParam(required = false, defaultValue = "0") int pagina,
             Model model) {
-        cargarListado("FABRICA", cliente, desde, hasta, model);
+        cargarListado("FABRICA", cliente, desde, hasta, pagina, model);
         return "recibo/fabrica/listado";
     }
 
@@ -140,12 +145,14 @@ public class ReciboCajaControlador {
                     + "?error=Sin+acceso+a+ese+recibo";
         }
 
+        asignarNumeroSecuencial(recibo);
         model.addAttribute("recibo", recibo);
         return "recibo/imprimir";
     }
 
     /** Genera el PDF del recibo. Se abre "inline" para que en el celular se pueda usar
-     *  directamente el botón nativo de "Compartir" del visor de PDF (WhatsApp, correo, etc.). */
+     *  el botón nativo de "Compartir" del visor de PDF, y para que el fetch() del botón
+     *  de compartir en el frontend pueda descargarlo como blob sin problema. */
     @PreAuthorize("hasAnyRole('TIENDA','TIENDA_ADMIN','FABRICA','ADMIN')")
     @GetMapping("/pdf/{id}")
     public ResponseEntity<byte[]> descargarPdf(@PathVariable("id") int id) {
@@ -156,6 +163,7 @@ public class ReciboCajaControlador {
         }
 
         try {
+            asignarNumeroSecuencial(recibo);
             byte[] pdf = reciboPdfServicio.generarPdf(recibo);
             String nombreArchivo = "recibo_" + recibo.getNumeroFormateado() + ".pdf";
             return ResponseEntity.ok()
@@ -213,6 +221,10 @@ public class ReciboCajaControlador {
         }
 
         try {
+            // Al borrar, no queda ningún hueco: la numeración de los recibos
+            // restantes se recalcula automáticamente cada vez que se muestran
+            // (ver asignarNumeroSecuencial), así que nunca hay que "liberar"
+            // ni reservar nada aquí.
             reciboCajaRepository.deleteById(id);
             redirectAttributes.addFlashAttribute("mensaje", "Recibo eliminado.");
         } catch (Exception e) {
@@ -225,15 +237,23 @@ public class ReciboCajaControlador {
     // HELPERS INTERNOS
     // ═══════════════════════════════════════════════════════════════
 
-    /** Anexa ?token=... a una redirección "redirect:..." para que la petición GET que
-     *  el navegador dispara justo después del POST no dependa solo de la cookie. */
     private String conToken(String redirectUrl, String token) {
         if (token == null || token.isBlank()) return redirectUrl;
         String separador = redirectUrl.contains("?") ? "&" : "?";
         return redirectUrl + separador + "token=" + token;
     }
 
-    private void cargarListado(String origenFijo, String cliente, String desde, String hasta, Model model) {
+    /**
+     * Calcula el número compacto (sin huecos) de un recibo: cuenta cuántos
+     * recibos con id menor SIGUEN existiendo en este momento. Si se borraron
+     * recibos anteriores, este número baja automáticamente para cerrar el hueco.
+     */
+    private void asignarNumeroSecuencial(ReciboCaja recibo) {
+        long menores = reciboCajaRepository.countByIdLessThan(recibo.getId());
+        recibo.setNumeroMostrado((int) menores);
+    }
+
+    private void cargarListado(String origenFijo, String cliente, String desde, String hasta, int pagina, Model model) {
         List<ReciboCaja> todos = reciboCajaRepository.findAllByOrderByIdDesc().stream()
                 .filter(r -> origenFijo.equalsIgnoreCase(r.getOrigen()))
                 .collect(Collectors.toList());
@@ -248,10 +268,25 @@ public class ReciboCajaControlador {
                 .filter(r -> fHasta == null || (r.getFecha() != null && !r.getFecha().toLocalDate().isAfter(fHasta)))
                 .collect(Collectors.toList());
 
-        model.addAttribute("recibos", filtrados);
+        // ── Paginación: máximo TAMANO_PAGINA recibos por página ──
+        int totalFiltrados = filtrados.size();
+        int totalPaginas = (int) Math.ceil((double) totalFiltrados / TAMANO_PAGINA);
+        if (totalPaginas == 0) totalPaginas = 1;
+        int paginaActual = Math.max(0, Math.min(pagina, totalPaginas - 1));
+        int desdeIdx = paginaActual * TAMANO_PAGINA;
+        int hastaIdx = Math.min(desdeIdx + TAMANO_PAGINA, totalFiltrados);
+        List<ReciboCaja> pagina_ = (desdeIdx < hastaIdx) ? filtrados.subList(desdeIdx, hastaIdx) : new ArrayList<>();
+
+        // Cada recibo de esta página recibe su número compacto y actualizado.
+        pagina_.forEach(this::asignarNumeroSecuencial);
+
+        model.addAttribute("recibos", pagina_);
         model.addAttribute("cliente", cliente != null ? cliente : "");
         model.addAttribute("desde", desde != null ? desde : "");
         model.addAttribute("hasta", hasta != null ? hasta : "");
+        model.addAttribute("paginaActual", paginaActual);
+        model.addAttribute("totalPaginas", totalPaginas);
+        model.addAttribute("totalRecibosFiltrados", totalFiltrados);
     }
 
     private Integer guardarRecibo(String origen, String cliente, String direccion, String cedula, String telefono,

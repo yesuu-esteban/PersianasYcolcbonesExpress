@@ -49,6 +49,18 @@ public class ReciboCaja {
     @OneToMany(mappedBy = "recibo", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ReciboCajaItem> items = new ArrayList<>();
 
+    /**
+     * Número que se muestra al usuario ("000", "001", "002"...). NO se guarda
+     * en la base de datos: se calcula cada vez que se necesita, según cuántos
+     * recibos con un id MENOR siguen existiendo en este momento. Así, si se
+     * borra un recibo, todos los que quedan después de él se recorren
+     * automáticamente para cerrar el hueco — nunca queda un número "fantasma".
+     * El controlador es quien llama a setNumeroMostrado(...) antes de que la
+     * vista lea numeroFormateado.
+     */
+    @Transient
+    private int numeroMostrado = 0;
+
     @PrePersist
     protected void alCrear() {
         if (this.fecha == null) this.fecha = LocalDateTime.now();
@@ -64,19 +76,10 @@ public class ReciboCaja {
         return this.firma != null && !this.firma.isBlank();
     }
 
-    /**
-     * Número visible del recibo, calculado directamente a partir del id.
-     * El primer recibo (id=1) se muestra como "000", el segundo como "001", etc.
-     */
-    @Transient
-    public int getNumero() {
-        return Math.max(this.id - 1, 0);
-    }
-
     /** Versión formateada con ceros a la izquierda, mínimo 3 dígitos: 000, 001, 002... */
     @Transient
     public String getNumeroFormateado() {
-        return String.format("%03d", getNumero());
+        return String.format("%03d", Math.max(this.numeroMostrado, 0));
     }
 
     private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");

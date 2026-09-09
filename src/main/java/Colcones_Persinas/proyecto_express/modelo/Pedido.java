@@ -207,6 +207,16 @@ public class Pedido {
     }
 
     /**
+     * El Control R24 es especial: además de la unidad de control en sí
+     * (que ya se descuenta como cualquier otro control), necesita 2 acoples
+     * adicionales. Para cualquier otro control, esto es 0.
+     */
+    @Transient
+    public int getCantidadAcoples() {
+        return "Control R24".equals(this.tipoControl) ? 2 : 0;
+    }
+
+    /**
      * Tapas de cabezal: siempre 2 unidades, pero SOLO si el pedido lleva cabezal.
      */
     @Transient
@@ -299,9 +309,16 @@ public class Pedido {
             this.tuboRecomendado = esPesado ? "R24" : "R16";
         }
 
-        // 2. Tipo de control según ancho... excepto si el tubo elegido es R8 → siempre Control R8 A
+        // 2. Tipo de control:
+        //    - Tubo R8 → siempre Control R8 A.
+        //    - Corte de tela >= 2.00m de ancho Y >= 2.50m de largo → Control R24
+        //      (control especial: viene con soportes más grandes y necesita 2 acoples
+        //      adicionales, ver getCantidadAcoples()).
+        //    - Resto → Control R16 o R8 B según ancho, como antes.
         if ("R8".equalsIgnoreCase(this.tuboRecomendado)) {
             this.tipoControl = "Control R8 A";
+        } else if (getCorteTelaAncho() >= 2.0 && getCorteTelaAlto() >= 2.50) {
+            this.tipoControl = "Control R24";
         } else {
             this.tipoControl = (this.ancho > 1.50) ? "Control R16" : "Control R8 B";
         }
