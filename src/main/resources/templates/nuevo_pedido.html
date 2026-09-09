@@ -324,10 +324,10 @@
             </div>
 
             <div class="seccion-extras">
-                <p class="fw-bold mb-2">➕ Insumos del riel (riel de pines, tapas/bastón o poleas, terminal/control, etc.)</p>
+                <p class="fw-bold mb-2">➕ Insumos adicionales del riel (opcional)</p>
                 <p class="text-muted mb-2" style="font-size:0.82rem;">
-                    Agrega aquí cada insumo que se descuenta del inventario para este riel
-                    (riel de pines, cuerda de onda serena, tapas o bastón, poleas, terminal o control).
+                    Los accesorios obligatorios (poleas/terminal, o tapas/bastón según corresponda) ya se
+                    calculan y descuentan automáticamente. Usa esto solo para material extra fuera de lo normal.
                 </p>
                 <div id="contenedorExtrasRiel"></div>
                 <button type="button" class="btn btn-sm btn-outline-dark mt-1" onclick="agregarFilaExtraRiel()">+ Agregar insumo</button>
@@ -959,8 +959,11 @@
     }
 
     // ════════════════════════════════════════════════════════════
-    //  RIEL DE ONDA SERENA — previsualización + insumos (reutiliza
-    //  opcionesCatalogo/actualizarInfoExtra/opcionesPieza ya definidos)
+    //  RIEL DE ONDA SERENA — previsualización + insumos adicionales
+    //  opcionales (reutiliza opcionesCatalogo/actualizarInfoExtra/
+    //  opcionesPieza ya definidos). Los accesorios obligatorios (poleas,
+    //  terminal, tapas, bastón) ya no se muestran como recordatorio: se
+    //  calculan y descuentan automáticamente en el backend.
     // ════════════════════════════════════════════════════════════
     let extraIndexRiel = 0;
 
@@ -978,7 +981,7 @@
         const corteRiel = (ancho - 0.075).toFixed(3);
         const corteRielPines = corteRiel;
 
-        let html = '<strong>Corte estimado</strong>';
+        let html = '<strong>Corte y accesorios estimados</strong>';
         html += '<table style="width:100%;border-collapse:collapse;margin-top:6px">';
         html += `<tr style="border-top:1px solid #d6efdd">
                     <td style="padding:2px 4px;font-weight:600;white-space:nowrap">🪟 Riel</td>
@@ -994,11 +997,25 @@
                         <td style="padding:2px 4px;font-weight:600;white-space:nowrap">🧶 Cuerda de onda</td>
                         <td style="padding:2px 6px;color:#555">${corteCuerda} m</td>
                      </tr>`;
+            html += `<tr style="border-top:1px solid #d6efdd">
+                        <td style="padding:2px 4px;font-weight:600;white-space:nowrap">🔧 Poleas</td>
+                        <td style="padding:2px 6px;color:#555">2 und. (automático)</td>
+                     </tr>`;
+            html += `<tr style="border-top:1px solid #d6efdd">
+                        <td style="padding:2px 4px;font-weight:600;white-space:nowrap">🎛 Terminal/Control</td>
+                        <td style="padding:2px 6px;color:#555">1 und. (automático)</td>
+                     </tr>`;
+        } else {
+            html += `<tr style="border-top:1px solid #d6efdd">
+                        <td style="padding:2px 4px;font-weight:600;white-space:nowrap">🧢 Tapas de riel</td>
+                        <td style="padding:2px 6px;color:#555">2 und. (automático)</td>
+                     </tr>`;
+            html += `<tr style="border-top:1px solid #d6efdd">
+                        <td style="padding:2px 4px;font-weight:600;white-space:nowrap">🪄 Bastón</td>
+                        <td style="padding:2px 6px;color:#555">1 und. (automático)</td>
+                     </tr>`;
         }
         html += '</table>';
-        html += usaPolea
-            ? '<div class="mt-2" style="font-size:0.78rem;color:#6c757d;">Recuerda agregar 2 poleas + 1 terminal/control en "Insumos del riel".</div>'
-            : '<div class="mt-2" style="font-size:0.78rem;color:#6c757d;">Recuerda agregar 2 tapas de riel + 1 bastón en "Insumos del riel".</div>';
 
         caja.className = 'previsualizacion ok';
         caja.innerHTML = html;

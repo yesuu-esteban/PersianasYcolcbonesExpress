@@ -812,10 +812,10 @@ public class InventarioServicio {
     }
 
     // ═══════════════════════════════════════════════════════════════
-    // RIEL DE ONDA SERENA — verificación y descuento de sus 3 cortes
-    // (riel, riel de pines, y cuerda si lleva polea). Los accesorios
-    // (poleas, terminal/control, tapas, bastón) van por el mecanismo
-    // genérico de ExtraInsumo, ya existente, sin cambios.
+    // RIEL DE ONDA SERENA — verificación y descuento de sus cortes y
+    // accesorios obligatorios (poleas/terminal si lleva polea, o
+    // tapas/bastón si no). Ya no depende de que alguien los agregue
+    // manualmente en "Insumos del riel".
     // ═══════════════════════════════════════════════════════════════
 
     public void verificarRielOndaSerena(Pedido pedido) {
@@ -828,6 +828,38 @@ public class InventarioServicio {
         if (Boolean.TRUE.equals(pedido.getUsaPolea())) {
             Insumo cuerdaOnda = obtenerInsumoPorNombre("Cuerda Onda Serena");
             buscarMejorPieza(cuerdaOnda, pedido.getCorteCuerdaOnda());
+
+            Insumo polea = obtenerInsumoPorNombre("Polea");
+            int stockPolea = polea.getStockUnidades() != null ? polea.getStockUnidades() : 0;
+            if (stockPolea < pedido.getCantidadPoleas()) {
+                throw new MaterialInsuficienteException(
+                        "No hay suficiente \"Polea\". Disponible: " + stockPolea
+                        + " unidad(es), necesario: " + pedido.getCantidadPoleas() + ".");
+            }
+
+            Insumo terminal = obtenerInsumoPorNombre("Terminal Control Polea");
+            int stockTerminal = terminal.getStockUnidades() != null ? terminal.getStockUnidades() : 0;
+            if (stockTerminal < pedido.getCantidadTerminalPolea()) {
+                throw new MaterialInsuficienteException(
+                        "No hay suficiente \"Terminal Control Polea\". Disponible: " + stockTerminal
+                        + " unidad(es), necesario: " + pedido.getCantidadTerminalPolea() + ".");
+            }
+        } else {
+            Insumo tapaRiel = obtenerInsumoPorNombre("Tapa Riel");
+            int stockTapaRiel = tapaRiel.getStockUnidades() != null ? tapaRiel.getStockUnidades() : 0;
+            if (stockTapaRiel < pedido.getCantidadTapasRiel()) {
+                throw new MaterialInsuficienteException(
+                        "No hay suficiente \"Tapa Riel\". Disponible: " + stockTapaRiel
+                        + " unidad(es), necesario: " + pedido.getCantidadTapasRiel() + ".");
+            }
+
+            Insumo baston = obtenerInsumoPorNombre("Bastón");
+            int stockBaston = baston.getStockUnidades() != null ? baston.getStockUnidades() : 0;
+            if (stockBaston < pedido.getCantidadBaston()) {
+                throw new MaterialInsuficienteException(
+                        "No hay suficiente \"Bastón\". Disponible: " + stockBaston
+                        + " unidad(es), necesario: " + pedido.getCantidadBaston() + ".");
+            }
         }
     }
 
@@ -844,6 +876,12 @@ public class InventarioServicio {
             Insumo cuerdaOnda = obtenerInsumoPorNombre("Cuerda Onda Serena");
             PiezaInsumo piezaCuerda = buscarMejorPieza(cuerdaOnda, pedido.getCorteCuerdaOnda());
             descontarInsumoConMedida(pedido, piezaCuerda, pedido.getCorteCuerdaOnda(), false);
+
+            descontarInsumoPorUnidad(pedido, "Polea", pedido.getCantidadPoleas());
+            descontarInsumoPorUnidad(pedido, "Terminal Control Polea", pedido.getCantidadTerminalPolea());
+        } else {
+            descontarInsumoPorUnidad(pedido, "Tapa Riel", pedido.getCantidadTapasRiel());
+            descontarInsumoPorUnidad(pedido, "Bastón", pedido.getCantidadBaston());
         }
     }
 
@@ -1281,12 +1319,15 @@ public class InventarioServicio {
 
     // ── Alertas de insumos (por unidad y por medida/piezas) ─────────
     //
-    // Para insumos POR MEDIDA (tubo, pesa, cuerda, etc.) ya no basta con
-    // sumar metros totales: si hay, por ejemplo, 3 tubos de 6m sin usar,
+    // Para insumos POR MEDIDA (tubo, cuerda, pesa, riel, etc.) ya no basta
+    // con sumar metros totales: si hay, por ejemplo, 3 tubos de 6m sin usar,
     // suman 18m y nunca alertaba aunque en realidad solo quedan 3 piezas
     // completas. Ahora se cuenta cuántas piezas están COMPLETAS (sin
     // cortar, largoRestante ≈ largoInicial) contra cuántas son retazos
     // parciales, y se alerta en función de eso además de los metros totales.
+    // Este método es genérico: se aplica automáticamente a CUALQUIER insumo
+    // con tieneMedida = true del catálogo, incluyendo Riel Onda Serena,
+    // Riel de Pines y Cuerda Onda Serena — no requiere lógica especial.
 
     private List<AlertaInventario> alertasDeInsumos() {
         List<AlertaInventario> alertas = new ArrayList<>();
@@ -1295,7 +1336,7 @@ public class InventarioServicio {
 
         for (Insumo insumo : insumos) {
             if (Boolean.TRUE.equals(insumo.getTieneMedida())) {
-                // ── Insumo por medida (tubo, cuerda, pesa, etc.) ──
+                // ── Insumo por medida (tubo, cuerda, pesa, riel, etc.) ──
                 List<PiezaInsumo> piezas = piezaInsumoRepository.findByInsumoIdOrderByLargoRestanteAsc(insumo.getId());
 
                 List<PiezaInsumo> conMaterial = piezas.stream()

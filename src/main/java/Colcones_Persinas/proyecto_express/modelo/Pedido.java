@@ -284,6 +284,30 @@ public class Pedido {
         return Math.round((this.ancho * 2 + 4.0) * 1000.0) / 1000.0;
     }
 
+    /** Solo si usaPolea = true: siempre 2 poleas. */
+    @Transient
+    public int getCantidadPoleas() {
+        return Boolean.TRUE.equals(this.usaPolea) ? 2 : 0;
+    }
+
+    /** Solo si usaPolea = true: siempre 1 terminal/control de polea. */
+    @Transient
+    public int getCantidadTerminalPolea() {
+        return Boolean.TRUE.equals(this.usaPolea) ? 1 : 0;
+    }
+
+    /** Solo si usaPolea = false: siempre 2 tapas de riel. */
+    @Transient
+    public int getCantidadTapasRiel() {
+        return Boolean.TRUE.equals(this.usaPolea) ? 0 : 2;
+    }
+
+    /** Solo si usaPolea = false: siempre 1 bastón. */
+    @Transient
+    public int getCantidadBaston() {
+        return Boolean.TRUE.equals(this.usaPolea) ? 0 : 1;
+    }
+
     // ─── LÓGICA DE NEGOCIO ──────────────────────────────────────────────────
 
     public void calcularFichaTecnica() {
@@ -355,4 +379,4 @@ public class Pedido {
             this.estado = "Pendiente";
         }
     }
-}
+}   

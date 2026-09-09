@@ -34,6 +34,10 @@ public class InsumoBaseInicializador implements CommandLineRunner {
         crearSiNoExiste("Tope Pesa",             false, "Tope de pesa. Se usan 2 en todo pedido, con o sin cabezal.");
         crearSiNoExiste("Tornillo",              false, "Tornillo normal. Sin cabezal: 2 (soportes). Con cabezal: 8 (soportes + tapas).");
         crearSiNoExiste("Tornillo Perforante",   false, "Tornillo perforante. Solo en pedidos CON cabezal: 4 unidades.");
+        crearSiNoExiste("Polea",                 false, "Polea del riel de onda serena. Obligatoria (2 por pedido) cuando el riel lleva polea.");
+        crearSiNoExiste("Terminal Control Polea", false, "Terminal/control de la polea. Obligatorio (1 por pedido) cuando el riel lleva polea.");
+        crearSiNoExiste("Tapa Riel",              false, "Tapa de riel de onda serena. Obligatoria (2 por pedido) cuando el riel NO lleva polea.");
+        crearSiNoExiste("Bastón",                 false, "Bastón de riel de onda serena. Obligatorio (1 por pedido) cuando el riel NO lleva polea.");
     }
 
     private void crearSiNoExiste(String nombre, boolean tieneMedida, String descripcion) {
