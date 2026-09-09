@@ -156,7 +156,7 @@ public class ReciboCajaControlador {
 
         try {
             byte[] pdf = reciboPdfServicio.generarPdf(recibo);
-            String nombreArchivo = "recibo_" + recibo.getNumero() + ".pdf";
+            String nombreArchivo = "recibo_" + recibo.getNumeroFormateado() + ".pdf";
             return ResponseEntity.ok()
                     .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + nombreArchivo + "\"")
                     .contentType(MediaType.APPLICATION_PDF)

@@ -12,12 +12,8 @@ import java.util.List;
 
 @Entity
 @Table(name = "recibo_caja")
-@Getter 
-@Setter
+@Getter @Setter
 public class ReciboCaja {
-
-    /** El primer recibo generado saldrá como NUMERO_INICIAL + 1 (igual que el consecutivo viejo). */
-    private static final int NUMERO_INICIAL = 431;
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -55,10 +51,20 @@ public class ReciboCaja {
         item.setRecibo(this);
     }
 
-    /** Número visible del recibo, calculado a partir del id autoincremental. */
+    /**
+     * Número visible del recibo, calculado directamente a partir del id.
+     * El primer recibo (id=1) se muestra como "000", el segundo como "001", etc.
+     * Ya no depende de ningún consecutivo manual ni offset fijo.
+     */
     @Transient
     public int getNumero() {
-        return this.id + NUMERO_INICIAL;
+        return Math.max(this.id - 1, 0);
+    }
+
+    /** Versión formateada con ceros a la izquierda, mínimo 3 dígitos: 000, 001, 002... */
+    @Transient
+    public String getNumeroFormateado() {
+        return String.format("%03d", getNumero());
     }
 
     private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");

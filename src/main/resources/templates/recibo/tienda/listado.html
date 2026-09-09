@@ -49,7 +49,7 @@
             </thead>
             <tbody>
                 <tr th:each="r : ${recibos}">
-                    <td th:text="${r.numero}"></td>
+                    <td th:text="${r.numeroFormateado}"></td>
                     <td th:text="${r.cliente}"></td>
                     <td th:text="${r.cedula}"></td>
                     <td th:text="${r.telefono}"></td>

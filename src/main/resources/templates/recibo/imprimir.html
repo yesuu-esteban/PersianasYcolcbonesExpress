@@ -2,7 +2,7 @@
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <title>Recibo #<span th:text="${recibo.numero}"></span></title>
+    <title>Recibo #<span th:text="${recibo.numeroFormateado}"></span></title>
     <style>
         body { font-family: Arial, sans-serif; background:#f4f4f9; padding:20px; }
         .recibo-caja { background:white; width:700px; padding:20px; border:2px solid #000; font-size:12px; margin:0 auto; color:#000; }
@@ -45,7 +45,7 @@
             </div>
             <div class="cuadro-recibo">
                 <p class="titulo-caja">RECIBO DE CAJA</p>
-                <p class="numero-recibo" th:text="'Nº ' + ${recibo.numero}"></p>
+                <p class="numero-recibo" th:text="'Nº ' + ${recibo.numeroFormateado}"></p>
                 <span class="badge-origen" th:classappend="${recibo.origen == 'FABRICA'} ? 'fabrica' : 'tienda'" th:text="${recibo.origen}"></span>
             </div>
         </div>
@@ -100,5 +100,6 @@
             <a th:href="@{'/recibos/' + ${#strings.toLowerCase(recibo.origen)}}" style="background:#6c757d;">← Volver al listado</a>
         </div>
     </div>
+    <script src="/js/token-nav.js"></script>
 </body>
 </html>
