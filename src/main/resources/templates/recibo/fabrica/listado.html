@@ -11,7 +11,9 @@
         <h2>🧾 Recibos de Fábrica</h2>
         <div class="d-flex gap-2">
             <a href="/portal" class="btn btn-outline-secondary">← Portal</a>
+            <a href="/taller/pedidos" class="btn btn-outline-secondary">📋 Pedidos de Fábrica</a>
             <a href="/recibos/fabrica/nuevo" class="btn btn-primary">+ Nuevo Recibo</a>
+            <a href="/logout" class="btn btn-outline-danger">🚪 Cerrar sesión</a>
         </div>
     </div>
 
@@ -57,7 +59,8 @@
                     <td th:text="${#numbers.formatDecimal(r.saldo, 1, 'POINT', 2, 'COMMA')}"></td>
                     <td th:text="${r.creadoPor}"></td>
                     <td>
-                        <a th:href="@{/recibos/imprimir/{id}(id=${r.id})}" target="_blank" class="btn btn-sm btn-outline-dark">🖨️</a>
+                        <a th:href="@{/recibos/imprimir/{id}(id=${r.id})}" target="_blank" class="btn btn-sm btn-outline-dark" title="Ver recibo">🖨️</a>
+                        <a th:href="@{/recibos/pdf/{id}(id=${r.id})}" target="_blank" class="btn btn-sm btn-outline-success" title="Descargar/Compartir PDF">⬇️</a>
                         <form th:action="@{/recibos/eliminar/{id}(id=${r.id})}" method="post" class="d-inline"
                               onsubmit="return confirm('¿Eliminar este recibo?');">
                             <button type="submit" class="btn btn-sm btn-outline-danger">🗑️</button>

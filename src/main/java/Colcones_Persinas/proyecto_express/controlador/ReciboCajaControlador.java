@@ -3,7 +3,11 @@ package Colcones_Persinas.proyecto_express.controlador;
 import Colcones_Persinas.proyecto_express.modelo.ReciboCaja;
 import Colcones_Persinas.proyecto_express.modelo.ReciboCajaItem;
 import Colcones_Persinas.proyecto_express.repository.ReciboCajaRepository;
+import Colcones_Persinas.proyecto_express.servicio.ReciboPdfServicio;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -24,6 +28,9 @@ public class ReciboCajaControlador {
     @Autowired
     private ReciboCajaRepository reciboCajaRepository;
 
+    @Autowired
+    private ReciboPdfServicio reciboPdfServicio;
+
     // ═══════════════════════════════════════════════════════════════
     // RECIBOS DE TIENDA
     // ═══════════════════════════════════════════════════════════════
@@ -36,15 +43,12 @@ public class ReciboCajaControlador {
             @RequestParam(required = false) String hasta,
             Model model) {
         cargarListado("TIENDA", cliente, desde, hasta, model);
-        model.addAttribute("titulo", "Recibos de Tienda");
-        model.addAttribute("urlNuevo", "/recibos/tienda/nuevo");
-        model.addAttribute("urlBase", "/recibos/tienda");
         return "recibo/tienda/listado";
     }
 
     @PreAuthorize("hasAnyRole('TIENDA','TIENDA_ADMIN','ADMIN')")
     @GetMapping("/tienda/nuevo")
-    public String nuevoTienda(Model model) {
+    public String nuevoTienda() {
         return "recibo/tienda/nuevo";
     }
 
@@ -59,15 +63,19 @@ public class ReciboCajaControlador {
             @RequestParam List<String> nombresProducto,
             @RequestParam List<BigDecimal> precios,
             @RequestParam List<Integer> cantidades,
+            @RequestParam(value = "token", required = false) String tokenParam,
+            @CookieValue(value = "authToken", required = false) String tokenCookie,
             RedirectAttributes redirectAttributes) {
+
+        String tokenEfectivo = (tokenParam != null && !tokenParam.isBlank()) ? tokenParam : tokenCookie;
 
         Integer id = guardarRecibo("TIENDA", cliente, direccion, cedula, telefono, abono,
                 nombresProducto, precios, cantidades, redirectAttributes);
 
-        if (id == null) return "redirect:/recibos/tienda/nuevo";
+        if (id == null) return conToken("redirect:/recibos/tienda/nuevo", tokenEfectivo);
 
         redirectAttributes.addFlashAttribute("mensaje", "Recibo de tienda generado correctamente.");
-        return "redirect:/recibos/imprimir/" + id;
+        return conToken("redirect:/recibos/imprimir/" + id, tokenEfectivo);
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -82,15 +90,12 @@ public class ReciboCajaControlador {
             @RequestParam(required = false) String hasta,
             Model model) {
         cargarListado("FABRICA", cliente, desde, hasta, model);
-        model.addAttribute("titulo", "Recibos de Fábrica");
-        model.addAttribute("urlNuevo", "/recibos/fabrica/nuevo");
-        model.addAttribute("urlBase", "/recibos/fabrica");
         return "recibo/fabrica/listado";
     }
 
     @PreAuthorize("hasAnyRole('FABRICA','ADMIN')")
     @GetMapping("/fabrica/nuevo")
-    public String nuevoFabrica(Model model) {
+    public String nuevoFabrica() {
         return "recibo/fabrica/nuevo";
     }
 
@@ -105,19 +110,23 @@ public class ReciboCajaControlador {
             @RequestParam List<String> nombresProducto,
             @RequestParam List<BigDecimal> precios,
             @RequestParam List<Integer> cantidades,
+            @RequestParam(value = "token", required = false) String tokenParam,
+            @CookieValue(value = "authToken", required = false) String tokenCookie,
             RedirectAttributes redirectAttributes) {
+
+        String tokenEfectivo = (tokenParam != null && !tokenParam.isBlank()) ? tokenParam : tokenCookie;
 
         Integer id = guardarRecibo("FABRICA", cliente, direccion, cedula, telefono, abono,
                 nombresProducto, precios, cantidades, redirectAttributes);
 
-        if (id == null) return "redirect:/recibos/fabrica/nuevo";
+        if (id == null) return conToken("redirect:/recibos/fabrica/nuevo", tokenEfectivo);
 
         redirectAttributes.addFlashAttribute("mensaje", "Recibo de fábrica generado correctamente.");
-        return "redirect:/recibos/imprimir/" + id;
+        return conToken("redirect:/recibos/imprimir/" + id, tokenEfectivo);
     }
 
     // ═══════════════════════════════════════════════════════════════
-    // COMUNES (imprimir / eliminar) — con control de acceso por origen
+    // COMUNES (imprimir / PDF / eliminar)
     // ═══════════════════════════════════════════════════════════════
 
     @PreAuthorize("hasAnyRole('TIENDA','TIENDA_ADMIN','FABRICA','ADMIN')")
@@ -132,6 +141,30 @@ public class ReciboCajaControlador {
 
         model.addAttribute("recibo", recibo);
         return "recibo/imprimir";
+    }
+
+    /** Genera el PDF del recibo. Se abre "inline" para que en el celular se pueda usar
+     *  directamente el botón nativo de "Compartir" del visor de PDF (WhatsApp, correo, etc.). */
+    @PreAuthorize("hasAnyRole('TIENDA','TIENDA_ADMIN','FABRICA','ADMIN')")
+    @GetMapping("/pdf/{id}")
+    public ResponseEntity<byte[]> descargarPdf(@PathVariable("id") int id) {
+        ReciboCaja recibo = reciboCajaRepository.findById(id).orElseThrow();
+
+        if (!puedeVerRecibo(recibo)) {
+            return ResponseEntity.status(403).build();
+        }
+
+        try {
+            byte[] pdf = reciboPdfServicio.generarPdf(recibo);
+            String nombreArchivo = "recibo_" + recibo.getNumero() + ".pdf";
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + nombreArchivo + "\"")
+                    .contentType(MediaType.APPLICATION_PDF)
+                    .contentLength(pdf.length)
+                    .body(pdf);
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().build();
+        }
     }
 
     @PreAuthorize("hasAnyRole('TIENDA','TIENDA_ADMIN','FABRICA','ADMIN')")
@@ -158,6 +191,14 @@ public class ReciboCajaControlador {
     // ═══════════════════════════════════════════════════════════════
     // HELPERS INTERNOS
     // ═══════════════════════════════════════════════════════════════
+
+    /** Anexa ?token=... a una redirección "redirect:..." para que la petición GET que
+     *  el navegador dispara justo después del POST no dependa solo de la cookie. */
+    private String conToken(String redirectUrl, String token) {
+        if (token == null || token.isBlank()) return redirectUrl;
+        String separador = redirectUrl.contains("?") ? "&" : "?";
+        return redirectUrl + separador + "token=" + token;
+    }
 
     private void cargarListado(String origenFijo, String cliente, String desde, String hasta, Model model) {
         List<ReciboCaja> todos = reciboCajaRepository.findAllByOrderByIdDesc().stream()

@@ -23,7 +23,11 @@
         .valor-total { width:25%; text-align:right; font-weight:bold; }
         .celda-firma { height:60px; vertical-align:bottom; font-size:10px; }
         .pie-legal { font-size:9px; text-align:center; margin-top:5px; font-style:italic; }
-        .botones-accion { text-align:center; margin-top:14px; }
+        .botones-accion { text-align:center; margin-top:14px; display:flex; gap:8px; justify-content:center; flex-wrap:wrap; }
+        .botones-accion a, .botones-accion button {
+            display:inline-block; text-decoration:none; border:none; cursor:pointer;
+            padding:8px 15px; font-size:13px; border-radius:4px; color:#fff;
+        }
         @media print { body { background:#fff; } .no-print { display:none !important; } .recibo-caja { border:none; } }
     </style>
 </head>
@@ -91,8 +95,9 @@
         </div>
 
         <div class="botones-accion no-print">
-            <button type="button" onclick="window.print()" style="background:#007bff;color:#fff;padding:8px 15px;border:none;cursor:pointer;">Imprimir</button>
-            <a href="/recibos" style="background:#6c757d;color:#fff;padding:8px 15px;text-decoration:none;">← Volver al listado</a>
+            <button type="button" onclick="window.print()" style="background:#007bff;">🖨️ Imprimir</button>
+            <a th:href="@{/recibos/pdf/{id}(id=${recibo.id})}" target="_blank" style="background:#198754;">⬇️ Descargar / Compartir PDF</a>
+            <a th:href="@{'/recibos/' + ${#strings.toLowerCase(recibo.origen)}}" style="background:#6c757d;">← Volver al listado</a>
         </div>
     </div>
 </body>
