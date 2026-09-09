@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>Recibo #<span th:text="${recibo.numeroFormateado}"></span></title>
+    <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600&display=swap" rel="stylesheet">
     <style>
         body { font-family: Arial, sans-serif; background:#f4f4f9; padding:20px; }
         .recibo-caja { background:white; width:700px; padding:20px; border:2px solid #000; font-size:12px; margin:0 auto; color:#000; }
@@ -21,13 +22,60 @@
         .numerica { text-align:right; }
         .etiqueta-total { font-weight:bold; text-align:right; background:#f2f2f2; width:25%; }
         .valor-total { width:25%; text-align:right; font-weight:bold; }
-        .celda-firma { height:60px; vertical-align:bottom; font-size:10px; }
+        .celda-firma { height:70px; vertical-align:bottom; font-size:10px; }
+        .celda-firma img { max-height:60px; max-width:180px; display:block; }
+        .celda-firma .marca-firmado { font-size:9px; color:#0a5c30; margin-top:2px; }
         .pie-legal { font-size:9px; text-align:center; margin-top:5px; font-style:italic; }
         .botones-accion { text-align:center; margin-top:14px; display:flex; gap:8px; justify-content:center; flex-wrap:wrap; }
         .botones-accion a, .botones-accion button {
             display:inline-block; text-decoration:none; border:none; cursor:pointer;
             padding:8px 15px; font-size:13px; border-radius:4px; color:#fff;
         }
+        .btn-firmar { background:#6f42c1; }
+
+        /* ── Modal de firma ── */
+        .modal-firma-overlay {
+            display:none; position:fixed; inset:0; background:rgba(0,0,0,0.55);
+            z-index:1000; align-items:center; justify-content:center; padding:16px;
+        }
+        .modal-firma-overlay.abierto { display:flex; }
+        .modal-firma {
+            background:#fff; border-radius:8px; width:100%; max-width:480px;
+            padding:20px; box-shadow:0 10px 40px rgba(0,0,0,0.3);
+        }
+        .modal-firma h4 { margin-bottom:12px; font-size:16px; }
+        .tabs-firma { display:flex; gap:6px; margin-bottom:14px; }
+        .tab-firma-btn {
+            flex:1; padding:8px; border:1px solid #ccc; background:#f8f9fa; cursor:pointer;
+            border-radius:4px; font-size:13px; font-weight:600; color:#555;
+        }
+        .tab-firma-btn.activo { background:#6f42c1; color:#fff; border-color:#6f42c1; }
+        .panel-firma-tab { display:none; }
+        .panel-firma-tab.activo { display:block; }
+        #canvasFirma {
+            border:2px dashed #adb5bd; border-radius:6px; width:100%; height:180px;
+            touch-action:none; background:#fdfdfd; cursor:crosshair;
+        }
+        .acciones-canvas { display:flex; justify-content:flex-end; margin-top:8px; }
+        .acciones-canvas button {
+            border:none; background:#eee; padding:6px 12px; border-radius:4px; cursor:pointer; font-size:12px;
+        }
+        #inputNombreFirma {
+            width:100%; padding:10px; font-size:16px; border:1px solid #ccc; border-radius:6px; margin-bottom:12px;
+        }
+        #previewFirmaEscrita {
+            border:2px dashed #adb5bd; border-radius:6px; height:100px;
+            display:flex; align-items:center; justify-content:center;
+            font-family:'Dancing Script', cursive; font-size:38px; color:#1a1a1a;
+            background:#fdfdfd; overflow:hidden; padding:0 12px; text-align:center;
+        }
+        .modal-firma-footer { display:flex; gap:8px; justify-content:flex-end; margin-top:18px; }
+        .modal-firma-footer button {
+            padding:9px 18px; border:none; border-radius:5px; cursor:pointer; font-size:13px; font-weight:600;
+        }
+        .btn-cancelar-firma { background:#eee; color:#333; }
+        .btn-guardar-firma { background:#198754; color:#fff; }
+
         @media print { body { background:#fff; } .no-print { display:none !important; } .recibo-caja { border:none; } }
     </style>
 </head>
@@ -80,7 +128,13 @@
 
         <table>
             <tr>
-                <td class="celda-firma" rowspan="2"><span>FIRMA Y SELLO</span></td>
+                <td class="celda-firma" rowspan="2">
+                    <img th:if="${recibo.isFirmado()}" th:src="${recibo.firma}" alt="Firma">
+                    <span th:unless="${recibo.isFirmado()}">FIRMA Y SELLO</span>
+                    <div class="marca-firmado" th:if="${recibo.isFirmado()}">
+                        Firmado el <span th:text="${recibo.firmaFechaFormateada}"></span>
+                    </div>
+                </td>
                 <td class="etiqueta-total">SUBTOTAL</td>
                 <td class="valor-total" th:text="${#numbers.formatDecimal(recibo.total, 1, 'POINT', 2, 'COMMA')}"></td>
             </tr>
@@ -95,11 +149,182 @@
         </div>
 
         <div class="botones-accion no-print">
+            <button type="button" onclick="abrirModalFirma()" class="btn-firmar">
+                ✍️ <span th:text="${recibo.isFirmado()} ? 'Cambiar firma' : 'Firmar recibo'"></span>
+            </button>
             <button type="button" onclick="window.print()" style="background:#007bff;">🖨️ Imprimir</button>
             <a th:href="@{/recibos/pdf/{id}(id=${recibo.id})}" target="_blank" style="background:#198754;">⬇️ Descargar / Compartir PDF</a>
             <a th:href="@{'/recibos/' + ${#strings.toLowerCase(recibo.origen)}}" style="background:#6c757d;">← Volver al listado</a>
         </div>
     </div>
+
+    <!-- ═══════════ MODAL DE FIRMA ═══════════ -->
+    <div class="modal-firma-overlay no-print" id="modalFirmaOverlay">
+        <div class="modal-firma">
+            <h4>✍️ Firmar recibo</h4>
+
+            <div class="tabs-firma">
+                <button type="button" class="tab-firma-btn activo" id="tabDibujarBtn" onclick="cambiarTabFirma('dibujar')">🖊️ Dibujar</button>
+                <button type="button" class="tab-firma-btn" id="tabEscribirBtn" onclick="cambiarTabFirma('escribir')">⌨️ Escribir</button>
+            </div>
+
+            <div class="panel-firma-tab activo" id="panelDibujar">
+                <p style="font-size:12px;color:#666;margin-bottom:8px;">
+                    Dibuja tu firma con el dedo (celular) o con el mouse (computador).
+                </p>
+                <canvas id="canvasFirma" width="440" height="180"></canvas>
+                <div class="acciones-canvas">
+                    <button type="button" onclick="limpiarCanvas()">🗑️ Borrar</button>
+                </div>
+            </div>
+
+            <div class="panel-firma-tab" id="panelEscribir">
+                <p style="font-size:12px;color:#666;margin-bottom:8px;">
+                    Escribe tu nombre y se convertirá en una firma estilizada.
+                </p>
+                <input type="text" id="inputNombreFirma" placeholder="Escribe tu nombre..." maxlength="40">
+                <div id="previewFirmaEscrita">Vista previa de tu firma</div>
+            </div>
+
+            <div class="modal-firma-footer">
+                <button type="button" class="btn-cancelar-firma" onclick="cerrarModalFirma()">Cancelar</button>
+                <button type="button" class="btn-guardar-firma" onclick="guardarFirma()">💾 Guardar firma</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Formulario oculto que realmente envía la firma al servidor -->
+    <form id="formFirma" th:action="@{/recibos/firmar/{id}(id=${recibo.id})}" method="post" style="display:none;">
+        <input type="hidden" name="firmaBase64" id="inputFirmaBase64">
+    </form>
+
+    <script>
+        // ── Control de pestañas del modal ──
+        let tabFirmaActiva = 'dibujar';
+
+        function cambiarTabFirma(tab) {
+            tabFirmaActiva = tab;
+            document.getElementById('tabDibujarBtn').classList.toggle('activo', tab === 'dibujar');
+            document.getElementById('tabEscribirBtn').classList.toggle('activo', tab === 'escribir');
+            document.getElementById('panelDibujar').classList.toggle('activo', tab === 'dibujar');
+            document.getElementById('panelEscribir').classList.toggle('activo', tab === 'escribir');
+        }
+
+        function abrirModalFirma() {
+            document.getElementById('modalFirmaOverlay').classList.add('abierto');
+        }
+        function cerrarModalFirma() {
+            document.getElementById('modalFirmaOverlay').classList.remove('abierto');
+        }
+
+        // ── Canvas de firma dibujada (funciona con mouse y con touch) ──
+        const canvas = document.getElementById('canvasFirma');
+        const ctx = canvas.getContext('2d');
+        let dibujando = false;
+        let hayTrazo = false;
+
+        ctx.lineWidth = 2.5;
+        ctx.lineCap = 'round';
+        ctx.strokeStyle = '#1a1a1a';
+
+        function posicionRelativa(e) {
+            const rect = canvas.getBoundingClientRect();
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            return {
+                x: (clientX - rect.left) * (canvas.width / rect.width),
+                y: (clientY - rect.top) * (canvas.height / rect.height)
+            };
+        }
+
+        function iniciarTrazo(e) {
+            e.preventDefault();
+            dibujando = true;
+            hayTrazo = true;
+            const p = posicionRelativa(e);
+            ctx.beginPath();
+            ctx.moveTo(p.x, p.y);
+        }
+        function continuarTrazo(e) {
+            if (!dibujando) return;
+            e.preventDefault();
+            const p = posicionRelativa(e);
+            ctx.lineTo(p.x, p.y);
+            ctx.stroke();
+        }
+        function terminarTrazo() { dibujando = false; }
+
+        canvas.addEventListener('mousedown', iniciarTrazo);
+        canvas.addEventListener('mousemove', continuarTrazo);
+        window.addEventListener('mouseup', terminarTrazo);
+        canvas.addEventListener('touchstart', iniciarTrazo, { passive: false });
+        canvas.addEventListener('touchmove', continuarTrazo, { passive: false });
+        canvas.addEventListener('touchend', terminarTrazo);
+
+        function limpiarCanvas() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            hayTrazo = false;
+        }
+
+        // ── Firma escrita: vista previa en vivo con fuente cursiva ──
+        const inputNombre = document.getElementById('inputNombreFirma');
+        const previewEscrita = document.getElementById('previewFirmaEscrita');
+        inputNombre.addEventListener('input', () => {
+            previewEscrita.textContent = inputNombre.value.trim() || 'Vista previa de tu firma';
+        });
+
+        // Convierte el texto escrito en una imagen PNG usando la misma fuente cursiva
+        function generarImagenDeTexto(texto) {
+            const c = document.createElement('canvas');
+            c.width = 440;
+            c.height = 180;
+            const cc = c.getContext('2d');
+            cc.fillStyle = '#ffffff';
+            cc.fillRect(0, 0, c.width, c.height);
+            cc.fillStyle = '#1a1a1a';
+            cc.font = "48px 'Dancing Script', cursive";
+            cc.textAlign = 'center';
+            cc.textBaseline = 'middle';
+            cc.fillText(texto, c.width / 2, c.height / 2);
+            return c.toDataURL('image/png');
+        }
+
+        // ── Guardar: toma la pestaña activa y envía la imagen resultante ──
+        function guardarFirma() {
+            let dataUrl = null;
+
+            if (tabFirmaActiva === 'dibujar') {
+                if (!hayTrazo) {
+                    alert('Dibuja tu firma antes de guardar.');
+                    return;
+                }
+                dataUrl = canvas.toDataURL('image/png');
+            } else {
+                const nombre = inputNombre.value.trim();
+                if (!nombre) {
+                    alert('Escribe tu nombre antes de guardar.');
+                    return;
+                }
+                dataUrl = generarImagenDeTexto(nombre);
+            }
+
+            document.getElementById('inputFirmaBase64').value = dataUrl;
+
+            // Adjuntar token igual que el resto de formularios del sitio (token-nav.js
+            // solo intercepta submits normales; este es dinámico, así que se refuerza aquí).
+            const token = localStorage.getItem('authToken');
+            const form = document.getElementById('formFirma');
+            if (token && !form.querySelector('input[name="token"]')) {
+                const inputToken = document.createElement('input');
+                inputToken.type = 'hidden';
+                inputToken.name = 'token';
+                inputToken.value = token;
+                form.appendChild(inputToken);
+            }
+
+            form.submit();
+        }
+    </script>
     <script src="/js/token-nav.js"></script>
 </body>
 </html>

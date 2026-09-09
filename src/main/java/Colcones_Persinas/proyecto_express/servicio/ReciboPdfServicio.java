@@ -3,6 +3,7 @@ package Colcones_Persinas.proyecto_express.servicio;
 import Colcones_Persinas.proyecto_express.modelo.ReciboCaja;
 import Colcones_Persinas.proyecto_express.modelo.ReciboCajaItem;
 import com.lowagie.text.*;
+import com.lowagie.text.Image;
 import com.lowagie.text.pdf.PdfPCell;
 import com.lowagie.text.pdf.PdfPTable;
 import com.lowagie.text.pdf.PdfWriter;
@@ -13,6 +14,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.text.NumberFormat;
+import java.util.Base64;
 import java.util.Locale;
 
 @Service
@@ -41,7 +43,7 @@ public class ReciboPdfServicio {
                 "Celular: 3041354963 - 3122065950 - 3148660215", fuenteNormal));
         documento.add(new Paragraph(" "));
 
-        Paragraph numeroRecibo = new Paragraph("RECIBO DE CAJA Nº " + recibo.getNumero()
+        Paragraph numeroRecibo = new Paragraph("RECIBO DE CAJA Nº " + recibo.getNumeroFormateado()
                 + "  ·  Origen: " + recibo.getOrigen(), fuenteNegrita);
         documento.add(numeroRecibo);
         documento.add(new Paragraph(" "));
@@ -86,7 +88,23 @@ public class ReciboPdfServicio {
 
         documento.add(new Paragraph(" "));
         documento.add(new Paragraph(" "));
-        documento.add(new Paragraph("_______________________________", fuenteNormal));
+
+        // ── Firma (dibujada o escrita, ambas llegan como imagen PNG en base64) ──
+        if (recibo.getFirma() != null && !recibo.getFirma().isBlank()) {
+            try {
+                String datosBase64 = recibo.getFirma().contains(",")
+                        ? recibo.getFirma().substring(recibo.getFirma().indexOf(",") + 1)
+                        : recibo.getFirma();
+                byte[] bytesImagen = Base64.getDecoder().decode(datosBase64);
+                Image imagenFirma = Image.getInstance(bytesImagen);
+                imagenFirma.scaleToFit(160, 60);
+                documento.add(imagenFirma);
+            } catch (Exception e) {
+                documento.add(new Paragraph("_______________________________", fuenteNormal));
+            }
+        } else {
+            documento.add(new Paragraph("_______________________________", fuenteNormal));
+        }
         documento.add(new Paragraph("FIRMA Y SELLO", fuenteNormal));
         documento.add(new Paragraph(" "));
 

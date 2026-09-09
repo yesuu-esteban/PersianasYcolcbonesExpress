@@ -18,6 +18,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -126,7 +127,7 @@ public class ReciboCajaControlador {
     }
 
     // ═══════════════════════════════════════════════════════════════
-    // COMUNES (imprimir / PDF / eliminar)
+    // COMUNES (imprimir / PDF / firmar / eliminar)
     // ═══════════════════════════════════════════════════════════════
 
     @PreAuthorize("hasAnyRole('TIENDA','TIENDA_ADMIN','FABRICA','ADMIN')")
@@ -165,6 +166,38 @@ public class ReciboCajaControlador {
         } catch (Exception e) {
             return ResponseEntity.internalServerError().build();
         }
+    }
+
+    /** Guarda (o reemplaza) la firma de un recibo, ya sea dibujada a mano o generada
+     *  a partir de texto escrito — ambas llegan como una imagen PNG en base64. */
+    @PreAuthorize("hasAnyRole('TIENDA','TIENDA_ADMIN','FABRICA','ADMIN')")
+    @PostMapping("/firmar/{id}")
+    public String guardarFirma(
+            @PathVariable("id") int id,
+            @RequestParam String firmaBase64,
+            @RequestParam(value = "token", required = false) String tokenParam,
+            @CookieValue(value = "authToken", required = false) String tokenCookie,
+            RedirectAttributes redirectAttributes) {
+
+        String tokenEfectivo = (tokenParam != null && !tokenParam.isBlank()) ? tokenParam : tokenCookie;
+
+        ReciboCaja recibo = reciboCajaRepository.findById(id).orElseThrow();
+        if (!puedeVerRecibo(recibo)) {
+            redirectAttributes.addFlashAttribute("error", "No tienes acceso para firmar ese recibo.");
+            return conToken("redirect:/recibos/" + (tieneRol("FABRICA") ? "fabrica" : "tienda"), tokenEfectivo);
+        }
+
+        if (firmaBase64 == null || firmaBase64.isBlank()) {
+            redirectAttributes.addFlashAttribute("error", "No se recibió ninguna firma. Intenta de nuevo.");
+            return conToken("redirect:/recibos/imprimir/" + id, tokenEfectivo);
+        }
+
+        recibo.setFirma(firmaBase64);
+        recibo.setFirmaFecha(LocalDateTime.now());
+        reciboCajaRepository.save(recibo);
+
+        redirectAttributes.addFlashAttribute("mensaje", "Firma guardada correctamente.");
+        return conToken("redirect:/recibos/imprimir/" + id, tokenEfectivo);
     }
 
     @PreAuthorize("hasAnyRole('TIENDA','TIENDA_ADMIN','FABRICA','ADMIN')")

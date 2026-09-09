@@ -38,6 +38,14 @@ public class ReciboCaja {
     private BigDecimal abono = BigDecimal.ZERO;
     private BigDecimal saldo = BigDecimal.ZERO;
 
+    /** Imagen PNG de la firma, en base64 (data URL completo: "data:image/png;base64,..."). */
+    @Column(name = "firma", columnDefinition = "TEXT")
+    private String firma;
+
+    /** Fecha en que se registró/actualizó la firma. Null si el recibo aún no está firmado. */
+    @Column(name = "firma_fecha")
+    private LocalDateTime firmaFecha;
+
     @OneToMany(mappedBy = "recibo", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ReciboCajaItem> items = new ArrayList<>();
 
@@ -51,10 +59,14 @@ public class ReciboCaja {
         item.setRecibo(this);
     }
 
+    @Transient
+    public boolean isFirmado() {
+        return this.firma != null && !this.firma.isBlank();
+    }
+
     /**
      * Número visible del recibo, calculado directamente a partir del id.
      * El primer recibo (id=1) se muestra como "000", el segundo como "001", etc.
-     * Ya no depende de ningún consecutivo manual ni offset fijo.
      */
     @Transient
     public int getNumero() {
@@ -72,5 +84,10 @@ public class ReciboCaja {
     @Transient
     public String getFechaFormateada() {
         return this.fecha != null ? this.fecha.format(FMT) : "";
+    }
+
+    @Transient
+    public String getFirmaFechaFormateada() {
+        return this.firmaFecha != null ? this.firmaFecha.format(FMT) : "";
     }
 }
