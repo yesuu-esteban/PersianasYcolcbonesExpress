@@ -789,4 +789,89 @@ public class PedidoControlador {
         model.addAttribute("hasta", hasta != null ? hasta : "");
         return "reporte_materiales";
     }
+
+
+    @PostMapping("/guardar-riel-onda-serena")
+    @org.springframework.transaction.annotation.Transactional
+    public String guardarRielOndaSerena(
+            @RequestParam String nombreDecorador,
+            @RequestParam String nombreClienteFinal,
+            @RequestParam(required = false) String descripcion,
+            @RequestParam int cantidad,
+            @RequestParam double ancho,
+            @RequestParam double altura,
+            @RequestParam(required = false, defaultValue = "false") boolean usaPolea,
+            @RequestParam(required = false) String terminalPolea,
+            @RequestParam(required = false) Double largoImpresion,
+            @RequestParam Map<String, String> allParams,
+            RedirectAttributes redirectAttributes) {
+
+        if (nombreDecorador == null || nombreDecorador.isBlank()
+                || nombreClienteFinal == null || nombreClienteFinal.isBlank()) {
+            redirectAttributes.addFlashAttribute("error",
+                    "Debes indicar el distribuidor y el cliente final.");
+            return "redirect:/taller/nuevo";
+        }
+
+        // ── Validación: terminalPolea obligatorio y válido SOLO si usaPolea = true ──
+        String terminalNormalizado = null;
+        if (usaPolea) {
+            if (terminalPolea == null || terminalPolea.isBlank()) {
+                redirectAttributes.addFlashAttribute("error",
+                        "Debes elegir Terminal o Control de Polea cuando el riel lleva polea.");
+                return "redirect:/taller/nuevo";
+            }
+            String t = terminalPolea.trim().toUpperCase();
+            if (!t.equals("TERMINAL") && !t.equals("CONTROL_POLEA")) {
+                redirectAttributes.addFlashAttribute("error",
+                        "Valor inválido para terminal/control de polea.");
+                return "redirect:/taller/nuevo";
+            }
+            terminalNormalizado = t;
+        }
+        // Si usaPolea = false, terminalPolea se descarta (no aplica con bastón).
+
+        List<Pedido> pedidosDelLote = new ArrayList<>();
+
+        for (int j = 0; j < Math.max(cantidad, 1); j++) {
+            Pedido p = new Pedido();
+            p.setTipo("RIEL_ONDA_SERENA");
+            p.setNombreDecorador(nombreDecorador);
+            p.setNombreClienteFinal(nombreClienteFinal);
+            p.setDescripcion(cantidad > 1
+                    ? (descripcion != null ? descripcion : "") + " (" + (j + 1) + "/" + cantidad + ")"
+                    : (descripcion != null ? descripcion : ""));
+            p.setAncho(ancho);
+            p.setAltura(altura);
+            p.setCantidad(1);
+            p.setUsaCabezal(false); // el riel nunca usa cabezal
+            p.setUsaPolea(usaPolea);
+            p.setTerminalPolea(terminalNormalizado);
+            p.setLargoImpresion(largoImpresion);
+            p.calcularFichaTecnica();
+            p.calcularEstadoGeneral();
+            pedidosDelLote.add(p);
+        }
+
+        // Guardar y procesar extras (riel de pines, tapas/bastón/poleas, terminal/control)
+        // como insumos extra, reutilizando el mismo mecanismo que fabricación/venta directa.
+        try {
+            for (int i = 0; i < pedidosDelLote.size(); i++) {
+                Pedido p = pedidosDelLote.get(i);
+                pedidoRepository.save(p);
+                // Los extras vienen en el allParams global (no por fila), solo se
+                // procesan una vez por lote para no duplicar el descuento.
+                if (i == 0) {
+                    procesarExtras(p, allParams);
+                }
+            }
+        } catch (InventarioServicio.MaterialInsuficienteException e) {
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
+            return "redirect:/taller/nuevo";
+        }
+
+        redirectAttributes.addFlashAttribute("mensaje",
+                pedidosDelLote.size() + " pedido(s) de Riel de Onda Serena creados correctamente.");
+        return "redirect:/taller/pedidos";
+    }
 }

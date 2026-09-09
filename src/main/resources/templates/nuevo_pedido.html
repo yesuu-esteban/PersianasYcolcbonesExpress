@@ -62,6 +62,22 @@
         .info-stock-insumo.sin-stock { color: #b02a37; font-weight: 600; }
         .nav-tabs .nav-link { font-weight: 600; }
         .nav-tabs .nav-link.active { border-bottom-color: #fff; }
+        .seccion-riel {
+            background: #eef6ff;
+            border: 1px solid #9fc8f5;
+            border-radius: 6px;
+            padding: 14px 16px;
+            margin-bottom: 18px;
+        }
+        .seccion-riel .form-label { font-size: 0.82rem; font-weight: 600; }
+        .riel-resumen {
+            background: #fff;
+            border: 1px dashed #9fc8f5;
+            border-radius: 4px;
+            padding: 8px 12px;
+            font-size: 0.80rem;
+            margin-top: 8px;
+        }
     </style>
 </head>
 <body class="bg-light p-4">
@@ -80,6 +96,9 @@
         </li>
         <li class="nav-item">
             <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabVentaDirecta" type="button">💵 Venta Directa</button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabRielOndaSerena" type="button">🪟 Riel de Onda Serena</button>
         </li>
     </ul>
 
@@ -273,6 +292,96 @@
         </form>
     </div>
     <!-- ══════════════════ FIN TAB VENTA DIRECTA ══════════════════ -->
+
+    <!-- ══════════════════════════════════════════════════════════════ -->
+    <!-- TAB: RIEL DE ONDA SERENA (nueva)                                -->
+    <!-- ══════════════════════════════════════════════════════════════ -->
+    <div class="tab-pane fade" id="tabRielOndaSerena">
+        <form th:action="@{/taller/guardar-riel-onda-serena}" method="post" class="bg-white p-4 shadow-sm border rounded">
+
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <label class="form-label fw-bold">Nombre del Distribuidor</label>
+                    <input type="text" name="nombreDecorador" class="form-control" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-bold">Nombre del Cliente Final</label>
+                    <input type="text" name="nombreClienteFinal" class="form-control" required>
+                </div>
+            </div>
+
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <label class="form-label fw-bold">Descripción (opcional)</label>
+                    <input type="text" name="descripcion" class="form-control" placeholder="Ej: riel sala principal">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label fw-bold">Cant.</label>
+                    <input type="number" name="cantidad" id="rielCantidad" class="form-control" value="1" min="1" required>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label fw-bold">Ancho (m)</label>
+                    <input type="number" step="0.001" name="ancho" id="rielAncho" class="form-control" required>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label fw-bold">Alto (m)</label>
+                    <input type="number" step="0.001" name="altura" id="rielAltura" class="form-control" required>
+                </div>
+            </div>
+
+            <div class="seccion-riel">
+                <div class="flags-row mb-2">
+                    <label>
+                        <input type="checkbox" name="usaPolea" id="rielUsaPolea" value="true" class="form-check-input">
+                        ⚙ Lleva polea
+                    </label>
+                </div>
+
+                <!-- Terminal / Control de polea: solo tiene sentido si usaPolea está marcado -->
+                <div id="rielBloqueTerminal" style="display:none;">
+                    <label class="form-label">Terminal / Control de polea <small class="text-muted">(mutuamente excluyentes)</small></label>
+                    <div class="flags-row">
+                        <label>
+                            <input type="radio" name="terminalPolea" value="TERMINAL" class="form-check-input" checked>
+                            Terminal fijo
+                        </label>
+                        <label>
+                            <input type="radio" name="terminalPolea" value="CONTROL_POLEA" class="form-check-input">
+                            Control de polea
+                        </label>
+                    </div>
+                </div>
+
+                <div class="row mt-2">
+                    <div class="col-md-4">
+                        <label class="form-label">🖨 Largo de impresión (opcional, m)</label>
+                        <input type="number" step="0.001" name="largoImpresion" id="rielLargoImpresion" class="form-control" placeholder="Solo si la tela lleva estampado">
+                    </div>
+                </div>
+
+                <div class="riel-resumen" id="rielResumen">
+                    Completa ancho, alto y si lleva polea para ver el corte estimado.
+                </div>
+            </div>
+
+            <!-- Insumos extra: riel de pines, tapas/bastón o poleas, terminal/control -->
+            <div class="seccion-extras">
+                <p class="fw-bold mb-2">➕ Insumos del riel (riel de pines, tapas/bastón o poleas, terminal/control, etc.)</p>
+                <p class="text-muted mb-2" style="font-size:0.82rem;">
+                    Agrega aquí cada insumo que se descuenta del inventario para este riel
+                    (riel de pines, cuerda de onda serena, tapas o bastón, poleas, terminal o control).
+                </p>
+                <div id="contenedorExtrasRiel"></div>
+                <button type="button" class="btn btn-sm btn-outline-dark mt-1" onclick="agregarFilaExtraRiel()">+ Agregar insumo</button>
+            </div>
+
+            <div class="mt-4">
+                <button type="submit" class="btn btn-success w-100">💾 Guardar Riel de Onda Serena</button>
+                <a href="/taller/pedidos" class="btn btn-secondary w-100 mt-2">Cancelar</a>
+            </div>
+        </form>
+    </div>
+    <!-- ══════════════════ FIN TAB RIEL DE ONDA SERENA ══════════════════ -->
     </div>
 </div>
 
@@ -360,7 +469,7 @@
 
         fila.querySelector('.select-retazo').innerHTML  = opcionesRetazo(color, anchoCorte, altoCorte);
         fila.querySelector('.select-rollo').innerHTML   = opcionesRollo(color);
-        
+
         // Restauramos el valor si existía
         if (retazoVal !== 'auto') fila.querySelector('.select-retazo').value = retazoVal;
         if (rolloVal !== 'auto') fila.querySelector('.select-rollo').value = rolloVal;
@@ -402,7 +511,7 @@
         fila.querySelector('.campo-pitillo').addEventListener('change', () => { actualizarSelectsManualFila(fila); disparar(); });
         fila.querySelector('.campo-conector').addEventListener('change', disparar);
         fila.querySelector('.select-tipo-tubo').addEventListener('change', () => { actualizarSelectsManualFila(fila); disparar(); });
-        
+
         // Exclusión mutua entre selects de tela
         fila.querySelector('.select-retazo').addEventListener('change', function() {
             if (this.value !== 'auto') fila.querySelector('.select-rollo').value = 'auto';
@@ -562,11 +671,6 @@
         try {
             const params = new URLSearchParams({ ancho, altura: alto, color, usaCabezal: cabezal, usaPitilloPesa: pitillo, usaConectorTope: conector, tipoTuboManual });
 
-            // ── FIX: adjuntar el token JWT manualmente. fetch() no pasa por el
-            // listener de click/submit de token-nav.js, así que sin esto la
-            // petición sale sin autenticar, Spring Security la redirige a
-            // /login, el navegador recibe HTML en vez de JSON y r.json() truena
-            // (por eso siempre caía en "No se pudo consultar el inventario").
             const token = sessionStorage.getItem('authToken');
             if (token) params.set('token', token);
 
@@ -681,15 +785,6 @@
         actualizarInfoInsumoVenta(select);
     }
 
-    function agregarFilaExtra() {
-        const cont = document.getElementById('contenedorExtras');
-        const idx = extraIndex++;
-        cont.insertAdjacentHTML('beforeend', filaExtraHtml(idx));
-        const filaCampos = cont.querySelector(`.fila-extra[data-indice="${idx}"]`);
-        const select = filaCampos.querySelector('.select-extra-insumo');
-        actualizarInfoExtra(select);
-    }
-
     function toggleLibre(select) {
         const fila = select.closest('.fila-extra');
         const campoLibre = fila.querySelector('.campo-libre-extra');
@@ -698,7 +793,47 @@
 
     function agregarFilaExtra() {
         const cont = document.getElementById('contenedorExtras');
-        cont.insertAdjacentHTML('beforeend', filaExtraHtml(extraIndex++));
+        cont.insertAdjacentHTML('beforeend', filaExtraHtml(extraIndex));
+        const filaCampos = cont.querySelector(`.fila-extra[data-indice="${extraIndex}"]`);
+        extraIndex++;
+        const select = filaCampos.querySelector('.select-extra-insumo');
+        actualizarInfoExtra(select);
+    }
+
+    // ════════════════════════════════════════════════════════════
+    //  INSUMOS DEL RIEL DE ONDA SERENA (misma lógica que "Extras")
+    // ════════════════════════════════════════════════════════════
+    let extraRielIndex = 0;
+
+    function agregarFilaExtraRiel() {
+        const cont = document.getElementById('contenedorExtrasRiel');
+        cont.insertAdjacentHTML('beforeend', filaExtraHtml(extraRielIndex));
+        const filaCampos = cont.querySelector(`.fila-extra[data-indice="${extraRielIndex}"]`);
+        extraRielIndex++;
+        const select = filaCampos.querySelector('.select-extra-insumo');
+        actualizarInfoExtra(select);
+    }
+
+    // ── Toggle terminal/control de polea + resumen de corte del riel ──
+    function actualizarPanelRiel() {
+        const usaPolea = document.getElementById('rielUsaPolea').checked;
+        document.getElementById('rielBloqueTerminal').style.display = usaPolea ? '' : 'none';
+
+        const ancho = parseFloat(document.getElementById('rielAncho').value) || 0;
+        const resumen = document.getElementById('rielResumen');
+        if (!ancho) {
+            resumen.textContent = 'Completa ancho, alto y si lleva polea para ver el corte estimado.';
+            return;
+        }
+        const corteRiel = usaPolea ? (ancho - 0.075) : ancho;
+        let texto = `Riel: ${corteRiel.toFixed(3)} m | Riel de pines: ${corteRiel.toFixed(3)} m`;
+        if (usaPolea) {
+            const cuerda = (ancho * 2) + 4.0;
+            texto += ` | Cuerda onda serena: ${cuerda.toFixed(3)} m`;
+        } else {
+            texto += ' | Con bastón';
+        }
+        resumen.textContent = texto;
     }
 
     // ════════════════════════════════════════════════════════════
@@ -898,6 +1033,12 @@
         }
         // Arrancamos la pestaña de Venta Directa con una fila de tela lista para usar
         agregarFilaTelaVenta();
+
+        // Riel de Onda Serena: enganchar eventos del panel
+        document.getElementById('rielUsaPolea').addEventListener('change', actualizarPanelRiel);
+        document.getElementById('rielAncho').addEventListener('input', actualizarPanelRiel);
+        document.getElementById('rielAltura').addEventListener('input', actualizarPanelRiel);
+        actualizarPanelRiel();
     });
 </script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
