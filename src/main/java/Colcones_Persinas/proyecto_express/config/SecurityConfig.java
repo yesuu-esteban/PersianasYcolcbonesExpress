@@ -35,12 +35,14 @@ public class SecurityConfig {
                 // para gente que NO puede iniciar sesión porque olvidó su contraseña.
                 .requestMatchers("/css/**", "/js/**", "/images/**", "/login", "/login-jwt", "/", "/portal").permitAll()
 
-                // Gestión de pedidos de tienda
-                .requestMatchers("/tienda/nuevo", "/tienda/guardar", "/tienda/editar/**", "/tienda/eliminar/**")
+                // Gestión de pedidos de almacén (antes "tienda" — los roles internos
+                // TIENDA/TIENDA_ADMIN se conservan igual en la base de datos para no
+                // romper usuarios ya creados; solo cambian las rutas visibles).
+                .requestMatchers("/almacen/nuevo", "/almacen/guardar", "/almacen/editar/**", "/almacen/eliminar/**")
                     .hasAnyRole("TIENDA", "ADMIN")
 
-                // Resto de tienda
-                .requestMatchers("/tienda/**").hasAnyRole("TIENDA", "TIENDA_ADMIN", "ADMIN")
+                // Resto de almacén
+                .requestMatchers("/almacen/**").hasAnyRole("TIENDA", "TIENDA_ADMIN", "ADMIN")
 
                 // Fábrica
                 .requestMatchers("/taller/**", "/inventario/**", "/reportes/**").hasAnyRole("FABRICA", "ADMIN")

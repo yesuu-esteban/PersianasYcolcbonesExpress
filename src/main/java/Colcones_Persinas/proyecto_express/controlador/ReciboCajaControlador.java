@@ -36,30 +36,32 @@ public class ReciboCajaControlador {
     private ReciboPdfServicio reciboPdfServicio;
 
     // ═══════════════════════════════════════════════════════════════
-    // RECIBOS DE TIENDA
+    // RECIBOS DE ALMACÉN (antes "Tienda" — se conserva origen="TIENDA"
+    // internamente en la base de datos para no romper recibos ya
+    // existentes; solo cambia lo que ve el usuario: rutas y texto).
     // ═══════════════════════════════════════════════════════════════
 
     @PreAuthorize("hasAnyRole('TIENDA','TIENDA_ADMIN','ADMIN')")
-    @GetMapping("/tienda")
-    public String listarTienda(
+    @GetMapping("/almacen")
+    public String listarAlmacen(
             @RequestParam(required = false) String cliente,
             @RequestParam(required = false) String desde,
             @RequestParam(required = false) String hasta,
             @RequestParam(required = false, defaultValue = "0") int pagina,
             Model model) {
         cargarListado("TIENDA", cliente, desde, hasta, pagina, model);
-        return "recibo/tienda/listado";
+        return "recibo/almacen/listado";
     }
 
     @PreAuthorize("hasAnyRole('TIENDA','TIENDA_ADMIN','ADMIN')")
-    @GetMapping("/tienda/nuevo")
-    public String nuevoTienda() {
-        return "recibo/tienda/nuevo";
+    @GetMapping("/almacen/nuevo")
+    public String nuevoAlmacen() {
+        return "recibo/almacen/nuevo";
     }
 
     @PreAuthorize("hasAnyRole('TIENDA','TIENDA_ADMIN','ADMIN')")
-    @PostMapping("/tienda/guardar")
-    public String guardarTienda(
+    @PostMapping("/almacen/guardar")
+    public String guardarAlmacen(
             @RequestParam String cliente,
             @RequestParam(required = false) String direccion,
             @RequestParam(required = false) String cedula,
@@ -77,9 +79,9 @@ public class ReciboCajaControlador {
         Integer id = guardarRecibo("TIENDA", cliente, direccion, cedula, telefono, abono,
                 nombresProducto, precios, cantidades, redirectAttributes);
 
-        if (id == null) return conToken("redirect:/recibos/tienda/nuevo", tokenEfectivo);
+        if (id == null) return conToken("redirect:/recibos/almacen/nuevo", tokenEfectivo);
 
-        redirectAttributes.addFlashAttribute("mensaje", "Recibo de tienda generado correctamente.");
+        redirectAttributes.addFlashAttribute("mensaje", "Recibo de almacén generado correctamente.");
         return conToken("redirect:/recibos/imprimir/" + id, tokenEfectivo);
     }
 
@@ -141,11 +143,10 @@ public class ReciboCajaControlador {
         ReciboCaja recibo = reciboCajaRepository.findById(id).orElseThrow();
 
         if (!puedeVerRecibo(recibo)) {
-            return "redirect:/recibos/" + (tieneRol("FABRICA") ? "fabrica" : "tienda")
+            return "redirect:/recibos/" + (tieneRol("FABRICA") ? "fabrica" : "almacen")
                     + "?error=Sin+acceso+a+ese+recibo";
         }
 
-        asignarNumeroSecuencial(recibo);
         model.addAttribute("recibo", recibo);
         return "recibo/imprimir";
     }
@@ -163,7 +164,6 @@ public class ReciboCajaControlador {
         }
 
         try {
-            asignarNumeroSecuencial(recibo);
             byte[] pdf = reciboPdfServicio.generarPdf(recibo);
             String nombreArchivo = "recibo_" + recibo.getNumeroFormateado() + ".pdf";
             return ResponseEntity.ok()
@@ -192,7 +192,7 @@ public class ReciboCajaControlador {
         ReciboCaja recibo = reciboCajaRepository.findById(id).orElseThrow();
         if (!puedeVerRecibo(recibo)) {
             redirectAttributes.addFlashAttribute("error", "No tienes acceso para firmar ese recibo.");
-            return conToken("redirect:/recibos/" + (tieneRol("FABRICA") ? "fabrica" : "tienda"), tokenEfectivo);
+            return conToken("redirect:/recibos/" + (tieneRol("FABRICA") ? "fabrica" : "almacen"), tokenEfectivo);
         }
 
         if (firmaBase64 == null || firmaBase64.isBlank()) {
@@ -213,7 +213,7 @@ public class ReciboCajaControlador {
     public String eliminar(@PathVariable("id") int id, RedirectAttributes redirectAttributes) {
         ReciboCaja recibo = reciboCajaRepository.findById(id).orElseThrow();
         String origen = recibo.getOrigen();
-        String volverA = "FABRICA".equals(origen) ? "/recibos/fabrica" : "/recibos/tienda";
+        String volverA = "FABRICA".equals(origen) ? "/recibos/fabrica" : "/recibos/almacen";
 
         if (!puedeVerRecibo(recibo)) {
             redirectAttributes.addFlashAttribute("error", "No tienes acceso para eliminar ese recibo.");
@@ -221,10 +221,6 @@ public class ReciboCajaControlador {
         }
 
         try {
-            // Al borrar, no queda ningún hueco: la numeración de los recibos
-            // restantes se recalcula automáticamente cada vez que se muestran
-            // (ver asignarNumeroSecuencial), así que nunca hay que "liberar"
-            // ni reservar nada aquí.
             reciboCajaRepository.deleteById(id);
             redirectAttributes.addFlashAttribute("mensaje", "Recibo eliminado.");
         } catch (Exception e) {
@@ -243,16 +239,6 @@ public class ReciboCajaControlador {
         return redirectUrl + separador + "token=" + token;
     }
 
-    /**
-     * Calcula el número compacto (sin huecos) de un recibo: cuenta cuántos
-     * recibos con id menor SIGUEN existiendo en este momento. Si se borraron
-     * recibos anteriores, este número baja automáticamente para cerrar el hueco.
-     */
-    private void asignarNumeroSecuencial(ReciboCaja recibo) {
-        long menores = reciboCajaRepository.countByIdLessThan(recibo.getId());
-        recibo.setNumeroMostrado((int) menores);
-    }
-
     private void cargarListado(String origenFijo, String cliente, String desde, String hasta, int pagina, Model model) {
         List<ReciboCaja> todos = reciboCajaRepository.findAllByOrderByIdDesc().stream()
                 .filter(r -> origenFijo.equalsIgnoreCase(r.getOrigen()))
@@ -268,7 +254,6 @@ public class ReciboCajaControlador {
                 .filter(r -> fHasta == null || (r.getFecha() != null && !r.getFecha().toLocalDate().isAfter(fHasta)))
                 .collect(Collectors.toList());
 
-        // ── Paginación: máximo TAMANO_PAGINA recibos por página ──
         int totalFiltrados = filtrados.size();
         int totalPaginas = (int) Math.ceil((double) totalFiltrados / TAMANO_PAGINA);
         if (totalPaginas == 0) totalPaginas = 1;
@@ -277,7 +262,6 @@ public class ReciboCajaControlador {
         int hastaIdx = Math.min(desdeIdx + TAMANO_PAGINA, totalFiltrados);
         List<ReciboCaja> pagina_ = (desdeIdx < hastaIdx) ? filtrados.subList(desdeIdx, hastaIdx) : new ArrayList<>();
 
-        // Cada recibo de esta página recibe su número compacto y actualizado.
         pagina_.forEach(this::asignarNumeroSecuencial);
 
         model.addAttribute("recibos", pagina_);
@@ -287,6 +271,11 @@ public class ReciboCajaControlador {
         model.addAttribute("paginaActual", paginaActual);
         model.addAttribute("totalPaginas", totalPaginas);
         model.addAttribute("totalRecibosFiltrados", totalFiltrados);
+    }
+
+    private void asignarNumeroSecuencial(ReciboCaja recibo) {
+        long menores = reciboCajaRepository.countByIdLessThan(recibo.getId());
+        recibo.setNumeroMostrado((int) menores);
     }
 
     private Integer guardarRecibo(String origen, String cliente, String direccion, String cedula, String telefono,

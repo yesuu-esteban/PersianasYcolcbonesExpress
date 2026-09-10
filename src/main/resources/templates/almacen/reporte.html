@@ -98,17 +98,17 @@
             <div class="logo-marca">
                 <div class="icono">📊</div>
                 <div class="titulo-marca">
-                    PERSIANAS Y CORTINAS EXPRESS
+                    PERSIANAS EXPRESS
                     <small>REPORTE DE VENTAS</small>
                 </div>
             </div>
-            <a href="/tienda/listado" class="btn btn-outline-secondary">← Volver al listado</a>
+            <a href="/almacen/listado" class="btn btn-outline-secondary">← Volver al listado</a>
         </div>
 
         <h2 class="mb-3">📊 Reporte de Ventas</h2>
 
         <div class="card-filtro">
-            <form method="get" th:action="@{/tienda/reporte}" class="row g-3 align-items-end">
+            <form method="get" th:action="@{/almacen/reporte}" class="row g-3 align-items-end">
                 <div class="col-md-4">
                     <label class="form-label fw-bold">Desde</label>
                     <input type="date" name="desde" th:value="${desde}" class="form-control">
@@ -119,7 +119,7 @@
                 </div>
                 <div class="col-md-4 d-flex gap-2">
                     <button type="submit" class="btn btn-primary flex-fill">Generar reporte</button>
-                    <a href="/tienda/reporte" class="btn btn-outline-secondary">Ver todo</a>
+                    <a href="/almacen/reporte" class="btn btn-outline-secondary">Ver todo</a>
                 </div>
             </form>
         </div>
