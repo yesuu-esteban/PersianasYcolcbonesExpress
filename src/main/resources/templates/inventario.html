@@ -56,7 +56,12 @@
             font-size: 0.78rem;
         }
 
-        /* ───────── Acordeón de grupos (color + ancho) ───────── */
+        /* ───────── Acordeón de grupos (color + ancho) ─────────
+           IMPORTANTE: max-height ya NO se fija por CSS con un número
+           arbitrario (eso cortaba grupos con muchos elementos). Se
+           calcula dinámicamente por JS según el contenido real
+           (ver calcularAlturaGrupo() más abajo), así nunca se pierde
+           información sin importar cuántas filas tenga un grupo. */
         .grupo-rollo {
             border: 1px solid #e3e3e3;
             border-radius: 6px;
@@ -106,9 +111,6 @@
             max-height: 0;
             overflow: hidden;
             transition: max-height 0.25s ease;
-        }
-        .grupo-body.abierto {
-            max-height: 2000px;
         }
         .grupo-resumen-badges .badge { font-size: 0.72rem; }
 
@@ -162,9 +164,8 @@
             overflow: hidden;
             transition: max-height 0.25s ease;
         }
-        .panel-alertas-body.abierto {
-            max-height: 3000px;
-        }
+        /* La lista interna sí mantiene su propio scroll acotado (400px),
+           eso es intencional y no corta nada: simplemente se desplaza. */
         .lista-alertas {
             list-style: none;
             margin: 0;
@@ -597,16 +598,42 @@
     }
 
     // ════════════════════════════════════════════════════════════
+    //  HELPER GENÉRICO DE ACORDEÓN — usado por rollos, retazos e
+    //  insumos. En vez de un max-height fijo (que cortaba grupos con
+    //  muchos elementos), calcula el alto real del contenido con
+    //  scrollHeight y lo aplica como estilo inline. Así, sin importar
+    //  cuántas filas tenga un grupo, siempre se ve completo al abrirlo.
+    // ════════════════════════════════════════════════════════════
+    function calcularAlturaGrupo(body) {
+        // +2px de margen para evitar que un borde/padding redondeado
+        // quede recortado por error de redondeo del navegador.
+        body.style.maxHeight = (body.scrollHeight + 2) + 'px';
+    }
+
+    function engancharAcordeon(header, body, abiertoPorDefecto) {
+        if (abiertoPorDefecto) {
+            calcularAlturaGrupo(body);
+        }
+        header.addEventListener('click', () => {
+            const seVaAAbrir = !body.classList.contains('abierto');
+            header.classList.toggle('abierto');
+            body.classList.toggle('abierto');
+            if (seVaAAbrir) {
+                calcularAlturaGrupo(body);
+            } else {
+                body.style.maxHeight = '0px';
+            }
+        });
+    }
+
+    // ════════════════════════════════════════════════════════════
     //  PANEL DE ALERTAS → acordeón + silenciar individualmente (7 días)
     // ════════════════════════════════════════════════════════════
     (function initPanelAlertas() {
         const header = document.getElementById('panelAlertasHeader');
         const body = document.getElementById('panelAlertasBody');
         if (header && body) {
-            header.addEventListener('click', (e) => {
-                header.classList.toggle('abierto');
-                body.classList.toggle('abierto');
-            });
+            engancharAcordeon(header, body, true);
         }
 
         const DIAS_SILENCIO = 7;
@@ -654,6 +681,7 @@
         const infoSilenciadas = document.getElementById('alertasSilenciadasInfo');
         const textoSilenciadas = document.getElementById('alertasSilenciadasTexto');
         const btnMostrarSilenciadas = document.getElementById('btnMostrarSilenciadas');
+        const panelBody = document.getElementById('panelAlertasBody');
 
         function actualizarVisibilidad() {
             let visibles = 0;
@@ -696,6 +724,12 @@
                     infoSilenciadas.style.display = 'none';
                 }
             }
+
+            // Recalcula el alto del panel si estaba abierto, ya que el
+            // número de filas visibles pudo haber cambiado.
+            if (panelBody && panelBody.classList.contains('abierto')) {
+                calcularAlturaGrupo(panelBody);
+            }
         }
 
         todosLosItems.forEach(li => {
@@ -728,10 +762,7 @@
         const header = document.getElementById('panelHistorialHeader');
         const body = document.getElementById('panelHistorialBody');
         if (header && body) {
-            header.addEventListener('click', () => {
-                header.classList.toggle('abierto');
-                body.classList.toggle('abierto');
-            });
+            engancharAcordeon(header, body, false);
         }
     })();
 
@@ -847,7 +878,7 @@
                 });
 
                 div.innerHTML = `
-                    <div class="grupo-header" role="button">
+                    <div class="grupo-header abierto" role="button">
                         <div class="grupo-titulo">
                             <span class="chevron">▶</span>
                             <span class="swatch-color" style="background:${colorSwatch(g.color)};"></span>
@@ -856,8 +887,8 @@
                         </div>
                         <div class="grupo-resumen-badges d-flex gap-1">${badges.join(' ')}</div>
                     </div>
-                    <div class="grupo-body">
-                        <table class="table table-hover align-middle table-small mb-0">
+                    <div class="grupo-body abierto">
+                        <table class="table table-hover table-small mb-0">
                             <thead class="table-light">
                                 <tr><th>#</th><th>Área restante</th><th>Estado</th><th>Ingreso</th><th>Acciones</th></tr>
                             </thead>
@@ -867,10 +898,7 @@
 
                 const header = div.querySelector('.grupo-header');
                 const body = div.querySelector('.grupo-body');
-                header.addEventListener('click', () => {
-                    header.classList.toggle('abierto');
-                    body.classList.toggle('abierto');
-                });
+                engancharAcordeon(header, body, true);
 
                 contenedor.appendChild(div);
             });
@@ -892,11 +920,17 @@
         });
         document.getElementById('btnExpandirTodosRollo').addEventListener('click', () => {
             document.querySelectorAll('#gruposRollosContainer .grupo-header').forEach(h => h.classList.add('abierto'));
-            document.querySelectorAll('#gruposRollosContainer .grupo-body').forEach(b => b.classList.add('abierto'));
+            document.querySelectorAll('#gruposRollosContainer .grupo-body').forEach(b => {
+                b.classList.add('abierto');
+                calcularAlturaGrupo(b);
+            });
         });
         document.getElementById('btnColapsarTodosRollo').addEventListener('click', () => {
             document.querySelectorAll('#gruposRollosContainer .grupo-header').forEach(h => h.classList.remove('abierto'));
-            document.querySelectorAll('#gruposRollosContainer .grupo-body').forEach(b => b.classList.remove('abierto'));
+            document.querySelectorAll('#gruposRollosContainer .grupo-body').forEach(b => {
+                b.classList.remove('abierto');
+                b.style.maxHeight = '0px';
+            });
         });
 
 
@@ -1000,7 +1034,7 @@
                 });
 
                 div.innerHTML = `
-                    <div class="grupo-header" role="button">
+                    <div class="grupo-header abierto" role="button">
                         <div class="grupo-titulo">
                             <span class="chevron">▶</span>
                             <span class="swatch-color" style="background:${colorSwatch(g.color)};"></span>
@@ -1009,8 +1043,8 @@
                         </div>
                         <div class="grupo-resumen-badges d-flex gap-1">${badges.join(' ')}</div>
                     </div>
-                    <div class="grupo-body">
-                        <table class="table table-hover align-middle table-small mb-0">
+                    <div class="grupo-body abierto">
+                        <table class="table table-hover table-small mb-0">
                             <thead class="table-light">
                                 <tr><th>#</th><th>Ancho</th><th>Alto disponible</th><th>Área</th><th>Estado</th><th>Ingreso</th><th>Acciones</th></tr>
                             </thead>
@@ -1020,10 +1054,7 @@
 
                 const header = div.querySelector('.grupo-header');
                 const body = div.querySelector('.grupo-body');
-                header.addEventListener('click', () => {
-                    header.classList.toggle('abierto');
-                    body.classList.toggle('abierto');
-                });
+                engancharAcordeon(header, body, true);
 
                 contenedor.appendChild(div);
             });
@@ -1043,11 +1074,17 @@
         });
         document.getElementById('btnExpandirTodosRetazo').addEventListener('click', () => {
             document.querySelectorAll('#gruposRetazosContainer .grupo-header').forEach(h => h.classList.add('abierto'));
-            document.querySelectorAll('#gruposRetazosContainer .grupo-body').forEach(b => b.classList.add('abierto'));
+            document.querySelectorAll('#gruposRetazosContainer .grupo-body').forEach(b => {
+                b.classList.add('abierto');
+                calcularAlturaGrupo(b);
+            });
         });
         document.getElementById('btnColapsarTodosRetazo').addEventListener('click', () => {
             document.querySelectorAll('#gruposRetazosContainer .grupo-header').forEach(h => h.classList.remove('abierto'));
-            document.querySelectorAll('#gruposRetazosContainer .grupo-body').forEach(b => b.classList.remove('abierto'));
+            document.querySelectorAll('#gruposRetazosContainer .grupo-body').forEach(b => {
+                b.classList.remove('abierto');
+                b.style.maxHeight = '0px';
+            });
         });
 
         render();
@@ -1146,8 +1183,8 @@
                     }
 
                     cuerpoInterno = `
-                        <div class="grupo-body">
-                            <table class="table table-hover align-middle table-small mb-0">
+                        <div class="grupo-body abierto">
+                            <table class="table table-hover table-small mb-0">
                                 <thead class="table-light">
                                     <tr><th>#</th><th>Largo restante</th><th>Estado</th><th>Ingreso</th><th>Acciones</th></tr>
                                 </thead>
@@ -1159,7 +1196,7 @@
                     div.dataset.agotadas = agotadas;
                 } else {
                     cuerpoInterno = `
-                        <div class="grupo-body">
+                        <div class="grupo-body abierto">
                             <div class="p-3">
                                 <p class="mb-1"><strong>Stock actual:</strong> ${escapeHtml(ins.stockUnidades)} unidad(es)</p>
                                 <p class="mb-0 text-muted"><small>${escapeHtml(ins.descripcion || 'Sin descripción.')}</small></p>
@@ -1168,7 +1205,7 @@
                 }
 
                 div.innerHTML = `
-                    <div class="grupo-header" role="button">
+                    <div class="grupo-header abierto" role="button">
                         <div class="grupo-titulo">
                             <span class="chevron">▶</span>
                             <span class="id-pill">#${escapeHtml(ins.id)}</span>
@@ -1182,10 +1219,7 @@
 
                 const header = div.querySelector('.grupo-header');
                 const body = div.querySelector('.grupo-body');
-                header.addEventListener('click', () => {
-                    header.classList.toggle('abierto');
-                    body.classList.toggle('abierto');
-                });
+                engancharAcordeon(header, body, true);
 
                 contenedor.appendChild(div);
             });
@@ -1205,11 +1239,17 @@
         });
         document.getElementById('btnExpandirTodosInsumo').addEventListener('click', () => {
             document.querySelectorAll('#gruposInsumosContainer .grupo-header').forEach(h => h.classList.add('abierto'));
-            document.querySelectorAll('#gruposInsumosContainer .grupo-body').forEach(b => b.classList.add('abierto'));
+            document.querySelectorAll('#gruposInsumosContainer .grupo-body').forEach(b => {
+                b.classList.add('abierto');
+                calcularAlturaGrupo(b);
+            });
         });
         document.getElementById('btnColapsarTodosInsumo').addEventListener('click', () => {
             document.querySelectorAll('#gruposInsumosContainer .grupo-header').forEach(h => h.classList.remove('abierto'));
-            document.querySelectorAll('#gruposInsumosContainer .grupo-body').forEach(b => b.classList.remove('abierto'));
+            document.querySelectorAll('#gruposInsumosContainer .grupo-body').forEach(b => {
+                b.classList.remove('abierto');
+                b.style.maxHeight = '0px';
+            });
         });
 
         render();
