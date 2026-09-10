@@ -161,6 +161,18 @@
         .badge-seleccion-manual { background: #6f42c1; color: #fff; }
         .badge-seleccion-auto   { background: #6c757d; color: #fff; }
 
+        /* Costo de fábrica destacado */
+        .costo-fabrica-box {
+            background: #e7f5ec;
+            border-left: 3px solid #198754;
+            border-radius: 3px;
+            padding: 4px 8px;
+            margin-top: 6px;
+            font-size: 0.76rem;
+            font-weight: 700;
+            color: #0a5c30;
+        }
+
         /* Tabla de material: table-layout fixed reparte el ancho entre columnas
            según % definido, así una descripción larga no ensancha la tabla más
            allá de la hoja — el texto hace salto de línea dentro de su celda. */
@@ -323,6 +335,9 @@
             <p><strong>Mando:</strong>   <span class="valor-mando" th:text="${pedido.ladoControl}"></span></p>
             <p><strong>Cuerda:</strong>  <span th:text="${pedido.medidaCuerda}"></span></p>
             <p><strong>Control:</strong> <span th:text="${pedido.tipoControl}"></span></p>
+            <div class="costo-fabrica-box">
+                💲 Costo Fábrica: $<span th:text="${#numbers.formatDecimal(pedido.costoFabrica, 1, 'POINT', 0, 'NONE')}"></span>
+            </div>
         </div>
 
         <!-- 2: Corte de tela -->

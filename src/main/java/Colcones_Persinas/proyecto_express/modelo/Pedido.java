@@ -275,6 +275,49 @@ public class Pedido {
         return this.tipoControl != null && this.tipoControl.trim().startsWith("Control R16");
     }
 
+    /**
+     * Ancho comercial de rollo que corresponde a este pedido (1.83 / 2.50 / 3.00 m),
+     * usando el mismo criterio que InventarioServicio.anchoComercialDe(): depende
+     * del LARGO de corte de la persiana (corteTelaAlto), no del ancho.
+     */
+    @Transient
+    public double getAnchoComercialUsado() {
+        double largo = getCorteTelaAlto();
+        if (largo <= 1.83) return 1.83;
+        if (largo <= 2.50) return 2.50;
+        return 3.00;
+    }
+
+    /**
+     * Costo de fábrica (precio de distribuidor): metros cuadrados de la persiana
+     * (ancho x altura, medida final solicitada, SIN el descuento de corte)
+     * multiplicados por el valor por m² según el ancho comercial de rollo que
+     * le corresponde:
+     *   Tela 1.83m → $51.200 / m²
+     *   Tela 2.50m → $53.800 / m²
+     *   Tela 3.00m → $74.250 / m²
+     * Solo aplica a pedidos de Fabricación (enrollable/blackout); Venta Directa
+     * y Riel de Onda Serena no usan esta fórmula, devuelven 0.
+     */
+    @Transient
+    public double getCostoFabrica() {
+        if (isVentaDirecta() || isRielOndaSerena()) return 0.0;
+
+        double metrosCuadrados = this.ancho * this.altura;
+        double anchoComercial = getAnchoComercialUsado();
+
+        double valorPorM2;
+        if (anchoComercial <= 1.83) {
+            valorPorM2 = 51200.0;
+        } else if (anchoComercial <= 2.50) {
+            valorPorM2 = 53800.0;
+        } else {
+            valorPorM2 = 74250.0;
+        }
+
+        return Math.round(metrosCuadrados * valorPorM2);
+    }
+
     // ─── CÁLCULOS TRANSIENT — RIEL DE ONDA SERENA ────────────────────────────
 
     /** Riel = Ancho - 0.075 m (siete y medio centímetros de descuento). */

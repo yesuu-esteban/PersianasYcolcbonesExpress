@@ -40,6 +40,17 @@
 
         /* ── Paginación ── */
         .paginacion-wrap { display: flex; justify-content: center; align-items: center; gap: 6px; margin-top: 18px; flex-wrap: wrap; }
+
+        /* ── Costo de fábrica ── */
+        .costo-fabrica-tag {
+            display: inline-block;
+            background: #e7f5ec;
+            color: #0a5c30;
+            border-radius: 4px;
+            padding: 2px 8px;
+            font-weight: 700;
+            font-size: 0.85rem;
+        }
     </style>
 </head>
 <body class="bg-light p-4">
@@ -140,7 +151,8 @@
                     th:data-usa-polea="${p.usaPolea}"
                     th:data-corte-riel="${#numbers.formatDecimal(p.corteRiel, 1, 3)}"
                     th:data-corte-riel-pines="${#numbers.formatDecimal(p.corteRielPines, 1, 3)}"
-                    th:data-corte-cuerda-onda="${#numbers.formatDecimal(p.corteCuerdaOnda, 1, 3)}">
+                    th:data-corte-cuerda-onda="${#numbers.formatDecimal(p.corteCuerdaOnda, 1, 3)}"
+                    th:data-costo-fabrica="${#numbers.formatDecimal(p.costoFabrica, 1, 'POINT', 0, 'NONE')}">
                     <td class="col-cliente" th:text="${p.nombreClienteFinal}"></td>
                     <td class="col-descripcion" th:text="${p.descripcion}"></td>
                     <td class="col-sistema" th:text="${p.isRielOndaSerena() ? 'RIEL ONDA SERENA' : p.tipoSistema}" th:data-cabezal="${p.usaCabezal}"></td>
@@ -161,7 +173,8 @@
                                 <strong>Cabezal:</strong> <span th:text="${#numbers.formatDecimal(p.medidaCabezal, 1, 3)}"></span>m<br>
                             </th:block>
                             <strong>Cuerda:</strong> <span th:text="${p.medidaCuerda}"></span><br>
-                            <strong>Control:</strong> <span th:text="${p.tipoControl}"></span>
+                            <strong>Control:</strong> <span th:text="${p.tipoControl}"></span><br>
+                            <strong>Costo Fábrica:</strong> $<span th:text="${#numbers.formatDecimal(p.costoFabrica, 1, 'POINT', 0, 'NONE')}"></span>
                         </div>
                     </td>
                     <td class="col-creado">
@@ -241,6 +254,8 @@
                 div.className = 'grupo-cliente';
 
                 let filasHtml = '';
+                let costoFabricaGrupo = 0;
+
                 grupo.filas.forEach(tr => {
                     const acc = tr.querySelector('.col-acciones');
                     const sistemaTd = tr.querySelector('.col-sistema');
@@ -250,6 +265,10 @@
                     const badgeEstadoClase = estadoTexto === 'Despachado' ? 'bg-success'
                         : (estadoTexto === 'Finalizado' ? 'bg-info text-dark' : 'bg-secondary');
                     const yaEnsamblado = acc.dataset.ensamblado === 'true';
+
+                    if (!esRiel) {
+                        costoFabricaGrupo += parseFloat(tr.dataset.costoFabrica) || 0;
+                    }
 
                     const celdaFicha = esRiel
                         ? `<div class="ficha-box">
@@ -294,10 +313,15 @@
                         </tr>`;
                 });
 
+                const costoFormateado = costoFabricaGrupo.toLocaleString('es-CO', { maximumFractionDigits: 0 });
+
                 div.innerHTML = `
                     <div class="grupo-cliente-header abierto" role="button">
                         <span><span class="chevron">▶</span><strong>${escapeHtml(grupo.nombre)}</strong></span>
-                        <span class="badge bg-light text-dark">${grupo.filas.length} pedido(s)</span>
+                        <span class="d-flex gap-2 align-items-center">
+                            <span class="costo-fabrica-tag" title="Suma del costo de fábrica de este grupo (solo pedidos de fabricación)">$${costoFormateado}</span>
+                            <span class="badge bg-light text-dark">${grupo.filas.length} pedido(s)</span>
+                        </span>
                     </div>
                     <div class="grupo-cliente-body abierto">
                         <table class="table table-hover table-small mb-0 align-middle">
