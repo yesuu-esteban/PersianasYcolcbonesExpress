@@ -172,6 +172,8 @@
             display: flex;
             flex-direction: column;
             gap: 5px;
+            max-height: 400px;
+            overflow-y: auto;
         }
         .item-alerta {
             display: flex;
@@ -310,6 +312,36 @@
                 <div class="alertas-silenciadas-info" id="alertasSilenciadasInfo" style="display:none;">
                     <span id="alertasSilenciadasTexto"></span>
                     <a href="#" id="btnMostrarSilenciadas">mostrar de nuevo</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- ───────────── HISTORIAL DE MOVIMIENTOS ───────────── -->
+        <div class="panel-alertas">
+            <div class="panel-alertas-header" id="panelHistorialHeader" role="button" style="background-color:#495057;">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="chevron">▶</span>
+                    <strong>🗂 Historial de Movimientos</strong>
+                </div>
+                <span class="text-white-50" style="font-size:0.8rem;">Entradas manuales y limpieza automática de retazos/piezas pequeñas</span>
+            </div>
+            <div class="panel-alertas-body" id="panelHistorialBody">
+                <ul class="lista-alertas" th:if="${not #lists.isEmpty(movimientosRecientes)}">
+                    <li th:each="m : ${movimientosRecientes}" class="item-alerta"
+                        th:classappend="${m.tipoMovimiento == 'LIMPIEZA_AUTOMATICA'} ? 'nivel-advertencia' : ''"
+                        style="background-color:#f1f3f5;">
+                        <span class="icono-alerta" th:text="${m.tipoMovimiento == 'LIMPIEZA_AUTOMATICA'} ? '🧹' : '➕'"></span>
+                        <span class="texto-alerta">
+                            <span class="titulo-alerta" th:text="${m.categoria}"></span>
+                            <span class="mensaje-alerta" th:text="${m.descripcion}"></span>
+                        </span>
+                        <small class="text-muted" style="white-space:nowrap;">
+                            <span th:text="${m.fechaFormateada}"></span> · <span th:text="${m.creadoPor}"></span>
+                        </small>
+                    </li>
+                </ul>
+                <div class="sin-alertas" th:if="${#lists.isEmpty(movimientosRecientes)}">
+                    Aún no hay movimientos registrados.
                 </div>
             </div>
         </div>
@@ -687,6 +719,20 @@
         }
 
         actualizarVisibilidad();
+    })();
+
+    // ════════════════════════════════════════════════════════════
+    //  PANEL DE HISTORIAL DE MOVIMIENTOS → acordeón simple
+    // ════════════════════════════════════════════════════════════
+    (function initPanelHistorial() {
+        const header = document.getElementById('panelHistorialHeader');
+        const body = document.getElementById('panelHistorialBody');
+        if (header && body) {
+            header.addEventListener('click', () => {
+                header.classList.toggle('abierto');
+                body.classList.toggle('abierto');
+            });
+        }
     })();
 
     // ════════════════════════════════════════════════════════════

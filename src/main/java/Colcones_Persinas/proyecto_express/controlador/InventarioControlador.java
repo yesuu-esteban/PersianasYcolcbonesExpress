@@ -9,6 +9,7 @@
         import Colcones_Persinas.proyecto_express.repository.RetazoTelaRepository;
         import Colcones_Persinas.proyecto_express.repository.RolloTelaRepository;
         import Colcones_Persinas.proyecto_express.servicio.InventarioServicio;
+        import Colcones_Persinas.proyecto_express.servicio.MovimientoInventarioServicio;
         import org.springframework.beans.factory.annotation.Autowired;
         import org.springframework.stereotype.Controller;
         import org.springframework.ui.Model;
@@ -39,6 +40,9 @@
 
             @Autowired
             private InventarioServicio inventarioServicio;
+
+            @Autowired
+            private MovimientoInventarioServicio movimientoInventarioServicio;
 
             private static final List<String> COLORES = Arrays.asList("Blanco", "Gris", "Fawn", "Vainilla");
             private static final List<Double> ANCHOS = Arrays.asList(1.83, 2.50, 3.00);
@@ -77,6 +81,9 @@
                 // ── Alertas de stock bajo (tela por color/ancho, insumos por unidad y por medida) ──
                 model.addAttribute("alertasInventario", inventarioServicio.obtenerAlertasInventario());
 
+                // ── Historial de movimientos (entradas y limpieza automática) ──
+                model.addAttribute("movimientosRecientes", movimientoInventarioServicio.getUltimosMovimientos(30));
+
                 return "inventario";
             }
 
@@ -103,6 +110,9 @@
                     rollo.setLargoInicial(30.0);
                     rollo.setLargoRestante(30.0);
                     rolloTelaRepository.save(rollo);
+
+                    movimientoInventarioServicio.registrarEntrada("ROLLO",
+                            "Rollo " + color + " " + ancho + "m × 30m (#" + rollo.getId() + ") agregado al inventario.");
                 }
 
                 redirectAttributes.addFlashAttribute("mensaje",
@@ -170,6 +180,9 @@
                 retazo.setAncho(ancho);
                 retazo.setAlto(alto);
                 retazoTelaRepository.save(retazo);
+
+                movimientoInventarioServicio.registrarEntrada("RETAZO",
+                        "Retazo " + color + " " + ancho + "m × " + alto + "m (#" + retazo.getId() + ") registrado.");
 
                 redirectAttributes.addFlashAttribute("mensaje",
                         "Retazo de tela " + color + " (" + ancho + "m × " + alto + "m) registrado.");
@@ -248,12 +261,16 @@
                             pieza.setLargoRestante(largo);
                             piezaInsumoRepository.save(pieza);
                         }
+                        movimientoInventarioServicio.registrarEntrada("INSUMO_PIEZA",
+                                nombre + ": " + cantidadPiezas + " pieza(s) de " + largo + " m creadas.");
                         creados.add(nombre + " (" + cantidadPiezas + " pieza(s) de " + largo + " m)");
                     } else {
                         String unidadesTexto = allParams.get("unidadesIniciales[" + i + "]");
                         int unidades = (int) parsearDouble(unidadesTexto, 0.0);
                         insumo.setStockUnidades(unidades);
                         insumoRepository.save(insumo);
+                        movimientoInventarioServicio.registrarEntrada("INSUMO_UNIDAD",
+                                nombre + ": " + unidades + " unidad(es) creadas.");
                         creados.add(nombre + " (" + unidades + " unidad(es))");
                     }
                 }
@@ -316,6 +333,8 @@
                         pieza.setLargoRestante(largo);
                         piezaInsumoRepository.save(pieza);
                     }
+                    movimientoInventarioServicio.registrarEntrada("INSUMO_PIEZA",
+                            insumo.getNombre() + ": " + cantidadPiezas + " pieza(s) de " + largo + " m agregadas.");
                     redirectAttributes.addFlashAttribute("mensaje",
                             cantidadPiezas + " pieza(s) de " + insumo.getNombre() + " (" + largo + " m c/u) agregada(s).");
                 } else {
@@ -326,6 +345,8 @@
                     int actual = insumo.getStockUnidades() != null ? insumo.getStockUnidades() : 0;
                     insumo.setStockUnidades(actual + unidades);
                     insumoRepository.save(insumo);
+                    movimientoInventarioServicio.registrarEntrada("INSUMO_UNIDAD",
+                            insumo.getNombre() + ": " + unidades + " unidad(es) agregadas.");
                     redirectAttributes.addFlashAttribute("mensaje",
                             unidades + " unidad(es) de " + insumo.getNombre() + " agregada(s). Total ahora: "
                             + insumo.getStockUnidades());
