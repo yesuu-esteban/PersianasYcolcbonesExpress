@@ -60,8 +60,8 @@
            IMPORTANTE: max-height ya NO se fija por CSS con un número
            arbitrario (eso cortaba grupos con muchos elementos). Se
            calcula dinámicamente por JS según el contenido real
-           (ver calcularAlturaGrupo() más abajo), así nunca se pierde
-           información sin importar cuántas filas tenga un grupo. */
+           (ver calcularAlturaGrupo() más abajo) SOLO al momento de
+           abrir el grupo — por defecto todos empiezan cerrados. */
         .grupo-rollo {
             border: 1px solid #e3e3e3;
             border-radius: 6px;
@@ -601,8 +601,8 @@
     //  HELPER GENÉRICO DE ACORDEÓN — usado por rollos, retazos e
     //  insumos. En vez de un max-height fijo (que cortaba grupos con
     //  muchos elementos), calcula el alto real del contenido con
-    //  scrollHeight y lo aplica como estilo inline. Así, sin importar
-    //  cuántas filas tenga un grupo, siempre se ve completo al abrirlo.
+    //  scrollHeight y lo aplica como estilo inline SOLO cuando el
+    //  grupo se abre. Por defecto todos los grupos empiezan cerrados.
     // ════════════════════════════════════════════════════════════
     function calcularAlturaGrupo(body) {
         // +2px de margen para evitar que un borde/padding redondeado
@@ -612,6 +612,8 @@
 
     function engancharAcordeon(header, body, abiertoPorDefecto) {
         if (abiertoPorDefecto) {
+            header.classList.add('abierto');
+            body.classList.add('abierto');
             calcularAlturaGrupo(body);
         }
         header.addEventListener('click', () => {
@@ -756,7 +758,8 @@
     })();
 
     // ════════════════════════════════════════════════════════════
-    //  PANEL DE HISTORIAL DE MOVIMIENTOS → acordeón simple
+    //  PANEL DE HISTORIAL DE MOVIMIENTOS → acordeón simple, cerrado
+    //  por defecto (segundo parámetro en false).
     // ════════════════════════════════════════════════════════════
     (function initPanelHistorial() {
         const header = document.getElementById('panelHistorialHeader');
@@ -878,7 +881,7 @@
                 });
 
                 div.innerHTML = `
-                    <div class="grupo-header abierto" role="button">
+                    <div class="grupo-header" role="button">
                         <div class="grupo-titulo">
                             <span class="chevron">▶</span>
                             <span class="swatch-color" style="background:${colorSwatch(g.color)};"></span>
@@ -887,7 +890,7 @@
                         </div>
                         <div class="grupo-resumen-badges d-flex gap-1">${badges.join(' ')}</div>
                     </div>
-                    <div class="grupo-body abierto">
+                    <div class="grupo-body">
                         <table class="table table-hover table-small mb-0">
                             <thead class="table-light">
                                 <tr><th>#</th><th>Área restante</th><th>Estado</th><th>Ingreso</th><th>Acciones</th></tr>
@@ -898,7 +901,7 @@
 
                 const header = div.querySelector('.grupo-header');
                 const body = div.querySelector('.grupo-body');
-                engancharAcordeon(header, body, true);
+                engancharAcordeon(header, body, false);
 
                 contenedor.appendChild(div);
             });
@@ -1034,7 +1037,7 @@
                 });
 
                 div.innerHTML = `
-                    <div class="grupo-header abierto" role="button">
+                    <div class="grupo-header" role="button">
                         <div class="grupo-titulo">
                             <span class="chevron">▶</span>
                             <span class="swatch-color" style="background:${colorSwatch(g.color)};"></span>
@@ -1043,7 +1046,7 @@
                         </div>
                         <div class="grupo-resumen-badges d-flex gap-1">${badges.join(' ')}</div>
                     </div>
-                    <div class="grupo-body abierto">
+                    <div class="grupo-body">
                         <table class="table table-hover table-small mb-0">
                             <thead class="table-light">
                                 <tr><th>#</th><th>Ancho</th><th>Alto disponible</th><th>Área</th><th>Estado</th><th>Ingreso</th><th>Acciones</th></tr>
@@ -1054,7 +1057,7 @@
 
                 const header = div.querySelector('.grupo-header');
                 const body = div.querySelector('.grupo-body');
-                engancharAcordeon(header, body, true);
+                engancharAcordeon(header, body, false);
 
                 contenedor.appendChild(div);
             });
@@ -1183,7 +1186,7 @@
                     }
 
                     cuerpoInterno = `
-                        <div class="grupo-body abierto">
+                        <div class="grupo-body">
                             <table class="table table-hover table-small mb-0">
                                 <thead class="table-light">
                                     <tr><th>#</th><th>Largo restante</th><th>Estado</th><th>Ingreso</th><th>Acciones</th></tr>
@@ -1196,7 +1199,7 @@
                     div.dataset.agotadas = agotadas;
                 } else {
                     cuerpoInterno = `
-                        <div class="grupo-body abierto">
+                        <div class="grupo-body">
                             <div class="p-3">
                                 <p class="mb-1"><strong>Stock actual:</strong> ${escapeHtml(ins.stockUnidades)} unidad(es)</p>
                                 <p class="mb-0 text-muted"><small>${escapeHtml(ins.descripcion || 'Sin descripción.')}</small></p>
@@ -1205,7 +1208,7 @@
                 }
 
                 div.innerHTML = `
-                    <div class="grupo-header abierto" role="button">
+                    <div class="grupo-header" role="button">
                         <div class="grupo-titulo">
                             <span class="chevron">▶</span>
                             <span class="id-pill">#${escapeHtml(ins.id)}</span>
@@ -1219,7 +1222,7 @@
 
                 const header = div.querySelector('.grupo-header');
                 const body = div.querySelector('.grupo-body');
-                engancharAcordeon(header, body, true);
+                engancharAcordeon(header, body, false);
 
                 contenedor.appendChild(div);
             });

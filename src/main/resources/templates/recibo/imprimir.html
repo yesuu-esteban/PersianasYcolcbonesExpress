@@ -153,7 +153,11 @@
                 ✍️ <span th:text="${recibo.isFirmado()} ? 'Cambiar firma' : 'Firmar recibo'"></span>
             </button>
             <button type="button" onclick="window.print()" style="background:#007bff;">🖨️ Imprimir</button>
-            <a th:href="@{/recibos/pdf/{id}(id=${recibo.id})}" target="_blank" style="background:#198754;">⬇️ Descargar / Compartir PDF</a>
+            <button type="button" class="btn-compartir-pdf" style="background:#198754;"
+                    th:data-url="@{/recibos/pdf/{id}(id=${recibo.id})}"
+                    th:data-nombre="'recibo_' + ${recibo.numeroFormateado} + '.pdf'">
+                📤 Compartir Recibo
+            </button>
             <a th:href="@{'/recibos/' + ${#strings.toLowerCase(recibo.origen)}}" style="background:#6c757d;">← Volver al listado</a>
         </div>
     </div>
@@ -325,6 +329,7 @@
             form.submit();
         }
     </script>
+    <script src="/js/recibo-compartir.js"></script>
     <script src="/js/token-nav.js"></script>
 </body>
 </html>

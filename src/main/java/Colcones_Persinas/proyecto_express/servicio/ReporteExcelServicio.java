@@ -27,8 +27,11 @@ public class ReporteExcelServicio {
     private final RetazoTelaRepository retazoTelaRepository;
     private final InsumoRepository insumoRepository;
     private final PiezaInsumoRepository piezaInsumoRepository;
+    private final MovimientoInventarioRepository movimientoInventarioRepository;
 
     private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+    private static final DateTimeFormatter FMT_FECHA = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+    private static final DateTimeFormatter FMT_HORA = DateTimeFormatter.ofPattern("HH:mm");
     private static final DateTimeFormatter FMT_ARCHIVO = DateTimeFormatter.ofPattern("yyyy-MM");
 
     public ReporteExcelServicio(
@@ -37,13 +40,15 @@ public class ReporteExcelServicio {
             RolloTelaRepository rolloTelaRepository,
             RetazoTelaRepository retazoTelaRepository,
             InsumoRepository insumoRepository,
-            PiezaInsumoRepository piezaInsumoRepository) {
+            PiezaInsumoRepository piezaInsumoRepository,
+            MovimientoInventarioRepository movimientoInventarioRepository) {
         this.materialUsadoRepository = materialUsadoRepository;
         this.pedidoRepository = pedidoRepository;
         this.rolloTelaRepository = rolloTelaRepository;
         this.retazoTelaRepository = retazoTelaRepository;
         this.insumoRepository = insumoRepository;
         this.piezaInsumoRepository = piezaInsumoRepository;
+        this.movimientoInventarioRepository = movimientoInventarioRepository;
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -91,9 +96,13 @@ public class ReporteExcelServicio {
                 .sorted(Comparator.comparing(Pedido::getFechaCreacion))
                 .collect(Collectors.toList());
 
+        List<MovimientoInventario> movimientos = movimientoInventarioRepository
+                .findByFechaBetweenOrderByFechaAsc(desde, hasta);
+
         crearHojaResumen(wb, estilos, materiales, desde, hasta);
         crearHojaDetallePorPedido(wb, estilos, materiales, pedidos);
         crearHojaInventarioActual(wb, estilos);
+        crearHojaMovimientosInventario(wb, estilos, movimientos, desde, hasta);
         crearHojaPedidosPeriodo(wb, estilos, pedidos);
 
         return wb;
@@ -239,6 +248,9 @@ public class ReporteExcelServicio {
 
     // ═══════════════════════════════════════════════════════════════
     // HOJA 3: INVENTARIO ACTUAL
+    // (Rollos y Retazos ahora incluyen su columna "Fecha de Ingreso";
+    // Insumos se queda agregado, ya que el detalle de CUÁNDO entró cada
+    // unidad/pieza vive en la hoja "Movimientos de Inventario" de abajo).
     // ═══════════════════════════════════════════════════════════════
 
     private void crearHojaInventarioActual(Workbook wb, Estilos e) {
@@ -248,7 +260,7 @@ public class ReporteExcelServicio {
         Cell cT = titulo.createCell(0);
         cT.setCellValue("INVENTARIO ACTUAL — " + FMT.format(LocalDateTime.now()));
         cT.setCellStyle(e.titulo);
-        s.addMergedRegion(new CellRangeAddress(0, 0, 0, 5));
+        s.addMergedRegion(new CellRangeAddress(0, 0, 0, 6));
 
         // ── Sección: Rollos de tela ──────────────────────────────
         int fila = 2;
@@ -256,11 +268,11 @@ public class ReporteExcelServicio {
         Cell cSec = secRollos.createCell(0);
         cSec.setCellValue("ROLLOS DE TELA");
         cSec.setCellStyle(e.seccion);
-        s.addMergedRegion(new CellRangeAddress(fila - 1, fila - 1, 0, 5));
+        s.addMergedRegion(new CellRangeAddress(fila - 1, fila - 1, 0, 6));
 
-        String[] hRollos = {"ID", "Color", "Ancho (m)", "Largo inicial (m)", "Largo restante (m)", "Estado"};
+        String[] hRollos = {"ID", "Color", "Ancho (m)", "Largo inicial (m)", "Largo restante (m)", "Fecha de Ingreso", "Estado"};
         Row hrRow = s.createRow(fila++);
-        anchos(s, new int[]{8, 14, 14, 20, 20, 12});
+        anchos(s, new int[]{8, 14, 14, 20, 20, 20, 14});
         for (int i = 0; i < hRollos.length; i++) {
             Cell c = hrRow.createCell(i);
             c.setCellValue(hRollos[i]);
@@ -276,9 +288,10 @@ public class ReporteExcelServicio {
             celdaNum(row, 2, r.getAncho(), e.datoNumero);
             celdaNum(row, 3, r.getLargoInicial(), e.datoNumero);
             celdaNum(row, 4, r.getLargoRestante(), e.datoNumero);
+            celda(row, 5, r.getFechaIngreso() != null ? FMT.format(r.getFechaIngreso()) : "—", e.datoCentro);
             String estado = r.isAgotado() ? "Agotado" : (r.isRetazo() ? "Retazo (<3m)" : "Disponible");
             CellStyle estEstado = r.isAgotado() ? e.estadoMal : (r.isRetazo() ? e.estadoAlerta : e.estadoBien);
-            celda(row, 5, estado, estEstado);
+            celda(row, 6, estado, estEstado);
         }
 
         fila++;
@@ -288,9 +301,9 @@ public class ReporteExcelServicio {
         Cell cSecR = secRetazos.createCell(0);
         cSecR.setCellValue("RETAZOS DE TELA");
         cSecR.setCellStyle(e.seccion);
-        s.addMergedRegion(new CellRangeAddress(fila - 1, fila - 1, 0, 5));
+        s.addMergedRegion(new CellRangeAddress(fila - 1, fila - 1, 0, 6));
 
-        String[] hRetazos = {"ID", "Color", "Ancho (m)", "Alto (m)", "Área (m²)", ""};
+        String[] hRetazos = {"ID", "Color", "Ancho (m)", "Alto (m)", "Área (m²)", "Fecha de Ingreso", ""};
         Row hrRetRow = s.createRow(fila++);
         for (int i = 0; i < hRetazos.length; i++) {
             Cell c = hrRetRow.createCell(i);
@@ -307,6 +320,7 @@ public class ReporteExcelServicio {
             celdaNum(row, 2, r.getAncho(), e.datoNumero);
             celdaNum(row, 3, r.getAlto(), e.datoNumero);
             celdaNum(row, 4, r.getArea(), e.datoNumero);
+            celda(row, 5, r.getFechaIngreso() != null ? FMT.format(r.getFechaIngreso()) : "—", e.datoCentro);
         }
 
         fila++;
@@ -316,9 +330,9 @@ public class ReporteExcelServicio {
         Cell cSecI = secInsumos.createCell(0);
         cSecI.setCellValue("INSUMOS");
         cSecI.setCellStyle(e.seccion);
-        s.addMergedRegion(new CellRangeAddress(fila - 1, fila - 1, 0, 5));
+        s.addMergedRegion(new CellRangeAddress(fila - 1, fila - 1, 0, 6));
 
-        String[] hInsumos = {"ID", "Nombre", "Tipo", "Stock / Piezas", "Largo total restante (m)", "Estado"};
+        String[] hInsumos = {"ID", "Nombre", "Tipo", "Stock / Piezas", "Largo total restante (m)", "Estado", ""};
         Row hrInsRow = s.createRow(fila++);
         for (int i = 0; i < hInsumos.length; i++) {
             Cell c = hrInsRow.createCell(i);
@@ -355,7 +369,76 @@ public class ReporteExcelServicio {
     }
 
     // ═══════════════════════════════════════════════════════════════
-    // HOJA 4: PEDIDOS DEL PERÍODO
+    // HOJA 4: MOVIMIENTOS DE INVENTARIO
+    // Aquí se ve exactamente CUÁNDO (fecha y hora separadas) entró cada
+    // rollo, retazo, pieza de insumo o unidad al sistema, dentro del
+    // período del reporte — usa el registro de MovimientoInventario que
+    // se guarda automáticamente cada vez que algo se agrega o se limpia
+    // por ser demasiado pequeño.
+    // ═══════════════════════════════════════════════════════════════
+
+    private void crearHojaMovimientosInventario(Workbook wb, Estilos e,
+                                                 List<MovimientoInventario> movimientos,
+                                                 LocalDateTime desde, LocalDateTime hasta) {
+        Sheet s = wb.createSheet("Movimientos de Inventario");
+        s.setColumnWidth(0, 14 * 256);
+        s.setColumnWidth(1, 20 * 256);
+        s.setColumnWidth(2, 12 * 256);
+        s.setColumnWidth(3, 16 * 256);
+        s.setColumnWidth(4, 60 * 256);
+        s.setColumnWidth(5, 18 * 256);
+
+        Row titulo = s.createRow(0);
+        Cell cT = titulo.createCell(0);
+        cT.setCellValue("MOVIMIENTOS DE INVENTARIO (ENTRADAS Y LIMPIEZA AUTOMÁTICA)");
+        cT.setCellStyle(e.titulo);
+        s.addMergedRegion(new CellRangeAddress(0, 0, 0, 5));
+
+        Row periodo = s.createRow(1);
+        Cell cPer = periodo.createCell(0);
+        cPer.setCellValue("Período: " + FMT.format(desde) + "  →  " + FMT.format(hasta));
+        cPer.setCellStyle(e.subtitulo);
+        s.addMergedRegion(new CellRangeAddress(1, 1, 0, 5));
+
+        s.createRow(2);
+
+        String[] headers = {"Fecha", "Hora", "Tipo", "Categoría", "Descripción", "Registrado por"};
+        Row hRow = s.createRow(3);
+        for (int i = 0; i < headers.length; i++) {
+            Cell c = hRow.createCell(i);
+            c.setCellValue(headers[i]);
+            c.setCellStyle(e.encabezado);
+        }
+
+        int fila = 4;
+        for (MovimientoInventario m : movimientos) {
+            Row r = s.createRow(fila++);
+            r.setHeightInPoints(17);
+
+            celda(r, 0, m.getFecha() != null ? FMT_FECHA.format(m.getFecha()) : "—", e.datoCentro);
+            celda(r, 1, m.getFecha() != null ? FMT_HORA.format(m.getFecha()) : "—", e.datoCentro);
+
+            boolean esLimpieza = "LIMPIEZA_AUTOMATICA".equals(m.getTipoMovimiento());
+            String tipoTexto = esLimpieza ? "Limpieza automática" : "Entrada";
+            celda(r, 2, tipoTexto, esLimpieza ? e.estadoAlerta : e.estadoBien);
+
+            celda(r, 3, m.getCategoria(), e.datoNormal);
+            celda(r, 4, m.getDescripcion(), e.datoNormal);
+            celda(r, 5, m.getCreadoPor(), e.datoCentro);
+        }
+
+        if (movimientos.isEmpty()) {
+            Row rVacio = s.createRow(fila);
+            celda(rVacio, 0, "Sin movimientos registrados en este período.", e.datoNormal);
+        } else {
+            Row rTotales = s.createRow(fila + 1);
+            celda(rTotales, 0, "TOTAL MOVIMIENTOS", e.total);
+            celdaNum(rTotales, 3, movimientos.size(), e.total);
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // HOJA 5: PEDIDOS DEL PERÍODO
     // ═══════════════════════════════════════════════════════════════
 
     private void crearHojaPedidosPeriodo(Workbook wb, Estilos e, List<Pedido> pedidos) {
@@ -461,7 +544,6 @@ public class ReporteExcelServicio {
         cs.setBorderLeft(BorderStyle.THIN);   
         cs.setBorderRight(BorderStyle.THIN);
         
-        // CORRECCIÓN AQUÍ:
         if (bg != null) {
             cs.setFillForegroundColor(bg.getIndex());
             cs.setFillPattern(FillPatternType.SOLID_FOREGROUND);

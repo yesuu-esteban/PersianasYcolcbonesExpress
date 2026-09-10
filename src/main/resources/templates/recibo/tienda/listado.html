@@ -64,7 +64,9 @@
                     <td th:text="${r.creadoPor}"></td>
                     <td>
                         <a th:href="@{/recibos/imprimir/{id}(id=${r.id})}" target="_blank" class="btn btn-sm btn-outline-dark" title="Ver recibo">🖨️</a>
-                        <a th:href="@{/recibos/pdf/{id}(id=${r.id})}" target="_blank" class="btn btn-sm btn-outline-success" title="Descargar/Compartir PDF">⬇️</a>
+                        <button type="button" class="btn btn-sm btn-outline-success btn-compartir-pdf" title="Compartir recibo"
+                                th:data-url="@{/recibos/pdf/{id}(id=${r.id})}"
+                                th:data-nombre="'recibo_' + ${r.numeroFormateado} + '.pdf'">📤</button>
                         <form th:action="@{/recibos/eliminar/{id}(id=${r.id})}" method="post" class="d-inline"
                               onsubmit="return confirm('¿Eliminar este recibo?');">
                             <button type="submit" class="btn btn-sm btn-outline-danger">🗑️</button>
@@ -78,6 +80,7 @@
         </table>
     </div>
 </div>
+<script src="/js/recibo-compartir.js"></script>
 <script src="/js/token-nav.js"></script>
 </body>
 </html>
