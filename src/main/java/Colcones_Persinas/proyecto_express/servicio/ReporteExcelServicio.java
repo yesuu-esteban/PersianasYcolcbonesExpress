@@ -185,6 +185,9 @@ public class ReporteExcelServicio {
 
     // ═══════════════════════════════════════════════════════════════
     // HOJA 2: DETALLE POR PEDIDO
+    // Se agregó la columna "Fecha del corte" al final, tomada directamente
+    // de MaterialUsado.getFecha() — el momento exacto en que ese material
+    // se descontó del inventario para este pedido.
     // ═══════════════════════════════════════════════════════════════
 
     private void crearHojaDetallePorPedido(Workbook wb, Estilos e,
@@ -201,17 +204,18 @@ public class ReporteExcelServicio {
         s.setColumnWidth(7, 14 * 256);
         s.setColumnWidth(8, 14 * 256);
         s.setColumnWidth(9, 14 * 256);
+        s.setColumnWidth(10, 18 * 256);
 
         Row titulo = s.createRow(0);
         Cell cT = titulo.createCell(0);
         cT.setCellValue("DETALLE DE MATERIAL POR PEDIDO");
         cT.setCellStyle(e.titulo);
-        s.addMergedRegion(new CellRangeAddress(0, 0, 0, 9));
+        s.addMergedRegion(new CellRangeAddress(0, 0, 0, 10));
 
         s.createRow(1);
 
         String[] headers = {"Pedido ID", "Distribuidor", "Cliente", "Descripción",
-                "Material", "Fuente", "Cantidad", "Unidad", "Área m²", "Sobrante"};
+                "Material", "Fuente", "Cantidad", "Unidad", "Área m²", "Sobrante", "Fecha del corte"};
         Row hRow = s.createRow(2);
         for (int i = 0; i < headers.length; i++) {
             Cell c = hRow.createCell(i);
@@ -243,14 +247,13 @@ public class ReporteExcelServicio {
             if (m.getMetrosCuadrados() != null) celdaNum(r, 8, m.getMetrosCuadrados(), e.datoNumero);
             else celda(r, 8, "—", e.datoCentro);
             celdaNum(r, 9, m.getMetrosSobrantes(), e.datoNumero);
+            celda(r, 10, m.getFecha() != null ? FMT.format(m.getFecha()) : "—", e.datoCentro);
         }
     }
 
     // ═══════════════════════════════════════════════════════════════
     // HOJA 3: INVENTARIO ACTUAL
-    // (Rollos y Retazos ahora incluyen su columna "Fecha de Ingreso";
-    // Insumos se queda agregado, ya que el detalle de CUÁNDO entró cada
-    // unidad/pieza vive en la hoja "Movimientos de Inventario" de abajo).
+    // (Rollos y Retazos incluyen su columna "Fecha de Ingreso").
     // ═══════════════════════════════════════════════════════════════
 
     private void crearHojaInventarioActual(Workbook wb, Estilos e) {
@@ -370,11 +373,6 @@ public class ReporteExcelServicio {
 
     // ═══════════════════════════════════════════════════════════════
     // HOJA 4: MOVIMIENTOS DE INVENTARIO
-    // Aquí se ve exactamente CUÁNDO (fecha y hora separadas) entró cada
-    // rollo, retazo, pieza de insumo o unidad al sistema, dentro del
-    // período del reporte — usa el registro de MovimientoInventario que
-    // se guarda automáticamente cada vez que algo se agrega o se limpia
-    // por ser demasiado pequeño.
     // ═══════════════════════════════════════════════════════════════
 
     private void crearHojaMovimientosInventario(Workbook wb, Estilos e,
@@ -439,6 +437,10 @@ public class ReporteExcelServicio {
 
     // ═══════════════════════════════════════════════════════════════
     // HOJA 5: PEDIDOS DEL PERÍODO
+    // Se agregó la columna "Costo Fábrica ($)" al final, usando la misma
+    // fórmula de Pedido.getCostoFabrica() (m² × valor según ancho comercial
+    // de tela). Solo aplica a pedidos de Fabricación; Venta Directa y Riel
+    // de Onda Serena muestran "—" porque esa fórmula no les corresponde.
     // ═══════════════════════════════════════════════════════════════
 
     private void crearHojaPedidosPeriodo(Workbook wb, Estilos e, List<Pedido> pedidos) {
@@ -453,17 +455,18 @@ public class ReporteExcelServicio {
         s.setColumnWidth(7, 18 * 256);
         s.setColumnWidth(8, 20 * 256);
         s.setColumnWidth(9, 22 * 256);
+        s.setColumnWidth(10, 18 * 256);
 
         Row titulo = s.createRow(0);
         Cell cT = titulo.createCell(0);
         cT.setCellValue("PEDIDOS DEL PERÍODO");
         cT.setCellStyle(e.titulo);
-        s.addMergedRegion(new CellRangeAddress(0, 0, 0, 9));
+        s.addMergedRegion(new CellRangeAddress(0, 0, 0, 10));
 
         s.createRow(1);
 
         String[] headers = {"ID", "Distribuidor", "Cliente", "Descripción",
-                "Ancho (m)", "Alto (m)", "Color", "Estado", "Fecha creación", "Tela / Rollo"};
+                "Ancho (m)", "Alto (m)", "Color", "Estado", "Fecha creación", "Tela / Rollo", "Costo Fábrica ($)"};
         Row hRow = s.createRow(2);
         for (int i = 0; i < headers.length; i++) {
             Cell c = hRow.createCell(i);
@@ -472,6 +475,7 @@ public class ReporteExcelServicio {
         }
 
         int fila = 3;
+        double totalCostoFabrica = 0;
         for (Pedido p : pedidos) {
             Row r = s.createRow(fila++);
             r.setHeightInPoints(17);
@@ -489,6 +493,14 @@ public class ReporteExcelServicio {
             celda(r, 7, est, estEstado);
             celda(r, 8, p.getFechaCreacionFormateada(), e.datoCentro);
             celda(r, 9, p.getRolloParaCortar(), e.datoNormal);
+
+            if (!p.isVentaDirecta() && !p.isRielOndaSerena()) {
+                double costo = p.getCostoFabrica();
+                celdaNum(r, 10, costo, e.datoMoneda);
+                totalCostoFabrica += costo;
+            } else {
+                celda(r, 10, "—", e.datoCentro);
+            }
         }
 
         // Fila de totales
@@ -497,17 +509,30 @@ public class ReporteExcelServicio {
             celda(rTot, 0, "TOTAL", e.total);
             celdaNum(rTot, 1, pedidos.size(), e.total);
             celda(rTot, 2, "pedido(s)", e.total);
+            celdaNum(rTot, 10, redondear(totalCostoFabrica), e.totalMoneda);
         }
     }
 
     // ═══════════════════════════════════════════════════════════════
     // ESTILOS CENTRALIZADOS
+    // IMPORTANTE — formato de decimales:
+    // Antes se usaba "#,##0.000", que emplea la coma como separador de
+    // MILES por defecto en Excel/POI (formato estilo US). Como nuestros
+    // valores son casi siempre pequeños (metros, m², unidades — nunca
+    // llegan a miles reales), esa coma de miles no aportaba nada y solo
+    // confundía: un valor de 25.88 m se veía como "25,880", pareciendo
+    // "veinticinco mil ochocientos ochenta". Se cambió a "0.000" (sin
+    // separador de miles), así el único símbolo que aparece es el punto
+    // decimal, sin ambigüedad. Además se agregan dos estilos nuevos para
+    // dinero: datoMoneda / totalMoneda, con formato "$#,##0" (sin
+    // decimales, con separador de miles — ahí sí tiene sentido porque
+    // los costos de fábrica normalmente superan los miles de pesos).
     // ═══════════════════════════════════════════════════════════════
 
     private static class Estilos {
         final CellStyle titulo, subtitulo, encabezado, seccion;
-        final CellStyle datoNormal, datoCentro, datoNumero;
-        final CellStyle estadoBien, estadoAlerta, estadoMal, total;
+        final CellStyle datoNormal, datoCentro, datoNumero, datoMoneda;
+        final CellStyle estadoBien, estadoAlerta, estadoMal, total, totalMoneda;
 
         Estilos(Workbook wb) {
             Font fTitulo = wb.createFont(); fTitulo.setBold(true); fTitulo.setFontHeightInPoints((short)14); fTitulo.setFontName("Arial");
@@ -524,14 +549,23 @@ public class ReporteExcelServicio {
 
             datoNormal  = base(wb, fNormal, null, HorizontalAlignment.LEFT);
             datoCentro  = base(wb, fNormal, null, HorizontalAlignment.CENTER);
+
+            // Sin separador de miles: "0.000" en vez de "#,##0.000".
             datoNumero  = base(wb, fNormal, null, HorizontalAlignment.RIGHT);
-            datoNumero.setDataFormat(wb.createDataFormat().getFormat("#,##0.000"));
+            datoNumero.setDataFormat(wb.createDataFormat().getFormat("0.000"));
+
+            // Moneda: sí lleva separador de miles (tiene sentido en pesos), sin decimales.
+            datoMoneda  = base(wb, fNormal, null, HorizontalAlignment.RIGHT);
+            datoMoneda.setDataFormat(wb.createDataFormat().getFormat("\"$\"#,##0"));
 
             estadoBien   = base(wb, fNormal, IndexedColors.LIGHT_GREEN,  HorizontalAlignment.CENTER);
             estadoAlerta = base(wb, fNormal, IndexedColors.LIGHT_YELLOW, HorizontalAlignment.CENTER);
             estadoMal    = base(wb, fNormal, IndexedColors.ROSE,         HorizontalAlignment.CENTER);
 
             total = base(wb, fTotal, IndexedColors.GREY_25_PERCENT, HorizontalAlignment.CENTER);
+
+            totalMoneda = base(wb, fTotal, IndexedColors.GREY_25_PERCENT, HorizontalAlignment.RIGHT);
+            totalMoneda.setDataFormat(wb.createDataFormat().getFormat("\"$\"#,##0"));
         }
 
     private CellStyle base(Workbook wb, Font font, IndexedColors bg, HorizontalAlignment align) {
