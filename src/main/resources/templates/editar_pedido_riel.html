@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Editar Riel de Onda Serena</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .previsualizacion {
+            background-color: #f8f9fa;
+            border: 1px dashed #adb5bd;
+            border-radius: 4px;
+            padding: 10px 14px;
+            font-size: 0.80rem;
+            margin-top: 8px;
+        }
+        .previsualizacion.ok { border-color: #198754; background-color: #f0fbf4; }
+        .previsualizacion .cargando { color: #888; }
+        .seccion-manual {
+            background: #fffbea;
+            border: 1px solid #ffe082;
+            border-radius: 5px;
+            padding: 10px 14px;
+            margin-top: 10px;
+        }
+        .seccion-extras {
+            background: #fffbea;
+            border: 1px solid #ffe082;
+            border-radius: 6px;
+            padding: 14px 16px;
+            margin: 18px 0;
+        }
+        .fila-extra select, .fila-extra input { font-size: 0.85rem; }
+        .info-stock-insumo {
+            font-size: 0.76rem;
+            padding-top: 3px;
+            color: #6c757d;
+        }
+        .info-stock-insumo.ok { color: #0a5c30; }
+        .info-stock-insumo.sin-stock { color: #b02a37; font-weight: 600; }
+    </style>
+</head>
+<body class="bg-light p-4">
+<div class="container col-md-7">
+    <h2 class="mb-4">✏️ Editar Riel de Onda Serena</h2>
+
+    <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
+
+    <form th:action="@{/taller/editar-riel/{id}(id=${pedido.id})}" method="post"
+          class="bg-white p-4 shadow-sm border rounded">
+
+        <div class="row g-3 mb-3">
+            <div class="col-md-6">
+                <label class="form-label fw-bold">Distribuidor</label>
+                <input type="text" name="nombreDecorador" class="form-control" th:value="${pedido.nombreDecorador}" required>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label fw-bold">Cliente Final</label>
+                <input type="text" name="nombreClienteFinal" class="form-control" th:value="${pedido.nombreClienteFinal}" required>
+            </div>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label fw-bold">Descripción</label>
+            <input type="text" name="descripcion" class="form-control" th:value="${pedido.descripcion}">
+        </div>
+
+        <div class="row g-3 mb-3">
+            <div class="col-md-6">
+                <label class="form-label fw-bold">Ancho (m)</label>
+                <input type="number" step="0.001" name="ancho" id="campoAncho"
+                       class="form-control" th:value="${pedido.ancho}" required>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label fw-bold">Alto (m)</label>
+                <input type="number" step="0.001" name="altura" id="campoAltura"
+                       class="form-control" th:value="${pedido.altura}" placeholder="opcional">
+            </div>
+        </div>
+
+        <div class="seccion-manual mb-3">
+            <div class="form-check mb-2">
+                <input type="checkbox" name="usaPolea" value="true" id="ckUsaPolea" class="form-check-input"
+                       th:checked="${pedido.usaPolea}">
+                <label for="ckUsaPolea" class="form-check-label">⚙ Lleva polea</label>
+            </div>
+            <div id="cajaPrevisualizacion" class="previsualizacion">
+                <span class="cargando">Cargando...</span>
+            </div>
+        </div>
+
+        <!-- ═══════════ INSUMOS ADICIONALES (extras de toda la orden) ═══════════ -->
+        <div class="seccion-extras">
+            <p class="fw-bold mb-2">➕ Insumos adicionales del riel (opcional)</p>
+            <p class="text-muted mb-2" style="font-size:0.82rem;">
+                Los accesorios obligatorios (poleas/terminal, o tapas/bastón según corresponda) ya se
+                calculan y descuentan automáticamente. Usa esto solo para material extra fuera de lo normal.
+            </p>
+            <div id="contenedorExtras"></div>
+            <button type="button" class="btn btn-sm btn-outline-dark mt-1" onclick="agregarFilaExtra()">+ Agregar insumo extra</button>
+        </div>
+
+        <div class="mt-4">
+            <button type="submit" class="btn btn-primary w-100">Guardar Cambios</button>
+            <a href="/taller/pedidos" class="btn btn-secondary w-100 mt-2">Cancelar</a>
+        </div>
+    </form>
+</div>
+
+<!-- Variables del servidor inyectadas para el JS -->
+<script th:inline="javascript">
+    /*<![CDATA[*/
+    const piezasDisponibles = /*[[${piezasDisponibles}]]*/ [];
+    const catalogoInsumos   = /*[[${catalogoInsumos}]]*/   [];
+    const extrasExistentes  = /*[[${extrasExistentes}]]*/  [];
+    /*]]>*/
+</script>
+
+<script>
+    // ── Referencias DOM ───────────────────────────────────────────
+    const campoAncho    = document.getElementById('campoAncho');
+    const ckUsaPolea    = document.getElementById('ckUsaPolea');
+    const caja          = document.getElementById('cajaPrevisualizacion');
+
+    // ── Previsualización client-side (mismo cálculo que "nuevo riel") ──
+    function calcularPreview() {
+        const ancho = parseFloat(campoAncho.value);
+        const usaPolea = ckUsaPolea.checked;
+
+        if (!ancho || ancho <= 0) {
+            caja.className = 'previsualizacion';
+            caja.innerHTML = '<span class="cargando">Completa el ancho para ver el corte estimado.</span>';
+            return;
+        }
+
+        const corteRiel = (ancho - 0.075).toFixed(3);
+        const corteRielPines = corteRiel;
+
+        let html = '<strong>Corte y accesorios estimados</strong>';
+        html += '<table style="width:100%;border-collapse:collapse;margin-top:6px">';
+        html += `<tr style="border-top:1px solid #d6efdd">
+                    <td style="padding:2px 4px;font-weight:600;white-space:nowrap">🪟 Riel</td>
+                    <td style="padding:2px 6px;color:#555">${corteRiel} m</td>
+                 </tr>`;
+        html += `<tr style="border-top:1px solid #d6efdd">
+                    <td style="padding:2px 4px;font-weight:600;white-space:nowrap">📌 Riel de pines</td>
+                    <td style="padding:2px 6px;color:#555">${corteRielPines} m</td>
+                 </tr>`;
+        if (usaPolea) {
+            const corteCuerda = (ancho * 2 + 4).toFixed(3);
+            html += `<tr style="border-top:1px solid #d6efdd">
+                        <td style="padding:2px 4px;font-weight:600;white-space:nowrap">🧶 Cuerda de onda</td>
+                        <td style="padding:2px 6px;color:#555">${corteCuerda} m</td>
+                     </tr>`;
+            html += `<tr style="border-top:1px solid #d6efdd">
+                        <td style="padding:2px 4px;font-weight:600;white-space:nowrap">🔧 Poleas</td>
+                        <td style="padding:2px 6px;color:#555">2 und. (automático)</td>
+                     </tr>`;
+            html += `<tr style="border-top:1px solid #d6efdd">
+                        <td style="padding:2px 4px;font-weight:600;white-space:nowrap">🎛 Terminal/Control</td>
+                        <td style="padding:2px 6px;color:#555">1 und. (automático)</td>
+                     </tr>`;
+        } else {
+            html += `<tr style="border-top:1px solid #d6efdd">
+                        <td style="padding:2px 4px;font-weight:600;white-space:nowrap">🧢 Tapas de riel</td>
+                        <td style="padding:2px 6px;color:#555">2 und. (automático)</td>
+                     </tr>`;
+            html += `<tr style="border-top:1px solid #d6efdd">
+                        <td style="padding:2px 4px;font-weight:600;white-space:nowrap">🪄 Bastón</td>
+                        <td style="padding:2px 6px;color:#555">1 und. (automático)</td>
+                     </tr>`;
+        }
+        html += '</table>';
+
+        caja.className = 'previsualizacion ok';
+        caja.innerHTML = html;
+    }
+
+    campoAncho.addEventListener('input', calcularPreview);
+    ckUsaPolea.addEventListener('change', calcularPreview);
+
+    // ════════════════════════════════════════════════════════════
+    //  INSUMOS ADICIONALES (extras) — misma lógica reutilizada del
+    //  resto del sistema (nuevo_pedido.html / editar_pedido.html)
+    // ════════════════════════════════════════════════════════════
+    let extraIndex = 0;
+
+    function opcionesCatalogo() {
+        let html = '<option value="libre">✏ Insumo fuera del catálogo (texto libre)</option>';
+        catalogoInsumos.forEach(ins => {
+            html += `<option value="${ins.id}">${ins.nombre}${ins.tieneMedida ? ' (por medida)' : ' (por unidad)'}</option>`;
+        });
+        return html;
+    }
+
+    function opcionesPieza(nombreInsumo) {
+        const filtradas = piezasDisponibles.filter(p => {
+            const nombre = p.insumoNombre || (p.insumo && p.insumo.nombre) || '';
+            return nombre.toLowerCase() === nombreInsumo.toLowerCase() && p.largoRestante > 0.001;
+        });
+        if (!filtradas.length) return `<option value="auto">– Sin piezas de "${nombreInsumo}" –</option>`;
+        let html = '<option value="auto">⚡ Automático (sugerido)</option>';
+        filtradas.forEach(p => { html += `<option value="${p.id}">Pieza #${p.id} · ${p.largoRestante.toFixed(3)} m restantes</option>`; });
+        return html;
+    }
+
+    function filaExtraHtml(idx) {
+        return `
+        <div class="row g-2 align-items-center mb-1 fila-extra" data-indice="${idx}">
+            <div class="col-md-5">
+                <select name="extraInsumoId[${idx}]" class="form-select form-select-sm select-extra-insumo" onchange="actualizarInfoExtra(this)">
+                    ${opcionesCatalogo()}
+                </select>
+            </div>
+            <div class="col-md-4 campo-libre-extra" style="display:none;">
+                <input type="text" name="extraNombreLibre[${idx}]" class="form-control form-control-sm" placeholder="Nombre del insumo">
+            </div>
+            <div class="col-md-2">
+                <input type="number" step="0.01" min="0" name="extraCantidad[${idx}]" class="form-control form-control-sm" placeholder="Cantidad">
+            </div>
+            <div class="col-md-1">
+                <button type="button" class="btn btn-sm btn-outline-danger" onclick="this.closest('.fila-extra').remove()">✕</button>
+            </div>
+        </div>
+        <div class="row mb-2 fila-extra-info" data-indice="${idx}">
+            <div class="col-md-7">
+                <div class="info-stock-insumo"></div>
+            </div>
+            <div class="col-md-5 campo-pieza-insumo" style="display:none;">
+                <label class="form-label mb-1" style="font-size:0.76rem">🔩 ¿De qué pieza específica se corta?</label>
+                <select name="extraPiezaId[${idx}]" class="form-select form-select-sm select-pieza-insumo">
+                    <option value="auto">⚡ Automático (sugerido)</option>
+                </select>
+            </div>
+        </div>`;
+    }
+
+    function toggleLibre(select) {
+        const fila = select.closest('.fila-extra');
+        const campoLibre = fila.querySelector('.campo-libre-extra');
+        campoLibre.style.display = select.value === 'libre' ? '' : 'none';
+    }
+
+    function actualizarInfoExtra(select) {
+        const filaCampos = select.closest('.fila-extra');
+        const filaInfo = filaCampos.nextElementSibling;
+        const campoLibre = filaCampos.querySelector('.campo-libre-extra');
+        const campoCantidad = filaCampos.querySelector('input[name^="extraCantidad"]');
+        const infoDiv = filaInfo ? filaInfo.querySelector('.info-stock-insumo') : null;
+        const campoPieza = filaInfo ? filaInfo.querySelector('.campo-pieza-insumo') : null;
+        const selectPieza = filaInfo ? filaInfo.querySelector('.select-pieza-insumo') : null;
+
+        if (select.value === 'libre') {
+            campoLibre.style.display = '';
+            campoCantidad.placeholder = 'Cantidad';
+            campoCantidad.step = '1';
+            if (campoPieza) campoPieza.style.display = 'none';
+            if (infoDiv) {
+                infoDiv.className = 'info-stock-insumo';
+                infoDiv.textContent = '✏ Insumo fuera de catálogo: no se descuenta del inventario, solo queda registrado en el reporte.';
+            }
+            return;
+        }
+        campoLibre.style.display = 'none';
+
+        const insumo = catalogoInsumos.find(ins => String(ins.id) === String(select.value));
+        if (!insumo || !infoDiv) return;
+
+        if (insumo.tieneMedida) {
+            const piezas = piezasDisponibles.filter(p => {
+                const nombre = p.insumoNombre || (p.insumo && p.insumo.nombre) || '';
+                return nombre.toLowerCase() === insumo.nombre.toLowerCase() && p.largoRestante > 0.001;
+            });
+            const totalMetros = piezas.reduce((sum, p) => sum + p.largoRestante, 0);
+
+            campoCantidad.placeholder = 'Metros';
+            campoCantidad.step = '0.01';
+
+            if (campoPieza && selectPieza) {
+                campoPieza.style.display = '';
+                selectPieza.innerHTML = opcionesPieza(insumo.nombre);
+            }
+
+            if (piezas.length === 0) {
+                infoDiv.className = 'info-stock-insumo sin-stock';
+                infoDiv.textContent = `⚠ Este insumo se mide en metros y no hay piezas disponibles de "${insumo.nombre}".`;
+            } else {
+                infoDiv.className = 'info-stock-insumo ok';
+                infoDiv.textContent = `📏 Se mide en metros · disponible: ${totalMetros.toFixed(2)} m en ${piezas.length} pieza(s).`;
+            }
+        } else {
+            const stock = insumo.stockUnidades != null ? insumo.stockUnidades : 0;
+            campoCantidad.placeholder = 'Unidades';
+            campoCantidad.step = '1';
+
+            if (campoPieza) campoPieza.style.display = 'none';
+
+            if (stock <= 0) {
+                infoDiv.className = 'info-stock-insumo sin-stock';
+                infoDiv.textContent = `⚠ Se vende por unidad y no hay stock de "${insumo.nombre}".`;
+            } else {
+                infoDiv.className = 'info-stock-insumo ok';
+                infoDiv.textContent = `🔢 Se vende por unidad · disponible: ${stock} unidad(es).`;
+            }
+        }
+    }
+
+    function agregarFilaExtra(valSelect, valLibre, valCant) {
+        const cont = document.getElementById('contenedorExtras');
+        const idx = extraIndex++;
+        cont.insertAdjacentHTML('beforeend', filaExtraHtml(idx));
+        const filaCampos = cont.querySelector(`.fila-extra[data-indice="${idx}"]`);
+        const select = filaCampos.querySelector('.select-extra-insumo');
+        select.addEventListener('change', function () { toggleLibre(this); });
+
+        if (valSelect) select.value = valSelect;
+        if (valLibre) filaCampos.querySelector('input[name^="extraNombreLibre"]').value = valLibre;
+        if (valCant) filaCampos.querySelector('input[name^="extraCantidad"]').value = valCant;
+
+        toggleLibre(select);
+        actualizarInfoExtra(select);
+    }
+
+    // ── Inicialización ────────────────────────────────────────────
+    document.addEventListener('DOMContentLoaded', () => {
+        calcularPreview();
+
+        // Precarga de extras ya registrados en este pedido, igual que en
+        // editar_pedido.html: se muestran como "texto libre" con la
+        // descripción y cantidad que ya tenían.
+        if (typeof extrasExistentes !== 'undefined' && extrasExistentes.length) {
+            extrasExistentes.forEach(ex => {
+                agregarFilaExtra('libre', ex.fuenteDescripcion, ex.metrosUsados);
+            });
+        }
+    });
+</script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="/js/token-nav.js"></script>
+</body>
+</html>

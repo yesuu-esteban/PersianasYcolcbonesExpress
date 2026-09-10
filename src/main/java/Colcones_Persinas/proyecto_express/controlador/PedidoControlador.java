@@ -391,7 +391,7 @@ public class PedidoControlador {
     }
 
     // ═══════════════════════════════════════════════════════════════
-    // RIEL DE ONDA SERENA
+    // RIEL DE ONDA SERENA — creación
     // ═══════════════════════════════════════════════════════════════
 
     @PostMapping("/guardar-riel-onda")
@@ -467,19 +467,23 @@ public class PedidoControlador {
 
     // ─── Formulario editar ────────────────────────────────────────────────
     @GetMapping("/editar/{id}")
-    public String mostrarFormularioEditar(@PathVariable("id") int id, Model model, RedirectAttributes redirectAttributes) {
+    public String mostrarFormularioEditar(@PathVariable("id") int id, Model model) {
         Pedido pedido = pedidoRepository.findById(id).orElseThrow();
 
-        // La edición con selección manual de piezas (retazos, tubos, etc.) hoy
-        // solo está construida para pedidos de Fabricación. Venta Directa ya no
-        // pasa por aquí (no tiene botón de editar) y Riel de Onda Serena aún no
-        // tiene su propio formulario de edición, así que se bloquea con un
-        // mensaje claro en vez de dejar que el formulario se rompa a medias.
+        // Los pedidos de Riel de Onda Serena tienen su propio formulario de edición
+        // (ancho/alto/polea + accesorios calculados), distinto del de fabricación
+        // normal (tela/tubo). Se redirige a esa vista específica.
         if (pedido.isRielOndaSerena()) {
-            redirectAttributes.addFlashAttribute("error",
-                    "La edición de pedidos de Riel de Onda Serena todavía no está disponible. "
-                    + "Elimina el pedido y créalo de nuevo si necesitas corregir algo.");
-            return "redirect:/taller/pedidos";
+            model.addAttribute("pedido", pedido);
+            model.addAttribute("catalogoInsumos", insumoRepository.findAllByOrderByNombreAsc());
+            model.addAttribute("piezasDisponibles", inventarioServicio.getTodasLasPiezas());
+
+            List<MaterialUsado> extrasExistentes = inventarioServicio.getHistorialDePedido(id).stream()
+                    .filter(m -> "EXTRA".equals(m.getTipoMaterial()))
+                    .collect(Collectors.toList());
+            model.addAttribute("extrasExistentes", extrasExistentes);
+
+            return "editar_pedido_riel";
         }
 
         model.addAttribute("pedido",            pedido);
@@ -498,7 +502,7 @@ public class PedidoControlador {
         return "editar_pedido";
     }
 
-    // ─── Guardar edición ──────────────────────────────────────────────────
+    // ─── Guardar edición (fabricación) ──────────────────────────────────────
     @PostMapping("/editar/{id}")
     @org.springframework.transaction.annotation.Transactional
     public String guardarEdicion(
@@ -527,13 +531,13 @@ public class PedidoControlador {
 
         Pedido pedido = pedidoRepository.findById(id).orElseThrow();
 
-        // Salvaguarda: si por alguna razón se llega aquí con un pedido de riel
-        // (por ejemplo, un POST directo sin pasar por el formulario), no se
-        // intenta aplicar la lógica de fabricación (tela/tubo) que rompería.
+        // Salvaguarda: este endpoint es solo para pedidos de fabricación normal.
+        // Si por alguna razón llega aquí un riel (por ejemplo, un POST directo),
+        // se rechaza en vez de aplicar lógica de tela/tubo que no le corresponde.
         if (pedido.isRielOndaSerena()) {
             redirectAttributes.addFlashAttribute("error",
-                    "La edición de pedidos de Riel de Onda Serena todavía no está disponible.");
-            return "redirect:/taller/pedidos";
+                    "Este pedido es un Riel de Onda Serena; usa su propio formulario de edición.");
+            return "redirect:/taller/editar/" + id;
         }
 
         pedido.setNombreDecorador(nombreDecorador);
@@ -614,6 +618,78 @@ public class PedidoControlador {
         return "redirect:/taller/pedidos";
     }
 
+    // ─── Guardar edición (Riel de Onda Serena) ─────────────────────────────
+    @PostMapping("/editar-riel/{id}")
+    @org.springframework.transaction.annotation.Transactional
+    public String guardarEdicionRiel(
+            @PathVariable("id") int id,
+            @RequestParam String nombreDecorador,
+            @RequestParam String nombreClienteFinal,
+            @RequestParam(required = false) String descripcion,
+            @RequestParam double ancho,
+            @RequestParam(required = false) Double altura,
+            @RequestParam(required = false, defaultValue = "false") boolean usaPolea,
+            @RequestParam Map<String, String> allParams,
+            RedirectAttributes redirectAttributes) {
+
+        Pedido pedido = pedidoRepository.findById(id).orElseThrow();
+
+        if (!pedido.isRielOndaSerena()) {
+            redirectAttributes.addFlashAttribute("error",
+                    "Este pedido no es un Riel de Onda Serena.");
+            return "redirect:/taller/pedidos";
+        }
+        if (ancho <= 0) {
+            redirectAttributes.addFlashAttribute("error", "El ancho debe ser mayor a 0.");
+            return "redirect:/taller/editar/" + id;
+        }
+
+        // Revertir TODO el material anterior: los cortes (riel/riel de pines/cuerda),
+        // los accesorios obligatorios (poleas+terminal o tapas+bastón) y cualquier
+        // extra que se haya agregado antes. revertirMaterialDe() ya es genérico
+        // (funciona por pieza/insumo sin importar el tipo de pedido).
+        try {
+            inventarioServicio.revertirMaterialDe(id);
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("error",
+                    "No se pudo revertir el material del pedido: " + e.getMessage());
+            return "redirect:/taller/editar/" + id;
+        }
+
+        pedido.setNombreDecorador(nombreDecorador);
+        pedido.setNombreClienteFinal(nombreClienteFinal);
+        pedido.setDescripcion(descripcion != null ? descripcion : "");
+        pedido.setAncho(ancho);
+        pedido.setAltura(altura != null ? altura : 0.0);
+        pedido.setUsaPolea(usaPolea);
+        pedido.calcularFichaTecnica();
+
+        try {
+            inventarioServicio.verificarRielOndaSerena(pedido);
+            List<InventarioServicio.ExtraInsumo> extras = leerExtrasComoLista(allParams);
+            inventarioServicio.verificarExtras(extras);
+        } catch (InventarioServicio.MaterialInsuficienteException e) {
+            redirectAttributes.addFlashAttribute("error",
+                    "No hay suficiente material para la nueva configuración: " + e.getMessage());
+            return "redirect:/taller/editar/" + id;
+        }
+
+        pedidoRepository.save(pedido);
+
+        try {
+            inventarioServicio.descontarRielOndaSerena(pedido);
+            procesarExtras(pedido, allParams);
+        } catch (InventarioServicio.MaterialInsuficienteException e) {
+            redirectAttributes.addFlashAttribute("error",
+                    "Error al descontar material: " + e.getMessage());
+            return "redirect:/taller/pedidos";
+        }
+
+        redirectAttributes.addFlashAttribute("mensaje",
+                "Pedido de Riel de Onda Serena actualizado. Inventario reajustado correctamente.");
+        return "redirect:/taller/pedidos";
+    }
+
     // ═══════════════════════════════════════════════════════════════
     // INSUMOS EXTRAS
     // ═══════════════════════════════════════════════════════════════
@@ -637,7 +713,7 @@ public class PedidoControlador {
      *
      * Reutilizado tanto por fabricación normal (guardar-lista, editar) como por
      * Venta Directa (guardar-venta-directa) y Riel de Onda Serena
-     * (guardar-riel-onda), sin ninguna diferencia entre los flujos.
+     * (guardar-riel-onda, editar-riel), sin ninguna diferencia entre los flujos.
      */
    private void procesarExtras(Pedido pedido, Map<String, String> allParams) {
         int i = 0;
@@ -818,7 +894,7 @@ public class PedidoControlador {
         model.addAttribute("historialMaterial", historial);
 
         if (p.isRielOndaSerena()) {
-            // ── Riel de Onda Serena: busca sus propios 3 cortes en el historial ──
+            // ── Riel de Onda Serena: busca sus propios cortes en el historial ──
             MaterialUsado materialRiel = historial.stream()
                     .filter(m -> "RIEL_ONDA_SERENA".equals(m.getTipoMaterial()))
                     .findFirst().orElse(null);

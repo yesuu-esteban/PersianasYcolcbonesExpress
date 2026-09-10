@@ -285,7 +285,7 @@
                                             ${!yaEnsamblado ? 'disabled title="Primero debes finalizar el pedido"' : ''}>Despachar</button>
                                 </form>
                                 <a href="${escapeHtml(acc.dataset.urlImprimir)}" target="_blank" class="btn btn-sm btn-dark ms-2">🖨️</a>
-                                <a href="${escapeHtml(acc.dataset.urlEditar)}" class="btn btn-sm btn-outline-primary ms-1" ${esRiel ? 'title="Edición de riel aún no disponible"' : ''}>✏️</a>
+                                <a href="${escapeHtml(acc.dataset.urlEditar)}" class="btn btn-sm btn-outline-primary ms-1">✏️</a>
                                 <button type="button" class="btn btn-sm btn-outline-danger ms-1 btn-eliminar-pedido"
                                         data-id="${escapeHtml(acc.dataset.id)}"
                                         data-desc="${escapeHtml(acc.dataset.cliente + ' - ' + acc.dataset.descripcion)}"
