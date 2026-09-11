@@ -23,6 +23,12 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
+/**
+ * Controlador de Recibos de Caja. Rutas "/recibos/almacen/**" (antes
+ * "/recibos/tienda/**") y "/recibos/fabrica/**". Los valores de "origen"
+ * en la base de datos SIGUEN siendo "TIENDA"/"FABRICA" internamente —
+ * solo cambiaron las rutas y textos visibles al usuario.
+ */
 @Controller
 @RequestMapping("/recibos")
 public class ReciboCajaControlador {
@@ -36,9 +42,7 @@ public class ReciboCajaControlador {
     private ReciboPdfServicio reciboPdfServicio;
 
     // ═══════════════════════════════════════════════════════════════
-    // RECIBOS DE ALMACÉN (antes "Tienda" — se conserva origen="TIENDA"
-    // internamente en la base de datos para no romper recibos ya
-    // existentes; solo cambia lo que ve el usuario: rutas y texto).
+    // RECIBOS DE ALMACÉN (antes "Tienda")
     // ═══════════════════════════════════════════════════════════════
 
     @PreAuthorize("hasAnyRole('TIENDA','TIENDA_ADMIN','ADMIN')")
@@ -147,6 +151,7 @@ public class ReciboCajaControlador {
                     + "?error=Sin+acceso+a+ese+recibo";
         }
 
+        asignarNumeroSecuencial(recibo);
         model.addAttribute("recibo", recibo);
         return "recibo/imprimir";
     }
@@ -164,6 +169,7 @@ public class ReciboCajaControlador {
         }
 
         try {
+            asignarNumeroSecuencial(recibo);
             byte[] pdf = reciboPdfServicio.generarPdf(recibo);
             String nombreArchivo = "recibo_" + recibo.getNumeroFormateado() + ".pdf";
             return ResponseEntity.ok()
@@ -221,6 +227,8 @@ public class ReciboCajaControlador {
         }
 
         try {
+            // Solo se borra el recibo: el número consecutivo NUNCA se reutiliza,
+            // el contador global sigue avanzando sin importar esta eliminación.
             reciboCajaRepository.deleteById(id);
             redirectAttributes.addFlashAttribute("mensaje", "Recibo eliminado.");
         } catch (Exception e) {
@@ -239,6 +247,16 @@ public class ReciboCajaControlador {
         return redirectUrl + separador + "token=" + token;
     }
 
+    /**
+     * Calcula el número compacto (sin huecos) de un recibo: cuenta cuántos
+     * recibos con id menor SIGUEN existiendo en este momento. Si se borraron
+     * recibos anteriores, este número baja automáticamente para cerrar el hueco.
+     */
+    private void asignarNumeroSecuencial(ReciboCaja recibo) {
+        long menores = reciboCajaRepository.countByIdLessThan(recibo.getId());
+        recibo.setNumeroMostrado((int) menores);
+    }
+
     private void cargarListado(String origenFijo, String cliente, String desde, String hasta, int pagina, Model model) {
         List<ReciboCaja> todos = reciboCajaRepository.findAllByOrderByIdDesc().stream()
                 .filter(r -> origenFijo.equalsIgnoreCase(r.getOrigen()))
@@ -254,6 +272,7 @@ public class ReciboCajaControlador {
                 .filter(r -> fHasta == null || (r.getFecha() != null && !r.getFecha().toLocalDate().isAfter(fHasta)))
                 .collect(Collectors.toList());
 
+        // ── Paginación: máximo TAMANO_PAGINA recibos por página ──
         int totalFiltrados = filtrados.size();
         int totalPaginas = (int) Math.ceil((double) totalFiltrados / TAMANO_PAGINA);
         if (totalPaginas == 0) totalPaginas = 1;
@@ -262,6 +281,7 @@ public class ReciboCajaControlador {
         int hastaIdx = Math.min(desdeIdx + TAMANO_PAGINA, totalFiltrados);
         List<ReciboCaja> pagina_ = (desdeIdx < hastaIdx) ? filtrados.subList(desdeIdx, hastaIdx) : new ArrayList<>();
 
+        // Cada recibo de esta página recibe su número compacto y actualizado.
         pagina_.forEach(this::asignarNumeroSecuencial);
 
         model.addAttribute("recibos", pagina_);
@@ -271,11 +291,6 @@ public class ReciboCajaControlador {
         model.addAttribute("paginaActual", paginaActual);
         model.addAttribute("totalPaginas", totalPaginas);
         model.addAttribute("totalRecibosFiltrados", totalFiltrados);
-    }
-
-    private void asignarNumeroSecuencial(ReciboCaja recibo) {
-        long menores = reciboCajaRepository.countByIdLessThan(recibo.getId());
-        recibo.setNumeroMostrado((int) menores);
     }
 
     private Integer guardarRecibo(String origen, String cliente, String direccion, String cedula, String telefono,
