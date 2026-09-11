@@ -25,8 +25,16 @@ import Colcones_Persinas.proyecto_express.modelo.PedidoTienda;
 import Colcones_Persinas.proyecto_express.modelo.DetallePedidoTienda;
 import Colcones_Persinas.proyecto_express.repository.PedidoTiendaRepository;
 
+/**
+ * Controlador del módulo de Almacén (antes llamado "Tienda").
+ * IMPORTANTE: los nombres de clase, entidad (PedidoTienda), repositorio
+ * y roles internos (ROLE_TIENDA / ROLE_TIENDA_ADMIN) se conservan igual
+ * en el código y en la base de datos para no romper usuarios ni datos
+ * ya existentes. Solo cambian las RUTAS visibles (/almacen/...) y los
+ * TEXTOS que ve el usuario (plantillas "almacen/...").
+ */
 @Controller
-@RequestMapping("/tienda")
+@RequestMapping("/almacen")
 public class PedidoTiendaControlador {
 
     // Cuántos pedidos se muestran por página en el listado.
@@ -41,7 +49,7 @@ public class PedidoTiendaControlador {
         PedidoTienda pedido = new PedidoTienda();
         pedido.agregarDetalle(new DetallePedidoTienda());
         model.addAttribute("pedidoTienda", pedido);
-        return "tienda/formulario";
+        return "almacen/formulario";
     }
 
     @PreAuthorize("hasAnyRole('TIENDA','ADMIN')")
@@ -51,13 +59,13 @@ public class PedidoTiendaControlador {
         errores.addAll(validarPrecios(pedidoTienda));
         if (!errores.isEmpty()) {
             redirectAttributes.addFlashAttribute("error", String.join(" ", errores));
-            return "redirect:/tienda/nuevo";
+            return "redirect:/almacen/nuevo";
         }
 
         recalcularTotales(pedidoTienda);
         pedidoTiendaRepository.save(pedidoTienda);
         redirectAttributes.addFlashAttribute("mensaje", "Pedido registrado correctamente.");
-        return "redirect:/tienda/listado";
+        return "redirect:/almacen/listado";
     }
 
     // ─── Listado con filtros (nombre, cédula, dirección, fecha de entrega, pago, mes, año) y paginación ───
@@ -165,7 +173,7 @@ public class PedidoTiendaControlador {
         model.addAttribute("totalPaginas", totalPaginas);
         model.addAttribute("totalPedidosFiltrados", totalPedidosFiltrados);
         model.addAttribute("puedeCrearPedidos", puedeGestionarPedidos());
-        return "tienda/listado";
+        return "almacen/listado";
     }
 
     // ─── Editar pedido ──────────────────────────────────────────────────
@@ -177,7 +185,7 @@ public class PedidoTiendaControlador {
             pedido.agregarDetalle(new DetallePedidoTienda());
         }
         model.addAttribute("pedidoTienda", pedido);
-        return "tienda/editar_pedido";
+        return "almacen/editar_pedido";
     }
 
     @PreAuthorize("hasAnyRole('TIENDA','ADMIN')")
@@ -191,7 +199,7 @@ public class PedidoTiendaControlador {
         errores.addAll(validarPrecios(formPedido));
         if (!errores.isEmpty()) {
             redirectAttributes.addFlashAttribute("error", String.join(" ", errores));
-            return "redirect:/tienda/editar/" + id;
+            return "redirect:/almacen/editar/" + id;
         }
 
         // Se edita el mismo registro (mismo ID) que ya existía: nunca se crea uno nuevo
@@ -223,7 +231,7 @@ public class PedidoTiendaControlador {
         pedidoTiendaRepository.save(pedido);
 
         redirectAttributes.addFlashAttribute("mensaje", "Pedido #" + id + " actualizado correctamente.");
-        return "redirect:/tienda/listado";
+        return "redirect:/almacen/listado";
     }
 
     // ─── Eliminar pedido ────────────────────────────────────────────────
@@ -236,7 +244,7 @@ public class PedidoTiendaControlador {
         } catch (Exception e) {
             redirectAttributes.addFlashAttribute("error", "No se pudo eliminar el pedido: " + e.getMessage());
         }
-        return "redirect:/tienda/listado";
+        return "redirect:/almacen/listado";
     }
 
     // ─── Cambiar estado del pedido (Tienda_Admin sí puede) ─────────────
@@ -250,7 +258,7 @@ public class PedidoTiendaControlador {
         pedido.setEstado(estado);
         pedidoTiendaRepository.save(pedido);
         redirectAttributes.addFlashAttribute("mensaje", "Estado actualizado a \"" + estado + "\".");
-        return "redirect:/tienda/listado";
+        return "redirect:/almacen/listado";
     }
 
     // ─── Agregar abono (Tienda_Admin sí puede) ──────────────────────────
@@ -265,12 +273,12 @@ public class PedidoTiendaControlador {
 
         if (monto == null || monto.compareTo(BigDecimal.ZERO) <= 0) {
             redirectAttributes.addFlashAttribute("error", "El monto del abono debe ser mayor a 0.");
-            return "redirect:/tienda/listado";
+            return "redirect:/almacen/listado";
         }
         if (monto.compareTo(pedido.getSaldo()) > 0) {
             redirectAttributes.addFlashAttribute("error",
                 "El abono (" + monto + ") no puede ser mayor al saldo pendiente (" + pedido.getSaldo() + ").");
-            return "redirect:/tienda/listado";
+            return "redirect:/almacen/listado";
         }
 
         pedido.setAbono(pedido.getAbono().add(monto));
@@ -279,7 +287,7 @@ public class PedidoTiendaControlador {
 
         redirectAttributes.addFlashAttribute("mensaje",
             "Abono de " + monto + " registrado. Saldo restante: " + pedido.getSaldo());
-        return "redirect:/tienda/listado";
+        return "redirect:/almacen/listado";
     }
 
     // ─── Vista de impresión de un pedido ────────────────────────────────
@@ -288,7 +296,7 @@ public class PedidoTiendaControlador {
     public String imprimirPedido(@PathVariable("id") int id, Model model) {
         PedidoTienda pedido = pedidoTiendaRepository.findById(id).orElseThrow();
         model.addAttribute("pedidoTienda", pedido);
-        return "tienda/imprimir_pedido";
+        return "almacen/imprimir_pedido";
     }
 
     // ─── Compartir pedido por WhatsApp (sin descargar ni imprimir nada) ─
@@ -382,7 +390,7 @@ public class PedidoTiendaControlador {
         model.addAttribute("sumaUtilidad", sumaUtilidad);
         model.addAttribute("resumenVendedores", resumenVendedores);
 
-        return "tienda/reporte";
+        return "almacen/reporte";
     }
 
     // ─── Helpers ────────────────────────────────────────────────────────
@@ -463,7 +471,7 @@ public class PedidoTiendaControlador {
     private String construirMensajeWhatsapp(PedidoTienda pedido) {
         StringBuilder sb = new StringBuilder();
 
-        sb.append("*PERSIANAS Y CORTINAS EXPRESS*\n");
+        sb.append("*PERSIANAS EXPRESS*\n");
         sb.append("Pedido #").append(pedido.getId()).append("\n\n");
 
         sb.append("*Cliente:* ").append(pedido.getNombreCliente()).append("\n");

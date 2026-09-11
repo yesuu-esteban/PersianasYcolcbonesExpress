@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pedidos de Tienda</title>
+    <title>Pedidos de Almacén</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
     <style>
@@ -147,19 +147,19 @@
             <div class="logo-marca">
                 <div class="icono">⚙️</div>
                 <div class="titulo-marca">
-                    PERSIANAS Y CORTINAS EXPRESS
+                    PERSIANAS EXPRESS
                     <small>PUNTO DE VENTA</small>
                 </div>
             </div>
             <div class="d-flex gap-2">
-                <a href="/tienda/reporte" class="btn btn-outline-primary">📊 Reporte</a>
-                <a th:if="${puedeCrearPedidos}" href="/tienda/nuevo" class="btn btn-primary">+ Nuevo Pedido</a>
+                <a href="/almacen/reporte" class="btn btn-outline-primary">📊 Reporte</a>
+                <a th:if="${puedeCrearPedidos}" href="/almacen/nuevo" class="btn btn-primary">+ Nuevo Pedido</a>
             </div>
         </div>
 
-        <h2 class="mb-3">🛒 Pedidos de Tienda</h2>
+        <h2 class="mb-3">🛒 Pedidos de Almacén</h2>
 
-        <form method="get" th:action="@{/tienda/listado}" class="card-filtro row g-3 align-items-end">
+        <form method="get" th:action="@{/almacen/listado}" class="card-filtro row g-3 align-items-end">
             <!-- Cada vez que se busca/filtra, se vuelve a la página 1 -->
             <input type="hidden" name="pagina" value="0">
 
@@ -210,7 +210,7 @@
             <div class="col-12 col-md-2 d-flex gap-2">
                 <button type="submit" class="btn btn-outline-primary flex-fill">🔍 Buscar</button>
                 <a th:if="${nombre != '' or cedula != '' or direccion != '' or fechaEntrega != '' or pagado != '' or mes != null or anio != null}"
-                   href="/tienda/listado" class="btn btn-outline-secondary" title="Limpiar filtros">✕</a>
+                   href="/almacen/listado" class="btn btn-outline-secondary" title="Limpiar filtros">✕</a>
             </div>
         </form>
 
@@ -259,9 +259,9 @@
                                     title="Ver productos">
                                 🧾
                             </button>
-                            <a th:href="@{/tienda/imprimir/{id}(id=${p.id})}" target="_blank"
+                            <a th:href="@{/almacen/imprimir/{id}(id=${p.id})}" target="_blank"
                                class="btn btn-sm btn-outline-secondary" title="Imprimir pedido">🖨️</a>
-                            <a th:href="@{/tienda/compartir/{id}(id=${p.id})}" target="_blank"
+                            <a th:href="@{/almacen/compartir/{id}(id=${p.id})}" target="_blank"
                                class="btn btn-sm btn-outline-success" title="Compartir por WhatsApp">📲</a>
                         </td>
                         <!-- El número de fila ahora se calcula respecto a la página actual, no solo al índice local -->
@@ -289,7 +289,7 @@
                         <td th:text="${#numbers.formatDecimal(p.precioCliente, 1, 'POINT', 0, 'NONE')}"></td>
                         <td>
                             <div class="mb-1 fw-bold" th:text="${#numbers.formatDecimal(p.abono, 1, 'POINT', 0, 'NONE')}"></div>
-                            <form th:action="@{/tienda/abonar/{id}(id=${p.id})}" method="post" class="d-flex gap-1">
+                            <form th:action="@{/almacen/abonar/{id}(id=${p.id})}" method="post" class="d-flex gap-1">
                                 <input type="number" step="0.01" min="0.01" name="monto"
                                        placeholder="+ monto" class="form-control form-control-sm" style="width:90px;">
                                 <button type="submit" class="btn btn-sm btn-outline-success" title="Agregar abono">+</button>
@@ -311,7 +311,7 @@
                                   th:text="${p.estado}"></span>
                         </td>
                         <td>
-                            <form th:action="@{/tienda/actualizar-estado/{id}(id=${p.id})}" method="post" class="d-flex gap-1">
+                            <form th:action="@{/almacen/actualizar-estado/{id}(id=${p.id})}" method="post" class="d-flex gap-1">
                                 <select name="estado" class="form-select form-select-sm" style="width:140px;">
                                     <option value="Pendiente" th:selected="${p.estado == 'Pendiente'}">Pendiente</option>
                                     <option value="Pedido"     th:selected="${p.estado == 'Pedido'}">Pedido</option>
@@ -323,7 +323,7 @@
                             </form>
                         </td>
                         <td th:if="${puedeCrearPedidos}">
-                            <a th:href="@{/tienda/editar/{id}(id=${p.id})}" class="btn btn-sm btn-outline-secondary">✏️</a>
+                            <a th:href="@{/almacen/editar/{id}(id=${p.id})}" class="btn btn-sm btn-outline-secondary">✏️</a>
                             <button type="button" class="btn btn-sm btn-outline-danger"
                                     data-bs-toggle="modal" data-bs-target="#modalEliminarTienda"
                                     th:attr="data-id=${p.id}, data-cliente=${p.nombreCliente}">🗑️</button>
@@ -372,7 +372,7 @@
         </div>
 
         <div th:if="${#lists.isEmpty(pedidos)}" class="card-vacio text-center py-4 mt-3">
-            No hay pedidos de tienda que coincidan con estos filtros.
+            No hay pedidos de almacén que coincidan con estos filtros.
         </div>
 
         <!-- ─── Paginación ─── -->
@@ -380,19 +380,19 @@
             <ul class="pagination justify-content-center paginacion-tienda flex-wrap">
                 <li class="page-item" th:classappend="${paginaActual == 0} ? 'disabled'">
                     <a class="page-link"
-                       th:href="@{/tienda/listado(pagina=${paginaActual - 1}, nombre=${nombre}, cedula=${cedula}, direccion=${direccion}, fechaEntrega=${fechaEntrega}, pagado=${pagado}, mes=${mes}, anio=${anio})}">
+                       th:href="@{/almacen/listado(pagina=${paginaActual - 1}, nombre=${nombre}, cedula=${cedula}, direccion=${direccion}, fechaEntrega=${fechaEntrega}, pagado=${pagado}, mes=${mes}, anio=${anio})}">
                         « Anterior
                     </a>
                 </li>
                 <li class="page-item" th:each="i : ${#numbers.sequence(0, totalPaginas - 1)}"
                     th:classappend="${i == paginaActual} ? 'active'">
                     <a class="page-link"
-                       th:href="@{/tienda/listado(pagina=${i}, nombre=${nombre}, cedula=${cedula}, direccion=${direccion}, fechaEntrega=${fechaEntrega}, pagado=${pagado}, mes=${mes}, anio=${anio})}"
+                       th:href="@{/almacen/listado(pagina=${i}, nombre=${nombre}, cedula=${cedula}, direccion=${direccion}, fechaEntrega=${fechaEntrega}, pagado=${pagado}, mes=${mes}, anio=${anio})}"
                        th:text="${i + 1}"></a>
                 </li>
                 <li class="page-item" th:classappend="${paginaActual == totalPaginas - 1} ? 'disabled'">
                     <a class="page-link"
-                       th:href="@{/tienda/listado(pagina=${paginaActual + 1}, nombre=${nombre}, cedula=${cedula}, direccion=${direccion}, fechaEntrega=${fechaEntrega}, pagado=${pagado}, mes=${mes}, anio=${anio})}">
+                       th:href="@{/almacen/listado(pagina=${paginaActual + 1}, nombre=${nombre}, cedula=${cedula}, direccion=${direccion}, fechaEntrega=${fechaEntrega}, pagado=${pagado}, mes=${mes}, anio=${anio})}">
                         Siguiente »
                     </a>
                 </li>
@@ -455,7 +455,7 @@
             const id = boton.getAttribute('data-id');
             const cliente = boton.getAttribute('data-cliente');
             document.getElementById('modalEliminarTiendaCliente').textContent = cliente;
-            document.getElementById('formEliminarTienda').action = '/tienda/eliminar/' + id;
+            document.getElementById('formEliminarTienda').action = '/almacen/eliminar/' + id;
         });
     </script>
     <script src="/js/token-nav.js"></script>

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Persianas y Colchones Express — Portal</title>
+    <title>Persianas Express — Portal</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
@@ -274,8 +274,8 @@
     <!-- Header Corporativo -->
     <header class="portal-header">
         <div class="portal-brand-container">
-            <span class="portal-brand-title">Persianas & Colchones</span>
-            <span class="portal-brand-subtitle">Express • Portal Interno</span>
+            <span class="portal-brand-title">Persianas Express</span>
+            <span class="portal-brand-subtitle">Portal Interno</span>
         </div>
         <div class="header-right">
             <div class="header-right-authenticated" sec:authorize="isAuthenticated()">
@@ -293,26 +293,26 @@
         <section class="portal-hero">
             <div class="hero-text">
                 <h1>Panel de Control General</h1>
-                <p>Selecciona el módulo operativo al que deseas ingresar para gestionar inventarios, producción, tiendas o facturación.</p>
+                <p>Selecciona el módulo operativo al que deseas ingresar para gestionar inventarios, producción, almacén o facturación.</p>
             </div>
         </section>
 
         <div class="module-grid">
 
-            <!-- TIENDA: activa para vendedor, tienda_admin y admin -->
-            <a class="module-card" th:href="@{/tienda/listado}" sec:authorize="hasAnyRole('TIENDA','TIENDA_ADMIN','ADMIN')">
+            <!-- ALMACÉN (antes "Tienda"): activo para vendedor, tienda_admin y admin -->
+            <a class="module-card" th:href="@{/almacen/listado}" sec:authorize="hasAnyRole('TIENDA','TIENDA_ADMIN','ADMIN')">
                 <div class="module-content">
                     <span class="module-category">Módulo Comercial</span>
-                    <h2>Tienda</h2>
-                    <p>Gestión de pedidos de tienda, atención y puntos de venta.</p>
+                    <h2>Almacén</h2>
+                    <p>Gestión de pedidos de almacén, atención y puntos de venta.</p>
                     <span class="module-action">Acceder al módulo &rarr;</span>
                 </div>
             </a>
             <div class="module-card module-card--locked" sec:authorize="!hasAnyRole('TIENDA','TIENDA_ADMIN','ADMIN')">
                 <div class="module-content">
                     <span class="module-category">Módulo Comercial</span>
-                    <h2>Tienda</h2>
-                    <p>Gestión de pedidos de tienda, atención y puntos de venta.</p>
+                    <h2>Almacén</h2>
+                    <p>Gestión de pedidos de almacén, atención y puntos de venta.</p>
                     <span class="module-action module-action--locked">Sin acceso</span>
                 </div>
             </div>
@@ -335,11 +335,11 @@
                 </div>
             </div>
 
-            <!-- RECIBOS DE TIENDA -->
-            <a class="module-card" th:href="@{/recibos/tienda}" sec:authorize="hasAnyRole('TIENDA','TIENDA_ADMIN','ADMIN')">
+            <!-- RECIBOS DE ALMACÉN -->
+            <a class="module-card" th:href="@{/recibos/almacen}" sec:authorize="hasAnyRole('TIENDA','TIENDA_ADMIN','ADMIN')">
                 <div class="module-content">
                     <span class="module-category">Módulo de Caja</span>
-                    <h2>Recibos Tienda</h2>
+                    <h2>Recibos Almacén</h2>
                     <p>Genera y consulta los recibos de caja generados desde el punto de venta.</p>
                     <span class="module-action">Acceder al módulo &rarr;</span>
                 </div>
@@ -347,7 +347,7 @@
             <div class="module-card module-card--locked" sec:authorize="!hasAnyRole('TIENDA','TIENDA_ADMIN','ADMIN')">
                 <div class="module-content">
                     <span class="module-category">Módulo de Caja</span>
-                    <h2>Recibos Tienda</h2>
+                    <h2>Recibos Almacén</h2>
                     <p>Genera y consulta los recibos de caja generados desde el punto de venta.</p>
                     <span class="module-action module-action--locked">Sin acceso</span>
                 </div>
@@ -375,7 +375,7 @@
     </main>
 
     <footer class="portal-footer">
-        <p>&copy; 2026 Persianas y Colchones Express. Todos los derechos reservados.</p>
+        <p>&copy; 2026 Persianas Express. Todos los derechos reservados.</p>
     </footer>
 
     <script src="/js/token-nav.js"></script>
