@@ -50,6 +50,8 @@
         .btn-primary:hover { filter: brightness(1.12); }
         .btn-outline-secondary { color: var(--text-muted); border-color: rgba(255,255,255,0.25); }
         .btn-outline-secondary:hover { background: rgba(255,255,255,0.1); color: #fff; }
+        .btn-outline-danger { color: #ff8a80; border-color: rgba(255,255,255,0.25); }
+        .btn-outline-danger:hover { background: #e74c3c; color: #fff; border-color: #e74c3c; }
 
         .resumen-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin-bottom: 24px; }
         .card-resumen {
@@ -102,7 +104,10 @@
                     <small>REPORTE DE VENTAS</small>
                 </div>
             </div>
-            <a href="/almacen/listado" class="btn btn-outline-secondary">← Volver al listado</a>
+            <div class="d-flex gap-2 flex-wrap">
+                <a href="/almacen/listado" class="btn btn-outline-secondary">← Volver al listado</a>
+                <a href="/logout" class="btn btn-outline-danger">🚪 Cerrar sesión</a>
+            </div>
         </div>
 
         <h2 class="mb-3">📊 Reporte de Ventas</h2>
