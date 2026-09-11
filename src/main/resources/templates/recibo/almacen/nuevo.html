@@ -35,17 +35,17 @@
 <body>
     <div class="container">
         <div class="barra-superior">
-            <h3 style="margin:0;">🧾 Nuevo Recibo de Tienda</h3>
-            <a href="/recibos/tienda">← Ver listado</a>
+            <h3 style="margin:0;">🧾 Nuevo Recibo de Almacén</h3>
+            <a href="/recibos/almacen">← Ver listado</a>
         </div>
 
         <p style="font-size:13px; color:#555; margin-top:-8px; margin-bottom:16px;">
-            <span class="badge-origen">TIENDA</span>
+            <span class="badge-origen">ALMACEN</span>
         </p>
 
         <div th:if="${error}" class="alerta alerta-error" th:text="${error}"></div>
 
-        <form th:action="@{/recibos/tienda/guardar}" method="post" id="formRecibo">
+        <form th:action="@{/recibos/almacen/guardar}" method="post" id="formRecibo">
             <fieldset>
                 <legend>Datos del Cliente</legend>
                 <label for="cliente">Cliente:</label>
