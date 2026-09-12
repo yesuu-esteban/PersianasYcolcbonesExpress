@@ -20,7 +20,7 @@
     <div th:if="${mensaje}" class="alert alert-success" th:text="${mensaje}"></div>
     <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
 
-    <form method="get" th:action="@{/recibos/fabrica}" class="row g-2 align-items-end mb-3">
+    <form method="get" th:action="@{/recibos/almacen}" class="row g-2 align-items-end mb-3">
         <div class="col-md-4">
             <label class="form-label">Cliente</label>
             <input type="text" name="cliente" th:value="${cliente}" class="form-control" placeholder="Nombre...">
@@ -35,7 +35,7 @@
         </div>
         <div class="col-md-2 d-flex gap-2">
             <button type="submit" class="btn btn-outline-primary flex-fill">Filtrar</button>
-            <a href="/recibos/fabrica" class="btn btn-outline-secondary">✕</a>
+            <a href="/recibos/almacen" class="btn btn-outline-secondary">✕</a>
         </div>
     </form>
 
