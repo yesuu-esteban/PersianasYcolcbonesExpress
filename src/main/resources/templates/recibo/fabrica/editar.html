@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nuevo Recibo de Fábrica</title>
+    <title>Editar Recibo de Fábrica</title>
     <style>
         * { box-sizing: border-box; }
         body { font-family: Arial, sans-serif; background-color: #f4f4f9; margin: 0; padding: 20px; }
@@ -29,15 +29,19 @@
         .totales { margin-top: 10px; padding-top: 10px; border-top: 1px solid #ddd; }
         .totales p { font-size: 15px; margin: 6px 0; }
         .totales p.descuento-aplicado { color: #b30000; font-size: 13px; }
-        .btn-generar { width: 100%; background-color: #28a712; color: white; padding: 12px; font-size: 15px; font-weight: bold; border: none; border-radius: 4px; cursor: pointer; margin-top: 16px; }
-        .btn-generar:hover { background-color: #1f8a0d; }
+        .btn-generar { width: 100%; background-color: #0d6efd; color: white; padding: 12px; font-size: 15px; font-weight: bold; border: none; border-radius: 4px; cursor: pointer; margin-top: 16px; }
+        .btn-generar:hover { background-color: #0b5ed7; }
+        .aviso-firmado {
+            background: #fff3cd; border: 1px solid #ffc107; color: #7a5c00;
+            padding: 8px 12px; border-radius: 4px; font-size: 12px; margin-bottom: 14px;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="barra-superior">
-            <h3 style="margin:0;">🧾 Nuevo Recibo de Fábrica</h3>
-            <a href="/recibos/fabrica">← Ver listado</a>
+            <h3 style="margin:0;">✏️ Editar Recibo #<span th:text="${recibo.numeroFormateado}"></span></h3>
+            <a th:href="@{/recibos/imprimir/{id}(id=${recibo.id})}">← Cancelar y ver recibo</a>
         </div>
 
         <p style="font-size:13px; color:#555; margin-top:-8px; margin-bottom:16px;">
@@ -46,26 +50,32 @@
 
         <div th:if="${error}" class="alerta alerta-error" th:text="${error}"></div>
 
-        <form th:action="@{/recibos/fabrica/guardar}" method="post" id="formRecibo">
+        <div class="aviso-firmado" th:if="${recibo.isFirmado()}">
+            ⚠️ Este recibo ya tiene una firma registrada. Si cambias los productos o el total,
+            la firma seguirá guardada tal cual, pero no corresponderá a los nuevos valores —
+            considera pedirle al cliente que vuelva a firmar después de editar.
+        </div>
+
+        <form th:action="@{/recibos/fabrica/editar/{id}(id=${recibo.id})}" method="post" id="formRecibo">
             <fieldset>
                 <legend>Datos del Cliente</legend>
                 <label for="cliente">Cliente:</label>
-                <input type="text" id="cliente" name="cliente" required>
+                <input type="text" id="cliente" name="cliente" th:value="${recibo.cliente}" required>
                 <label for="direccion">Dirección:</label>
-                <input type="text" id="direccion" name="direccion">
+                <input type="text" id="direccion" name="direccion" th:value="${recibo.direccion}">
                 <label for="cedula">Cédula:</label>
-                <input type="text" id="cedula" name="cedula">
+                <input type="text" id="cedula" name="cedula" th:value="${recibo.cedula}">
                 <label for="telefono">Teléfono:</label>
-                <input type="tel" id="telefono" name="telefono">
+                <input type="tel" id="telefono" name="telefono" th:value="${recibo.telefono}">
             </fieldset>
 
             <fieldset>
                 <legend>Productos</legend>
                 <div id="contenedorProductos">
-                    <div class="fila-producto-form">
-                        <input type="text" name="nombresProducto" class="col-nombre" placeholder="Nombre del producto" required>
-                        <input type="number" name="precios" class="col-precio" step="0.01" min="0.01" placeholder="Precio" required>
-                        <input type="number" name="cantidades" class="col-cant" min="1" value="1" placeholder="Cant.">
+                    <div class="fila-producto-form" th:each="it : ${recibo.items}">
+                        <input type="text" name="nombresProducto" class="col-nombre" placeholder="Nombre del producto" th:value="${it.nombre}" required>
+                        <input type="number" name="precios" class="col-precio" step="0.01" min="0.01" placeholder="Precio" th:value="${it.precio}" required>
+                        <input type="number" name="cantidades" class="col-cant" min="1" th:value="${it.cantidad}" placeholder="Cant.">
                         <button type="button" class="btn-eliminar-producto" onclick="eliminarFila(this)">Quitar</button>
                     </div>
                 </div>
@@ -75,18 +85,18 @@
             <div class="totales">
                 <p><strong>Total General: $<span id="lblTotalGeneral">0.00</span></strong></p>
                 <label for="descuento">Descuento:</label>
-                <input type="number" id="descuento" name="descuento" step="0.01" min="0" value="0">
+                <input type="number" id="descuento" name="descuento" step="0.01" min="0" th:value="${recibo.descuento}">
                 <p class="descuento-aplicado" id="lineaDescuentoAplicado" style="display:none;">
                     Descuento aplicado: -$<span id="lblDescuentoAplicado">0.00</span>
                 </p>
                 <p><strong>Total con descuento: $<span id="lblTotalConDescuento">0.00</span></strong></p>
                 <label for="abono">Abono:</label>
-                <input type="number" id="abono" name="abono" step="0.01" min="0" value="0">
+                <input type="number" id="abono" name="abono" step="0.01" min="0" th:value="${recibo.abono}">
                 <label for="saldo">Saldo pendiente:</label>
                 <input type="number" id="saldo" readonly>
             </div>
 
-            <button type="submit" class="btn-generar">Generar Recibo</button>
+            <button type="submit" class="btn-generar">💾 Guardar Cambios</button>
         </form>
     </div>
 
@@ -103,7 +113,6 @@
                 total += precio * cantidad;
             });
 
-            // ── Descuento: no puede ser negativo ni superar el total bruto (mismo límite que el servidor) ──
             let descuento = parseFloat(document.getElementById('descuento').value) || 0;
             if (descuento < 0) descuento = 0;
             if (descuento > total) descuento = total;

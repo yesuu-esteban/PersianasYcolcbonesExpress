@@ -92,6 +92,47 @@ public class ReciboCajaControlador {
         return conToken("redirect:/recibos/imprimir/" + id, tokenEfectivo);
     }
 
+    /** Formulario de edición, precargado con los datos actuales del recibo. */
+    @PreAuthorize("hasAnyRole('TIENDA','TIENDA_ADMIN','ADMIN')")
+    @GetMapping("/almacen/editar/{id}")
+    public String editarAlmacen(@PathVariable("id") int id, Model model, RedirectAttributes redirectAttributes) {
+        ReciboCaja recibo = reciboCajaRepository.findById(id).orElseThrow();
+        if (!puedeVerRecibo(recibo) || !"TIENDA".equals(recibo.getOrigen())) {
+            redirectAttributes.addFlashAttribute("error", "No tienes acceso para editar ese recibo.");
+            return "redirect:/recibos/almacen";
+        }
+        model.addAttribute("recibo", recibo);
+        return "recibo/almacen/editar";
+    }
+
+    @PreAuthorize("hasAnyRole('TIENDA','TIENDA_ADMIN','ADMIN')")
+    @PostMapping("/almacen/editar/{id}")
+    public String guardarEdicionAlmacen(
+            @PathVariable("id") int id,
+            @RequestParam String cliente,
+            @RequestParam(required = false) String direccion,
+            @RequestParam(required = false) String cedula,
+            @RequestParam(required = false) String telefono,
+            @RequestParam(required = false, defaultValue = "0") BigDecimal abono,
+            @RequestParam(required = false, defaultValue = "0") BigDecimal descuento,
+            @RequestParam List<String> nombresProducto,
+            @RequestParam List<BigDecimal> precios,
+            @RequestParam List<Integer> cantidades,
+            @RequestParam(value = "token", required = false) String tokenParam,
+            @CookieValue(value = "authToken", required = false) String tokenCookie,
+            RedirectAttributes redirectAttributes) {
+
+        String tokenEfectivo = (tokenParam != null && !tokenParam.isBlank()) ? tokenParam : tokenCookie;
+
+        Integer resultado = actualizarRecibo(id, "TIENDA", cliente, direccion, cedula, telefono, abono, descuento,
+                nombresProducto, precios, cantidades, redirectAttributes);
+
+        if (resultado == null) return conToken("redirect:/recibos/almacen/editar/" + id, tokenEfectivo);
+
+        redirectAttributes.addFlashAttribute("mensaje", "Recibo actualizado correctamente.");
+        return conToken("redirect:/recibos/imprimir/" + id, tokenEfectivo);
+    }
+
     // ═══════════════════════════════════════════════════════════════
     // RECIBOS DE FÁBRICA
     // ═══════════════════════════════════════════════════════════════
@@ -138,6 +179,47 @@ public class ReciboCajaControlador {
         if (id == null) return conToken("redirect:/recibos/fabrica/nuevo", tokenEfectivo);
 
         redirectAttributes.addFlashAttribute("mensaje", "Recibo de fábrica generado correctamente.");
+        return conToken("redirect:/recibos/imprimir/" + id, tokenEfectivo);
+    }
+
+    /** Formulario de edición, precargado con los datos actuales del recibo. */
+    @PreAuthorize("hasAnyRole('FABRICA','ADMIN')")
+    @GetMapping("/fabrica/editar/{id}")
+    public String editarFabrica(@PathVariable("id") int id, Model model, RedirectAttributes redirectAttributes) {
+        ReciboCaja recibo = reciboCajaRepository.findById(id).orElseThrow();
+        if (!puedeVerRecibo(recibo) || !"FABRICA".equals(recibo.getOrigen())) {
+            redirectAttributes.addFlashAttribute("error", "No tienes acceso para editar ese recibo.");
+            return "redirect:/recibos/fabrica";
+        }
+        model.addAttribute("recibo", recibo);
+        return "recibo/fabrica/editar";
+    }
+
+    @PreAuthorize("hasAnyRole('FABRICA','ADMIN')")
+    @PostMapping("/fabrica/editar/{id}")
+    public String guardarEdicionFabrica(
+            @PathVariable("id") int id,
+            @RequestParam String cliente,
+            @RequestParam(required = false) String direccion,
+            @RequestParam(required = false) String cedula,
+            @RequestParam(required = false) String telefono,
+            @RequestParam(required = false, defaultValue = "0") BigDecimal abono,
+            @RequestParam(required = false, defaultValue = "0") BigDecimal descuento,
+            @RequestParam List<String> nombresProducto,
+            @RequestParam List<BigDecimal> precios,
+            @RequestParam List<Integer> cantidades,
+            @RequestParam(value = "token", required = false) String tokenParam,
+            @CookieValue(value = "authToken", required = false) String tokenCookie,
+            RedirectAttributes redirectAttributes) {
+
+        String tokenEfectivo = (tokenParam != null && !tokenParam.isBlank()) ? tokenParam : tokenCookie;
+
+        Integer resultado = actualizarRecibo(id, "FABRICA", cliente, direccion, cedula, telefono, abono, descuento,
+                nombresProducto, precios, cantidades, redirectAttributes);
+
+        if (resultado == null) return conToken("redirect:/recibos/fabrica/editar/" + id, tokenEfectivo);
+
+        redirectAttributes.addFlashAttribute("mensaje", "Recibo actualizado correctamente.");
         return conToken("redirect:/recibos/imprimir/" + id, tokenEfectivo);
     }
 
@@ -299,12 +381,69 @@ public class ReciboCajaControlador {
         }
 
         ReciboCaja recibo = new ReciboCaja();
+        recibo.setOrigen(origen);
+        recibo.setCreadoPor(nombreUsuarioActual());
+
+        if (!aplicarDatosRecibo(recibo, cliente, direccion, cedula, telefono, abono, descuento,
+                nombresProducto, precios, cantidades, redirectAttributes)) {
+            return null;
+        }
+
+        reciboCajaRepository.save(recibo);
+        return recibo.getId();
+    }
+
+    /**
+     * Actualiza un recibo YA EXISTENTE (edición): conserva su id, número,
+     * firma y fecha de creación original; solo cambia los datos del
+     * cliente, productos, descuento y abono. Las líneas de productos se
+     * reemplazan por completo (gracias a orphanRemoval=true en la entidad,
+     * las líneas viejas que ya no estén se borran solas).
+     */
+    private Integer actualizarRecibo(int id, String origenEsperado, String cliente, String direccion,
+                                      String cedula, String telefono, BigDecimal abono, BigDecimal descuento,
+                                      List<String> nombresProducto, List<BigDecimal> precios,
+                                      List<Integer> cantidades, RedirectAttributes redirectAttributes) {
+
+        ReciboCaja recibo = reciboCajaRepository.findById(id).orElseThrow();
+
+        if (!puedeVerRecibo(recibo) || !origenEsperado.equals(recibo.getOrigen())) {
+            redirectAttributes.addFlashAttribute("error", "No tienes acceso para editar ese recibo.");
+            return null;
+        }
+
+        if (cliente == null || cliente.isBlank()) {
+            redirectAttributes.addFlashAttribute("error", "Debes indicar el nombre del cliente.");
+            return null;
+        }
+
+        // Se reemplazan todas las líneas de productos por las nuevas.
+        recibo.getItems().clear();
+
+        if (!aplicarDatosRecibo(recibo, cliente, direccion, cedula, telefono, abono, descuento,
+                nombresProducto, precios, cantidades, redirectAttributes)) {
+            return null;
+        }
+
+        reciboCajaRepository.save(recibo);
+        return recibo.getId();
+    }
+
+    /**
+     * Lógica común a "crear" y "editar": llena cliente/productos/totales
+     * sobre un ReciboCaja que ya viene con origen definido (nuevo o
+     * existente). Devuelve false si algo no es válido (y ya dejó el
+     * mensaje de error en redirectAttributes), true si todo quedó bien.
+     */
+    private boolean aplicarDatosRecibo(ReciboCaja recibo, String cliente, String direccion, String cedula,
+                                        String telefono, BigDecimal abono, BigDecimal descuento,
+                                        List<String> nombresProducto, List<BigDecimal> precios,
+                                        List<Integer> cantidades, RedirectAttributes redirectAttributes) {
+
         recibo.setCliente(cliente.trim());
         recibo.setDireccion(direccion != null ? direccion.trim() : "");
         recibo.setCedula(cedula != null ? cedula.trim() : "");
         recibo.setTelefono(telefono != null ? telefono.trim() : "");
-        recibo.setOrigen(origen);
-        recibo.setCreadoPor(nombreUsuarioActual());
 
         BigDecimal total = BigDecimal.ZERO;
         for (int i = 0; i < nombresProducto.size(); i++) {
@@ -329,7 +468,7 @@ public class ReciboCajaControlador {
         if (recibo.getItems().isEmpty()) {
             redirectAttributes.addFlashAttribute("error",
                     "Ningún producto válido fue agregado (verifica precio y cantidad).");
-            return null;
+            return false;
         }
 
         recibo.setTotal(total);
@@ -347,8 +486,7 @@ public class ReciboCajaControlador {
         recibo.setAbono(abonoSeguro);
         recibo.setSaldo(totalConDescuento.subtract(abonoSeguro));
 
-        reciboCajaRepository.save(recibo);
-        return recibo.getId();
+        return true;
     }
 
     private boolean puedeVerRecibo(ReciboCaja recibo) {

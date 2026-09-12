@@ -28,6 +28,7 @@
         .btn-agregar-producto:hover { background: #f0f0f0; }
         .totales { margin-top: 10px; padding-top: 10px; border-top: 1px solid #ddd; }
         .totales p { font-size: 15px; margin: 6px 0; }
+        .totales p.descuento-aplicado { color: #b30000; font-size: 13px; }
         .btn-generar { width: 100%; background-color: #28a712; color: white; padding: 12px; font-size: 15px; font-weight: bold; border: none; border-radius: 4px; cursor: pointer; margin-top: 16px; }
         .btn-generar:hover { background-color: #1f8a0d; }
     </style>
@@ -73,8 +74,12 @@
 
             <div class="totales">
                 <p><strong>Total General: $<span id="lblTotalGeneral">0.00</span></strong></p>
-                <label for ="descuento">Descuento:</label>
+                <label for="descuento">Descuento:</label>
                 <input type="number" id="descuento" name="descuento" step="0.01" min="0" value="0">
+                <p class="descuento-aplicado" id="lineaDescuentoAplicado" style="display:none;">
+                    Descuento aplicado: -$<span id="lblDescuentoAplicado">0.00</span>
+                </p>
+                <p><strong>Total con descuento: $<span id="lblTotalConDescuento">0.00</span></strong></p>
                 <label for="abono">Abono:</label>
                 <input type="number" id="abono" name="abono" step="0.01" min="0" value="0">
                 <label for="saldo">Saldo pendiente:</label>
@@ -89,6 +94,7 @@
         function formatearMoneda(valor) {
             return valor.toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         }
+
         function recalcularTotales() {
             let total = 0;
             document.querySelectorAll('.fila-producto-form').forEach(fila => {
@@ -96,16 +102,35 @@
                 const cantidad = parseFloat(fila.querySelector('input[name="cantidades"]').value) || 0;
                 total += precio * cantidad;
             });
+
+            // ── Descuento: no puede ser negativo ni superar el total bruto (mismo límite que el servidor) ──
+            let descuento = parseFloat(document.getElementById('descuento').value) || 0;
+            if (descuento < 0) descuento = 0;
+            if (descuento > total) descuento = total;
+
+            const totalConDescuento = total - descuento;
             const abono = parseFloat(document.getElementById('abono').value) || 0;
-            const saldo = total - abono;
+            const saldo = totalConDescuento - abono;
+
             document.getElementById('lblTotalGeneral').textContent = formatearMoneda(total);
+            document.getElementById('lblTotalConDescuento').textContent = formatearMoneda(totalConDescuento);
             document.getElementById('saldo').value = saldo.toFixed(2);
+
+            const lineaDescuento = document.getElementById('lineaDescuentoAplicado');
+            if (descuento > 0) {
+                lineaDescuento.style.display = 'block';
+                document.getElementById('lblDescuentoAplicado').textContent = formatearMoneda(descuento);
+            } else {
+                lineaDescuento.style.display = 'none';
+            }
         }
+
         function engancharFila(fila) {
             fila.querySelectorAll('input[name="precios"], input[name="cantidades"]').forEach(input => {
                 input.addEventListener('input', recalcularTotales);
             });
         }
+
         function agregarFila() {
             const contenedor = document.getElementById('contenedorProductos');
             const div = document.createElement('div');
@@ -119,6 +144,7 @@
             contenedor.appendChild(div);
             engancharFila(div);
         }
+
         function eliminarFila(boton) {
             const contenedor = document.getElementById('contenedorProductos');
             if (contenedor.children.length > 1) {
@@ -126,7 +152,9 @@
             }
             recalcularTotales();
         }
+
         document.getElementById('abono').addEventListener('input', recalcularTotales);
+        document.getElementById('descuento').addEventListener('input', recalcularTotales);
         document.querySelectorAll('.fila-producto-form').forEach(engancharFila);
         recalcularTotales();
     </script>

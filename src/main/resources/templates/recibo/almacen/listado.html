@@ -2,17 +2,17 @@
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <title>Recibos de Almacén</title>
+    <title>Recibos de Fábrica</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body class="bg-light p-4">
 <div class="container">
     <div class="d-flex justify-content-between align-items-center mb-3">
-        <h2>🧾 Recibos de Almacén</h2>
+        <h2>🧾 Recibos de Fábrica</h2>
         <div class="d-flex gap-2">
             <a href="/portal" class="btn btn-outline-secondary">← Portal</a>
-            <a href="/almacen/listado" class="btn btn-outline-secondary">🛒 Pedidos de Almacén</a>
-            <a href="/recibos/almacen/nuevo" class="btn btn-primary">+ Nuevo Recibo</a>
+            <a href="/taller/pedidos" class="btn btn-outline-secondary">📋 Pedidos de Fábrica</a>
+            <a href="/recibos/fabrica/nuevo" class="btn btn-primary">+ Nuevo Recibo</a>
             <a href="/logout" class="btn btn-outline-danger">🚪 Cerrar sesión</a>
         </div>
     </div>
@@ -20,7 +20,7 @@
     <div th:if="${mensaje}" class="alert alert-success" th:text="${mensaje}"></div>
     <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
 
-    <form method="get" th:action="@{/recibos/almacen}" class="row g-2 align-items-end mb-3">
+    <form method="get" th:action="@{/recibos/fabrica}" class="row g-2 align-items-end mb-3">
         <div class="col-md-4">
             <label class="form-label">Cliente</label>
             <input type="text" name="cliente" th:value="${cliente}" class="form-control" placeholder="Nombre...">
@@ -35,7 +35,7 @@
         </div>
         <div class="col-md-2 d-flex gap-2">
             <button type="submit" class="btn btn-outline-primary flex-fill">Filtrar</button>
-            <a href="/recibos/almacen" class="btn btn-outline-secondary">✕</a>
+            <a href="/recibos/fabrica" class="btn btn-outline-secondary">✕</a>
         </div>
     </form>
 
@@ -44,7 +44,7 @@
             <thead class="table-dark">
                 <tr>
                     <th>#</th><th>Cliente</th><th>Cédula</th><th>Teléfono</th>
-                    <th>Fecha</th><th>Total</th><th>Abono</th><th>Saldo</th><th>Firma</th><th>Generado por</th><th>Acciones</th>
+                    <th>Fecha</th><th>Total</th><th>Descuento</th><th>Abono</th><th>Saldo</th><th>Firma</th><th>Generado por</th><th>Acciones</th>
                 </tr>
             </thead>
             <tbody>
@@ -55,6 +55,7 @@
                     <td th:text="${r.telefono}"></td>
                     <td th:text="${r.fechaFormateada}"></td>
                     <td th:text="${#numbers.formatDecimal(r.total, 1, 'POINT', 2, 'COMMA')}"></td>
+                    <td th:text="${#numbers.formatDecimal(r.descuento, 1, 'POINT', 2, 'COMMA')}"></td>
                     <td th:text="${#numbers.formatDecimal(r.abono, 1, 'POINT', 2, 'COMMA')}"></td>
                     <td th:text="${#numbers.formatDecimal(r.saldo, 1, 'POINT', 2, 'COMMA')}"></td>
                     <td>
@@ -64,6 +65,7 @@
                     <td th:text="${r.creadoPor}"></td>
                     <td>
                         <a th:href="@{/recibos/imprimir/{id}(id=${r.id})}" target="_blank" class="btn btn-sm btn-outline-dark" title="Ver recibo">🖨️</a>
+                        <a th:href="@{/recibos/fabrica/editar/{id}(id=${r.id})}" class="btn btn-sm btn-outline-primary" title="Editar recibo">✏️</a>
                         <button type="button" class="btn btn-sm btn-outline-success btn-compartir-pdf" title="Compartir recibo"
                                 th:data-url="@{/recibos/pdf/{id}(id=${r.id})}"
                                 th:data-nombre="'recibo_' + ${r.numeroFormateado} + '.pdf'">📤</button>
@@ -74,7 +76,7 @@
                     </td>
                 </tr>
                 <tr th:if="${#lists.isEmpty(recibos)}">
-                    <td colspan="11" class="text-center text-muted py-3">No hay recibos de almacén registrados.</td>
+                    <td colspan="12" class="text-center text-muted py-3">No hay recibos de fábrica registrados.</td>
                 </tr>
             </tbody>
         </table>
