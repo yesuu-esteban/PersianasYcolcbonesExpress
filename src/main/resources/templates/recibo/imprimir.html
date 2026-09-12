@@ -22,6 +22,7 @@
         .numerica { text-align:right; }
         .etiqueta-total { font-weight:bold; text-align:right; background:#f2f2f2; width:25%; }
         .valor-total { width:25%; text-align:right; font-weight:bold; }
+        .valor-total.descuento { color:#b30000; }
         .celda-firma { height:70px; vertical-align:bottom; font-size:10px; }
         .celda-firma img { max-height:60px; max-width:180px; display:block; }
         .celda-firma .marca-firmado { font-size:9px; color:#0a5c30; margin-top:2px; }
@@ -94,7 +95,7 @@
             <div class="cuadro-recibo">
                 <p class="titulo-caja">RECIBO DE CAJA</p>
                 <p class="numero-recibo" th:text="'Nº ' + ${recibo.numeroFormateado}"></p>
-                    <span class="badge-origen" th:classappend="${recibo.origen == 'FABRICA'} ? 'fabrica' : 'tienda'"
+                <span class="badge-origen" th:classappend="${recibo.origen == 'FABRICA'} ? 'fabrica' : 'tienda'"
                       th:text="${recibo.origen == 'FABRICA'} ? 'FÁBRICA' : 'ALMACÉN'"></span>
             </div>
         </div>
@@ -129,7 +130,7 @@
 
         <table>
             <tr>
-                <td class="celda-firma" rowspan="2">
+                <td class="celda-firma" rowspan="3">
                     <img th:if="${recibo.isFirmado()}" th:src="${recibo.firma}" alt="Firma">
                     <span th:unless="${recibo.isFirmado()}">FIRMA Y SELLO</span>
                     <div class="marca-firmado" th:if="${recibo.isFirmado()}">
@@ -139,9 +140,13 @@
                 <td class="etiqueta-total">SUBTOTAL</td>
                 <td class="valor-total" th:text="${#numbers.formatDecimal(recibo.total, 1, 'POINT', 2, 'COMMA')}"></td>
             </tr>
+            <tr th:if="${recibo.descuento != null and recibo.descuento.compareTo(T(java.math.BigDecimal).ZERO) > 0}">
+                <td class="etiqueta-total">DESCUENTO</td>
+                <td class="valor-total descuento" th:text="'- ' + ${#numbers.formatDecimal(recibo.descuento, 1, 'POINT', 2, 'COMMA')}"></td>
+            </tr>
             <tr>
                 <td class="etiqueta-total">TOTAL</td>
-                <td class="valor-total" th:text="${#numbers.formatDecimal(recibo.total, 1, 'POINT', 2, 'COMMA')}"></td>
+                <td class="valor-total" th:text="${#numbers.formatDecimal(recibo.totalConDescuento, 1, 'POINT', 2, 'COMMA')}"></td>
             </tr>
         </table>
 
@@ -315,8 +320,6 @@
 
             document.getElementById('inputFirmaBase64').value = dataUrl;
 
-            // Adjuntar token igual que el resto de formularios del sitio (token-nav.js
-            // solo intercepta submits normales; este es dinámico, así que se refuerza aquí).
             const token = localStorage.getItem('authToken');
             const form = document.getElementById('formFirma');
             if (token && !form.querySelector('input[name="token"]')) {

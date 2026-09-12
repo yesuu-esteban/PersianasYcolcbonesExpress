@@ -6,6 +6,7 @@ import lombok.Setter;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
@@ -15,11 +16,14 @@ import java.util.List;
 @Getter @Setter
 public class ReciboCaja {
 
+    /** Zona horaria fija de Colombia, sin importar dónde esté físicamente el servidor. */
+    private static final ZoneId ZONA_COLOMBIA = ZoneId.of("America/Bogota");
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private int id;
 
-    /** "TIENDA" o "FABRICA": desde qué módulo se generó el recibo. */
+    /** "TIENDA" (Almacén) o "FABRICA": desde qué módulo se generó el recibo. */
     @Column(nullable = false)
     private String origen = "TIENDA";
 
@@ -34,9 +38,29 @@ public class ReciboCaja {
     @Column(name = "fecha")
     private LocalDateTime fecha;
 
+    /** Suma bruta de todas las líneas (cantidad × precio), ANTES del descuento. */
     private BigDecimal total = BigDecimal.ZERO;
+
+    /** Descuento que la persona que hace el recibo decide aplicarle (jefe, cajero, etc.). */
+    @Column(name = "descuento")
+    private BigDecimal descuento = BigDecimal.ZERO;
+
     private BigDecimal abono = BigDecimal.ZERO;
+
+    /** Saldo pendiente = (total - descuento) - abono. Se recalcula siempre en el controlador. */
     private BigDecimal saldo = BigDecimal.ZERO;
+
+    private String fabrica = "";
+    private String vendedor = "";
+    private String aliado = "";
+
+    /**
+     * Número que se muestra al usuario ("000", "001", "002"...). NO se guarda
+     * en la base de datos: se calcula cada vez que se necesita, según cuántos
+     * recibos con un id MENOR siguen existiendo en este momento.
+     */
+    @Transient
+    private int numeroMostrado = 0;
 
     /** Imagen PNG de la firma, en base64 (data URL completo: "data:image/png;base64,..."). */
     @Column(name = "firma", columnDefinition = "TEXT")
@@ -49,21 +73,9 @@ public class ReciboCaja {
     @OneToMany(mappedBy = "recibo", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ReciboCajaItem> items = new ArrayList<>();
 
-    /**
-     * Número que se muestra al usuario ("000", "001", "002"...). NO se guarda
-     * en la base de datos: se calcula cada vez que se necesita, según cuántos
-     * recibos con un id MENOR siguen existiendo en este momento. Así, si se
-     * borra un recibo, todos los que quedan después de él se recorren
-     * automáticamente para cerrar el hueco — nunca queda un número "fantasma".
-     * El controlador es quien llama a setNumeroMostrado(...) antes de que la
-     * vista lea numeroFormateado.
-     */
-    @Transient
-    private int numeroMostrado = 0;
-
     @PrePersist
     protected void alCrear() {
-        if (this.fecha == null) this.fecha = LocalDateTime.now();
+        if (this.fecha == null) this.fecha = LocalDateTime.now(ZONA_COLOMBIA);
     }
 
     public void agregarItem(ReciboCajaItem item) {
@@ -74,6 +86,18 @@ public class ReciboCaja {
     @Transient
     public boolean isFirmado() {
         return this.firma != null && !this.firma.isBlank();
+    }
+
+    /**
+     * Total real a cobrar después de aplicar el descuento. Nunca queda negativo:
+     * si por error el descuento supera el total, simplemente queda en 0.
+     */
+    @Transient
+    public BigDecimal getTotalConDescuento() {
+        BigDecimal t = this.total != null ? this.total : BigDecimal.ZERO;
+        BigDecimal d = this.descuento != null ? this.descuento : BigDecimal.ZERO;
+        BigDecimal resultado = t.subtract(d);
+        return resultado.compareTo(BigDecimal.ZERO) < 0 ? BigDecimal.ZERO : resultado;
     }
 
     /** Versión formateada con ceros a la izquierda, mínimo 3 dígitos: 000, 001, 002... */

@@ -19,6 +19,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -34,6 +35,7 @@ import java.util.stream.Collectors;
 public class ReciboCajaControlador {
 
     private static final int TAMANO_PAGINA = 10;
+    private static final ZoneId ZONA_COLOMBIA = ZoneId.of("America/Bogota");
 
     @Autowired
     private ReciboCajaRepository reciboCajaRepository;
@@ -71,6 +73,7 @@ public class ReciboCajaControlador {
             @RequestParam(required = false) String cedula,
             @RequestParam(required = false) String telefono,
             @RequestParam(required = false, defaultValue = "0") BigDecimal abono,
+            @RequestParam(required = false, defaultValue = "0") BigDecimal descuento,
             @RequestParam List<String> nombresProducto,
             @RequestParam List<BigDecimal> precios,
             @RequestParam List<Integer> cantidades,
@@ -80,7 +83,7 @@ public class ReciboCajaControlador {
 
         String tokenEfectivo = (tokenParam != null && !tokenParam.isBlank()) ? tokenParam : tokenCookie;
 
-        Integer id = guardarRecibo("TIENDA", cliente, direccion, cedula, telefono, abono,
+        Integer id = guardarRecibo("TIENDA", cliente, direccion, cedula, telefono, abono, descuento,
                 nombresProducto, precios, cantidades, redirectAttributes);
 
         if (id == null) return conToken("redirect:/recibos/almacen/nuevo", tokenEfectivo);
@@ -119,6 +122,7 @@ public class ReciboCajaControlador {
             @RequestParam(required = false) String cedula,
             @RequestParam(required = false) String telefono,
             @RequestParam(required = false, defaultValue = "0") BigDecimal abono,
+            @RequestParam(required = false, defaultValue = "0") BigDecimal descuento,
             @RequestParam List<String> nombresProducto,
             @RequestParam List<BigDecimal> precios,
             @RequestParam List<Integer> cantidades,
@@ -128,7 +132,7 @@ public class ReciboCajaControlador {
 
         String tokenEfectivo = (tokenParam != null && !tokenParam.isBlank()) ? tokenParam : tokenCookie;
 
-        Integer id = guardarRecibo("FABRICA", cliente, direccion, cedula, telefono, abono,
+        Integer id = guardarRecibo("FABRICA", cliente, direccion, cedula, telefono, abono, descuento,
                 nombresProducto, precios, cantidades, redirectAttributes);
 
         if (id == null) return conToken("redirect:/recibos/fabrica/nuevo", tokenEfectivo);
@@ -207,7 +211,7 @@ public class ReciboCajaControlador {
         }
 
         recibo.setFirma(firmaBase64);
-        recibo.setFirmaFecha(LocalDateTime.now());
+        recibo.setFirmaFecha(LocalDateTime.now(ZONA_COLOMBIA));
         reciboCajaRepository.save(recibo);
 
         redirectAttributes.addFlashAttribute("mensaje", "Firma guardada correctamente.");
@@ -227,8 +231,6 @@ public class ReciboCajaControlador {
         }
 
         try {
-            // Solo se borra el recibo: el número consecutivo NUNCA se reutiliza,
-            // el contador global sigue avanzando sin importar esta eliminación.
             reciboCajaRepository.deleteById(id);
             redirectAttributes.addFlashAttribute("mensaje", "Recibo eliminado.");
         } catch (Exception e) {
@@ -247,11 +249,6 @@ public class ReciboCajaControlador {
         return redirectUrl + separador + "token=" + token;
     }
 
-    /**
-     * Calcula el número compacto (sin huecos) de un recibo: cuenta cuántos
-     * recibos con id menor SIGUEN existiendo en este momento. Si se borraron
-     * recibos anteriores, este número baja automáticamente para cerrar el hueco.
-     */
     private void asignarNumeroSecuencial(ReciboCaja recibo) {
         long menores = reciboCajaRepository.countByIdLessThan(recibo.getId());
         recibo.setNumeroMostrado((int) menores);
@@ -272,7 +269,6 @@ public class ReciboCajaControlador {
                 .filter(r -> fHasta == null || (r.getFecha() != null && !r.getFecha().toLocalDate().isAfter(fHasta)))
                 .collect(Collectors.toList());
 
-        // ── Paginación: máximo TAMANO_PAGINA recibos por página ──
         int totalFiltrados = filtrados.size();
         int totalPaginas = (int) Math.ceil((double) totalFiltrados / TAMANO_PAGINA);
         if (totalPaginas == 0) totalPaginas = 1;
@@ -281,7 +277,6 @@ public class ReciboCajaControlador {
         int hastaIdx = Math.min(desdeIdx + TAMANO_PAGINA, totalFiltrados);
         List<ReciboCaja> pagina_ = (desdeIdx < hastaIdx) ? filtrados.subList(desdeIdx, hastaIdx) : new ArrayList<>();
 
-        // Cada recibo de esta página recibe su número compacto y actualizado.
         pagina_.forEach(this::asignarNumeroSecuencial);
 
         model.addAttribute("recibos", pagina_);
@@ -294,7 +289,8 @@ public class ReciboCajaControlador {
     }
 
     private Integer guardarRecibo(String origen, String cliente, String direccion, String cedula, String telefono,
-                                   BigDecimal abono, List<String> nombresProducto, List<BigDecimal> precios,
+                                   BigDecimal abono, BigDecimal descuento,
+                                   List<String> nombresProducto, List<BigDecimal> precios,
                                    List<Integer> cantidades, RedirectAttributes redirectAttributes) {
 
         if (cliente == null || cliente.isBlank()) {
@@ -337,10 +333,19 @@ public class ReciboCajaControlador {
         }
 
         recibo.setTotal(total);
+
+        // ── Descuento: no puede ser negativo ni superar el total bruto ──
+        BigDecimal descuentoSeguro = (descuento != null && descuento.compareTo(BigDecimal.ZERO) >= 0)
+                ? descuento : BigDecimal.ZERO;
+        if (descuentoSeguro.compareTo(total) > 0) descuentoSeguro = total;
+        recibo.setDescuento(descuentoSeguro);
+
+        BigDecimal totalConDescuento = total.subtract(descuentoSeguro);
+
         BigDecimal abonoSeguro = (abono != null && abono.compareTo(BigDecimal.ZERO) >= 0) ? abono : BigDecimal.ZERO;
-        if (abonoSeguro.compareTo(total) > 0) abonoSeguro = total;
+        if (abonoSeguro.compareTo(totalConDescuento) > 0) abonoSeguro = totalConDescuento;
         recibo.setAbono(abonoSeguro);
-        recibo.setSaldo(total.subtract(abonoSeguro));
+        recibo.setSaldo(totalConDescuento.subtract(abonoSeguro));
 
         reciboCajaRepository.save(recibo);
         return recibo.getId();
