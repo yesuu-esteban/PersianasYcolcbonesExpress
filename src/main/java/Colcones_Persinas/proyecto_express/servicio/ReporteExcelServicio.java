@@ -28,6 +28,7 @@ public class ReporteExcelServicio {
     private final InsumoRepository insumoRepository;
     private final PiezaInsumoRepository piezaInsumoRepository;
     private final MovimientoInventarioRepository movimientoInventarioRepository;
+    private final CalculadoraCostoFabricacionServicio calculadoraCostoFabricacionServicio;
 
     private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
     private static final DateTimeFormatter FMT_FECHA = DateTimeFormatter.ofPattern("dd/MM/yyyy");
@@ -41,7 +42,8 @@ public class ReporteExcelServicio {
             RetazoTelaRepository retazoTelaRepository,
             InsumoRepository insumoRepository,
             PiezaInsumoRepository piezaInsumoRepository,
-            MovimientoInventarioRepository movimientoInventarioRepository) {
+            MovimientoInventarioRepository movimientoInventarioRepository,
+            CalculadoraCostoFabricacionServicio calculadoraCostoFabricacionServicio) {
         this.materialUsadoRepository = materialUsadoRepository;
         this.pedidoRepository = pedidoRepository;
         this.rolloTelaRepository = rolloTelaRepository;
@@ -49,6 +51,7 @@ public class ReporteExcelServicio {
         this.insumoRepository = insumoRepository;
         this.piezaInsumoRepository = piezaInsumoRepository;
         this.movimientoInventarioRepository = movimientoInventarioRepository;
+        this.calculadoraCostoFabricacionServicio = calculadoraCostoFabricacionServicio;
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -437,10 +440,15 @@ public class ReporteExcelServicio {
 
     // ═══════════════════════════════════════════════════════════════
     // HOJA 5: PEDIDOS DEL PERÍODO
-    // Se agregó la columna "Costo Fábrica ($)" al final, usando la misma
-    // fórmula de Pedido.getCostoFabrica() (m² × valor según ancho comercial
-    // de tela). Solo aplica a pedidos de Fabricación; Venta Directa y Riel
-    // de Onda Serena muestran "—" porque esa fórmula no les corresponde.
+    // Ahora se muestran DOS columnas de dinero por pedido:
+    //   - "Precio de Venta ($)"     → lo que se le cobra al distribuidor
+    //     (fórmula por m² según ancho comercial de tela).
+    //   - "Costo Fabricación ($)"   → el costo REAL de fabricar ese pedido,
+    //     sumando los precios definidos en /inventario/precios (tela, tubo,
+    //     pesa, cuerda, mecanismo, tapas, pitillo).
+    // Ambas solo aplican a pedidos de Fabricación; Venta Directa y Riel de
+    // Onda Serena muestran "—" en las dos, porque esas fórmulas no les
+    // corresponden.
     // ═══════════════════════════════════════════════════════════════
 
     private void crearHojaPedidosPeriodo(Workbook wb, Estilos e, List<Pedido> pedidos) {
@@ -456,17 +464,19 @@ public class ReporteExcelServicio {
         s.setColumnWidth(8, 20 * 256);
         s.setColumnWidth(9, 22 * 256);
         s.setColumnWidth(10, 18 * 256);
+        s.setColumnWidth(11, 20 * 256);
 
         Row titulo = s.createRow(0);
         Cell cT = titulo.createCell(0);
         cT.setCellValue("PEDIDOS DEL PERÍODO");
         cT.setCellStyle(e.titulo);
-        s.addMergedRegion(new CellRangeAddress(0, 0, 0, 10));
+        s.addMergedRegion(new CellRangeAddress(0, 0, 0, 11));
 
         s.createRow(1);
 
         String[] headers = {"ID", "Distribuidor", "Cliente", "Descripción",
-                "Ancho (m)", "Alto (m)", "Color", "Estado", "Fecha creación", "Tela / Rollo", "Costo Fábrica ($)"};
+                "Ancho (m)", "Alto (m)", "Color", "Estado", "Fecha creación", "Tela / Rollo",
+                "Precio de Venta ($)", "Costo Fabricación ($)"};
         Row hRow = s.createRow(2);
         for (int i = 0; i < headers.length; i++) {
             Cell c = hRow.createCell(i);
@@ -475,6 +485,7 @@ public class ReporteExcelServicio {
         }
 
         int fila = 3;
+        double totalPrecioVenta = 0;
         double totalCostoFabrica = 0;
         for (Pedido p : pedidos) {
             Row r = s.createRow(fila++);
@@ -495,11 +506,15 @@ public class ReporteExcelServicio {
             celda(r, 9, p.getRolloParaCortar(), e.datoNormal);
 
             if (!p.isVentaDirecta() && !p.isRielOndaSerena()) {
-                double costo = p.getCostoFabrica();
-                celdaNum(r, 10, costo, e.datoMoneda);
-                totalCostoFabrica += costo;
+                double precioVenta = p.getPrecioVenta();
+                double costoReal = calculadoraCostoFabricacionServicio.calcular(p).getTotal().doubleValue();
+                celdaNum(r, 10, precioVenta, e.datoMoneda);
+                celdaNum(r, 11, costoReal, e.datoMoneda);
+                totalPrecioVenta += precioVenta;
+                totalCostoFabrica += costoReal;
             } else {
                 celda(r, 10, "—", e.datoCentro);
+                celda(r, 11, "—", e.datoCentro);
             }
         }
 
@@ -509,7 +524,8 @@ public class ReporteExcelServicio {
             celda(rTot, 0, "TOTAL", e.total);
             celdaNum(rTot, 1, pedidos.size(), e.total);
             celda(rTot, 2, "pedido(s)", e.total);
-            celdaNum(rTot, 10, redondear(totalCostoFabrica), e.totalMoneda);
+            celdaNum(rTot, 10, redondear(totalPrecioVenta), e.totalMoneda);
+            celdaNum(rTot, 11, redondear(totalCostoFabrica), e.totalMoneda);
         }
     }
 

@@ -8,6 +8,7 @@ import Colcones_Persinas.proyecto_express.repository.InsumoRepository;
 import Colcones_Persinas.proyecto_express.repository.MaterialUsadoRepository;
 import Colcones_Persinas.proyecto_express.repository.PedidoRepository;
 import Colcones_Persinas.proyecto_express.repository.PiezaInsumoRepository;
+import Colcones_Persinas.proyecto_express.servicio.CalculadoraCostoFabricacionServicio;
 import Colcones_Persinas.proyecto_express.servicio.InventarioServicio;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Sort;
@@ -16,6 +17,7 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -36,6 +38,7 @@ public class PedidoControlador {
     @Autowired private InsumoRepository insumoRepository;
     @Autowired private MaterialUsadoRepository materialUsadoRepository;
     @Autowired private PiezaInsumoRepository piezaInsumoRepository;
+    @Autowired private CalculadoraCostoFabricacionServicio calculadoraCostoFabricacionServicio;
 
     // ─── Ver lista de pedidos ─────────────────────────────────────────────
     @GetMapping("/pedidos")
@@ -127,6 +130,16 @@ public class PedidoControlador {
             }
             model.addAttribute("telaUsadaPorPedido", telaUsadaPorPedido);
 
+            // ── Costo REAL de fabricación (suma de precios de /inventario/precios), por pedido ──
+            Map<Integer, BigDecimal> costoFabricacionRealPorPedido = new HashMap<>();
+            for (Pedido p : pedidosPagina) {
+                if (!p.isVentaDirecta() && !p.isRielOndaSerena()) {
+                    costoFabricacionRealPorPedido.put(p.getId(),
+                            calculadoraCostoFabricacionServicio.calcular(p).getTotal());
+                }
+            }
+            model.addAttribute("costoFabricacionRealPorPedido", costoFabricacionRealPorPedido);
+
         } catch (Exception e) {
             System.err.println("Error al cargar pedidos: " + e.getMessage());
             model.addAttribute("pedidos",            new ArrayList<Pedido>());
@@ -139,6 +152,7 @@ public class PedidoControlador {
             model.addAttribute("totalFiltrados", 0);
             model.addAttribute("desde", "");
             model.addAttribute("hasta", "");
+            model.addAttribute("costoFabricacionRealPorPedido", new HashMap<>());
         }
         return "pedidos";
     }
@@ -889,6 +903,10 @@ public class PedidoControlador {
         Pedido p = pedidoRepository.findById(id).orElseThrow();
         p.calcularFichaTecnica();
         model.addAttribute("pedido", p);
+
+        if (!p.isVentaDirecta() && !p.isRielOndaSerena()) {
+            model.addAttribute("resultadoCostoFabricacion", calculadoraCostoFabricacionServicio.calcular(p));
+        }
 
         List<MaterialUsado> historial = inventarioServicio.getHistorialDePedido(id);
         model.addAttribute("historialMaterial", historial);

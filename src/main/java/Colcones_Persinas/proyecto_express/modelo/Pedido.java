@@ -289,18 +289,25 @@ public class Pedido {
     }
 
     /**
-     * Costo de fábrica (precio de distribuidor): metros cuadrados de la persiana
-     * (ancho x altura, medida final solicitada, SIN el descuento de corte)
-     * multiplicados por el valor por m² según el ancho comercial de rollo que
-     * le corresponde:
+     * PRECIO DE VENTA al distribuidor (antes llamado, confusamente, "Costo Fábrica"):
+     * metros cuadrados de la persiana (ancho x altura, medida final solicitada, SIN
+     * el descuento de corte) multiplicados por el valor de VENTA por m² según el
+     * ancho comercial de rollo que le corresponde:
      *   Tela 1.83m → $51.200 / m²
      *   Tela 2.50m → $53.800 / m²
      *   Tela 3.00m → $74.250 / m²
+     *
+     * IMPORTANTE: esto NO es el costo real de fabricación. El costo real (lo que
+     * cuestan de verdad la tela, el tubo, la pesa, la cuerda, el mecanismo, las
+     * tapas y el pitillo de ESTE pedido en particular) lo calcula aparte
+     * CalculadoraCostoFabricacionServicio, usando los precios definidos en
+     * /inventario/precios.
+     *
      * Solo aplica a pedidos de Fabricación (enrollable/blackout); Venta Directa
      * y Riel de Onda Serena no usan esta fórmula, devuelven 0.
      */
     @Transient
-    public double getCostoFabrica() {
+    public double getPrecioVenta() {
         if (isVentaDirecta() || isRielOndaSerena()) return 0.0;
 
         double metrosCuadrados = this.ancho * this.altura;

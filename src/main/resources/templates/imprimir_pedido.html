@@ -161,7 +161,7 @@
         .badge-seleccion-manual { background: #6f42c1; color: #fff; }
         .badge-seleccion-auto   { background: #6c757d; color: #fff; }
 
-        /* Costo de fábrica destacado */
+        /* Precio de venta / costo de fabricación destacados */
         .costo-fabrica-box {
             background: #e7f5ec;
             border-left: 3px solid #198754;
@@ -335,8 +335,16 @@
             <p><strong>Mando:</strong>   <span class="valor-mando" th:text="${pedido.ladoControl}"></span></p>
             <p><strong>Cuerda:</strong>  <span th:text="${pedido.medidaCuerda}"></span></p>
             <p><strong>Control:</strong> <span th:text="${pedido.tipoControl}"></span></p>
+
             <div class="costo-fabrica-box">
-                💲 Costo Fábrica: $<span th:text="${#numbers.formatDecimal(pedido.costoFabrica, 1, 'POINT', 0, 'NONE')}"></span>
+                💲 Precio de Venta: $<span th:text="${#numbers.formatDecimal(pedido.precioVenta, 1, 'POINT', 0, 'NONE')}"></span>
+            </div>
+            <div class="costo-fabrica-box" style="background:#fff3cd;border-left-color:#dc9b00;color:#5c4300;margin-top:4px;"
+                 th:if="${resultadoCostoFabricacion != null}">
+                🧮 Costo Fabricación (real): $<span th:text="${#numbers.formatDecimal(resultadoCostoFabricacion.total, 1, 'POINT', 0, 'NONE')}"></span>
+                <span th:unless="${resultadoCostoFabricacion.completo}" style="display:block;font-size:0.65rem;font-weight:400;">
+                    ⚠ Faltan precios: <span th:text="${#strings.listJoin(resultadoCostoFabricacion.itemsFaltantes, ', ')}"></span>
+                </span>
             </div>
         </div>
 
@@ -461,6 +469,24 @@
         </div>
 
     </div><!-- /grid-etiquetas FABRICACIÓN -->
+
+    <!-- Desglose del costo de fabricación real, ítem por ítem -->
+    <div class="etiqueta etiqueta-full"
+         th:if="${resultadoCostoFabricacion != null and not #lists.isEmpty(resultadoCostoFabricacion.lineas)}">
+        <h3>🧮 Desglose de Costo de Fabricación</h3>
+        <table class="tabla-material">
+            <thead>
+                <tr><th>Ítem</th><th>Fórmula</th><th>Valor</th></tr>
+            </thead>
+            <tbody>
+                <tr th:each="l : ${resultadoCostoFabricacion.lineas}">
+                    <td th:text="${l.nombre}"></td>
+                    <td th:text="${l.formula}"></td>
+                    <td th:text="${l.disponible} ? ('$' + ${#numbers.formatDecimal(l.valor, 1, 'POINT', 0, 'NONE')}) : 'Sin precio definido'"></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
 
     <!-- Registro de material utilizado: SIEMPRE debajo de los 4 cuadros, para cualquier tipo de pedido -->
     <div class="etiqueta etiqueta-full">
