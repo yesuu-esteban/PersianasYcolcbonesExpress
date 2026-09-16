@@ -15,12 +15,24 @@ import java.util.Optional;
  * del "Precio de Venta" que ya existía, que en realidad es lo que se le
  * cobra al distribuidor por m² según el ancho de tela).
  *
- * Cada componente (tela, tubo, pesa, cuerda, mecanismo, tapas, pitillo)
- * usa las MISMAS cantidades que el sistema ya calcula normalmente para
- * la ficha técnica (Pedido.getCorteTelaAncho(), getCantidadTapas(), etc.),
- * multiplicadas por el precio unitario que el jefe define libremente en
+ * Cada componente (tela, tubo, pesa, cuerda, mecanismo, tapas de cabezal,
+ * tapas de perfil de pesa, pitillo) usa las MISMAS cantidades que el
+ * sistema ya calcula normalmente para la ficha técnica
+ * (Pedido.getCorteTelaAncho(), getCantidadTapas(), etc.), multiplicadas
+ * por el precio unitario que el jefe define libremente en
  * /inventario/precios — así que si sube el precio de la tela, el costo
  * de todos los pedidos se actualiza solo, sin tocar código.
+ *
+ * NOTA sobre "Mecanismo (Control y accesorios)": este ítem es un precio
+ * FIJO por pedido (no se multiplica por nada) y representa el combo
+ * completo del control — terminal, conectores y topes de la cadenilla
+ * incluidos — como un solo cobro, sin importar cuántas piezas físicas
+ * de cada uno se usen internamente.
+ *
+ * NOTA sobre "Tapas de Perfil (Pesa)": son las 2 tapas que obligatoriamente
+ * lleva el perfil de la pesa en TODO pedido de fabricación, sin importar si
+ * el pedido lleva cabezal o no. Es distinto del ítem "Tapas", que solo
+ * aplica cuando el pedido SÍ lleva cabezal (getCantidadTapas()).
  */
 @Service
 public class CalculadoraCostoFabricacionServicio {
@@ -53,14 +65,20 @@ public class CalculadoraCostoFabricacionServicio {
         // ── Pesa: acompaña al tubo, mismo ancho de corte ──
         total = total.add(agregarPorAncho(lineas, faltantes, "Pesa", pedido.getCorteTuberia()));
 
+        // ── Tapas de Perfil (Pesa): obligatorias, siempre 2 unidades,
+        //    con o sin cabezal — distinto del ítem "Tapas" (solo con cabezal). ──
+        total = total.add(agregarPorCantidad(lineas, faltantes, "Tapas de Perfil (Pesa)", 2));
+
         // ── Cuerda / Cadenilla (Blackout): metros de cuerda (3 o 4 según altura) ──
         total = total.add(agregarPorLargo(lineas, faltantes, "Cuerda / Cadenilla (Blackout)",
                 pedido.getMetrosCuerda()));
 
-        // ── Mecanismo (Control y accesorios): precio fijo por pedido ──
+        // ── Mecanismo (Control y accesorios): precio fijo por pedido.
+        //    Representa el combo completo: control + terminal + conectores
+        //    + topes de la cadenilla, como un solo cobro. ──
         total = total.add(agregarFijo(lineas, faltantes, "Mecanismo (Control y accesorios)"));
 
-        // ── Tapas: cantidad de tapas que use este pedido en particular ──
+        // ── Tapas (de cabezal): cantidad de tapas que use este pedido en particular ──
         total = total.add(agregarPorCantidad(lineas, faltantes, "Tapas", pedido.getCantidadTapas()));
 
         // ── Pitillo: mismo ancho de corte de tela ──

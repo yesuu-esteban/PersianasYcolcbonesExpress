@@ -31,12 +31,14 @@ public class PrecioItemFabricacionInicializador implements CommandLineRunner {
                 "Se calcula sobre el ancho del corte de tubo.");
         crearSiNoExiste("Pesa", TipoCalculoPrecio.POR_ANCHO, "5381",
                 "Acompañante del tubo; se calcula sobre el mismo ancho.");
+        crearSiNoExiste("Tapas de Perfil (Pesa)", TipoCalculoPrecio.POR_CANTIDAD, "179",
+                "Obligatorias en todo pedido: 2 tapas del perfil de la pesa, con o sin cabezal.");
         crearSiNoExiste("Cuerda / Cadenilla (Blackout)", TipoCalculoPrecio.POR_LARGO, "424",
                 "Se calcula sobre el largo de cuerda que ya usa el sistema (3 o 4 metros según altura).");
         crearSiNoExiste("Mecanismo (Control y accesorios)", TipoCalculoPrecio.FIJO, "5868",
-                "Precio fijo por pedido, no se multiplica por ninguna medida.");
+                "Precio fijo por pedido: incluye el control completo, terminal, conectores y topes de la cadenilla en un solo cobro.");
         crearSiNoExiste("Tapas", TipoCalculoPrecio.POR_CANTIDAD, "179",
-                "Se multiplica por la cantidad de tapas que use el pedido.");
+                "Solo aplica cuando el pedido lleva cabezal; se multiplica por la cantidad de tapas de cabezal.");
         crearSiNoExiste("Pitillo", TipoCalculoPrecio.POR_ANCHO, "952",
                 "Se calcula sobre el ancho del corte.");
     }

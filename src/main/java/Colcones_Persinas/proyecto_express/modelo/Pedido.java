@@ -252,6 +252,17 @@ public class Pedido {
     }
 
     /**
+     * Tapas de perfil de la pesa: siempre 2 unidades, obligatorias en TODO
+     * pedido de fabricación, con o sin cabezal (distinto de
+     * getCantidadTapas(), que solo aplica cuando el pedido SÍ lleva cabezal).
+     * Corresponden al insumo físico "Tapa Perfil" en el catálogo de inventario.
+     */
+    @Transient
+    public int getCantidadTapasPerfil() {
+        return 2;
+    }
+
+    /**
      * Tornillos normales:
      *   Sin cabezal → 2 (para los 2 soportes)
      *   Con cabezal → 8 (2 soportes + 6 para las 2 tapas)

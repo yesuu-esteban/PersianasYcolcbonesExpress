@@ -83,6 +83,7 @@ public class InventarioServicio {
         public String soporteInfo;
         public String tapaInfo;
         public String topePesaInfo;
+        public String tapaPerfilInfo;
         public String tornilloInfo;
         public String tornilloPerforanteInfo;
         public String acopleInfo;
@@ -609,6 +610,14 @@ public class InventarioServicio {
                     + " unidad(es), necesario: " + pedido.getCantidadTopePesa() + ".");
         }
 
+        Insumo tapaPerfil = obtenerInsumoPorNombre("Tapa Perfil");
+        int stockTapaPerfil = tapaPerfil.getStockUnidades() != null ? tapaPerfil.getStockUnidades() : 0;
+        if (stockTapaPerfil < pedido.getCantidadTapasPerfil()) {
+            throw new MaterialInsuficienteException(
+                    "No hay suficiente \"Tapa Perfil\". Disponible: " + stockTapaPerfil
+                    + " unidad(es), necesario: " + pedido.getCantidadTapasPerfil() + ".");
+        }
+
         Insumo tornillo = obtenerInsumoPorNombre("Tornillo");
         int stockTornillo = tornillo.getStockUnidades() != null ? tornillo.getStockUnidades() : 0;
         if (stockTornillo < pedido.getCantidadTornillos()) {
@@ -777,6 +786,8 @@ public class InventarioServicio {
         }
 
         descontarInsumoPorUnidad(pedido, "Tope Pesa", pedido.getCantidadTopePesa());
+
+        descontarInsumoPorUnidad(pedido, "Tapa Perfil", pedido.getCantidadTapasPerfil());
 
         descontarInsumoPorUnidad(pedido, "Tornillo", pedido.getCantidadTornillos());
 
@@ -1128,6 +1139,14 @@ public class InventarioServicio {
             int necesario = pedido.getCantidadTopePesa();
             if (stock < necesario) throw new MaterialInsuficienteException("Sin stock suficiente de \"Tope Pesa\".");
             res.topePesaInfo = "Tope Pesa ×" + necesario + " · quedarían " + (stock - necesario);
+        });
+
+        intentar(res, () -> {
+            Insumo tapaPerfil = obtenerInsumoPorNombre("Tapa Perfil");
+            int stock = tapaPerfil.getStockUnidades() != null ? tapaPerfil.getStockUnidades() : 0;
+            int necesario = pedido.getCantidadTapasPerfil();
+            if (stock < necesario) throw new MaterialInsuficienteException("Sin stock suficiente de \"Tapa Perfil\".");
+            res.tapaPerfilInfo = "Tapa Perfil ×" + necesario + " · quedarían " + (stock - necesario);
         });
 
         intentar(res, () -> {
