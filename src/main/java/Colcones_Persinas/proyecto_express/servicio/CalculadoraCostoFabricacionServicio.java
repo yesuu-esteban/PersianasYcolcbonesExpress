@@ -27,7 +27,11 @@ import java.util.Optional;
  * FIJO por pedido (no se multiplica por nada) y representa el combo
  * completo del control — terminal, conectores y topes de la cadenilla
  * incluidos — como un solo cobro, sin importar cuántas piezas físicas
- * de cada uno se usen internamente.
+ * de cada uno se usen internamente. Existen DOS ítems de precio distintos:
+ *   - "Mecanismo (Control y accesorios)"      → Control R16, R8 A, R8 B
+ *   - "Mecanismo (Control y accesorios) R24"  → Control R24 (mecanismo
+ *     especial, con soportes más grandes, que cuesta distinto)
+ * El ítem correcto se elige según pedido.getTipoControl().
  *
  * NOTA sobre "Tapas de Perfil (Pesa)": son las 2 tapas que obligatoriamente
  * lleva el perfil de la pesa en TODO pedido de fabricación, sin importar si
@@ -75,8 +79,14 @@ public class CalculadoraCostoFabricacionServicio {
 
         // ── Mecanismo (Control y accesorios): precio fijo por pedido.
         //    Representa el combo completo: control + terminal + conectores
-        //    + topes de la cadenilla, como un solo cobro. ──
-        total = total.add(agregarFijo(lineas, faltantes, "Mecanismo (Control y accesorios)"));
+        //    + topes de la cadenilla, como un solo cobro. El ítem de precio
+        //    a usar depende del tipo de control real del pedido: Control R24
+        //    usa su propio precio (mecanismo especial más costoso); el resto
+        //    (R16, R8 A, R8 B) usa el genérico. ──
+        String nombreMecanismo = "Control R24".equals(pedido.getTipoControl())
+                ? "Mecanismo (Control y accesorios) R24"
+                : "Mecanismo (Control y accesorios)";
+        total = total.add(agregarFijo(lineas, faltantes, nombreMecanismo));
 
         // ── Tapas (de cabezal): cantidad de tapas que use este pedido en particular ──
         total = total.add(agregarPorCantidad(lineas, faltantes, "Tapas", pedido.getCantidadTapas()));
