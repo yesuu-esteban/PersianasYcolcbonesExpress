@@ -14,17 +14,14 @@ public class Pedido {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private int id;
 
-    // Información general
     private String nombreDecorador = "";
     private String nombreClienteFinal = "";
     private String descripcion = "";
 
-    // Medidas y configuración
     private int cantidad = 1;
     private double altura = 0.0;
     private double ancho = 0.0;
 
-    // Campos derivados persistidos
     private String medidaCuerda = "0 metros";
     private String estado = "Pendiente";
     private String tipoControl = "";
@@ -33,44 +30,15 @@ public class Pedido {
     private String tuboRecomendado = "";
     private String rolloParaCortar = "";
 
-    /**
-     * Tipo de pedido: "FABRICACION" (default, flujo normal con ficha técnica
-     * y corte de tela/perfilería), "VENTA_DIRECTA" (venta de insumos/tela
-     * suelta, sin fabricación) o "RIEL_ONDA_SERENA" (riel + accesorios,
-     * sin tela ni tubo).
-     *
-     * IMPORTANTE — columnDefinition con DEFAULT:
-     * Al declarar la columna como NOT NULL sin un valor por defecto a nivel
-     * de base de datos, un ALTER TABLE automático (ddl-auto=update) sobre una
-     * tabla que ya tiene filas falla, porque esas filas viejas no tendrían
-     * ningún valor para la columna nueva. Con columnDefinition, si Hibernate
-     * necesita crear la columna, la base de datos misma le pone 'FABRICACION'
-     * a las filas existentes y el ALTER no se rompe.
-     */
     @Column(name = "tipo", nullable = false, columnDefinition = "VARCHAR(255) DEFAULT 'FABRICACION'")
     private String tipo = "FABRICACION";
 
-    // Flags de estado
     @Column(name = "usa_cabezal", nullable = false)
     private Boolean usaCabezal = false;
 
-    /**
-     * Marca que el pedido ya fue ensamblado en el taller.
-     * Es lo que hace pasar el estado de "Pendiente" a "Finalizado".
-     */
     @Column(nullable = false)
     private Boolean ensamblado = false;
 
-    /**
-     * Marca que el pedido ya salió despachado de la fábrica.
-     * Solo tiene sentido activarlo si el pedido ya está ensamblado.
-     * Es lo que hace pasar el estado de "Finalizado" a "Despachado".
-     *
-     * IMPORTANTE — columnDefinition con DEFAULT:
-     * igual que con "tipo", si esta columna se crea con un ALTER TABLE
-     * automático sobre una tabla que ya tiene filas, necesita un valor por
-     * defecto a nivel de base de datos para no romper el ALTER.
-     */
     @Column(name = "despachado", nullable = false, columnDefinition = "BOOLEAN DEFAULT false")
     private Boolean despachado = false;
 
@@ -80,30 +48,25 @@ public class Pedido {
     @Column(name = "usa_conector_tope", nullable = false)
     private Boolean usaConectorTope = true;
 
-    /**
-     * Solo aplica a pedidos tipo RIEL_ONDA_SERENA: si el riel lleva polea
-     * (con poleas + cuerda + terminal/control) o no (con tapas + bastón).
-     */
     @Column(name = "usa_polea", nullable = false, columnDefinition = "BOOLEAN DEFAULT false")
     private Boolean usaPolea = false;
 
-    /** Si el jefe elige el tubo manualmente (R8, R16, R24). Null o "AUTO" = automático. */
     @Column(name = "tubo_manual_elegido")
     private String tuboManualElegido;
 
-    // ─── TRAZABILIDAD DE FECHAS ─────────────────────────────────────────────
+    /** Solo aplica a Riel de Onda Serena sin polea: cuál de los 3 tipos fijos de bastón eligió el jefe. */
+    @Column(name = "baston_elegido")
+    private String bastonElegido;
+
+    /** Solo aplica a Riel de Onda Serena: hacia qué lado abre ("Izquierda" o "Derecha"). */
+    @Column(name = "lado_apertura")
+    private String ladoApertura;
 
     @Column(name = "fecha_creacion")
     private LocalDateTime fechaCreacion;
 
     @Column(name = "fecha_actualizacion")
     private LocalDateTime fechaActualizacion;
-    
-    @Column(name = "baston_elegido")
-    private String bastonElegido;
-
-    @Column(name = "lado_apertura")
-    private String ladoApertura;
 
     @PrePersist
     protected void alCrear() {
@@ -132,8 +95,6 @@ public class Pedido {
         return this.fechaActualizacion != null ? this.fechaActualizacion.format(FORMATO_FECHA) : "";
     }
 
-    // ─── TIPO DE PEDIDO ─────────────────────────────────────────────────────
-
     @Transient
     public boolean isVentaDirecta() {
         return "VENTA_DIRECTA".equalsIgnoreCase(this.tipo);
@@ -143,8 +104,6 @@ public class Pedido {
     public boolean isRielOndaSerena() {
         return "RIEL_ONDA_SERENA".equalsIgnoreCase(this.tipo);
     }
-
-    // ─── CÁLCULOS TRANSIENT — FABRICACIÓN (ENROLLABLE / BLACKOUT) ───────────
 
     @Transient
     public double getCorteTelaAncho() {
@@ -168,10 +127,6 @@ public class Pedido {
         return Math.round((this.ancho - 0.005) * 1000.0) / 1000.0;
     }
 
-    /**
-     * Metros numéricos de cuerda según la altura del pedido.
-     * 3.0 m si altura <= 1.50 m, 4.0 m si es mayor.
-     */
     @Transient
     public double getMetrosCuerda() {
         return this.altura <= 1.50 ? 3.0 : 4.0;
@@ -185,9 +140,6 @@ public class Pedido {
     @Transient
     public String getRolloTela() {
         double ladoMenor = Math.min(this.ancho, this.altura);
-
-        System.out.println("DEBUG: Ancho=" + this.ancho + " Alto=" + this.altura + " LadoMenor=" + ladoMenor);
-
         if (ladoMenor <= 1.83) {
             return "Rollo 1.83m";
         } else if (ladoMenor <= 2.50) {
@@ -212,77 +164,41 @@ public class Pedido {
         return esControlR16() ? 0 : 1;
     }
 
-    /**
-     * Los acoples dependen SOLO del ancho de corte (>= 2.0m), sin importar
-     * el alto ni qué control termine asignado. Un pedido puede ser muy
-     * ancho pero no tan alto — el tubo se queda en R16, pero el control
-     * igual necesita los acoples grandes por el ancho.
-     */
     @Transient
     public int getCantidadAcoples() {
         return getCorteTelaAncho() >= 2.0 ? 2 : 0;
     }
 
-    /**
-     * Terminal: acompañante fijo del control. Obligatorio en TODO pedido de
-     * fabricación (blackout/enrollable), sin importar ancho, alto, tubo o
-     * control — siempre 1 unidad.
-     */
     @Transient
     public int getCantidadTerminal() {
         return 1;
     }
 
-    /**
-     * Tapas de cabezal: siempre 2 unidades, pero SOLO si el pedido lleva cabezal.
-     */
     @Transient
     public int getCantidadTapas() {
         return Boolean.TRUE.equals(usaCabezal) ? 2 : 0;
     }
 
-    /**
-     * Soportes de instalación: siempre 2, con o sin cabezal.
-     */
     @Transient
     public int getCantidadSoportes() {
         return 2;
     }
 
-    /**
-     * Tope de pesa: siempre 2 unidades, obligatorio en todo pedido.
-     */
     @Transient
     public int getCantidadTopePesa() {
         return 2;
     }
 
-    /**
-     * Tapas de perfil de la pesa: siempre 2 unidades, obligatorias en TODO
-     * pedido de fabricación, con o sin cabezal (distinto de
-     * getCantidadTapas(), que solo aplica cuando el pedido SÍ lleva cabezal).
-     * Corresponden al insumo físico "Tapa Perfil" en el catálogo de inventario.
-     */
     @Transient
     public int getCantidadTapasPerfil() {
         return 2;
     }
 
-    /**
-     * Tornillos normales:
-     *   Sin cabezal → 2 (para los 2 soportes)
-     *   Con cabezal → 8 (2 soportes + 6 para las 2 tapas)
-     */
     @Transient
     public int getCantidadTornillos() {
         return Boolean.TRUE.equals(usaCabezal) ? 8 : 2;
     }
 
-    /**
-     * Tornillos perforantes:
-     *   Sin cabezal → 0
-     *   Con cabezal → 4
-     */
     @Transient
     public int getCantidadTornillosPerforantes() {
         return Boolean.TRUE.equals(usaCabezal) ? 4 : 0;
@@ -292,11 +208,6 @@ public class Pedido {
         return this.tipoControl != null && this.tipoControl.trim().startsWith("Control R16");
     }
 
-    /**
-     * Ancho comercial de rollo que corresponde a este pedido (1.83 / 2.50 / 3.00 m),
-     * usando el mismo criterio que InventarioServicio.anchoComercialDe(): depende
-     * del LARGO de corte de la persiana (corteTelaAlto), no del ancho.
-     */
     @Transient
     public double getAnchoComercialUsado() {
         double largo = getCorteTelaAlto();
@@ -305,24 +216,6 @@ public class Pedido {
         return 3.00;
     }
 
-    /**
-     * PRECIO DE VENTA al distribuidor (antes llamado, confusamente, "Costo Fábrica"):
-     * metros cuadrados de la persiana (ancho x altura, medida final solicitada, SIN
-     * el descuento de corte) multiplicados por el valor de VENTA por m² según el
-     * ancho comercial de rollo que le corresponde:
-     *   Tela 1.83m → $51.200 / m²
-     *   Tela 2.50m → $53.800 / m²
-     *   Tela 3.00m → $74.250 / m²
-     *
-     * IMPORTANTE: esto NO es el costo real de fabricación. El costo real (lo que
-     * cuestan de verdad la tela, el tubo, la pesa, la cuerda, el mecanismo, las
-     * tapas y el pitillo de ESTE pedido en particular) lo calcula aparte
-     * CalculadoraCostoFabricacionServicio, usando los precios definidos en
-     * /inventario/precios.
-     *
-     * Solo aplica a pedidos de Fabricación (enrollable/blackout); Venta Directa
-     * y Riel de Onda Serena no usan esta fórmula, devuelven 0.
-     */
     @Transient
     public double getPrecioVenta() {
         if (isVentaDirecta() || isRielOndaSerena()) return 0.0;
@@ -350,9 +243,15 @@ public class Pedido {
         return Math.round((this.ancho - 0.075) * 1000.0) / 1000.0;
     }
 
-    /** El riel de pines corre el mismo largo que el riel ya cortado. */
+    /** Roachina corre el mismo largo que el riel ya cortado. */
     @Transient
     public double getCorteRielPines() {
+        return getCorteRiel();
+    }
+
+    /** Riata: siempre obligatoria, mismo ancho que el riel, con o sin polea. */
+    @Transient
+    public double getMedidaRiata() {
         return getCorteRiel();
     }
 
@@ -362,25 +261,27 @@ public class Pedido {
         return Math.round((this.ancho * 2 + 4.0) * 1000.0) / 1000.0;
     }
 
-    /** Solo si usaPolea = true: siempre 2 poleas. */
     @Transient
     public int getCantidadPoleas() {
         return Boolean.TRUE.equals(this.usaPolea) ? 2 : 0;
     }
 
-    /** Solo si usaPolea = true: siempre 1 terminal/control de polea. */
+    /** Crusador: obligatorio (1 por pedido) solo cuando el riel lleva polea. */
     @Transient
     public int getCantidadTerminalPolea() {
         return Boolean.TRUE.equals(this.usaPolea) ? 1 : 0;
     }
 
-    /** Solo si usaPolea = false: siempre 2 tapas de riel. */
     @Transient
     public int getCantidadTapasRiel() {
         return Boolean.TRUE.equals(this.usaPolea) ? 0 : 2;
     }
 
-    /** Solo si usaPolea = false: siempre 1 bastón. */
+    /**
+     * Bastón: pieza fija por unidad (0.80 / 1.20 / 1.50 m según el tipo elegido).
+     * Solo aplica cuando el riel NO lleva polea: siempre 1 unidad completa,
+     * no se corta ni se mide — solo se descuenta del stock del tipo elegido.
+     */
     @Transient
     public int getCantidadBaston() {
         return Boolean.TRUE.equals(this.usaPolea) ? 0 : 1;
@@ -408,28 +309,16 @@ public class Pedido {
         return soportes;
     }
 
-    @Transient
-    public double getMedidaBaston(){
-        return getCorteRiel();
-    }
-
     // ─── LÓGICA DE NEGOCIO ──────────────────────────────────────────────────
 
     public void calcularFichaTecnica() {
-        // Las ventas directas no tienen ficha técnica de fabricación:
-        // no hay corte de tela/tubo/cabezal calculado, solo ítems sueltos.
         if (isVentaDirecta()) {
             return;
         }
-
-        // El riel de onda serena tampoco usa tela/tubo/cabezal: sus cortes
-        // (riel, riel de pines, cuerda) ya están calculados como @Transient
-        // arriba a partir de ancho/usaPolea, no necesitan nada más aquí.
         if (isRielOndaSerena()) {
             return;
         }
 
-        // 1. Tubo: manual si el jefe lo eligió explícitamente, si no, automático por peso/tamaño
         if (this.tuboManualElegido != null && !this.tuboManualElegido.isBlank()
                 && !"auto".equalsIgnoreCase(this.tuboManualElegido.trim())) {
             this.tuboRecomendado = this.tuboManualElegido.trim().toUpperCase();
@@ -438,15 +327,6 @@ public class Pedido {
             this.tuboRecomendado = esPesado ? "R24" : "R16";
         }
 
-        // 2. Tipo de control:
-        //    - Tubo R8 → siempre Control R8 A.
-        //    - Corte de tela >= 2.00m de ancho Y >= 2.50m de largo → Control R24
-        //      (control especial: viene con soportes más grandes).
-        //    - Resto → Control R16 o R8 B según ancho, como antes.
-        //    Nota: los ACOPLES ya no dependen de qué control quede asignado
-        //    aquí — se calculan aparte solo con el ancho (ver getCantidadAcoples()),
-        //    porque un pedido muy ancho pero no tan alto se queda en Control R16
-        //    y aun así necesita los acoples grandes por el ancho.
         if ("R8".equalsIgnoreCase(this.tuboRecomendado)) {
             this.tipoControl = "Control R8 A";
         } else if (getCorteTelaAncho() >= 2.0 && getCorteTelaAlto() >= 2.50) {
@@ -455,24 +335,13 @@ public class Pedido {
             this.tipoControl = (this.ancho > 1.50) ? "Control R16" : "Control R8 B";
         }
 
-        // 3. Medida de cuerda como texto
         this.medidaCuerda = (this.altura <= 1.50) ? "3 metros" : "4 metros";
 
-        // 4. Resumen persistido
         this.rolloParaCortar = "Tela: " + getCorteTelaAncho() + " x " + getCorteTelaAlto()
                             + " | Tubo: " + getCorteTuberia()
                             + " | " + getRolloTela();
     }
 
-    /**
-     * Estados del pedido:
-     *   Pendiente  → recién creado, todavía no se ha ensamblado.
-     *   Finalizado → ya se ensambló en el taller.
-     *   Despachado → ya salió de la fábrica.
-     * (Las ventas directas no pasan por este flujo, quedan como "Vendido").
-     * Los rieles de onda serena SÍ pasan por este mismo flujo Pendiente →
-     * Finalizado → Despachado, igual que fabricación normal.
-     */
     public void calcularEstadoGeneral() {
         if (isVentaDirecta()) {
             this.estado = "Vendido";

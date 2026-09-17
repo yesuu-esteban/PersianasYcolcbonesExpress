@@ -88,9 +88,9 @@
                 <div class="col-md-6">
                     <label class="form-label fw-bold">Tipo de bastón</label>
                     <select name="bastonElegido" class="form-select">
-                        <option value="Bastón Tipo A" th:selected="${pedido.bastonElegido == 'Bastón Tipo A'}">Bastón Tipo A</option>
-                        <option value="Bastón Tipo B" th:selected="${pedido.bastonElegido == 'Bastón Tipo B'}">Bastón Tipo B</option>
-                        <option value="Bastón Tipo C" th:selected="${pedido.bastonElegido == 'Bastón Tipo C'}">Bastón Tipo C</option>
+                        <option value="Bastón Tipo A" th:selected="${pedido.bastonElegido == 'Bastón Tipo A'}">Bastón Tipo A (0.80 m)</option>
+                        <option value="Bastón Tipo B" th:selected="${pedido.bastonElegido == 'Bastón Tipo B'}">Bastón Tipo B (1.20 m)</option>
+                        <option value="Bastón Tipo C" th:selected="${pedido.bastonElegido == 'Bastón Tipo C'}">Bastón Tipo C (1.50 m)</option>
                     </select>
                 </div>
                 <div class="col-md-6">
@@ -111,8 +111,8 @@
         <div class="seccion-extras">
             <p class="fw-bold mb-2">➕ Insumos adicionales del riel (opcional)</p>
             <p class="text-muted mb-2" style="font-size:0.82rem;">
-                Los accesorios obligatorios (poleas/terminal, o tapas/bastón/soportes según corresponda) ya se
-                calculan y descuentan automáticamente. Usa esto solo para material extra fuera de lo normal.
+                Los accesorios obligatorios (poleas/crusador, o tapas/bastón, riata, soportes según corresponda)
+                ya se calculan y descuentan automáticamente. Usa esto solo para material extra fuera de lo normal.
             </p>
             <div id="contenedorExtras"></div>
             <button type="button" class="btn btn-sm btn-outline-dark mt-1" onclick="agregarFilaExtra()">+ Agregar insumo extra</button>
@@ -152,7 +152,8 @@
         }
 
         const corteRiel = (ancho - 0.075).toFixed(3);
-        const corteRielPines = corteRiel;
+        const corteRoachina = corteRiel;
+        const corteRiata = corteRiel;
 
         let soportes;
         if (ancho >= 3.50) soportes = 5;
@@ -167,8 +168,12 @@
                     <td style="padding:2px 6px;color:#555">${corteRiel} m</td>
                  </tr>`;
         html += `<tr style="border-top:1px solid #d6efdd">
-                    <td style="padding:2px 4px;font-weight:600;white-space:nowrap">📌 Riel de pines</td>
-                    <td style="padding:2px 6px;color:#555">${corteRielPines} m</td>
+                    <td style="padding:2px 4px;font-weight:600;white-space:nowrap">📌 Roachina</td>
+                    <td style="padding:2px 6px;color:#555">${corteRoachina} m</td>
+                 </tr>`;
+        html += `<tr style="border-top:1px solid #d6efdd">
+                    <td style="padding:2px 4px;font-weight:600;white-space:nowrap">🪢 Riata</td>
+                    <td style="padding:2px 6px;color:#555">${corteRiata} m (siempre obligatoria)</td>
                  </tr>`;
         if (usaPolea) {
             const corteCuerda = (ancho * 2 + 4).toFixed(3);
@@ -181,7 +186,7 @@
                         <td style="padding:2px 6px;color:#555">2 und. (automático)</td>
                      </tr>`;
             html += `<tr style="border-top:1px solid #d6efdd">
-                        <td style="padding:2px 4px;font-weight:600;white-space:nowrap">🎛 Terminal/Control</td>
+                        <td style="padding:2px 4px;font-weight:600;white-space:nowrap">🎛 Crusador</td>
                         <td style="padding:2px 6px;color:#555">1 und. (automático)</td>
                      </tr>`;
         } else {
@@ -191,7 +196,7 @@
                      </tr>`;
             html += `<tr style="border-top:1px solid #d6efdd">
                         <td style="padding:2px 4px;font-weight:600;white-space:nowrap">🪄 Bastón</td>
-                        <td style="padding:2px 6px;color:#555">se corta a la medida del riel</td>
+                        <td style="padding:2px 6px;color:#555">1 und. fija (tipo elegido: 0.80/1.20/1.50 m)</td>
                      </tr>`;
         }
         html += `<tr style="border-top:1px solid #d6efdd">

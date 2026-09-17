@@ -36,18 +36,25 @@ public class InsumoBaseInicializador implements CommandLineRunner {
         crearSiNoExiste("Tapa Perfil",           false, "Tapas de perfil de la pesa. Se usan 2 en TODO pedido de fabricación, con o sin cabezal.");
         crearSiNoExiste("Tornillo",              false, "Tornillo normal. Sin cabezal: 2 (soportes). Con cabezal: 8 (soportes + tapas).");
         crearSiNoExiste("Tornillo Perforante",   false, "Tornillo perforante. Solo en pedidos CON cabezal: 4 unidades.");
+
+        // ── Riel de Onda Serena ──────────────────────────────────────────
         crearSiNoExiste("Polea",                 false, "Polea del riel de onda serena. Obligatoria (2 por pedido) cuando el riel lleva polea.");
-        crearSiNoExiste("Terminal Control Polea", false, "Terminal/control de la polea. Obligatorio (1 por pedido) cuando el riel lleva polea.");
-        crearSiNoExiste("Tapa Riel",              false, "Tapa de riel de onda serena. Obligatoria (2 por pedido) cuando el riel NO lleva polea.");
+        crearSiNoExiste("Crusador",              false, "Terminal/control de la polea del riel de onda serena (antes 'Terminal Control Polea'). Obligatorio (1 por pedido) cuando el riel lleva polea.");
+        crearSiNoExiste("Tapa Riel",             false, "Tapa de riel de onda serena. Obligatoria (2 por pedido) cuando el riel NO lleva polea.");
+        crearSiNoExiste("Roachina",              true,  "Riel de pines del riel de onda serena (antes 'Riel de Pines'). Por medida, obligatoria siempre.");
+        crearSiNoExiste("Riata",                 true,  "Riata del riel de onda serena. Por medida, se corta al mismo ancho que el riel. Obligatoria SIEMPRE, con o sin polea.");
 
         // ── Soporte de riel: por unidad, cantidad variable según ancho (ver Pedido.getCantidadSoportesRiel()) ──
         crearSiNoExiste("Soporte Riel", false, "Soporte de instalación del riel de onda serena. Cantidad variable según el ancho del pedido.");
 
-        // ── Bastones de riel: por MEDIDA (se cortan a una longitud, como el riel), no por unidad.
-        //    Se usan cuando el riel NO lleva polea; el jefe elige manualmente cuál de los 3 tipos. ──
-        crearSiNoExiste("Bastón Tipo A", true, "Bastón de riel de onda serena, tipo A. Se corta por medida.");
-        crearSiNoExiste("Bastón Tipo B", true, "Bastón de riel de onda serena, tipo B. Se corta por medida.");
-        crearSiNoExiste("Bastón Tipo C", true, "Bastón de riel de onda serena, tipo C. Se corta por medida.");
+        // ── Bastones de riel: piezas FIJAS por unidad (no se cortan ni se miden).
+        //    Cada tipo tiene una longitud fija de fábrica, documentada aquí solo
+        //    como referencia; el sistema únicamente descuenta 1 unidad completa
+        //    del tipo que el jefe elija manualmente. Se usan cuando el riel NO
+        //    lleva polea. ──
+        crearSiNoExiste("Bastón Tipo A", false, "Bastón fijo de 0.80 m del riel de onda serena. Se descuenta como unidad completa, no se corta.");
+        crearSiNoExiste("Bastón Tipo B", false, "Bastón fijo de 1.20 m del riel de onda serena. Se descuenta como unidad completa, no se corta.");
+        crearSiNoExiste("Bastón Tipo C", false, "Bastón fijo de 1.50 m del riel de onda serena. Se descuenta como unidad completa, no se corta.");
     }
 
     private void crearSiNoExiste(String nombre, boolean tieneMedida, String descripcion) {

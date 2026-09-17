@@ -255,14 +255,24 @@
                     · <span th:text="${#numbers.formatDecimal(pedido.corteRiel,1,3)+' m'}"></span>
                 </p>
                 <p>
-                    <strong>Riel de pines:</strong>
+                    <strong>Roachina:</strong>
                     <span th:if="${materialRielPines != null}"
                           th:text="${#strings.contains(materialRielPines.fuenteDescripcion,'(')} ? ${#strings.substringBefore(materialRielPines.fuenteDescripcion,'(')} : ${materialRielPines.fuenteDescripcion}"></span>
                     <span class="badge-id-original"
                           th:if="${materialRielPines != null and #strings.contains(materialRielPines.fuenteDescripcion,'(')}"
                           th:text="'('+${#strings.substringAfter(materialRielPines.fuenteDescripcion,'(')}"></span>
-                    <span th:if="${materialRielPines == null}">Riel de Pines</span>
+                    <span th:if="${materialRielPines == null}">Roachina</span>
                     · <span th:text="${#numbers.formatDecimal(pedido.corteRielPines,1,3)+' m'}"></span>
+                </p>
+                <p>
+                    <strong>Riata:</strong>
+                    <span th:if="${materialRiata != null}"
+                          th:text="${#strings.contains(materialRiata.fuenteDescripcion,'(')} ? ${#strings.substringBefore(materialRiata.fuenteDescripcion,'(')} : ${materialRiata.fuenteDescripcion}"></span>
+                    <span class="badge-id-original"
+                          th:if="${materialRiata != null and #strings.contains(materialRiata.fuenteDescripcion,'(')}"
+                          th:text="'('+${#strings.substringAfter(materialRiata.fuenteDescripcion,'(')}"></span>
+                    <span th:if="${materialRiata == null}">Riata</span>
+                    · <span th:text="${#numbers.formatDecimal(pedido.medidaRiata,1,3)+' m'}"></span>
                 </p>
                 <p th:if="${pedido.usaPolea}">
                     <strong>Cuerda onda:</strong>
@@ -274,16 +284,6 @@
                     <span th:if="${materialCuerdaOnda == null}">Cuerda Onda Serena</span>
                     · <span th:text="${#numbers.formatDecimal(pedido.corteCuerdaOnda,1,3)+' m'}"></span>
                 </p>
-                <p th:unless="${pedido.usaPolea}">
-                    <strong>Bastón:</strong>
-                    <span th:if="${materialBaston != null}"
-                          th:text="${#strings.contains(materialBaston.fuenteDescripcion,'(')} ? ${#strings.substringBefore(materialBaston.fuenteDescripcion,'(')} : ${materialBaston.fuenteDescripcion}"></span>
-                    <span class="badge-id-original"
-                          th:if="${materialBaston != null and #strings.contains(materialBaston.fuenteDescripcion,'(')}"
-                          th:text="'('+${#strings.substringAfter(materialBaston.fuenteDescripcion,'(')}"></span>
-                    <span th:if="${materialBaston == null}" th:text="${pedido.bastonElegido}"></span>
-                    · <span th:text="${#numbers.formatDecimal(pedido.medidaBaston,1,3)+' m'}"></span>
-                </p>
             </div>
         </div>
 
@@ -291,8 +291,9 @@
         <div class="etiqueta">
             <h3>🔩 Accesorios</h3>
             <p th:if="${pedido.usaPolea}"><strong>Poleas:</strong> 2 und.</p>
-            <p th:if="${pedido.usaPolea}"><strong>Terminal/Control:</strong> 1 und.</p>
+            <p th:if="${pedido.usaPolea}"><strong>Crusador:</strong> 1 und.</p>
             <p th:unless="${pedido.usaPolea}"><strong>Tapas de riel:</strong> 2 und.</p>
+            <p th:unless="${pedido.usaPolea}"><strong>Bastón:</strong> <span th:text="${pedido.bastonElegido}"></span> (1 und. fija)</p>
             <p><strong>Soportes:</strong> <span th:text="${pedido.cantidadSoportesRiel}"></span> und.</p>
 
             <div th:if="${extrasHistorial != null and not #lists.isEmpty(extrasHistorial)}"

@@ -835,21 +835,28 @@ public class InventarioServicio {
 
     // ═══════════════════════════════════════════════════════════════
     // RIEL DE ONDA SERENA — verificación y descuento de sus cortes y
-    // accesorios obligatorios (poleas/terminal si lleva polea, o
-    // tapas/bastón/soportes si no). El bastón, cuando aplica, es un
-    // insumo POR MEDIDA (se corta a la longitud del pedido, como el riel);
-    // el jefe elige manualmente cuál de los tipos usar (Pedido.bastonElegido).
-    // El soporte de riel es por unidad, en cantidad variable según el ancho
-    // (ver Pedido.getCantidadSoportesRiel()) — se descuenta siempre, con o
-    // sin polea.
+    // accesorios obligatorios.
+    //
+    //   - Riel Onda Serena → por medida, siempre.
+    //   - Roachina (antes "Riel de Pines") → por medida, siempre.
+    //   - Riata → por medida, SIEMPRE (con o sin polea), mismo ancho que el riel.
+    //   - Con polea: Cuerda Onda Serena (medida), Polea (unidad), Crusador
+    //     (unidad, antes "Terminal Control Polea").
+    //   - Sin polea: Tapa Riel (unidad), Bastón Tipo A/B/C (unidad, pieza fija
+    //     de 0.80/1.20/1.50 m elegida manualmente por el jefe — no se corta).
+    //   - Soporte Riel → por unidad, cantidad variable según el ancho, SIEMPRE.
     // ═══════════════════════════════════════════════════════════════
 
     public void verificarRielOndaSerena(Pedido pedido) {
         Insumo riel = obtenerInsumoPorNombre("Riel Onda Serena");
         buscarMejorPieza(riel, pedido.getCorteRiel());
 
-        Insumo rielPines = obtenerInsumoPorNombre("Riel de Pines");
-        buscarMejorPieza(rielPines, pedido.getCorteRielPines());
+        Insumo roachina = obtenerInsumoPorNombre("Roachina");
+        buscarMejorPieza(roachina, pedido.getCorteRielPines());
+
+        // Riata: siempre obligatoria, con o sin polea, mismo ancho que el riel.
+        Insumo riata = obtenerInsumoPorNombre("Riata");
+        buscarMejorPieza(riata, pedido.getMedidaRiata());
 
         if (Boolean.TRUE.equals(pedido.getUsaPolea())) {
             Insumo cuerdaOnda = obtenerInsumoPorNombre("Cuerda Onda Serena");
@@ -863,11 +870,11 @@ public class InventarioServicio {
                         + " unidad(es), necesario: " + pedido.getCantidadPoleas() + ".");
             }
 
-            Insumo terminal = obtenerInsumoPorNombre("Terminal Control Polea");
-            int stockTerminal = terminal.getStockUnidades() != null ? terminal.getStockUnidades() : 0;
-            if (stockTerminal < pedido.getCantidadTerminalPolea()) {
+            Insumo crusador = obtenerInsumoPorNombre("Crusador");
+            int stockCrusador = crusador.getStockUnidades() != null ? crusador.getStockUnidades() : 0;
+            if (stockCrusador < pedido.getCantidadTerminalPolea()) {
                 throw new MaterialInsuficienteException(
-                        "No hay suficiente \"Terminal Control Polea\". Disponible: " + stockTerminal
+                        "No hay suficiente \"Crusador\". Disponible: " + stockCrusador
                         + " unidad(es), necesario: " + pedido.getCantidadTerminalPolea() + ".");
             }
         } else {
@@ -879,16 +886,20 @@ public class InventarioServicio {
                         + " unidad(es), necesario: " + pedido.getCantidadTapasRiel() + ".");
             }
 
-            // Bastón: insumo POR MEDIDA. El jefe elige manualmente cuál de los
-            // 3 tipos usar; si no eligió ninguno, se usa "Bastón Tipo A" por defecto.
+            // Bastón: pieza fija POR UNIDAD (0.80 / 1.20 / 1.50 m según tipo elegido).
+            // No se corta ni se mide, solo se descuenta 1 unidad completa del tipo elegido.
             String nombreBaston = (pedido.getBastonElegido() != null && !pedido.getBastonElegido().isBlank())
                     ? pedido.getBastonElegido() : "Bastón Tipo A";
             Insumo baston = obtenerInsumoPorNombre(nombreBaston);
-            buscarMejorPieza(baston, pedido.getMedidaBaston());
+            int stockBaston = baston.getStockUnidades() != null ? baston.getStockUnidades() : 0;
+            if (stockBaston < pedido.getCantidadBaston()) {
+                throw new MaterialInsuficienteException(
+                        "No hay suficiente \"" + nombreBaston + "\". Disponible: " + stockBaston
+                        + " unidad(es), necesario: " + pedido.getCantidadBaston() + ".");
+            }
         }
 
-        // Soporte de riel: por unidad, cantidad variable según el ancho.
-        // Se verifica siempre (con o sin polea).
+        // Soporte de riel: por unidad, cantidad variable según el ancho. Siempre se verifica.
         Insumo soporteRiel = obtenerInsumoPorNombre("Soporte Riel");
         int stockSoporteRiel = soporteRiel.getStockUnidades() != null ? soporteRiel.getStockUnidades() : 0;
         if (stockSoporteRiel < pedido.getCantidadSoportesRiel()) {
@@ -903,9 +914,14 @@ public class InventarioServicio {
         PiezaInsumo piezaRiel = buscarMejorPieza(riel, pedido.getCorteRiel());
         descontarInsumoConMedida(pedido, piezaRiel, pedido.getCorteRiel(), false);
 
-        Insumo rielPines = obtenerInsumoPorNombre("Riel de Pines");
-        PiezaInsumo piezaPines = buscarMejorPieza(rielPines, pedido.getCorteRielPines());
-        descontarInsumoConMedida(pedido, piezaPines, pedido.getCorteRielPines(), false);
+        Insumo roachina = obtenerInsumoPorNombre("Roachina");
+        PiezaInsumo piezaRoachina = buscarMejorPieza(roachina, pedido.getCorteRielPines());
+        descontarInsumoConMedida(pedido, piezaRoachina, pedido.getCorteRielPines(), false);
+
+        // Riata: siempre obligatoria, se corta al mismo ancho del riel.
+        Insumo riata = obtenerInsumoPorNombre("Riata");
+        PiezaInsumo piezaRiata = buscarMejorPieza(riata, pedido.getMedidaRiata());
+        descontarInsumoConMedida(pedido, piezaRiata, pedido.getMedidaRiata(), false);
 
         if (Boolean.TRUE.equals(pedido.getUsaPolea())) {
             Insumo cuerdaOnda = obtenerInsumoPorNombre("Cuerda Onda Serena");
@@ -913,16 +929,14 @@ public class InventarioServicio {
             descontarInsumoConMedida(pedido, piezaCuerda, pedido.getCorteCuerdaOnda(), false);
 
             descontarInsumoPorUnidad(pedido, "Polea", pedido.getCantidadPoleas());
-            descontarInsumoPorUnidad(pedido, "Terminal Control Polea", pedido.getCantidadTerminalPolea());
+            descontarInsumoPorUnidad(pedido, "Crusador", pedido.getCantidadTerminalPolea());
         } else {
             descontarInsumoPorUnidad(pedido, "Tapa Riel", pedido.getCantidadTapasRiel());
 
-            // Bastón: por medida, se corta y descuenta como una pieza más.
+            // Bastón: por unidad, 1 unidad completa del tipo elegido, sin corte.
             String nombreBaston = (pedido.getBastonElegido() != null && !pedido.getBastonElegido().isBlank())
                     ? pedido.getBastonElegido() : "Bastón Tipo A";
-            Insumo baston = obtenerInsumoPorNombre(nombreBaston);
-            PiezaInsumo piezaBaston = buscarMejorPieza(baston, pedido.getMedidaBaston());
-            descontarInsumoConMedida(pedido, piezaBaston, pedido.getMedidaBaston(), false);
+            descontarInsumoPorUnidad(pedido, nombreBaston, pedido.getCantidadBaston());
         }
 
         // Soporte de riel: por unidad, cantidad variable según el ancho, siempre se descuenta.
@@ -1387,8 +1401,7 @@ public class InventarioServicio {
     // parciales, y se alerta en función de eso además de los metros totales.
     // Este método es genérico: se aplica automáticamente a CUALQUIER insumo
     // con tieneMedida = true del catálogo, incluyendo Riel Onda Serena,
-    // Riel de Pines, Cuerda Onda Serena y los Bastón Tipo A/B/C — no
-    // requiere lógica especial.
+    // Roachina y Riata — no requiere lógica especial.
 
     private List<AlertaInventario> alertasDeInsumos() {
         List<AlertaInventario> alertas = new ArrayList<>();
@@ -1397,7 +1410,7 @@ public class InventarioServicio {
 
         for (Insumo insumo : insumos) {
             if (Boolean.TRUE.equals(insumo.getTieneMedida())) {
-                // ── Insumo por medida (tubo, cuerda, pesa, riel, bastón, etc.) ──
+                // ── Insumo por medida (tubo, cuerda, pesa, riel, roachina, riata, etc.) ──
                 List<PiezaInsumo> piezas = piezaInsumoRepository.findByInsumoIdOrderByLargoRestanteAsc(insumo.getId());
 
                 List<PiezaInsumo> conMaterial = piezas.stream()

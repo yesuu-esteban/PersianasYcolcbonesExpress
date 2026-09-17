@@ -664,10 +664,10 @@ public class PedidoControlador {
             return "redirect:/taller/editar/" + id;
         }
 
-        // Revertir TODO el material anterior: los cortes (riel/riel de pines/cuerda),
-        // los accesorios obligatorios (poleas+terminal o tapas+bastón) y cualquier
-        // extra que se haya agregado antes. revertirMaterialDe() ya es genérico
-        // (funciona por pieza/insumo sin importar el tipo de pedido).
+        // Revertir TODO el material anterior: los cortes (riel/roachina/riata/cuerda),
+        // los accesorios obligatorios (poleas+crusador o tapas+bastón+soportes) y
+        // cualquier extra que se haya agregado antes. revertirMaterialDe() ya es
+        // genérico (funciona por pieza/insumo sin importar el tipo de pedido).
         try {
             inventarioServicio.revertirMaterialDe(id);
         } catch (Exception e) {
@@ -927,9 +927,14 @@ public class PedidoControlador {
             model.addAttribute("materialRiel", materialRiel);
 
             MaterialUsado materialRielPines = historial.stream()
-                    .filter(m -> "RIEL_DE_PINES".equals(m.getTipoMaterial()))
+                    .filter(m -> "ROACHINA".equals(m.getTipoMaterial()))
                     .findFirst().orElse(null);
             model.addAttribute("materialRielPines", materialRielPines);
+
+            MaterialUsado materialRiata = historial.stream()
+                    .filter(m -> "RIATA".equals(m.getTipoMaterial()))
+                    .findFirst().orElse(null);
+            model.addAttribute("materialRiata", materialRiata);
 
             MaterialUsado materialCuerdaOnda = historial.stream()
                     .filter(m -> "CUERDA_ONDA_SERENA".equals(m.getTipoMaterial()))
