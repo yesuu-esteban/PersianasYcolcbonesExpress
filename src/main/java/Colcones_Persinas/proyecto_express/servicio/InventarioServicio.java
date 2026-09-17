@@ -842,8 +842,8 @@ public class InventarioServicio {
     //   - Riata → por medida, SIEMPRE (con o sin polea), mismo ancho que el riel.
     //   - Con polea: Cuerda Onda Serena (medida), Polea (unidad), Crusador
     //     (unidad, antes "Terminal Control Polea").
-    //   - Sin polea: Tapa Riel (unidad), Bastón Tipo A/B/C (unidad, pieza fija
-    //     de 0.80/1.20/1.50 m elegida manualmente por el jefe — no se corta).
+    //   - Sin polea: Tapa Riel (unidad), Bastón 0.80/1.20/1.50 (unidad, pieza
+    //     fija elegida manualmente por el jefe — no se corta ni se mide).
     //   - Soporte Riel → por unidad, cantidad variable según el ancho, SIEMPRE.
     // ═══════════════════════════════════════════════════════════════
 
@@ -886,10 +886,10 @@ public class InventarioServicio {
                         + " unidad(es), necesario: " + pedido.getCantidadTapasRiel() + ".");
             }
 
-            // Bastón: pieza fija POR UNIDAD (0.80 / 1.20 / 1.50 m según tipo elegido).
+            // Bastón: pieza fija POR UNIDAD (0.80 / 1.20 / 1.50 m según elegido).
             // No se corta ni se mide, solo se descuenta 1 unidad completa del tipo elegido.
             String nombreBaston = (pedido.getBastonElegido() != null && !pedido.getBastonElegido().isBlank())
-                    ? pedido.getBastonElegido() : "Bastón Tipo A";
+                    ? pedido.getBastonElegido() : "Bastón 0.80";
             Insumo baston = obtenerInsumoPorNombre(nombreBaston);
             int stockBaston = baston.getStockUnidades() != null ? baston.getStockUnidades() : 0;
             if (stockBaston < pedido.getCantidadBaston()) {
@@ -935,7 +935,7 @@ public class InventarioServicio {
 
             // Bastón: por unidad, 1 unidad completa del tipo elegido, sin corte.
             String nombreBaston = (pedido.getBastonElegido() != null && !pedido.getBastonElegido().isBlank())
-                    ? pedido.getBastonElegido() : "Bastón Tipo A";
+                    ? pedido.getBastonElegido() : "Bastón 0.80";
             descontarInsumoPorUnidad(pedido, nombreBaston, pedido.getCantidadBaston());
         }
 

@@ -5,8 +5,6 @@ import Colcones_Persinas.proyecto_express.repository.InsumoRepository;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 
-import java.util.Arrays;
-import java.util.List;
 import java.util.Optional;
 
 /**
@@ -52,38 +50,52 @@ public class InsumoBaseInicializador implements CommandLineRunner {
         crearSiNoExiste("Soporte Riel", false, "Soporte de instalación del riel de onda serena. Cantidad variable según el ancho del pedido.");
 
         // ── Bastones de riel: piezas FIJAS por unidad (NO se cortan ni se miden).
-        //    Cada tipo tiene una longitud fija de fábrica (0.80 / 1.20 / 1.50 m),
-        //    documentada aquí solo como referencia; el sistema únicamente descuenta
-        //    1 unidad completa del tipo que el jefe elija manualmente. Se usan
-        //    cuando el riel NO lleva polea. ──
-        crearSiNoExiste("Bastón Tipo A", false, "Bastón fijo de 0.80 m del riel de onda serena. Se descuenta como unidad completa, no se corta.");
-        crearSiNoExiste("Bastón Tipo B", false, "Bastón fijo de 1.20 m del riel de onda serena. Se descuenta como unidad completa, no se corta.");
-        crearSiNoExiste("Bastón Tipo C", false, "Bastón fijo de 1.50 m del riel de onda serena. Se descuenta como unidad completa, no se corta.");
+        //    Cada uno tiene una longitud fija de fábrica, y esa medida ES el
+        //    nombre del insumo, para que aparezca así en pantalla e impresión
+        //    ("Bastón 0.80", "Bastón 1.20", "Bastón 1.50"). El jefe elige
+        //    manualmente cuál usar; el sistema solo descuenta 1 unidad completa
+        //    del tipo elegido. Se usan cuando el riel NO lleva polea. ──
+        crearSiNoExiste("Bastón 0.80", false, "Bastón fijo de 0.80 m del riel de onda serena. Se descuenta como unidad completa, no se corta.");
+        crearSiNoExiste("Bastón 1.20", false, "Bastón fijo de 1.20 m del riel de onda serena. Se descuenta como unidad completa, no se corta.");
+        crearSiNoExiste("Bastón 1.50", false, "Bastón fijo de 1.50 m del riel de onda serena. Se descuenta como unidad completa, no se corta.");
 
-        // ── FIX de migración: si "Bastón Tipo A/B/C" ya se habían creado antes
-        // con tieneMedida = true (por medida), corrígelos aquí a tieneMedida =
-        // false (por unidad), que es como deben funcionar. La pantalla de
-        // edición no permite cambiar este campo una vez creado, así que esta
-        // corrección se hace directamente por código, una sola vez por insumo. ──
-        corregirBastonesAPorUnidad();
+        // ── FIX de migración: renombra los insumos viejos "Bastón Tipo A/B/C" a
+        // los nombres nuevos por medida ("Bastón 0.80" etc.) si ya existían en
+        // la base de datos, conservando su stock actual. También corrige a
+        // tieneMedida = false si por error habían quedado como por medida
+        // (la pantalla de edición no permite cambiar ese campo una vez creado,
+        // así que esta corrección se hace directamente por código). ──
+        migrarNombreBaston("Bastón Tipo A", "Bastón 0.80");
+        migrarNombreBaston("Bastón Tipo B", "Bastón 1.20");
+        migrarNombreBaston("Bastón Tipo C", "Bastón 1.50");
+        corregirBastonAPorUnidad("Bastón 0.80");
+        corregirBastonAPorUnidad("Bastón 1.20");
+        corregirBastonAPorUnidad("Bastón 1.50");
     }
 
-    private void corregirBastonesAPorUnidad() {
-        List<String> nombresBaston = Arrays.asList("Bastón Tipo A", "Bastón Tipo B", "Bastón Tipo C");
-        for (String nombre : nombresBaston) {
-            Optional<Insumo> existente = insumoRepository.findByNombreIgnoreCase(nombre);
-            if (existente.isPresent()) {
-                Insumo insumo = existente.get();
-                if (Boolean.TRUE.equals(insumo.getTieneMedida())) {
-                    insumo.setTieneMedida(false);
-                    if (insumo.getStockUnidades() == null) {
-                        insumo.setStockUnidades(0);
-                    }
-                    insumoRepository.save(insumo);
-                    System.out.println("[InsumoBaseInicializador] Corregido \"" + nombre
-                            + "\": ahora es por UNIDAD (antes estaba por medida). "
-                            + "Revisa /inventario/insumo/" + insumo.getId() + "/cargar para cargarle stock si hace falta.");
+    private void migrarNombreBaston(String nombreViejo, String nombreNuevo) {
+        Optional<Insumo> viejo = insumoRepository.findByNombreIgnoreCase(nombreViejo);
+        if (viejo.isPresent() && insumoRepository.findByNombreIgnoreCase(nombreNuevo).isEmpty()) {
+            Insumo insumo = viejo.get();
+            insumo.setNombre(nombreNuevo);
+            insumoRepository.save(insumo);
+            System.out.println("[InsumoBaseInicializador] Renombrado \"" + nombreViejo + "\" a \"" + nombreNuevo + "\".");
+        }
+    }
+
+    private void corregirBastonAPorUnidad(String nombre) {
+        Optional<Insumo> existente = insumoRepository.findByNombreIgnoreCase(nombre);
+        if (existente.isPresent()) {
+            Insumo insumo = existente.get();
+            if (Boolean.TRUE.equals(insumo.getTieneMedida())) {
+                insumo.setTieneMedida(false);
+                if (insumo.getStockUnidades() == null) {
+                    insumo.setStockUnidades(0);
                 }
+                insumoRepository.save(insumo);
+                System.out.println("[InsumoBaseInicializador] Corregido \"" + nombre
+                        + "\": ahora es por UNIDAD. Revisa /inventario/insumo/" + insumo.getId()
+                        + "/cargar para cargarle stock si hace falta.");
             }
         }
     }

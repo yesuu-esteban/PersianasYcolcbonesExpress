@@ -54,7 +54,11 @@ public class Pedido {
     @Column(name = "tubo_manual_elegido")
     private String tuboManualElegido;
 
-    /** Solo aplica a Riel de Onda Serena sin polea: cuál de los 3 tipos fijos de bastón eligió el jefe. */
+    /**
+     * Solo aplica a Riel de Onda Serena sin polea: cuál de los bastones fijos
+     * eligió el jefe. El nombre guardado aquí ES el nombre del insumo en el
+     * catálogo (ej: "Bastón 0.80", "Bastón 1.20", "Bastón 1.50").
+     */
     @Column(name = "baston_elegido")
     private String bastonElegido;
 
@@ -278,7 +282,7 @@ public class Pedido {
     }
 
     /**
-     * Bastón: pieza fija por unidad (0.80 / 1.20 / 1.50 m según el tipo elegido).
+     * Bastón: pieza fija por unidad (0.80 / 1.20 / 1.50 m según el elegido).
      * Solo aplica cuando el riel NO lleva polea: siempre 1 unidad completa,
      * no se corta ni se mide — solo se descuenta del stock del tipo elegido.
      */

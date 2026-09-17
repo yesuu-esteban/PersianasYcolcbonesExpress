@@ -86,11 +86,11 @@
 
             <div class="row g-2 mt-2" id="filaBastonRiel">
                 <div class="col-md-6">
-                    <label class="form-label fw-bold">Tipo de bastón</label>
+                    <label class="form-label fw-bold">Bastón</label>
                     <select name="bastonElegido" class="form-select">
-                        <option value="Bastón Tipo A" th:selected="${pedido.bastonElegido == 'Bastón Tipo A'}">Bastón Tipo A (0.80 m)</option>
-                        <option value="Bastón Tipo B" th:selected="${pedido.bastonElegido == 'Bastón Tipo B'}">Bastón Tipo B (1.20 m)</option>
-                        <option value="Bastón Tipo C" th:selected="${pedido.bastonElegido == 'Bastón Tipo C'}">Bastón Tipo C (1.50 m)</option>
+                        <option value="Bastón 0.80" th:selected="${pedido.bastonElegido == 'Bastón 0.80'}">Bastón 0.80</option>
+                        <option value="Bastón 1.20" th:selected="${pedido.bastonElegido == 'Bastón 1.20'}">Bastón 1.20</option>
+                        <option value="Bastón 1.50" th:selected="${pedido.bastonElegido == 'Bastón 1.50'}">Bastón 1.50</option>
                     </select>
                 </div>
                 <div class="col-md-6">
@@ -196,7 +196,7 @@
                      </tr>`;
             html += `<tr style="border-top:1px solid #d6efdd">
                         <td style="padding:2px 4px;font-weight:600;white-space:nowrap">🪄 Bastón</td>
-                        <td style="padding:2px 6px;color:#555">1 und. fija (tipo elegido: 0.80/1.20/1.50 m)</td>
+                        <td style="padding:2px 6px;color:#555">1 und. fija (según elegido: 0.80/1.20/1.50)</td>
                      </tr>`;
         }
         html += `<tr style="border-top:1px solid #d6efdd">
