@@ -66,7 +66,6 @@ public class PedidoControlador {
             model.addAttribute("totalFinalizado", totalFinalizado);
             model.addAttribute("totalDespachado", totalDespachado);
 
-            // ── Años disponibles para el filtro (sobre TODOS los pedidos, sin aplicar los demás filtros) ──
             TreeSet<Integer> aniosDisponibles = new TreeSet<>(Collections.reverseOrder());
             for (Pedido p : todos) {
                 if (p.getFechaCreacion() != null) {
@@ -82,7 +81,6 @@ public class PedidoControlador {
             List<Pedido> pedidosEstado = "Todos".equals(estadoFiltro) ? todos : todos.stream()
                     .filter(p -> estadoFiltro.equals(p.getEstado())).collect(Collectors.toList());
 
-            // ── Filtro por fecha (rango desde/hasta) y por año ──
             LocalDate fechaDesde = (desde != null && !desde.isBlank()) ? LocalDate.parse(desde) : null;
             LocalDate fechaHasta = (hasta != null && !hasta.isBlank()) ? LocalDate.parse(hasta) : null;
 
@@ -95,7 +93,6 @@ public class PedidoControlador {
                             || (p.getFechaCreacion() != null && p.getFechaCreacion().getYear() == anio))
                     .collect(Collectors.toList());
 
-            // ── Paginación: máximo 10 pedidos por página ──
             int tamanoPagina = 10;
             int totalFiltrados = pedidosFiltrados.size();
             int totalPaginas = (int) Math.ceil((double) totalFiltrados / tamanoPagina);
@@ -116,7 +113,6 @@ public class PedidoControlador {
             model.addAttribute("totalPaginas",    totalPaginas);
             model.addAttribute("totalFiltrados",  totalFiltrados);
 
-            // ── Conteo de pedidos por distribuidor, solo dentro de esta página (para el encabezado del grupo) ──
             Map<String, Long> conteoPorDecorador = pedidosPagina.stream()
                     .collect(Collectors.groupingBy(Pedido::getNombreDecorador, Collectors.counting()));
             model.addAttribute("conteoPorDecorador", conteoPorDecorador);
@@ -130,7 +126,6 @@ public class PedidoControlador {
             }
             model.addAttribute("telaUsadaPorPedido", telaUsadaPorPedido);
 
-            // ── Costo REAL de fabricación (suma de precios de /inventario/precios), por pedido ──
             Map<Integer, BigDecimal> costoFabricacionRealPorPedido = new HashMap<>();
             for (Pedido p : pedidosPagina) {
                 if (!p.isVentaDirecta() && !p.isRielOndaSerena()) {
@@ -262,7 +257,6 @@ public class PedidoControlador {
             }
         }
 
-        // Verificar material estándar antes de guardar
         try {
             for (int i = 0; i < pedidosDelLote.size(); i++) {
                 inventarioServicio.verificarDisponibilidad(pedidosDelLote.get(i), seleccionesDelLote.get(i));
@@ -272,14 +266,11 @@ public class PedidoControlador {
             return "redirect:/taller/nuevo";
         }
 
-        // Guardar, descontar material estándar y procesar extras
         try {
             for (int i = 0; i < pedidosDelLote.size(); i++) {
                 Pedido p = pedidosDelLote.get(i);
                 pedidoRepository.save(p);
                 inventarioServicio.descontarMaterialDe(p, seleccionesDelLote.get(i));
-                // Los extras vienen en el allParams global (no por fila de producto),
-                // solo se procesan en el primer pedido del lote para no duplicar
                 if (i == 0) {
                     procesarExtras(p, allParams);
                 }
@@ -321,7 +312,7 @@ public class PedidoControlador {
         pedido.setUsaConectorTope(false);
         pedido.setEnsamblado(true);
         pedido.setDespachado(true);
-        pedido.calcularEstadoGeneral(); // deja estado = "Vendido"
+        pedido.calcularEstadoGeneral();
 
         List<InventarioServicio.ItemTelaVenta> itemsTela = leerItemsTelaVenta(allParams);
         List<InventarioServicio.ExtraInsumo> extras = leerExtrasComoLista(allParams);
@@ -343,7 +334,7 @@ public class PedidoControlador {
         try {
             pedidoRepository.save(pedido);
             inventarioServicio.descontarItemsTelaVenta(pedido, itemsTela);
-            procesarExtras(pedido, allParams); // reutiliza el mismo método usado en fabricación
+            procesarExtras(pedido, allParams);
         } catch (InventarioServicio.MaterialInsuficienteException e) {
             redirectAttributes.addFlashAttribute("error", e.getMessage());
             return "redirect:/taller/nuevo";
@@ -353,7 +344,6 @@ public class PedidoControlador {
         return "redirect:/taller/pedidos";
     }
 
-    /** Lee los ítems de tela vendida por metros desde los parámetros indexados del formulario. */
     private List<InventarioServicio.ItemTelaVenta> leerItemsTelaVenta(Map<String, String> allParams) {
         List<InventarioServicio.ItemTelaVenta> items = new ArrayList<>();
         int i = 0;
@@ -376,7 +366,6 @@ public class PedidoControlador {
         return items;
     }
 
-    /** Reconstruye la lista de ExtraInsumo desde allParams, solo para VALIDAR antes de guardar el pedido. */
     private List<InventarioServicio.ExtraInsumo> leerExtrasComoLista(Map<String, String> allParams) {
         List<InventarioServicio.ExtraInsumo> lista = new ArrayList<>();
         int i = 0;
@@ -488,9 +477,6 @@ public class PedidoControlador {
     public String mostrarFormularioEditar(@PathVariable("id") int id, Model model) {
         Pedido pedido = pedidoRepository.findById(id).orElseThrow();
 
-        // Los pedidos de Riel de Onda Serena tienen su propio formulario de edición
-        // (ancho/alto/polea + accesorios calculados), distinto del de fabricación
-        // normal (tela/tubo). Se redirige a esa vista específica.
         if (pedido.isRielOndaSerena()) {
             model.addAttribute("pedido", pedido);
             model.addAttribute("catalogoInsumos", insumoRepository.findAllByOrderByNombreAsc());
@@ -511,7 +497,6 @@ public class PedidoControlador {
         model.addAttribute("retazosDisponibles", inventarioServicio.getTodosLosRetazos());
         model.addAttribute("catalogoInsumos",    insumoRepository.findAllByOrderByNombreAsc());
 
-        // Extras ya registrados en este pedido (para mostrarlos pre-cargados)
         List<MaterialUsado> extrasExistentes = inventarioServicio.getHistorialDePedido(id).stream()
                 .filter(m -> "EXTRA".equals(m.getTipoMaterial()))
                 .collect(Collectors.toList());
@@ -549,9 +534,6 @@ public class PedidoControlador {
 
         Pedido pedido = pedidoRepository.findById(id).orElseThrow();
 
-        // Salvaguarda: este endpoint es solo para pedidos de fabricación normal.
-        // Si por alguna razón llega aquí un riel (por ejemplo, un POST directo),
-        // se rechaza en vez de aplicar lógica de tela/tubo que no le corresponde.
         if (pedido.isRielOndaSerena()) {
             redirectAttributes.addFlashAttribute("error",
                     "Este pedido es un Riel de Onda Serena; usa su propio formulario de edición.");
@@ -569,12 +551,6 @@ public class PedidoControlador {
         pedido.setUsaPitilloPesa(usaPitilloPesa);
         pedido.setUsaConectorTope(usaConectorTope);
 
-        // ── FIX: antes esto guardaba el texto literal "auto" cuando el select
-        // quedaba en modo automático, en vez de null. calcularFichaTecnica()
-        // espera null para recalcular el tubo automáticamente; con la cadena
-        // "auto" ahí metida, la selección manual del tipo de tubo (R8/R16/R24)
-        // quedaba inconsistente y el pedido se quedaba "pegado" al tubo previo.
-        // Ahora se normaliza igual que en guardarListaPedidos (leerTextoOpcionalFila). ──
         pedido.setTuboManualElegido(normalizarTuboManual(tipoTuboManual));
         pedido.calcularFichaTecnica();
         if (estado != null && !estado.isBlank()) {
@@ -596,7 +572,6 @@ public class PedidoControlador {
             seleccion.retazoTelaId = null;
         }
 
-        // Revertir TODO (incluyendo extras anteriores que hayan descontado stock)
         try {
             inventarioServicio.revertirMaterialDe(id);
         } catch (Exception e) {
@@ -623,7 +598,6 @@ public class PedidoControlador {
             return "redirect:/taller/editar/" + id;
         }
 
-       // Procesar extras nuevos
         try {
             procesarExtras(pedido, allParams);
         } catch (InventarioServicio.MaterialInsuficienteException e) {
@@ -664,10 +638,6 @@ public class PedidoControlador {
             return "redirect:/taller/editar/" + id;
         }
 
-        // Revertir TODO el material anterior: los cortes (riel/roachina/riata/cuerda),
-        // los accesorios obligatorios (poleas+crusador o tapas+bastón+soportes) y
-        // cualquier extra que se haya agregado antes. revertirMaterialDe() ya es
-        // genérico (funciona por pieza/insumo sin importar el tipo de pedido).
         try {
             inventarioServicio.revertirMaterialDe(id);
         } catch (Exception e) {
@@ -716,27 +686,6 @@ public class PedidoControlador {
     // INSUMOS EXTRAS
     // ═══════════════════════════════════════════════════════════════
 
-    /**
-     * Procesa los insumos extras opcionales que el jefe agregó al pedido.
-     *
-     * Cada extra llega como grupo de 4 parámetros con índice [i]:
-     *   extraInsumoId[i]     → id del insumo del catálogo, o "libre" si es nombre libre
-     *   extraNombreLibre[i]  → nombre escrito a mano (solo si extraInsumoId = "libre")
-     *   extraCantidad[i]     → cantidad numérica
-     *   extraUnidad[i]       → "und" o "m"
-     *
-     * Si viene del catálogo:
-     *   - Insumo por UNIDAD → descuenta stockUnidades real
-     *   - Insumo por MEDIDA → descuenta de la primera pieza disponible (ciclo hasta cubrir)
-     *
-     * Si es nombre libre → solo registra el gasto en MaterialUsado, sin tocar inventario.
-     *
-     * En todos los casos queda un registro MaterialUsado con tipoMaterial = "EXTRA".
-     *
-     * Reutilizado tanto por fabricación normal (guardar-lista, editar) como por
-     * Venta Directa (guardar-venta-directa) y Riel de Onda Serena
-     * (guardar-riel-onda, editar-riel), sin ninguna diferencia entre los flujos.
-     */
    private void procesarExtras(Pedido pedido, Map<String, String> allParams) {
         int i = 0;
         while (allParams.containsKey("extraCantidad[" + i + "]")) {
@@ -769,7 +718,6 @@ public class PedidoControlador {
                             boolean piezaManual = !piezaIdStr.isEmpty() && !piezaIdStr.equalsIgnoreCase("auto");
 
                             if (piezaManual) {
-                                // ── Pieza específica elegida por el jefe ──
                                 Integer piezaId = null;
                                 try { piezaId = Integer.parseInt(piezaIdStr); } catch (NumberFormatException ignored) {}
 
@@ -864,12 +812,6 @@ public class PedidoControlador {
         try { return Integer.parseInt(valor.trim()); } catch (NumberFormatException e) { return null; }
     }
 
-    /**
-     * Normaliza el valor del select de tipo de tubo (R8/R16/R24/"auto") a lo que
-     * espera Pedido.calcularFichaTecnica(): null cuando es automático, o el texto
-     * elegido (recortado) cuando es manual. Se usa tanto en la previsualización
-     * AJAX como al editar, igual que ya se hacía al crear (leerTextoOpcionalFila).
-     */
     private String normalizarTuboManual(String valor) {
         if (valor == null || valor.isBlank() || "auto".equalsIgnoreCase(valor.trim())) return null;
         return valor.trim();
@@ -886,7 +828,6 @@ public class PedidoControlador {
         switch (accion.toLowerCase()) {
             case "ensamblado":
                 pedido.setEnsamblado(!pedido.getEnsamblado());
-                // Si se desmarca "ensamblado", el pedido ya no puede seguir "despachado"
                 if (!Boolean.TRUE.equals(pedido.getEnsamblado())) {
                     pedido.setDespachado(false);
                 }
@@ -911,6 +852,7 @@ public class PedidoControlador {
         Pedido p = pedidoRepository.findById(id).orElseThrow();
         p.calcularFichaTecnica();
         model.addAttribute("pedido", p);
+        model.addAttribute("nombresAmigables", construirNombresAmigables());
 
         if (!p.isVentaDirecta() && !p.isRielOndaSerena()) {
             model.addAttribute("resultadoCostoFabricacion", calculadoraCostoFabricacionServicio.calcular(p));
@@ -920,7 +862,6 @@ public class PedidoControlador {
         model.addAttribute("historialMaterial", historial);
 
         if (p.isRielOndaSerena()) {
-            // ── Riel de Onda Serena: busca sus propios cortes en el historial ──
             MaterialUsado materialRiel = historial.stream()
                     .filter(m -> "RIEL_ONDA_SERENA".equals(m.getTipoMaterial()))
                     .findFirst().orElse(null);
@@ -942,7 +883,6 @@ public class PedidoControlador {
             model.addAttribute("materialCuerdaOnda", materialCuerdaOnda);
 
         } else {
-            // ── Fabricación normal (enrollable / blackout): tela, tubo, pesa, cabezal ──
             MaterialUsado materialTela = historial.stream()
                     .filter(m -> "TELA".equals(m.getTipoMaterial()) || "RETAZO".equals(m.getTipoMaterial()))
                     .findFirst().orElse(null);
@@ -968,13 +908,65 @@ public class PedidoControlador {
             model.addAttribute("materialCabezal", materialCabezal);
         }
 
-        // ── Extras (comunes a todos los tipos de pedido) ──
         List<MaterialUsado> extrasHistorial = historial.stream()
                 .filter(m -> "EXTRA".equals(m.getTipoMaterial()))
                 .collect(Collectors.toList());
         model.addAttribute("extrasHistorial", extrasHistorial);
 
         return "imprimir_pedido";
+    }
+
+    /**
+     * Traduce los códigos técnicos de MaterialUsado.tipoMaterial (derivados del
+     * nombre del insumo en mayúsculas con guiones bajos) a nombres amigables
+     * para la impresión, alineados con los nombres que usa el desglose de costo
+     * de fabricación. Los accesorios que ya están incluidos dentro del precio
+     * fijo de "Mecanismo" (Control, Terminal, Acople, Conector, Tope Control)
+     * quedan marcados como tal para que se entienda por qué no tienen su propia
+     * línea en el desglose de costos.
+     *
+     * NOTA: "TOPE_PESA" se mantiene aquí solo como compatibilidad con pedidos
+     * HISTÓRICOS que ya tenían ese registro guardado antes de la fusión de
+     * "Tope Pesa" con "Tapa Perfil". Los pedidos nuevos ya no generan este
+     * código — el insumo "Tope Pesa" ya no existe en el catálogo.
+     */
+    private Map<String, String> construirNombresAmigables() {
+        Map<String, String> m = new HashMap<>();
+        m.put("TELA", "Tela");
+        m.put("RETAZO", "Tela (retazo)");
+        m.put("TUBO_R16", "Tubo R16");
+        m.put("TUBO_R24", "Tubo R24");
+        m.put("TUBO_R8", "Tubo R8");
+        m.put("PESA", "Pesa");
+        m.put("CUERDA", "Cuerda / Cadenilla (Blackout)");
+        m.put("CONTROL_R16", "Mecanismo (Control y accesorios)");
+        m.put("CONTROL_R24", "Mecanismo (Control y accesorios) R24");
+        m.put("CONTROL_R8_A", "Mecanismo (Control y accesorios)");
+        m.put("CONTROL_R8_B", "Mecanismo (Control y accesorios)");
+        m.put("TERMINAL", "Terminal · incluido en Mecanismo");
+        m.put("ACOPLE", "Acople · incluido en Mecanismo");
+        m.put("CONECTOR", "Conector · incluido en Mecanismo");
+        m.put("TOPE_CONTROL", "Tope Control · incluido en Mecanismo");
+        m.put("PITILLO", "Pitillo");
+        m.put("SOPORTE", "Soporte · accesorio de instalación");
+        m.put("TAPA_CABEZAL", "Tapa Cabezal");
+        m.put("TAPA_PERFIL", "Tapa Perfil (Pesa)");
+        m.put("TOPE_PESA", "Tope Pesa (histórico) · fusionado con Tapa Perfil");
+        m.put("TORNILLO", "Tornillo · accesorio de instalación");
+        m.put("TORNILLO_PERFORANTE", "Tornillo Perforante · accesorio de instalación");
+        m.put("EXTRA", "Extra");
+        m.put("RIEL_ONDA_SERENA", "Riel Onda Serena");
+        m.put("ROACHINA", "Roachina");
+        m.put("RIATA", "Riata");
+        m.put("CUERDA_ONDA_SERENA", "Cuerda Onda Serena");
+        m.put("POLEA", "Polea");
+        m.put("CRUSADOR", "Crusador");
+        m.put("TAPA_RIEL", "Tapa Riel");
+        m.put("SOPORTE_RIEL", "Soporte Riel");
+        m.put("BASTÓN_0.80", "Bastón 0.80");
+        m.put("BASTÓN_1.20", "Bastón 1.20");
+        m.put("BASTÓN_1.50", "Bastón 1.50");
+        return m;
     }
 
     // ─── Eliminar pedido ──────────────────────────────────────────────────

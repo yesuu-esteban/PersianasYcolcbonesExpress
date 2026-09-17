@@ -7,73 +7,67 @@
         * { box-sizing: border-box; margin: 0; padding: 0; overflow-wrap: break-word; word-break: break-word; }
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            padding: 8px 12px;
+            padding: 6px 10px;
             background: #fff;
-            font-size: 0.74rem;
+            font-size: 0.68rem;
         }
 
-        /* ── Encabezado ── */
         .encabezado-reporte {
             background: #212529;
             color: #fff;
             border-radius: 4px;
-            padding: 5px 12px;
+            padding: 4px 10px;
             display: flex;
             justify-content: space-between;
             align-items: center;
             flex-wrap: wrap;
-            gap: 4px 16px;
-            margin-bottom: 8px;
+            gap: 3px 14px;
+            margin-bottom: 6px;
         }
-        .encabezado-reporte .titulo { font-size: 0.90rem; font-weight: 700; flex-shrink: 0; }
-        .encabezado-reporte .partes { display: flex; gap: 14px; font-size: 0.70rem; flex-wrap: wrap; min-width: 0; }
+        .encabezado-reporte .titulo { font-size: 0.82rem; font-weight: 700; flex-shrink: 0; }
+        .encabezado-reporte .partes { display: flex; gap: 12px; font-size: 0.64rem; flex-wrap: wrap; min-width: 0; }
         .encabezado-reporte .partes span { min-width: 0; max-width: 220px; }
         .encabezado-reporte .partes span strong {
-            display: block; font-size: 0.60rem; text-transform: uppercase;
+            display: block; font-size: 0.56rem; text-transform: uppercase;
             letter-spacing: 0.05em; opacity: 0.65; margin-bottom: 0;
         }
 
-        /* ── 4 cuadros principales: grid fijo 2×2, más grandes y parejos ──
-           Identificación / Corte de Tela / Perfilería / Despacho siempre quedan
-           arriba en ese orden (2 filas × 2 columnas), con una altura mínima
-           generosa para que se vean como cuadros grandes/cuadrados, no tiras
-           angostas. La tabla de material va aparte, DEBAJO de este bloque. */
         .grid-etiquetas {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 8px;
-            margin-bottom: 8px;
+            gap: 6px;
+            margin-bottom: 6px;
         }
         .etiqueta {
             border: 1px solid #333;
-            border-radius: 5px;
-            padding: 10px 14px;
+            border-radius: 4px;
+            padding: 7px 10px;
             page-break-inside: avoid;
             min-width: 0;
         }
         .grid-etiquetas .etiqueta {
-            min-height: 175px;
+            min-height: 145px;
             display: flex;
             flex-direction: column;
         }
         .etiqueta h3 {
-            font-size: 0.80rem;
+            font-size: 0.72rem;
             font-weight: 700;
             border-bottom: 1px solid #333;
-            padding-bottom: 4px;
-            margin-bottom: 7px;
+            padding-bottom: 3px;
+            margin-bottom: 5px;
         }
         .etiqueta p {
-            margin-bottom: 4px;
-            line-height: 1.35;
+            margin-bottom: 3px;
+            line-height: 1.25;
             display: flex;
             flex-wrap: wrap;
-            column-gap: 6px;
+            column-gap: 5px;
             row-gap: 1px;
         }
         .etiqueta p strong {
             flex: 0 0 auto;
-            min-width: 92px;
+            min-width: 84px;
         }
         .etiqueta p > span,
         .etiqueta p > .badge,
@@ -84,31 +78,24 @@
             min-width: 0;
         }
 
-        /* Bloque de la tabla de material: separado, debajo, ancho completo */
-        .etiqueta-full {
-            width: 100%;
-        }
+        .etiqueta-full { width: 100%; }
 
-        /* ── Badges ── */
         .badge {
-            display: inline-block; padding: 1px 7px;
-            border-radius: 3px; font-size: 0.68rem; font-weight: 700; color: #fff;
+            display: inline-block; padding: 1px 6px;
+            border-radius: 3px; font-size: 0.62rem; font-weight: 700; color: #fff;
         }
         .badge-con   { background: #198754; }
         .badge-sin   { background: #212529; }
         .badge-riel  { background: #0d6efd; }
-        .valor-mando { font-size: 0.86rem; font-weight: 700; color: #c0392b; }
+        .valor-mando { font-size: 0.78rem; font-weight: 700; color: #c0392b; }
 
-        /* Badge de identificador (#id) + medida original de la pieza/rollo/retazo.
-           Ya NO usa white-space:nowrap: si el texto es largo (p.ej. una advertencia
-           de sustituto), el badge crece a varias líneas en vez de desbordarse. */
         .badge-id-original {
             display: inline-block;
-            padding: 1px 6px;
+            padding: 1px 5px;
             margin-left: 3px;
             border-radius: 3px;
-            font-size: 0.66rem;
-            line-height: 1.3;
+            font-size: 0.60rem;
+            line-height: 1.25;
             font-weight: 700;
             font-family: 'Consolas', monospace;
             background: #e3f2fd;
@@ -121,84 +108,98 @@
             background: #e8f5e9;
             border-left: 3px solid #198754;
             border-radius: 3px;
-            padding: 3px 8px;
-            margin-top: 4px;
-            font-size: 0.72rem;
+            padding: 2px 7px;
+            margin-top: 3px;
+            font-size: 0.66rem;
             display: flex;
             flex-wrap: wrap;
-            column-gap: 6px;
+            column-gap: 5px;
         }
-        .fila-cabezal strong { flex: 0 0 auto; min-width: 92px; }
+        .fila-cabezal strong { flex: 0 0 auto; min-width: 84px; }
 
-        /* Origen tela / riel */
         .fila-origen-tela {
-            margin-top: 5px; padding: 5px 8px;
-            border-radius: 3px; font-size: 0.70rem;
+            margin-top: 4px; padding: 4px 7px;
+            border-radius: 3px; font-size: 0.64rem;
         }
         .fila-origen-tela p {
             margin-bottom: 2px;
             display: flex;
             flex-wrap: wrap;
             align-items: baseline;
-            column-gap: 5px;
+            column-gap: 4px;
             row-gap: 1px;
         }
         .origen-rollo  { background: #eaf2fd; border-left: 3px solid #1976d2; }
         .origen-retazo { background: #fff8e1; border-left: 3px solid #f57c00; }
         .origen-riel   { background: #eef4ff; border-left: 3px solid #0d6efd; }
         .badge-origen {
-            display: inline-block; padding: 1px 6px; border-radius: 3px;
-            font-size: 0.62rem; font-weight: 700; margin-left: 3px; color: #fff;
+            display: inline-block; padding: 1px 5px; border-radius: 3px;
+            font-size: 0.58rem; font-weight: 700; margin-left: 3px; color: #fff;
             flex-shrink: 0;
         }
         .badge-rollo-origen  { background: #1976d2; }
         .badge-retazo-origen { background: #f57c00; }
         .badge-seleccion {
-            display: inline-block; padding: 1px 6px; border-radius: 3px;
-            font-size: 0.66rem; font-weight: 700;
+            display: inline-block; padding: 1px 5px; border-radius: 3px;
+            font-size: 0.60rem; font-weight: 700;
             flex-shrink: 0;
         }
         .badge-seleccion-manual { background: #6f42c1; color: #fff; }
         .badge-seleccion-auto   { background: #6c757d; color: #fff; }
 
-        /* Precio de venta / costo de fabricación destacados */
         .costo-fabrica-box {
             background: #e7f5ec;
             border-left: 3px solid #198754;
             border-radius: 3px;
-            padding: 4px 8px;
-            margin-top: 6px;
-            font-size: 0.76rem;
+            padding: 3px 7px;
+            margin-top: 5px;
+            font-size: 0.70rem;
             font-weight: 700;
             color: #0a5c30;
         }
 
-        /* Tabla de material: table-layout fixed reparte el ancho entre columnas
-           según % definido, así una descripción larga no ensancha la tabla más
-           allá de la hoja — el texto hace salto de línea dentro de su celda. */
-        .tabla-material { border-collapse: collapse; width: 100%; font-size: 0.68rem; table-layout: fixed; }
+        .tabla-material { border-collapse: collapse; width: 100%; font-size: 0.62rem; table-layout: fixed; }
         .tabla-material th, .tabla-material td {
-            border: 1px solid #ccc; padding: 3px 6px; text-align: left;
+            border: 1px solid #ccc; padding: 2px 5px; text-align: left;
             overflow-wrap: break-word; word-break: break-word;
-            line-height: 1.3;
+            line-height: 1.2;
         }
-        .tabla-material th { background: #f0f0f0; font-size: 0.66rem; }
-        .tabla-material th:nth-child(1), .tabla-material td:nth-child(1) { width: 10%; }
-        .tabla-material th:nth-child(2), .tabla-material td:nth-child(2) { width: 26%; }
-        .tabla-material th:nth-child(3), .tabla-material td:nth-child(3) { width: 24%; }
-        .tabla-material th:nth-child(4), .tabla-material td:nth-child(4) { width: 9%; }
-        .tabla-material th:nth-child(5), .tabla-material td:nth-child(5) { width: 7%; }
+        .tabla-material th { background: #f0f0f0; font-size: 0.60rem; }
+        .tabla-material th:nth-child(1), .tabla-material td:nth-child(1) { width: 22%; }
+        .tabla-material th:nth-child(2), .tabla-material td:nth-child(2) { width: 20%; }
+        .tabla-material th:nth-child(3), .tabla-material td:nth-child(3) { width: 18%; }
+        .tabla-material th:nth-child(4), .tabla-material td:nth-child(4) { width: 8%; }
+        .tabla-material th:nth-child(5), .tabla-material td:nth-child(5) { width: 6%; }
         .tabla-material th:nth-child(6), .tabla-material td:nth-child(6) { width: 12%; }
-        .tabla-material th:nth-child(7), .tabla-material td:nth-child(7) { width: 12%; }
+        .tabla-material th:nth-child(7), .tabla-material td:nth-child(7) { width: 14%; }
         .tabla-material tr.fila-tela-rollo  { background: #eaf2fd; }
         .tabla-material tr.fila-tela-retazo { background: #fff8e1; }
         .tabla-material tr.fila-extra       { background: #f0f7ff; }
-        .sin-material { color: #888; font-style: italic; font-size: 0.72rem; }
+        .tabla-material tr.fila-incluida    { background: #f5f5f5; color: #777; font-style: italic; }
+        .sin-material { color: #888; font-style: italic; font-size: 0.66rem; }
+        .nota-incluido {
+            display: block; font-size: 0.58rem; color: #888; font-weight: 400; font-style: italic;
+        }
+
+        .desglose-tabla { border-collapse: collapse; width: 100%; font-size: 0.64rem; table-layout: fixed; }
+        .desglose-tabla th, .desglose-tabla td {
+            border: 1px solid #ccc; padding: 2px 6px; text-align: left;
+            overflow-wrap: break-word; word-break: break-word; line-height: 1.25;
+        }
+        .desglose-tabla th { background: #f0f0f0; font-size: 0.62rem; }
+        .desglose-tabla th:nth-child(1), .desglose-tabla td:nth-child(1) { width: 34%; }
+        .desglose-tabla th:nth-child(2), .desglose-tabla td:nth-child(2) { width: 38%; }
+        .desglose-tabla th:nth-child(3), .desglose-tabla td:nth-child(3) { width: 28%; }
 
         @media print {
-            body { padding: 5px 10px; }
+            html, body { width: 210mm; }
+            body { padding: 3mm 5mm; font-size: 0.62rem; }
             .no-print { display: none !important; }
-            @page { size: letter portrait; margin: 6mm; }
+            @page { size: letter portrait; margin: 5mm; }
+            .grid-etiquetas .etiqueta { min-height: 0; }
+            .etiqueta { padding: 5px 8px; }
+            .etiqueta h3 { font-size: 0.66rem; margin-bottom: 3px; }
+            .tabla-material, .desglose-tabla { font-size: 0.58rem; }
         }
     </style>
 </head>
@@ -293,13 +294,13 @@
             <p th:if="${pedido.usaPolea}"><strong>Poleas:</strong> 2 und.</p>
             <p th:if="${pedido.usaPolea}"><strong>Crusador:</strong> 1 und.</p>
             <p th:unless="${pedido.usaPolea}"><strong>Tapas de riel:</strong> 2 und.</p>
-            <p th:unless="${pedido.usaPolea}"><strong>Bastón:</strong> <span th:text="${pedido.bastonElegido}"></span> (1 und. fija)</p>
+            <p th:unless="${pedido.usaPolea}"><strong>Bastón:</strong> <span th:text="${pedido.bastonElegido}"></span> (1 und.)</p>
             <p><strong>Soportes:</strong> <span th:text="${pedido.cantidadSoportesRiel}"></span> und.</p>
 
             <div th:if="${extrasHistorial != null and not #lists.isEmpty(extrasHistorial)}"
-                 style="margin-top:5px; padding-top:5px; border-top:1px dashed #aaa;">
-                <p style="font-weight:700; font-size:0.70rem; margin-bottom:2px;">➕ Insumos adicionales registrados:</p>
-                <p th:each="e : ${extrasHistorial}" style="margin-bottom:1px; font-size:0.68rem; display:flex; flex-wrap:wrap; column-gap:4px;">
+                 style="margin-top:4px; padding-top:4px; border-top:1px dashed #aaa;">
+                <p style="font-weight:700; font-size:0.64rem; margin-bottom:2px;">➕ Insumos adicionales:</p>
+                <p th:each="e : ${extrasHistorial}" style="margin-bottom:1px; font-size:0.62rem; display:flex; flex-wrap:wrap; column-gap:4px;">
                     · <span th:text="${#strings.contains(e.fuenteDescripcion,'(')} ? ${#strings.substringBefore(e.fuenteDescripcion,'(')} : ${e.fuenteDescripcion}"></span>
                     <span class="badge-id-original"
                           th:if="${#strings.contains(e.fuenteDescripcion,'(')}"
@@ -352,10 +353,10 @@
             <div class="costo-fabrica-box">
                 💲 Precio de Venta: $<span th:text="${#numbers.formatDecimal(pedido.precioVenta, 1, 'POINT', 0, 'NONE')}"></span>
             </div>
-            <div class="costo-fabrica-box" style="background:#fff3cd;border-left-color:#dc9b00;color:#5c4300;margin-top:4px;"
+            <div class="costo-fabrica-box" style="background:#fff3cd;border-left-color:#dc9b00;color:#5c4300;margin-top:3px;"
                  th:if="${resultadoCostoFabricacion != null}">
                 🧮 Costo Fabricación (real): $<span th:text="${#numbers.formatDecimal(resultadoCostoFabricacion.total, 1, 'POINT', 0, 'NONE')}"></span>
-                <span th:unless="${resultadoCostoFabricacion.completo}" style="display:block;font-size:0.65rem;font-weight:400;">
+                <span th:unless="${resultadoCostoFabricacion.completo}" style="display:block;font-size:0.60rem;font-weight:400;">
                     ⚠ Faltan precios: <span th:text="${#strings.listJoin(resultadoCostoFabricacion.itemsFaltantes, ', ')}"></span>
                 </span>
             </div>
@@ -369,7 +370,6 @@
                 <span th:text="${#numbers.formatDecimal(pedido.corteTelaAncho,1,3)+' m × '+#numbers.formatDecimal(pedido.corteTelaAlto,1,3)+' m'}"></span>
             </p>
 
-            <!-- Origen real desde historial -->
             <div th:if="${materialTela != null}" class="fila-origen-tela"
                  th:classappend="${esRetazo}?'origen-retazo':'origen-rollo'">
                 <p>
@@ -397,11 +397,10 @@
             </div>
         </div>
 
-        <!-- 3: Perfilería — con pieza específica de tubo y pesa desde historial -->
+        <!-- 3: Perfilería -->
         <div class="etiqueta">
             <h3>📐 Perfilería</h3>
 
-            <!-- Tubo: muestra nombre+pieza del historial si existe, con badge de #id y medida original -->
             <p>
                 <strong>Tubo:</strong>
                 <span th:if="${materialTubo != null}"
@@ -413,7 +412,6 @@
                 · <span th:text="${#numbers.formatDecimal(pedido.corteTuberia,1,3)+' m'}"></span>
             </p>
 
-            <!-- Pesa: muestra pieza específica del historial si existe, con badge de #id y medida original -->
             <p>
                 <strong>Pesa:</strong>
                 <span th:if="${materialPesa != null}"
@@ -425,7 +423,6 @@
                 · <span th:text="${#numbers.formatDecimal(pedido.corteTuberia,1,3)+' m'}"></span>
             </p>
 
-            <p><strong>Tope Pesa:</strong> 2 und.</p>
             <p><strong>Terminal:</strong> 1 und.</p>
             <p th:if="${pedido.cantidadAcoples > 0}"><strong>Acoples:</strong> 2 und.</p>
 
@@ -440,13 +437,14 @@
                 · <span th:text="${#numbers.formatDecimal(pedido.medidaCabezal,1,3)+' m'}"></span>
             </div>
 
-            <p style="margin-top:6px;"><strong>Soportes:</strong> 2 und.</p>
+            <p style="margin-top:5px;"><strong>Tapa Perfil:</strong> 2 und.</p>
+            <p><strong>Soportes:</strong> 2 und.</p>
 
             <div class="fila-cabezal" th:if="${pedido.usaCabezal}">
-                <strong>Tapas:</strong> 2 und.
+                <strong>Tapa Cabezal:</strong> 2 und.
             </div>
 
-            <p style="margin-top:6px;">
+            <p style="margin-top:5px;">
                 <strong>Tornillos:</strong>
                 <span th:text="${pedido.usaCabezal}?'8 und.':'2 und.'"></span>
             </p>
@@ -467,11 +465,10 @@
             <p><strong>Cuerda:</strong> <span th:text="${pedido.medidaCuerda}"></span></p>
             <p><strong>Control:</strong><span th:text="${pedido.tipoControl}"></span></p>
 
-            <!-- Extras si los hay, cada uno con su badge de #id y medida original -->
             <div th:if="${extrasHistorial != null and not #lists.isEmpty(extrasHistorial)}"
-                 style="margin-top:5px; padding-top:5px; border-top:1px dashed #aaa;">
-                <p style="font-weight:700; font-size:0.70rem; margin-bottom:2px;">➕ Insumos adicionales:</p>
-                <p th:each="e : ${extrasHistorial}" style="margin-bottom:1px; font-size:0.68rem; display:flex; flex-wrap:wrap; column-gap:4px;">
+                 style="margin-top:4px; padding-top:4px; border-top:1px dashed #aaa;">
+                <p style="font-weight:700; font-size:0.64rem; margin-bottom:2px;">➕ Insumos adicionales:</p>
+                <p th:each="e : ${extrasHistorial}" style="margin-bottom:1px; font-size:0.62rem; display:flex; flex-wrap:wrap; column-gap:4px;">
                     · <span th:text="${#strings.contains(e.fuenteDescripcion,'(')} ? ${#strings.substringBefore(e.fuenteDescripcion,'(')} : ${e.fuenteDescripcion}"></span>
                     <span class="badge-id-original"
                           th:if="${#strings.contains(e.fuenteDescripcion,'(')}"
@@ -487,7 +484,7 @@
     <div class="etiqueta etiqueta-full"
          th:if="${resultadoCostoFabricacion != null and not #lists.isEmpty(resultadoCostoFabricacion.lineas)}">
         <h3>🧮 Desglose de Costo de Fabricación</h3>
-        <table class="tabla-material">
+        <table class="desglose-tabla">
             <thead>
                 <tr><th>Ítem</th><th>Fórmula</th><th>Valor</th></tr>
             </thead>
@@ -501,10 +498,10 @@
         </table>
     </div>
 
-    <!-- Registro de material utilizado: SIEMPRE debajo de los 4 cuadros, para cualquier tipo de pedido -->
+    <!-- Registro de material utilizado -->
     <div class="etiqueta etiqueta-full">
         <h3>📋 Registro de material utilizado</h3>
-        <div style="display:flex;gap:4px 16px;margin-bottom:5px;font-size:0.68rem;background:#f8f9fa;border-radius:4px;padding:3px 8px;flex-wrap:wrap;">
+        <div style="display:flex;gap:4px 14px;margin-bottom:4px;font-size:0.62rem;background:#f8f9fa;border-radius:4px;padding:3px 7px;flex-wrap:wrap;">
             <span style="min-width:0;"><strong>Dist.:</strong> <span th:text="${pedido.nombreDecorador}"></span></span>
             <span style="min-width:0;"><strong>Cliente:</strong> <span th:text="${pedido.nombreClienteFinal}"></span></span>
             <span style="min-width:0;"><strong>Desc.:</strong> <span th:text="${pedido.descripcion}"></span></span>
@@ -528,8 +525,14 @@
             </thead>
             <tbody>
                 <tr th:each="m : ${historialMaterial}"
-                    th:classappend="${m.tipoMaterial=='RETAZO'}?'fila-tela-retazo':(${m.tipoMaterial=='TELA'}?'fila-tela-rollo':(${m.tipoMaterial=='EXTRA'}?'fila-extra':''))">
-                    <td th:text="${m.tipoMaterial}"></td>
+                    th:classappend="${m.tipoMaterial=='RETAZO'}?'fila-tela-retazo':(${m.tipoMaterial=='TELA'}?'fila-tela-rollo':(${m.tipoMaterial=='EXTRA'}?'fila-extra':(${m.tipoMaterial=='TERMINAL' or m.tipoMaterial=='ACOPLE' or m.tipoMaterial=='CONECTOR' or m.tipoMaterial=='TOPE_CONTROL'}?'fila-incluida':'')))">
+                    <td>
+                        <span th:text="${nombresAmigables != null and nombresAmigables.get(m.tipoMaterial) != null} ? ${nombresAmigables.get(m.tipoMaterial)} : ${m.tipoMaterial}"></span>
+                        <span class="nota-incluido"
+                              th:if="${m.tipoMaterial=='TERMINAL' or m.tipoMaterial=='ACOPLE' or m.tipoMaterial=='CONECTOR' or m.tipoMaterial=='TOPE_CONTROL'}">
+                            ya incluido en el precio de Mecanismo
+                        </span>
+                    </td>
                     <td th:text="${#strings.contains(m.fuenteDescripcion,'(')} ? ${#strings.substringBefore(m.fuenteDescripcion,'(')} : ${m.fuenteDescripcion}"></td>
                     <td>
                         <span class="badge-id-original"
@@ -550,7 +553,7 @@
         </table>
     </div>
 
-    <div class="no-print" style="margin-top:10px; display:flex; gap:8px;">
+    <div class="no-print" style="margin-top:8px; display:flex; gap:8px;">
         <button onclick="window.history.length > 1 ? window.history.back() : (window.location.href='/taller/pedidos')"
                 style="padding:6px 18px;font-size:0.85rem;cursor:pointer;border:1px solid #6c757d;border-radius:4px;background:#fff;color:#333;">
             ← Volver

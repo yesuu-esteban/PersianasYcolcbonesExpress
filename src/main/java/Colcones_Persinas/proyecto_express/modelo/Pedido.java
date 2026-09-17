@@ -54,11 +54,7 @@ public class Pedido {
     @Column(name = "tubo_manual_elegido")
     private String tuboManualElegido;
 
-    /**
-     * Solo aplica a Riel de Onda Serena sin polea: cuál de los bastones fijos
-     * eligió el jefe. El nombre guardado aquí ES el nombre del insumo en el
-     * catálogo (ej: "Bastón 0.80", "Bastón 1.20", "Bastón 1.50").
-     */
+    /** Solo aplica a Riel de Onda Serena sin polea: cuál de los bastones fijos elegido eligió el jefe. */
     @Column(name = "baston_elegido")
     private String bastonElegido;
 
@@ -188,11 +184,12 @@ public class Pedido {
         return 2;
     }
 
-    @Transient
-    public int getCantidadTopePesa() {
-        return 2;
-    }
-
+    /**
+     * Tapa Perfil (antes había también un ítem separado llamado "Tope Pesa",
+     * que se fusionó aquí: eran el mismo accesorio físico, así que ahora solo
+     * existe UN ítem — "Tapa Perfil" — con 2 unidades, obligatorio en TODO
+     * pedido de fabricación, con o sin cabezal.
+     */
     @Transient
     public int getCantidadTapasPerfil() {
         return 2;
@@ -241,25 +238,21 @@ public class Pedido {
 
     // ─── CÁLCULOS TRANSIENT — RIEL DE ONDA SERENA ────────────────────────────
 
-    /** Riel = Ancho - 0.075 m (siete y medio centímetros de descuento). */
     @Transient
     public double getCorteRiel() {
         return Math.round((this.ancho - 0.075) * 1000.0) / 1000.0;
     }
 
-    /** Roachina corre el mismo largo que el riel ya cortado. */
     @Transient
     public double getCorteRielPines() {
         return getCorteRiel();
     }
 
-    /** Riata: siempre obligatoria, mismo ancho que el riel, con o sin polea. */
     @Transient
     public double getMedidaRiata() {
         return getCorteRiel();
     }
 
-    /** Solo aplica si usaPolea = true: el doble del ancho + 4 metros. */
     @Transient
     public double getCorteCuerdaOnda() {
         return Math.round((this.ancho * 2 + 4.0) * 1000.0) / 1000.0;
@@ -270,7 +263,6 @@ public class Pedido {
         return Boolean.TRUE.equals(this.usaPolea) ? 2 : 0;
     }
 
-    /** Crusador: obligatorio (1 por pedido) solo cuando el riel lleva polea. */
     @Transient
     public int getCantidadTerminalPolea() {
         return Boolean.TRUE.equals(this.usaPolea) ? 1 : 0;
@@ -281,23 +273,11 @@ public class Pedido {
         return Boolean.TRUE.equals(this.usaPolea) ? 0 : 2;
     }
 
-    /**
-     * Bastón: pieza fija por unidad (0.80 / 1.20 / 1.50 m según el elegido).
-     * Solo aplica cuando el riel NO lleva polea: siempre 1 unidad completa,
-     * no se corta ni se mide — solo se descuenta del stock del tipo elegido.
-     */
     @Transient
     public int getCantidadBaston() {
         return Boolean.TRUE.equals(this.usaPolea) ? 0 : 1;
     }
 
-    /**
-     * Soportes de riel según el ancho:
-     *   >= 3.50 m         → 5 soportes
-     *   >= 2.50 m         → 4 soportes
-     *   >= 1.50 y < 2.50  → 3 soportes
-     *   < 1.50 m          → 2 soportes (mínimo)
-     */
     @Transient
     public int getCantidadSoportesRiel() {
         int soportes;

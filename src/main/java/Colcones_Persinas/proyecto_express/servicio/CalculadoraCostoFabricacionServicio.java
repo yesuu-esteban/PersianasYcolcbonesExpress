@@ -11,32 +11,17 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Calcula el COSTO REAL DE FABRICACIÓN de un pedido de Taller (distinto
- * del "Precio de Venta" que ya existía, que en realidad es lo que se le
- * cobra al distribuidor por m² según el ancho de tela).
+ * Calcula el COSTO REAL DE FABRICACIÓN de un pedido de Taller.
  *
- * Cada componente (tela, tubo, pesa, cuerda, mecanismo, tapas de cabezal,
- * tapas de perfil de pesa, pitillo) usa las MISMAS cantidades que el
- * sistema ya calcula normalmente para la ficha técnica
- * (Pedido.getCorteTelaAncho(), getCantidadTapas(), etc.), multiplicadas
- * por el precio unitario que el jefe define libremente en
- * /inventario/precios — así que si sube el precio de la tela, el costo
- * de todos los pedidos se actualiza solo, sin tocar código.
+ * NOTA sobre "Tope Pesa": ESTE ÍTEM SE ELIMINÓ. Antes existía como un
+ * concepto de precio y de inventario separado de "Tapa Perfil", pero eran
+ * el mismo accesorio físico. Ahora solo existe "Tapas de Perfil (Pesa)"
+ * con 2 unidades, obligatorio en TODO pedido de fabricación.
  *
- * NOTA sobre "Mecanismo (Control y accesorios)": este ítem es un precio
- * FIJO por pedido (no se multiplica por nada) y representa el combo
- * completo del control — terminal, conectores y topes de la cadenilla
- * incluidos — como un solo cobro, sin importar cuántas piezas físicas
- * de cada uno se usen internamente. Existen DOS ítems de precio distintos:
+ * NOTA sobre "Mecanismo (Control y accesorios)": ítem FIJO por pedido.
+ * Existen dos precios distintos:
  *   - "Mecanismo (Control y accesorios)"      → Control R16, R8 A, R8 B
- *   - "Mecanismo (Control y accesorios) R24"  → Control R24 (mecanismo
- *     especial, con soportes más grandes, que cuesta distinto)
- * El ítem correcto se elige según pedido.getTipoControl().
- *
- * NOTA sobre "Tapas de Perfil (Pesa)": son las 2 tapas que obligatoriamente
- * lleva el perfil de la pesa en TODO pedido de fabricación, sin importar si
- * el pedido lleva cabezal o no. Es distinto del ítem "Tapas", que solo
- * aplica cuando el pedido SÍ lleva cabezal (getCantidadTapas()).
+ *   - "Mecanismo (Control y accesorios) R24"  → Control R24
  */
 @Service
 public class CalculadoraCostoFabricacionServicio {
@@ -52,55 +37,36 @@ public class CalculadoraCostoFabricacionServicio {
         List<String> faltantes = new ArrayList<>();
         BigDecimal total = BigDecimal.ZERO;
 
-        // Venta Directa y Riel de Onda Serena no usan esta fórmula (por ahora):
-        // no tienen tela/tubo/pesa/pitillo en el mismo sentido que fabricación normal.
         if (pedido.isVentaDirecta() || pedido.isRielOndaSerena()) {
             return new ResultadoCostoFabricacion(lineas, BigDecimal.ZERO, faltantes);
         }
 
-        // ── Tela: ancho de corte × alto de corte × precio por m² ──
         total = total.add(agregarPorArea(lineas, faltantes, "Tela",
                 pedido.getCorteTelaAncho(), pedido.getCorteTelaAlto()));
 
-        // ── Tubo: el nombre depende de si el pedido usa R16, R24 u R8 ──
         String nombreTubo = "Tubo " + pedido.getTuboRecomendado();
         total = total.add(agregarPorAncho(lineas, faltantes, nombreTubo, pedido.getCorteTuberia()));
 
-        // ── Pesa: acompaña al tubo, mismo ancho de corte ──
         total = total.add(agregarPorAncho(lineas, faltantes, "Pesa", pedido.getCorteTuberia()));
 
-        // ── Tapas de Perfil (Pesa): obligatorias, siempre 2 unidades,
-        //    con o sin cabezal — distinto del ítem "Tapas" (solo con cabezal). ──
-        total = total.add(agregarPorCantidad(lineas, faltantes, "Tapas de Perfil (Pesa)", 2));
+        // Tapas de Perfil (Pesa): obligatorias, 2 und., con o sin cabezal.
+        // (Antes también existía "Tope Pesa" por separado; se eliminó/fusionó aquí.)
+        total = total.add(agregarPorCantidad(lineas, faltantes, "Tapas de Perfil (Pesa)", pedido.getCantidadTapasPerfil()));
 
-        // ── Cuerda / Cadenilla (Blackout): metros de cuerda (3 o 4 según altura) ──
         total = total.add(agregarPorLargo(lineas, faltantes, "Cuerda / Cadenilla (Blackout)",
                 pedido.getMetrosCuerda()));
 
-        // ── Mecanismo (Control y accesorios): precio fijo por pedido.
-        //    Representa el combo completo: control + terminal + conectores
-        //    + topes de la cadenilla, como un solo cobro. El ítem de precio
-        //    a usar depende del tipo de control real del pedido: Control R24
-        //    usa su propio precio (mecanismo especial más costoso); el resto
-        //    (R16, R8 A, R8 B) usa el genérico. ──
         String nombreMecanismo = "Control R24".equals(pedido.getTipoControl())
                 ? "Mecanismo (Control y accesorios) R24"
                 : "Mecanismo (Control y accesorios)";
         total = total.add(agregarFijo(lineas, faltantes, nombreMecanismo));
 
-        // ── Tapas (de cabezal): cantidad de tapas que use este pedido en particular ──
-        total = total.add(agregarPorCantidad(lineas, faltantes, "Tapas", pedido.getCantidadTapas()));
+        total = total.add(agregarPorCantidad(lineas, faltantes, "Tapa Cabezal", pedido.getCantidadTapas()));
 
-        // ── Pitillo: mismo ancho de corte de tela ──
         total = total.add(agregarPorAncho(lineas, faltantes, "Pitillo", pedido.getCortePitilloPesa()));
 
         return new ResultadoCostoFabricacion(lineas, total, faltantes);
     }
-
-    // ═══════════════════════════════════════════════════════════════
-    // HELPERS — cada uno busca el precio por nombre; si no existe,
-    // agrega el nombre a "faltantes" y devuelve 0 sin romper el cálculo.
-    // ═══════════════════════════════════════════════════════════════
 
     private BigDecimal agregarPorArea(List<LineaCostoFabricacion> lineas, List<String> faltantes,
                                        String nombre, double ancho, double alto) {

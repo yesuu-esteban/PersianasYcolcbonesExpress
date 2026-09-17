@@ -7,10 +7,6 @@ import org.springframework.stereotype.Component;
 
 import java.util.Optional;
 
-/**
- * Crea los insumos básicos que el sistema necesita para poder verificar
- * material en cada pedido, únicamente si todavía no existen.
- */
 @Component
 public class InsumoBaseInicializador implements CommandLineRunner {
 
@@ -33,47 +29,58 @@ public class InsumoBaseInicializador implements CommandLineRunner {
         crearSiNoExiste("Control R8 A", false, "Control para pedidos con Tubo R8. Se maneja por unidad.");
         crearSiNoExiste("Control R8 B",          false, "Control para pedidos con ancho <= 1.50 m. Se maneja por unidad.");
         crearSiNoExiste("Soporte",               false, "Soporte de instalación. Se usan 2 en todo pedido, con o sin cabezal.");
-        crearSiNoExiste("Tapa",                  false, "Tapa de cabezal. Se usan 2 únicamente en pedidos CON cabezal.");
-        crearSiNoExiste("Tope Pesa",             false, "Tope de pesa. Se usan 2 en todo pedido, con o sin cabezal.");
-        crearSiNoExiste("Tapa Perfil",           false, "Tapas de perfil de la pesa. Se usan 2 en TODO pedido de fabricación, con o sin cabezal.");
+        crearSiNoExiste("Tapa Cabezal",          false, "Tapa de cabezal. Se usan 2 únicamente en pedidos CON cabezal.");
+        crearSiNoExiste("Tapa Perfil",           false, "Tapas de perfil de la pesa. Se usan 2 en TODO pedido de fabricación, con o sin cabezal. (Fusiona lo que antes era 'Tope Pesa': mismo accesorio físico.)");
         crearSiNoExiste("Tornillo",              false, "Tornillo normal. Sin cabezal: 2 (soportes). Con cabezal: 8 (soportes + tapas).");
         crearSiNoExiste("Tornillo Perforante",   false, "Tornillo perforante. Solo en pedidos CON cabezal: 4 unidades.");
 
-        // ── Riel de Onda Serena ──────────────────────────────────────────
         crearSiNoExiste("Polea",                 false, "Polea del riel de onda serena. Obligatoria (2 por pedido) cuando el riel lleva polea.");
         crearSiNoExiste("Crusador",              false, "Terminal/control de la polea del riel de onda serena (antes 'Terminal Control Polea'). Obligatorio (1 por pedido) cuando el riel lleva polea.");
         crearSiNoExiste("Tapa Riel",             false, "Tapa de riel de onda serena. Obligatoria (2 por pedido) cuando el riel NO lleva polea.");
         crearSiNoExiste("Roachina",              true,  "Riel de pines del riel de onda serena (antes 'Riel de Pines'). Por medida, obligatoria siempre.");
         crearSiNoExiste("Riata",                 true,  "Riata del riel de onda serena. Por medida, se corta al mismo ancho que el riel. Obligatoria SIEMPRE, con o sin polea.");
-
-        // ── Soporte de riel: por unidad, cantidad variable según ancho (ver Pedido.getCantidadSoportesRiel()) ──
         crearSiNoExiste("Soporte Riel", false, "Soporte de instalación del riel de onda serena. Cantidad variable según el ancho del pedido.");
 
-        // ── Bastones de riel: piezas FIJAS por unidad (NO se cortan ni se miden).
-        //    Cada uno tiene una longitud fija de fábrica, y esa medida ES el
-        //    nombre del insumo, para que aparezca así en pantalla e impresión
-        //    ("Bastón 0.80", "Bastón 1.20", "Bastón 1.50"). El jefe elige
-        //    manualmente cuál usar; el sistema solo descuenta 1 unidad completa
-        //    del tipo elegido. Se usan cuando el riel NO lleva polea. ──
         crearSiNoExiste("Bastón 0.80", false, "Bastón fijo de 0.80 m del riel de onda serena. Se descuenta como unidad completa, no se corta.");
         crearSiNoExiste("Bastón 1.20", false, "Bastón fijo de 1.20 m del riel de onda serena. Se descuenta como unidad completa, no se corta.");
         crearSiNoExiste("Bastón 1.50", false, "Bastón fijo de 1.50 m del riel de onda serena. Se descuenta como unidad completa, no se corta.");
 
-        // ── FIX de migración: renombra los insumos viejos "Bastón Tipo A/B/C" a
-        // los nombres nuevos por medida ("Bastón 0.80" etc.) si ya existían en
-        // la base de datos, conservando su stock actual. También corrige a
-        // tieneMedida = false si por error habían quedado como por medida
-        // (la pantalla de edición no permite cambiar ese campo una vez creado,
-        // así que esta corrección se hace directamente por código). ──
-        migrarNombreBaston("Bastón Tipo A", "Bastón 0.80");
-        migrarNombreBaston("Bastón Tipo B", "Bastón 1.20");
-        migrarNombreBaston("Bastón Tipo C", "Bastón 1.50");
+        // ── Migraciones de nombres antiguos ──
+        migrarNombreInsumo("Bastón Tipo A", "Bastón 0.80");
+        migrarNombreInsumo("Bastón Tipo B", "Bastón 1.20");
+        migrarNombreInsumo("Bastón Tipo C", "Bastón 1.50");
         corregirBastonAPorUnidad("Bastón 0.80");
         corregirBastonAPorUnidad("Bastón 1.20");
         corregirBastonAPorUnidad("Bastón 1.50");
+        migrarNombreInsumo("Tapa", "Tapa Cabezal");
+
+        // ── FIX: "Tope Pesa" se fusiona con "Tapa Perfil" (eran el mismo
+        // accesorio físico). Si "Tope Pesa" existía con stock, ese stock se
+        // suma al de "Tapa Perfil" para no perder inventario físico real, y
+        // luego se elimina el insumo "Tope Pesa". ──
+        fusionarTopePesaConTapaPerfil();
     }
 
-    private void migrarNombreBaston(String nombreViejo, String nombreNuevo) {
+    private void fusionarTopePesaConTapaPerfil() {
+        Optional<Insumo> topePesaOpt = insumoRepository.findByNombreIgnoreCase("Tope Pesa");
+        if (topePesaOpt.isEmpty()) return;
+
+        Insumo topePesa = topePesaOpt.get();
+        Optional<Insumo> tapaPerfilOpt = insumoRepository.findByNombreIgnoreCase("Tapa Perfil");
+
+        if (tapaPerfilOpt.isPresent()) {
+            Insumo tapaPerfil = tapaPerfilOpt.get();
+            int stockTope = topePesa.getStockUnidades() != null ? topePesa.getStockUnidades() : 0;
+            int stockTapa = tapaPerfil.getStockUnidades() != null ? tapaPerfil.getStockUnidades() : 0;
+            tapaPerfil.setStockUnidades(stockTope + stockTapa);
+            insumoRepository.save(tapaPerfil);
+            System.out.println("[InsumoBaseInicializador] Fusionado \"Tope Pesa\" (stock " + stockTope
+                    + ") dentro de \"Tapa Perfil\" (stock ahora: " + (stockTope + stockTapa) + "). Eliminando \"Tope Pesa\".");
+        }
+        insumoRepository.delete(topePesa);
+    }
+
+    private void migrarNombreInsumo(String nombreViejo, String nombreNuevo) {
         Optional<Insumo> viejo = insumoRepository.findByNombreIgnoreCase(nombreViejo);
         if (viejo.isPresent() && insumoRepository.findByNombreIgnoreCase(nombreNuevo).isEmpty()) {
             Insumo insumo = viejo.get();

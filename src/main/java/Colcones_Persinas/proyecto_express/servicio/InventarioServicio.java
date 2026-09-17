@@ -21,16 +21,7 @@ public class InventarioServicio {
     private final RetazoTelaRepository retazoTelaRepository;
 
     private static final double UMBRAL_DESCARTE_RETAZO = 0.05;
-
-    /**
-     * Umbral general de descarte automático: cualquier pieza, rollo o insumo con
-     * medida que, DESPUÉS DE USARSE en un pedido, quede con menos de esto,
-     * se elimina solo del inventario (ya no sirve para nada práctico).
-     * Esto SOLO aplica al descontar/cortar material — nunca al crearlo o
-     * cargarlo manualmente, eso se respeta tal cual lo registre el jefe.
-     */
     private static final double UMBRAL_DESCARTE_PIEZA = 0.40;
-
     private static final List<Double> ANCHOS_COMERCIALES = Arrays.asList(1.83, 2.50, 3.00);
 
     public InventarioServicio(RolloTelaRepository rolloTelaRepository,
@@ -82,7 +73,6 @@ public class InventarioServicio {
         public String conectorInfo;
         public String soporteInfo;
         public String tapaInfo;
-        public String topePesaInfo;
         public String tapaPerfilInfo;
         public String tornilloInfo;
         public String tornilloPerforanteInfo;
@@ -99,21 +89,15 @@ public class InventarioServicio {
         public List<MaterialUsado> detalle;
     }
 
-    /**
-     * Nivel de severidad de una alerta de inventario.
-     * ADVERTENCIA = amarillo (ya hay que pensar en pedir más).
-     * CRITICO     = rojo (pedir ya, riesgo real de quedarse sin material).
-     * AGOTADO     = gris/negro (ya no hay nada).
-     */
     public enum NivelAlerta {
         ADVERTENCIA, CRITICO, AGOTADO
     }
 
     public static class AlertaInventario {
         public NivelAlerta nivel;
-        public String titulo;       // ej: "Tela Blanco 1.83m"
-        public String mensaje;      // ej: "Solo queda 1 rollo (12.5 m restantes)"
-        public String categoria;    // "TELA", "INSUMO_UNIDAD", "INSUMO_MEDIDA"
+        public String titulo;
+        public String mensaje;
+        public String categoria;
 
         public AlertaInventario(NivelAlerta nivel, String titulo, String mensaje, String categoria) {
             this.nivel = nivel;
@@ -123,27 +107,12 @@ public class InventarioServicio {
         }
     }
 
-    /**
-     * Insumo agregado manualmente al pedido (fuera del cálculo automático),
-     * por ejemplo "2 Tornillos extra" o "1 Control de más" que el jefe
-     * agrega a discreción para una orden específica.
-     *
-     * insumoId != null  → existe en el catálogo, se descuenta del inventario real.
-     * insumoId == null  → nombre libre, no existe en catálogo; solo queda
-     *                      registrado en el reporte, no se descuenta nada.
-     */
     public static class ExtraInsumo {
         public Integer insumoId;
         public String nombreLibre;
         public double cantidad;
     }
 
-    /**
-     * Ítem de tela vendida directamente por metros lineales (Venta Directa),
-     * fuera del flujo de fabricación con corte calculado. rolloId permite
-     * seleccionar un rollo específico; si es null se busca automáticamente
-     * por color + ancho comercial.
-     */
     public static class ItemTelaVenta {
         public Integer rolloId;
         public String color;
@@ -151,8 +120,9 @@ public class InventarioServicio {
         public double metros;
     }
 
-    private static final int UMBRAL_UNIDAD_ADVERTENCIA_DEFECTO = 50; // usado si el insumo no tiene umbralAlerta propio
-    private static final double UMBRAL_METROS_CRITICO_DEFECTO = 5.0; // metros totales restantes; < esto = critico
+    private static final int UMBRAL_UNIDAD_ADVERTENCIA_DEFECTO = 50;
+    private static final double UMBRAL_METROS_CRITICO_DEFECTO = 5.0;
+
     // ═══════════════════════════════════════════════════════════════
     // BÚSQUEDA DE RETAZO
     // ═══════════════════════════════════════════════════════════════
@@ -296,8 +266,6 @@ public class InventarioServicio {
         r.setMetrosUsados(metros);
         r.setSeleccionManual(manual);
 
-        // Umbral general: si tras usarla queda muy poquito, ya no sirve de nada
-        // práctico y se descarta automáticamente del inventario.
         if (sobrante < UMBRAL_DESCARTE_PIEZA) {
             r.setMetrosSobrantes(0.0);
             piezaInsumoRepository.delete(pieza);
@@ -384,7 +352,6 @@ public class InventarioServicio {
         r.setMetrosCuadrados(redondear(pedido.getCorteTelaAncho() * pedido.getCorteTelaAlto()));
         r.setSeleccionManual(manual);
 
-        // Si al rollo le queda muy poca tela útil, se descarta automáticamente.
         if (restante < UMBRAL_DESCARTE_PIEZA) {
             r.setMetrosSobrantes(0.0);
             rolloTelaRepository.delete(rollo);
@@ -443,7 +410,6 @@ public class InventarioServicio {
         r.setMetrosUsados(metros);
         r.setSeleccionManual(manual);
 
-        // Umbral general de descarte automático tras el corte (tubos, pesas, cuerdas, etc.).
         if (sobrante < UMBRAL_DESCARTE_PIEZA) {
             r.setMetrosSobrantes(0.0);
             piezaInsumoRepository.delete(pieza);
@@ -477,6 +443,10 @@ public class InventarioServicio {
 
     // ═══════════════════════════════════════════════════════════════
     // VERIFICACIÓN PREVIA — respeta la selección manual del jefe
+    //
+    // NOTA: "Tope Pesa" se ELIMINÓ como concepto: se fusionó con "Tapa
+    // Perfil" (eran el mismo accesorio físico). Ahora solo se verifica
+    // y descuenta "Tapa Perfil" (2 und., siempre).
     // ═══════════════════════════════════════════════════════════════
 
     public void verificarDisponibilidad(Pedido pedido) {
@@ -593,21 +563,13 @@ public class InventarioServicio {
         }
 
         if (Boolean.TRUE.equals(pedido.getUsaCabezal())) {
-            Insumo tapa = obtenerInsumoPorNombre("Tapa");
+            Insumo tapa = obtenerInsumoPorNombre("Tapa Cabezal");
             int stockTapa = tapa.getStockUnidades() != null ? tapa.getStockUnidades() : 0;
             if (stockTapa < pedido.getCantidadTapas()) {
                 throw new MaterialInsuficienteException(
-                        "No hay suficiente \"Tapa\". Disponible: " + stockTapa
+                        "No hay suficiente \"Tapa Cabezal\". Disponible: " + stockTapa
                         + " unidad(es), necesario: " + pedido.getCantidadTapas() + ".");
             }
-        }
-
-        Insumo topePesa = obtenerInsumoPorNombre("Tope Pesa");
-        int stockTopePesa = topePesa.getStockUnidades() != null ? topePesa.getStockUnidades() : 0;
-        if (stockTopePesa < pedido.getCantidadTopePesa()) {
-            throw new MaterialInsuficienteException(
-                    "No hay suficiente \"Tope Pesa\". Disponible: " + stockTopePesa
-                    + " unidad(es), necesario: " + pedido.getCantidadTopePesa() + ".");
         }
 
         Insumo tapaPerfil = obtenerInsumoPorNombre("Tapa Perfil");
@@ -782,10 +744,8 @@ public class InventarioServicio {
         descontarInsumoPorUnidad(pedido, "Soporte", pedido.getCantidadSoportes());
 
         if (Boolean.TRUE.equals(pedido.getUsaCabezal())) {
-            descontarInsumoPorUnidad(pedido, "Tapa", pedido.getCantidadTapas());
+            descontarInsumoPorUnidad(pedido, "Tapa Cabezal", pedido.getCantidadTapas());
         }
-
-        descontarInsumoPorUnidad(pedido, "Tope Pesa", pedido.getCantidadTopePesa());
 
         descontarInsumoPorUnidad(pedido, "Tapa Perfil", pedido.getCantidadTapasPerfil());
 
@@ -834,17 +794,7 @@ public class InventarioServicio {
     }
 
     // ═══════════════════════════════════════════════════════════════
-    // RIEL DE ONDA SERENA — verificación y descuento de sus cortes y
-    // accesorios obligatorios.
-    //
-    //   - Riel Onda Serena → por medida, siempre.
-    //   - Roachina (antes "Riel de Pines") → por medida, siempre.
-    //   - Riata → por medida, SIEMPRE (con o sin polea), mismo ancho que el riel.
-    //   - Con polea: Cuerda Onda Serena (medida), Polea (unidad), Crusador
-    //     (unidad, antes "Terminal Control Polea").
-    //   - Sin polea: Tapa Riel (unidad), Bastón 0.80/1.20/1.50 (unidad, pieza
-    //     fija elegida manualmente por el jefe — no se corta ni se mide).
-    //   - Soporte Riel → por unidad, cantidad variable según el ancho, SIEMPRE.
+    // RIEL DE ONDA SERENA
     // ═══════════════════════════════════════════════════════════════
 
     public void verificarRielOndaSerena(Pedido pedido) {
@@ -854,7 +804,6 @@ public class InventarioServicio {
         Insumo roachina = obtenerInsumoPorNombre("Roachina");
         buscarMejorPieza(roachina, pedido.getCorteRielPines());
 
-        // Riata: siempre obligatoria, con o sin polea, mismo ancho que el riel.
         Insumo riata = obtenerInsumoPorNombre("Riata");
         buscarMejorPieza(riata, pedido.getMedidaRiata());
 
@@ -886,8 +835,6 @@ public class InventarioServicio {
                         + " unidad(es), necesario: " + pedido.getCantidadTapasRiel() + ".");
             }
 
-            // Bastón: pieza fija POR UNIDAD (0.80 / 1.20 / 1.50 m según elegido).
-            // No se corta ni se mide, solo se descuenta 1 unidad completa del tipo elegido.
             String nombreBaston = (pedido.getBastonElegido() != null && !pedido.getBastonElegido().isBlank())
                     ? pedido.getBastonElegido() : "Bastón 0.80";
             Insumo baston = obtenerInsumoPorNombre(nombreBaston);
@@ -899,7 +846,6 @@ public class InventarioServicio {
             }
         }
 
-        // Soporte de riel: por unidad, cantidad variable según el ancho. Siempre se verifica.
         Insumo soporteRiel = obtenerInsumoPorNombre("Soporte Riel");
         int stockSoporteRiel = soporteRiel.getStockUnidades() != null ? soporteRiel.getStockUnidades() : 0;
         if (stockSoporteRiel < pedido.getCantidadSoportesRiel()) {
@@ -918,7 +864,6 @@ public class InventarioServicio {
         PiezaInsumo piezaRoachina = buscarMejorPieza(roachina, pedido.getCorteRielPines());
         descontarInsumoConMedida(pedido, piezaRoachina, pedido.getCorteRielPines(), false);
 
-        // Riata: siempre obligatoria, se corta al mismo ancho del riel.
         Insumo riata = obtenerInsumoPorNombre("Riata");
         PiezaInsumo piezaRiata = buscarMejorPieza(riata, pedido.getMedidaRiata());
         descontarInsumoConMedida(pedido, piezaRiata, pedido.getMedidaRiata(), false);
@@ -933,13 +878,11 @@ public class InventarioServicio {
         } else {
             descontarInsumoPorUnidad(pedido, "Tapa Riel", pedido.getCantidadTapasRiel());
 
-            // Bastón: por unidad, 1 unidad completa del tipo elegido, sin corte.
             String nombreBaston = (pedido.getBastonElegido() != null && !pedido.getBastonElegido().isBlank())
                     ? pedido.getBastonElegido() : "Bastón 0.80";
             descontarInsumoPorUnidad(pedido, nombreBaston, pedido.getCantidadBaston());
         }
 
-        // Soporte de riel: por unidad, cantidad variable según el ancho, siempre se descuenta.
         descontarInsumoPorUnidad(pedido, "Soporte Riel", pedido.getCantidadSoportesRiel());
     }
 
@@ -1161,21 +1104,13 @@ public class InventarioServicio {
 
         if (Boolean.TRUE.equals(pedido.getUsaCabezal())) {
             intentar(res, () -> {
-                Insumo tapa = obtenerInsumoPorNombre("Tapa");
+                Insumo tapa = obtenerInsumoPorNombre("Tapa Cabezal");
                 int stock = tapa.getStockUnidades() != null ? tapa.getStockUnidades() : 0;
                 int necesario = pedido.getCantidadTapas();
-                if (stock < necesario) throw new MaterialInsuficienteException("Sin stock suficiente de \"Tapa\".");
-                res.tapaInfo = "Tapa ×" + necesario + " · quedarían " + (stock - necesario);
+                if (stock < necesario) throw new MaterialInsuficienteException("Sin stock suficiente de \"Tapa Cabezal\".");
+                res.tapaInfo = "Tapa Cabezal ×" + necesario + " · quedarían " + (stock - necesario);
             });
         }
-
-        intentar(res, () -> {
-            Insumo topePesa = obtenerInsumoPorNombre("Tope Pesa");
-            int stock = topePesa.getStockUnidades() != null ? topePesa.getStockUnidades() : 0;
-            int necesario = pedido.getCantidadTopePesa();
-            if (stock < necesario) throw new MaterialInsuficienteException("Sin stock suficiente de \"Tope Pesa\".");
-            res.topePesaInfo = "Tope Pesa ×" + necesario + " · quedarían " + (stock - necesario);
-        });
 
         intentar(res, () -> {
             Insumo tapaPerfil = obtenerInsumoPorNombre("Tapa Perfil");
@@ -1219,22 +1154,6 @@ public class InventarioServicio {
         }
     }
 
-    /**
-     * Ancho comercial de rollo necesario (1.83 / 2.50 / 3.00 m).
-     *
-     * Regla del taller: lo que tiene que caber DENTRO del ancho del rollo es
-     * el LARGO de la persiana (el alto/caída de la tela — corteTelaAlto), NO
-     * la medida más chica entre ancho y alto. El ancho de la persiana se corta
-     * a lo largo del rollo (que trae 30 m, prácticamente sin límite de
-     * longitud), así que ese no es el que restringe qué ancho comercial hace
-     * falta.
-     *
-     * Si el largo es mayor a 3.00 m (el rollo comercial más ancho que se
-     * maneja), es un caso especial que no se resuelve con un solo corte
-     * estándar (requiere revisión manual aparte); aquí se sigue devolviendo
-     * 3.00 y, si ningún rollo de 3.00 m alcanza, la búsqueda de material
-     * terminará señalando que no hay suficiente tela disponible.
-     */
     public double anchoComercialDe(Pedido pedido) {
         double largo = pedido.getCorteTelaAlto();
         if (largo <= 1.83) return 1.83;
@@ -1242,12 +1161,6 @@ public class InventarioServicio {
         return 3.00;
     }
 
-    /**
-     * Metros lineales que se consumen del rollo: el ANCHO de la persiana
-     * (corteTelaAncho), porque ese es el que se corta a lo largo del rollo.
-     * El LARGO (corteTelaAlto) es el que determina qué ancho comercial de
-     * rollo hace falta (ver anchoComercialDe) — no cuánto se descuenta.
-     */
     public double metrosADescontarDeRollo(Pedido pedido) {
         return pedido.getCorteTelaAncho();
     }
@@ -1342,8 +1255,6 @@ public class InventarioServicio {
         }
     }
 
-    // ── Alertas de tela (por color + ancho) ─────────────────────────
-
     private List<AlertaInventario> alertasDeTela() {
         List<AlertaInventario> alertas = new ArrayList<>();
 
@@ -1391,18 +1302,6 @@ public class InventarioServicio {
         return alertas;
     }
 
-    // ── Alertas de insumos (por unidad y por medida/piezas) ─────────
-    //
-    // Para insumos POR MEDIDA (tubo, cuerda, pesa, riel, etc.) ya no basta
-    // con sumar metros totales: si hay, por ejemplo, 3 tubos de 6m sin usar,
-    // suman 18m y nunca alertaba aunque en realidad solo quedan 3 piezas
-    // completas. Ahora se cuenta cuántas piezas están COMPLETAS (sin
-    // cortar, largoRestante ≈ largoInicial) contra cuántas son retazos
-    // parciales, y se alerta en función de eso además de los metros totales.
-    // Este método es genérico: se aplica automáticamente a CUALQUIER insumo
-    // con tieneMedida = true del catálogo, incluyendo Riel Onda Serena,
-    // Roachina y Riata — no requiere lógica especial.
-
     private List<AlertaInventario> alertasDeInsumos() {
         List<AlertaInventario> alertas = new ArrayList<>();
 
@@ -1410,7 +1309,6 @@ public class InventarioServicio {
 
         for (Insumo insumo : insumos) {
             if (Boolean.TRUE.equals(insumo.getTieneMedida())) {
-                // ── Insumo por medida (tubo, cuerda, pesa, riel, roachina, riata, etc.) ──
                 List<PiezaInsumo> piezas = piezaInsumoRepository.findByInsumoIdOrderByLargoRestanteAsc(insumo.getId());
 
                 List<PiezaInsumo> conMaterial = piezas.stream()
@@ -1421,8 +1319,6 @@ public class InventarioServicio {
                         .mapToDouble(PiezaInsumo::getLargoRestante)
                         .sum();
 
-                // Pieza "completa" = todavía no se le ha cortado nada (llegó entera y sigue entera).
-                // Pieza "parcial" = ya se usó parte de ella, es un sobrante.
                 long piezasCompletas = conMaterial.stream()
                         .filter(p -> p.getLargoRestante() >= p.getLargoInicial() - 0.01)
                         .count();
@@ -1441,8 +1337,6 @@ public class InventarioServicio {
                             "INSUMO_MEDIDA"));
 
                 } else if (piezasCompletas == 0) {
-                    // Ya no quedan piezas enteras, solo retazos sueltos: aunque sumen varios
-                    // metros, para un pedido nuevo puede que ninguna alcance por sí sola.
                     alertas.add(new AlertaInventario(
                             NivelAlerta.CRITICO,
                             insumo.getNombre(),
@@ -1471,7 +1365,6 @@ public class InventarioServicio {
                 }
 
             } else {
-                // ── Insumo por unidad (sin cambios) ──
                 int stock = insumo.getStockUnidades() != null ? insumo.getStockUnidades() : 0;
 
                 int umbralAdvertencia = (insumo.getUmbralAlerta() != null && insumo.getUmbralAlerta() > 0)
@@ -1503,6 +1396,7 @@ public class InventarioServicio {
 
         return alertas;
     }
+
     // ═══════════════════════════════════════════════════════════════
     // INSUMOS EXTRA (agregados manualmente al pedido)
     // ═══════════════════════════════════════════════════════════════

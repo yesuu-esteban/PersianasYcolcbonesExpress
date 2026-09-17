@@ -142,19 +142,16 @@
             </div>
         </div>
 
-        <!-- Previsualización de material -->
         <div class="previsualizacion mb-3" id="cajaPrevisualizacion">
             <span class="cargando">Cargando disponibilidad de material...</span>
         </div>
 
-        <!-- Botón para abrir selección manual -->
         <div class="mb-3">
             <button type="button" class="toggle-manual" onclick="toggleManual(this)">
                 ⚙ Cambiar material manualmente (retazos, piezas específicas)
             </button>
         </div>
 
-        <!-- Panel de selección manual -->
         <div class="seccion-manual" style="display:none;" id="panelManual">
             <p class="fw-bold mb-2" style="font-size:0.83rem">
                 ⚙ Selección manual
@@ -162,7 +159,6 @@
             </p>
             <div class="row g-2">
 
-                <!-- Tela: retazo + rollo, igual que nuevo_pedido -->
                 <div class="col-md-6 col-lg-4">
                     <label class="form-label">🧵 Tela (rollo o retazo)</label>
                     <select name="retazoManual" id="selectRetazo" class="form-select form-select-sm">
@@ -173,7 +169,6 @@
                     </select>
                 </div>
 
-                <!-- Tipo de tubo ya está arriba, pero el select de pieza de tubo va aquí -->
                 <div class="col-md-6 col-lg-4">
                     <label class="form-label">🔩 Pieza de tubo</label>
                     <select name="tuboManual" id="selectTubo" class="form-select form-select-sm">
@@ -181,7 +176,6 @@
                     </select>
                 </div>
 
-                <!-- Cabezal: solo visible si ckCabezal está marcado -->
                 <div class="col-md-6 col-lg-4" id="filaCabezalManual" style="display:none;">
                     <label class="form-label">🪟 Pieza de cabezal</label>
                     <select name="cabezalManual" id="selectCabezal" class="form-select form-select-sm">
@@ -203,7 +197,6 @@
                     </select>
                 </div>
 
-                <!-- Pitillo: solo visible si ckPitillo está marcado -->
                 <div class="col-md-6 col-lg-4" id="filaPitilloManual">
                     <label class="form-label">🪡 Pieza de pitillo</label>
                     <select name="pitilloManual" id="selectPitillo" class="form-select form-select-sm">
@@ -214,7 +207,6 @@
             </div>
         </div>
 
-        <!-- ═══════════ INSUMOS ADICIONALES (extras de toda la orden) ═══════════ -->
         <div class="seccion-extras">
             <p class="fw-bold mb-2">➕ Insumos adicionales (opcional)</p>
             <p class="text-muted mb-2" style="font-size:0.82rem;">
@@ -232,7 +224,6 @@
     </form>
 </div>
 
-<!-- Variables del servidor inyectadas para el JS -->
 <script th:inline="javascript">
     /*<![CDATA[*/
     const rollosDisponibles  = /*[[${rollosDisponibles}]]*/ [];
@@ -244,7 +235,6 @@
 </script>
 
 <script>
-    // ── Referencias DOM ───────────────────────────────────────────
     const campoAncho     = document.getElementById('campoAncho');
     const campoAltura    = document.getElementById('campoAltura');
     const campoColor     = document.getElementById('campoColor');
@@ -264,7 +254,6 @@
     const filaCabezal   = document.getElementById('filaCabezalManual');
     const filaPitillo   = document.getElementById('filaPitilloManual');
 
-    // ── Toggle del panel manual ───────────────────────────────────
     function toggleManual(btn) {
         const panel = document.getElementById('panelManual');
         const vis = panel.style.display !== 'none';
@@ -273,8 +262,6 @@
             ? '⚙ Cambiar material manualmente (retazos, piezas específicas)'
             : '✕ Cerrar selección manual';
     }
-
-    // ── Generadores de opciones (igual lógica que nuevo_pedido) ───
 
     function opcionesRetazo(color, anchoNecesario, altoNecesario) {
         const candidatos = retazosDisponibles.filter(r =>
@@ -323,7 +310,6 @@
         return html;
     }
 
-    // ── Actualiza todos los selects del panel manual ──────────────
     function actualizarSelectsManual() {
         const color   = campoColor.value;
         const ancho   = parseFloat(campoAncho.value) || 0;
@@ -343,14 +329,12 @@
         const anchoCorte = ancho > 0 ? ancho - descTela : 0;
         const altoCorte  = alto  > 0 ? alto  + 0.20    : 0;
 
-        // Guardar selección previa para no perderla al refrescar
         const retazoVal = selectRetazo.value;
         const rolloVal  = selectRollo.value;
 
         selectRetazo.innerHTML  = opcionesRetazo(color, anchoCorte, altoCorte);
         selectRollo.innerHTML   = opcionesRollo(color);
 
-        // Restaurar si el usuario ya había elegido algo
         if (retazoVal !== 'auto') selectRetazo.value = retazoVal;
         if (rolloVal  !== 'auto') selectRollo.value  = rolloVal;
 
@@ -365,7 +349,6 @@
         filaPitillo.style.display = ckPitillo.checked ? '' : 'none';
     }
 
-    // ── Debounce antes de consultar ───────────────────────────────
     let timer = null;
     function disparar() {
         clearTimeout(timer);
@@ -375,7 +358,6 @@
         }, 420);
     }
 
-    // ── Previsualización AJAX ─────────────────────────────────────
     async function consultarPrevisualizacion() {
         const ancho    = campoAncho.value;
         const alto     = campoAltura.value;
@@ -385,7 +367,6 @@
         const conector = ckConector.checked;
         const tipoTuboManual = selectTipoTubo.value;
 
-        // Leer selección manual de tela para mostrarla en el resumen
         const retazoManualId = selectRetazo.value !== 'auto' ? selectRetazo.value : null;
         const rolloManualId  = selectRollo.value  !== 'auto' ? selectRollo.value  : null;
 
@@ -406,11 +387,6 @@
                 tipoTuboManual
             });
 
-            // ── FIX: adjuntar el token JWT manualmente. fetch() no pasa por el
-            // listener de click/submit de token-nav.js, así que sin esto la
-            // petición sale sin autenticar, Spring Security la redirige a
-            // /login, el navegador recibe HTML en vez de JSON y r.json() truena
-            // (por eso siempre caía en "No se pudo consultar el inventario").
             const token = sessionStorage.getItem('authToken');
             if (token) params.set('token', token);
 
@@ -430,7 +406,6 @@
                 let html = '<strong>✓ Material disponible para esta configuración</strong>';
                 html += '<table style="width:100%;border-collapse:collapse;margin-top:7px">';
 
-                // ── Tela: primero revisar si el jefe eligió algo manualmente ──
                 if (retazoManualId) {
                     const retazo = retazosDisponibles.find(r => String(r.id) === String(retazoManualId));
                     if (retazo) {
@@ -460,8 +435,7 @@
                 if (d.pitilloSugerido)        html += fila2('🪡 Pitillo',        `${cAncho} m`,                   d.pitilloSugerido);
                 if (d.conectorInfo)           html += fila2('🔗 Conec./Tope',    '',                               d.conectorInfo);
                 if (d.soporteInfo)            html += fila2('🔩 Soporte',         '2 und.',                        d.soporteInfo);
-                if (d.tapaInfo)               html += fila2('🧢 Tapa',            '2 und.',                        d.tapaInfo);
-                if (d.topePesaInfo)           html += fila2('🔵 Tope Pesa',      '2 und.',                        d.topePesaInfo);
+                if (d.tapaInfo)               html += fila2('🧢 Tapa Cabezal',    '2 und.',                        d.tapaInfo);
                 if (d.tapaPerfilInfo)         html += fila2('🧢 Tapa Perfil',    '2 und.',                        d.tapaPerfilInfo);
                 if (d.tornilloInfo)           html += fila2('🔨 Tornillo',        cabezal ? '8 und.' : '2 und.',   d.tornilloInfo);
                 if (d.tornilloPerforanteInfo) html += fila2('🔧 T. Perforante',  '4 und.',                        d.tornilloPerforanteInfo);
@@ -487,7 +461,6 @@
         </tr>`;
     }
 
-    // ── Exclusión mutua retazo ↔ rollo ────────────────────────────
     selectRetazo.addEventListener('change', function () {
         if (this.value !== 'auto') selectRollo.value = 'auto';
         consultarPrevisualizacion();
@@ -497,7 +470,6 @@
         consultarPrevisualizacion();
     });
 
-    // ── Listeners de campos ───────────────────────────────────────
     campoAncho.addEventListener('input', disparar);
     campoAltura.addEventListener('input', disparar);
     campoColor.addEventListener('change', disparar);
@@ -506,9 +478,6 @@
     ckConector.addEventListener('change', disparar);
     selectTipoTubo.addEventListener('change', disparar);
 
-    // ════════════════════════════════════════════════════════════
-    //  INSUMOS ADICIONALES (extras de toda la orden)
-    // ════════════════════════════════════════════════════════════
     let extraIndex = 0;
 
     function opcionesCatalogo() {
@@ -550,20 +519,17 @@
         </div>`;
     }
 
-    // ── Generadores de opciones de catálogo (faltaban en este archivo) ──
-    function opcionesCatalogo() {
-        let html = '<option value="libre">✏ Insumo fuera del catálogo (texto libre)</option>';
-        catalogoInsumos.forEach(ins => {
-            html += `<option value="${ins.id}">${ins.nombre}${ins.tieneMedida ? ' (por medida)' : ' (por unidad)'}</option>`;
-        });
-        return html;
+    function toggleLibre(select) {
+        const fila = select.closest('.fila-extra');
+        const campoLibre = fila.querySelector('.campo-libre-extra');
+        campoLibre.style.display = select.value === 'libre' ? '' : 'none';
     }
 
     function actualizarInfoExtra(select) {
         const filaCampos = select.closest('.fila-extra');
         const filaInfo = filaCampos.nextElementSibling;
         const campoLibre = filaCampos.querySelector('.campo-libre-extra');
-        const campoCantidad = filaCampos.querySelector('.campo-cantidad-insumo-venta');
+        const campoCantidad = filaCampos.querySelector('input[name^="extraCantidad"]');
         const infoDiv = filaInfo ? filaInfo.querySelector('.info-stock-insumo') : null;
         const campoPieza = filaInfo ? filaInfo.querySelector('.campo-pieza-insumo') : null;
         const selectPieza = filaInfo ? filaInfo.querySelector('.select-pieza-insumo') : null;
@@ -634,11 +600,6 @@
         if (valCant) filaCampos.querySelector('input[name^="extraCantidad"]').value = valCant;
         actualizarInfoExtra(sel);
     }
-    function toggleLibre(select) {
-        const fila = select.closest('.fila-extra');
-        const campoLibre = fila.querySelector('.campo-libre-extra');
-        campoLibre.style.display = select.value === 'libre' ? '' : 'none';
-    }
 
     function agregarFilaExtra(valSelect, valLibre, valCant) {
         const cont = document.getElementById('contenedorExtras');
@@ -651,14 +612,10 @@
         toggleLibre(sel);
     }
 
-    // ── Inicialización ────────────────────────────────────────────
     document.addEventListener('DOMContentLoaded', () => {
         actualizarSelectsManual();
         consultarPrevisualizacion();
 
-        // Precarga de extras existentes: se muestran como "texto libre" con la
-        // descripción y cantidad que ya tenían, para que el jefe los revise y,
-        // si quiere, los vuelva a vincular al catálogo.
         if (typeof extrasExistentes !== 'undefined' && extrasExistentes.length) {
             extrasExistentes.forEach(ex => {
                 agregarFilaExtra('libre', ex.fuenteDescripcion, ex.metrosUsados);
