@@ -33,12 +33,21 @@ public class InsumoBaseInicializador implements CommandLineRunner {
         crearSiNoExiste("Soporte",               false, "Soporte de instalación. Se usan 2 en todo pedido, con o sin cabezal.");
         crearSiNoExiste("Tapa",                  false, "Tapa de cabezal. Se usan 2 únicamente en pedidos CON cabezal.");
         crearSiNoExiste("Tope Pesa",             false, "Tope de pesa. Se usan 2 en todo pedido, con o sin cabezal.");
+        crearSiNoExiste("Tapa Perfil",           false, "Tapas de perfil de la pesa. Se usan 2 en TODO pedido de fabricación, con o sin cabezal.");
         crearSiNoExiste("Tornillo",              false, "Tornillo normal. Sin cabezal: 2 (soportes). Con cabezal: 8 (soportes + tapas).");
         crearSiNoExiste("Tornillo Perforante",   false, "Tornillo perforante. Solo en pedidos CON cabezal: 4 unidades.");
         crearSiNoExiste("Polea",                 false, "Polea del riel de onda serena. Obligatoria (2 por pedido) cuando el riel lleva polea.");
         crearSiNoExiste("Terminal Control Polea", false, "Terminal/control de la polea. Obligatorio (1 por pedido) cuando el riel lleva polea.");
         crearSiNoExiste("Tapa Riel",              false, "Tapa de riel de onda serena. Obligatoria (2 por pedido) cuando el riel NO lleva polea.");
-        crearSiNoExiste("Bastón",                 false, "Bastón de riel de onda serena. Obligatorio (1 por pedido) cuando el riel NO lleva polea.");
+
+        // ── Soporte de riel: por unidad, cantidad variable según ancho (ver Pedido.getCantidadSoportesRiel()) ──
+        crearSiNoExiste("Soporte Riel", false, "Soporte de instalación del riel de onda serena. Cantidad variable según el ancho del pedido.");
+
+        // ── Bastones de riel: por MEDIDA (se cortan a una longitud, como el riel), no por unidad.
+        //    Se usan cuando el riel NO lleva polea; el jefe elige manualmente cuál de los 3 tipos. ──
+        crearSiNoExiste("Bastón Tipo A", true, "Bastón de riel de onda serena, tipo A. Se corta por medida.");
+        crearSiNoExiste("Bastón Tipo B", true, "Bastón de riel de onda serena, tipo B. Se corta por medida.");
+        crearSiNoExiste("Bastón Tipo C", true, "Bastón de riel de onda serena, tipo C. Se corta por medida.");
     }
 
     private void crearSiNoExiste(String nombre, boolean tieneMedida, String descripcion) {

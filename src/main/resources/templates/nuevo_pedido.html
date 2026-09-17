@@ -318,6 +318,25 @@
                     <input type="checkbox" name="usaPolea" value="true" id="rielUsaPolea" class="form-check-input">
                     <label for="rielUsaPolea" class="form-check-label">⚙ Lleva polea</label>
                 </div>
+
+                <div class="row g-2 mt-2" id="filaBastonRiel" style="display:none;">
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">Tipo de bastón</label>
+                        <select name="bastonElegido" class="form-select">
+                            <option value="Bastón Tipo A">Bastón Tipo A</option>
+                            <option value="Bastón Tipo B">Bastón Tipo B</option>
+                            <option value="Bastón Tipo C">Bastón Tipo C</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">Abre hacia</label>
+                        <select name="ladoApertura" class="form-select">
+                            <option value="Izquierda">Izquierda</option>
+                            <option value="Derecha">Derecha</option>
+                        </select>
+                    </div>
+                </div>
+
                 <div id="rielPrevisualizacion" class="previsualizacion">
                     <span class="cargando">Completa el ancho para ver el corte estimado.</span>
                 </div>
@@ -326,7 +345,7 @@
             <div class="seccion-extras">
                 <p class="fw-bold mb-2">➕ Insumos adicionales del riel (opcional)</p>
                 <p class="text-muted mb-2" style="font-size:0.82rem;">
-                    Los accesorios obligatorios (poleas/terminal, o tapas/bastón según corresponda) ya se
+                    Los accesorios obligatorios (poleas/terminal, o tapas/bastón/soportes según corresponda) ya se
                     calculan y descuentan automáticamente. Usa esto solo para material extra fuera de lo normal.
                 </p>
                 <div id="contenedorExtrasRiel"></div>
@@ -965,8 +984,10 @@
     //  RIEL DE ONDA SERENA — previsualización + insumos adicionales
     //  opcionales (reutiliza opcionesCatalogo/actualizarInfoExtra/
     //  opcionesPieza ya definidos). Los accesorios obligatorios (poleas,
-    //  terminal, tapas, bastón) ya no se muestran como recordatorio: se
-    //  calculan y descuentan automáticamente en el backend.
+    //  terminal, tapas, bastón, soportes) ya no se muestran como
+    //  recordatorio: se calculan y descuentan automáticamente en el
+    //  backend. El bastón y el lado de apertura se eligen manualmente
+    //  cuando el riel NO lleva polea.
     // ════════════════════════════════════════════════════════════
     let extraIndexRiel = 0;
 
@@ -983,6 +1004,12 @@
 
         const corteRiel = (ancho - 0.075).toFixed(3);
         const corteRielPines = corteRiel;
+
+        let soportes;
+        if (ancho >= 3.50) soportes = 5;
+        else if (ancho >= 2.50) soportes = 4;
+        else if (ancho >= 1.50) soportes = 3;
+        else soportes = 2;
 
         let html = '<strong>Corte y accesorios estimados</strong>';
         html += '<table style="width:100%;border-collapse:collapse;margin-top:6px">';
@@ -1015,9 +1042,13 @@
                      </tr>`;
             html += `<tr style="border-top:1px solid #d6efdd">
                         <td style="padding:2px 4px;font-weight:600;white-space:nowrap">🪄 Bastón</td>
-                        <td style="padding:2px 6px;color:#555">1 und. (automático)</td>
+                        <td style="padding:2px 6px;color:#555">se corta a la medida del riel</td>
                      </tr>`;
         }
+        html += `<tr style="border-top:1px solid #d6efdd">
+                    <td style="padding:2px 4px;font-weight:600;white-space:nowrap">🔩 Soportes de riel</td>
+                    <td style="padding:2px 6px;color:#555">${soportes} und. (según ancho)</td>
+                 </tr>`;
         html += '</table>';
 
         caja.className = 'previsualizacion ok';
@@ -1036,6 +1067,9 @@
 
     document.getElementById('rielAncho').addEventListener('input', calcularRielPreview);
     document.getElementById('rielUsaPolea').addEventListener('change', calcularRielPreview);
+    document.getElementById('rielUsaPolea').addEventListener('change', function() {
+        document.getElementById('filaBastonRiel').style.display = this.checked ? 'none' : '';
+    });
 
     document.addEventListener('DOMContentLoaded', () => {
         const fila0 = document.querySelector('.fila-producto[data-indice="0"]');
@@ -1045,6 +1079,9 @@
         }
         // Arrancamos la pestaña de Venta Directa con una fila de tela lista para usar
         agregarFilaTelaVenta();
+
+        document.getElementById('filaBastonRiel').style.display =
+            document.getElementById('rielUsaPolea').checked ? 'none' : '';
     });
 </script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>

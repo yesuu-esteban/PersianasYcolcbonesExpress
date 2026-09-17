@@ -83,6 +83,25 @@
                        th:checked="${pedido.usaPolea}">
                 <label for="ckUsaPolea" class="form-check-label">⚙ Lleva polea</label>
             </div>
+
+            <div class="row g-2 mt-2" id="filaBastonRiel">
+                <div class="col-md-6">
+                    <label class="form-label fw-bold">Tipo de bastón</label>
+                    <select name="bastonElegido" class="form-select">
+                        <option value="Bastón Tipo A" th:selected="${pedido.bastonElegido == 'Bastón Tipo A'}">Bastón Tipo A</option>
+                        <option value="Bastón Tipo B" th:selected="${pedido.bastonElegido == 'Bastón Tipo B'}">Bastón Tipo B</option>
+                        <option value="Bastón Tipo C" th:selected="${pedido.bastonElegido == 'Bastón Tipo C'}">Bastón Tipo C</option>
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-bold">Abre hacia</label>
+                    <select name="ladoApertura" class="form-select">
+                        <option value="Izquierda" th:selected="${pedido.ladoApertura == 'Izquierda'}">Izquierda</option>
+                        <option value="Derecha" th:selected="${pedido.ladoApertura == 'Derecha'}">Derecha</option>
+                    </select>
+                </div>
+            </div>
+
             <div id="cajaPrevisualizacion" class="previsualizacion">
                 <span class="cargando">Cargando...</span>
             </div>
@@ -92,7 +111,7 @@
         <div class="seccion-extras">
             <p class="fw-bold mb-2">➕ Insumos adicionales del riel (opcional)</p>
             <p class="text-muted mb-2" style="font-size:0.82rem;">
-                Los accesorios obligatorios (poleas/terminal, o tapas/bastón según corresponda) ya se
+                Los accesorios obligatorios (poleas/terminal, o tapas/bastón/soportes según corresponda) ya se
                 calculan y descuentan automáticamente. Usa esto solo para material extra fuera de lo normal.
             </p>
             <div id="contenedorExtras"></div>
@@ -135,6 +154,12 @@
         const corteRiel = (ancho - 0.075).toFixed(3);
         const corteRielPines = corteRiel;
 
+        let soportes;
+        if (ancho >= 3.50) soportes = 5;
+        else if (ancho >= 2.50) soportes = 4;
+        else if (ancho >= 1.50) soportes = 3;
+        else soportes = 2;
+
         let html = '<strong>Corte y accesorios estimados</strong>';
         html += '<table style="width:100%;border-collapse:collapse;margin-top:6px">';
         html += `<tr style="border-top:1px solid #d6efdd">
@@ -166,9 +191,13 @@
                      </tr>`;
             html += `<tr style="border-top:1px solid #d6efdd">
                         <td style="padding:2px 4px;font-weight:600;white-space:nowrap">🪄 Bastón</td>
-                        <td style="padding:2px 6px;color:#555">1 und. (automático)</td>
+                        <td style="padding:2px 6px;color:#555">se corta a la medida del riel</td>
                      </tr>`;
         }
+        html += `<tr style="border-top:1px solid #d6efdd">
+                    <td style="padding:2px 4px;font-weight:600;white-space:nowrap">🔩 Soportes de riel</td>
+                    <td style="padding:2px 6px;color:#555">${soportes} und. (según ancho)</td>
+                 </tr>`;
         html += '</table>';
 
         caja.className = 'previsualizacion ok';
@@ -177,6 +206,9 @@
 
     campoAncho.addEventListener('input', calcularPreview);
     ckUsaPolea.addEventListener('change', calcularPreview);
+    ckUsaPolea.addEventListener('change', function() {
+        document.getElementById('filaBastonRiel').style.display = this.checked ? 'none' : '';
+    });
 
     // ════════════════════════════════════════════════════════════
     //  INSUMOS ADICIONALES (extras) — misma lógica reutilizada del
@@ -323,6 +355,8 @@
     // ── Inicialización ────────────────────────────────────────────
     document.addEventListener('DOMContentLoaded', () => {
         calcularPreview();
+
+        document.getElementById('filaBastonRiel').style.display = ckUsaPolea.checked ? 'none' : '';
 
         // Precarga de extras ya registrados en este pedido, igual que en
         // editar_pedido.html: se muestran como "texto libre" con la

@@ -98,6 +98,12 @@ public class Pedido {
 
     @Column(name = "fecha_actualizacion")
     private LocalDateTime fechaActualizacion;
+    
+    @Column(name = "baston_elegido")
+    private String bastonElegido;
+
+    @Column(name = "lado_apertura")
+    private String ladoApertura;
 
     @PrePersist
     protected void alCrear() {
@@ -378,6 +384,33 @@ public class Pedido {
     @Transient
     public int getCantidadBaston() {
         return Boolean.TRUE.equals(this.usaPolea) ? 0 : 1;
+    }
+
+    /**
+     * Soportes de riel según el ancho:
+     *   >= 3.50 m         → 5 soportes
+     *   >= 2.50 m         → 4 soportes
+     *   >= 1.50 y < 2.50  → 3 soportes
+     *   < 1.50 m          → 2 soportes (mínimo)
+     */
+    @Transient
+    public int getCantidadSoportesRiel() {
+        int soportes;
+        if (this.ancho >= 3.50) {
+            soportes = 5;
+        } else if (this.ancho >= 2.50) {
+            soportes = 4;
+        } else if (this.ancho >= 1.50) {
+            soportes = 3;
+        } else {
+            soportes = 2;
+        }
+        return soportes;
+    }
+
+    @Transient
+    public double getMedidaBaston(){
+        return getCorteRiel();
     }
 
     // ─── LÓGICA DE NEGOCIO ──────────────────────────────────────────────────

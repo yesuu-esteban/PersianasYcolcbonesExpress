@@ -236,6 +236,7 @@
                 <span class="badge" th:classappend="${pedido.usaPolea}?'badge-con':'badge-sin'"
                       th:text="${pedido.usaPolea} ? 'CON POLEA' : 'SIN POLEA'"></span>
             </p>
+            <p><strong>Abre hacia:</strong> <span th:text="${pedido.ladoApertura}"></span></p>
         </div>
 
         <!-- 2: Corte de riel -->
@@ -273,6 +274,16 @@
                     <span th:if="${materialCuerdaOnda == null}">Cuerda Onda Serena</span>
                     · <span th:text="${#numbers.formatDecimal(pedido.corteCuerdaOnda,1,3)+' m'}"></span>
                 </p>
+                <p th:unless="${pedido.usaPolea}">
+                    <strong>Bastón:</strong>
+                    <span th:if="${materialBaston != null}"
+                          th:text="${#strings.contains(materialBaston.fuenteDescripcion,'(')} ? ${#strings.substringBefore(materialBaston.fuenteDescripcion,'(')} : ${materialBaston.fuenteDescripcion}"></span>
+                    <span class="badge-id-original"
+                          th:if="${materialBaston != null and #strings.contains(materialBaston.fuenteDescripcion,'(')}"
+                          th:text="'('+${#strings.substringAfter(materialBaston.fuenteDescripcion,'(')}"></span>
+                    <span th:if="${materialBaston == null}" th:text="${pedido.bastonElegido}"></span>
+                    · <span th:text="${#numbers.formatDecimal(pedido.medidaBaston,1,3)+' m'}"></span>
+                </p>
             </div>
         </div>
 
@@ -282,7 +293,7 @@
             <p th:if="${pedido.usaPolea}"><strong>Poleas:</strong> 2 und.</p>
             <p th:if="${pedido.usaPolea}"><strong>Terminal/Control:</strong> 1 und.</p>
             <p th:unless="${pedido.usaPolea}"><strong>Tapas de riel:</strong> 2 und.</p>
-            <p th:unless="${pedido.usaPolea}"><strong>Bastón:</strong> 1 und.</p>
+            <p><strong>Soportes:</strong> <span th:text="${pedido.cantidadSoportesRiel}"></span> und.</p>
 
             <div th:if="${extrasHistorial != null and not #lists.isEmpty(extrasHistorial)}"
                  style="margin-top:5px; padding-top:5px; border-top:1px dashed #aaa;">
@@ -310,6 +321,7 @@
             <p><strong>Config:</strong>
                 <span th:text="${pedido.usaPolea} ? 'Con polea' : 'Sin polea (tapas + bastón)'"></span>
             </p>
+            <p><strong>Abre hacia:</strong> <span th:text="${pedido.ladoApertura}"></span></p>
         </div>
 
     </div><!-- /grid-etiquetas RIEL -->

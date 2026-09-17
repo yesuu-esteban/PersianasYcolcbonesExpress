@@ -419,6 +419,8 @@ public class PedidoControlador {
             @RequestParam(required = false) Double altura,
             @RequestParam(required = false, defaultValue = "false") boolean usaPolea,
             @RequestParam Map<String, String> allParams,
+            @RequestParam(required = false) String bastonElegido,
+            @RequestParam(required = false) String ladoApertura,
             RedirectAttributes redirectAttributes) {
 
         if (nombreDecorador == null || nombreDecorador.isBlank()
@@ -446,6 +448,8 @@ public class PedidoControlador {
             p.setUsaConectorTope(false);
             p.calcularFichaTecnica();
             p.calcularEstadoGeneral();
+            p.setBastonElegido(bastonElegido);
+            p.setLadoApertura(ladoApertura);
             pedidosDelLote.add(p);
         }
 
@@ -643,6 +647,8 @@ public class PedidoControlador {
             @RequestParam double ancho,
             @RequestParam(required = false) Double altura,
             @RequestParam(required = false, defaultValue = "false") boolean usaPolea,
+            @RequestParam(required = false) String bastonElegido,
+            @RequestParam(required = false) String ladoApertura,
             @RequestParam Map<String, String> allParams,
             RedirectAttributes redirectAttributes) {
 
@@ -677,6 +683,8 @@ public class PedidoControlador {
         pedido.setAltura(altura != null ? altura : 0.0);
         pedido.setUsaPolea(usaPolea);
         pedido.calcularFichaTecnica();
+        pedido.setBastonElegido(bastonElegido);
+        pedido.setLadoApertura(ladoApertura);
 
         try {
             inventarioServicio.verificarRielOndaSerena(pedido);
