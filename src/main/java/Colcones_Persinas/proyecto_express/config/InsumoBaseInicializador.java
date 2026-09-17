@@ -5,6 +5,10 @@ import Colcones_Persinas.proyecto_express.repository.InsumoRepository;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 
+import java.util.Arrays;
+import java.util.List;
+import java.util.Optional;
+
 /**
  * Crea los insumos básicos que el sistema necesita para poder verificar
  * material en cada pedido, únicamente si todavía no existen.
@@ -47,14 +51,41 @@ public class InsumoBaseInicializador implements CommandLineRunner {
         // ── Soporte de riel: por unidad, cantidad variable según ancho (ver Pedido.getCantidadSoportesRiel()) ──
         crearSiNoExiste("Soporte Riel", false, "Soporte de instalación del riel de onda serena. Cantidad variable según el ancho del pedido.");
 
-        // ── Bastones de riel: piezas FIJAS por unidad (no se cortan ni se miden).
-        //    Cada tipo tiene una longitud fija de fábrica, documentada aquí solo
-        //    como referencia; el sistema únicamente descuenta 1 unidad completa
-        //    del tipo que el jefe elija manualmente. Se usan cuando el riel NO
-        //    lleva polea. ──
+        // ── Bastones de riel: piezas FIJAS por unidad (NO se cortan ni se miden).
+        //    Cada tipo tiene una longitud fija de fábrica (0.80 / 1.20 / 1.50 m),
+        //    documentada aquí solo como referencia; el sistema únicamente descuenta
+        //    1 unidad completa del tipo que el jefe elija manualmente. Se usan
+        //    cuando el riel NO lleva polea. ──
         crearSiNoExiste("Bastón Tipo A", false, "Bastón fijo de 0.80 m del riel de onda serena. Se descuenta como unidad completa, no se corta.");
         crearSiNoExiste("Bastón Tipo B", false, "Bastón fijo de 1.20 m del riel de onda serena. Se descuenta como unidad completa, no se corta.");
         crearSiNoExiste("Bastón Tipo C", false, "Bastón fijo de 1.50 m del riel de onda serena. Se descuenta como unidad completa, no se corta.");
+
+        // ── FIX de migración: si "Bastón Tipo A/B/C" ya se habían creado antes
+        // con tieneMedida = true (por medida), corrígelos aquí a tieneMedida =
+        // false (por unidad), que es como deben funcionar. La pantalla de
+        // edición no permite cambiar este campo una vez creado, así que esta
+        // corrección se hace directamente por código, una sola vez por insumo. ──
+        corregirBastonesAPorUnidad();
+    }
+
+    private void corregirBastonesAPorUnidad() {
+        List<String> nombresBaston = Arrays.asList("Bastón Tipo A", "Bastón Tipo B", "Bastón Tipo C");
+        for (String nombre : nombresBaston) {
+            Optional<Insumo> existente = insumoRepository.findByNombreIgnoreCase(nombre);
+            if (existente.isPresent()) {
+                Insumo insumo = existente.get();
+                if (Boolean.TRUE.equals(insumo.getTieneMedida())) {
+                    insumo.setTieneMedida(false);
+                    if (insumo.getStockUnidades() == null) {
+                        insumo.setStockUnidades(0);
+                    }
+                    insumoRepository.save(insumo);
+                    System.out.println("[InsumoBaseInicializador] Corregido \"" + nombre
+                            + "\": ahora es por UNIDAD (antes estaba por medida). "
+                            + "Revisa /inventario/insumo/" + insumo.getId() + "/cargar para cargarle stock si hace falta.");
+                }
+            }
+        }
     }
 
     private void crearSiNoExiste(String nombre, boolean tieneMedida, String descripcion) {
