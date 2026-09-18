@@ -321,8 +321,8 @@
                         <div class="col-md-1"></div>
                     </div>
 
-                    <div class="row g-2 mt-2 campo-baston-riel" style="display:none;">
-                        <div class="col-md-6">
+                    <div class="row g-2 mt-2">
+                        <div class="col-md-6 campo-baston-riel" style="display:none;">
                             <label class="form-label">Bastón</label>
                             <select name="bastonElegido[0]" class="form-select form-select-sm">
                                 <option value="Bastón 0.80">Bastón 0.80</option>
@@ -332,9 +332,10 @@
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Abre hacia</label>
-                            <select name="ladoApertura[0]" class="form-select form-select-sm">
+                            <select name="ladoApertura[0]" class="form-select form-select-sm campo-lado-apertura-riel">
                                 <option value="Izquierda">Izquierda</option>
                                 <option value="Derecha">Derecha</option>
+                                <option value="Hacia los extremos">Hacia los extremos</option>
                             </select>
                         </div>
                     </div>
@@ -970,8 +971,10 @@
 
     // ════════════════════════════════════════════════════════════
     //  RIEL DE ONDA SERENA — ahora es MULTI-FILA: se pueden agregar
-    //  varios rieles (cada uno con su propio ancho/alto/polea/bastón)
-    //  en una sola orden, igual que la pestaña de Fabricación.
+    //  varios rieles (cada uno con su propio ancho/alto/polea/bastón/
+    //  lado de apertura) en una sola orden, igual que la pestaña de
+    //  Fabricación. La opción "Hacia los extremos" duplica la cantidad
+    //  de crusadores (con polea) o de bastones (sin polea).
     // ════════════════════════════════════════════════════════════
     let filaRielIndex = 1;
     let extraIndexRiel = 0;
@@ -980,6 +983,8 @@
         const caja = fila.querySelector('.previsualizacion-riel');
         const ancho = parseFloat(fila.querySelector('.campo-ancho-riel').value);
         const usaPolea = fila.querySelector('.campo-usa-polea-riel').checked;
+        const selectApertura = fila.querySelector('.campo-lado-apertura-riel');
+        const haciaExtremos = selectApertura && selectApertura.value === 'Hacia los extremos';
 
         if (!ancho || ancho <= 0) {
             caja.className = 'previsualizacion-riel previsualizacion';
@@ -1013,6 +1018,7 @@
                  </tr>`;
         if (usaPolea) {
             const corteCuerda = (ancho * 2 + 4).toFixed(3);
+            const cantCrusador = haciaExtremos ? 2 : 1;
             html += `<tr style="border-top:1px solid #d6efdd">
                         <td style="padding:2px 4px;font-weight:600;white-space:nowrap">🧶 Cuerda de onda</td>
                         <td style="padding:2px 6px;color:#555">${corteCuerda} m</td>
@@ -1023,16 +1029,17 @@
                      </tr>`;
             html += `<tr style="border-top:1px solid #d6efdd">
                         <td style="padding:2px 4px;font-weight:600;white-space:nowrap">🎛 Crusador</td>
-                        <td style="padding:2px 6px;color:#555">1 und. (automático)</td>
+                        <td style="padding:2px 6px;color:#555">${cantCrusador} und. ${haciaExtremos ? '(hacia los extremos)' : '(automático)'}</td>
                      </tr>`;
         } else {
+            const cantBaston = haciaExtremos ? 2 : 1;
             html += `<tr style="border-top:1px solid #d6efdd">
                         <td style="padding:2px 4px;font-weight:600;white-space:nowrap">🧢 Tapas de riel</td>
                         <td style="padding:2px 6px;color:#555">2 und. (automático)</td>
                      </tr>`;
             html += `<tr style="border-top:1px solid #d6efdd">
                         <td style="padding:2px 4px;font-weight:600;white-space:nowrap">🪄 Bastón</td>
-                        <td style="padding:2px 6px;color:#555">1 und. fija (según elegido: 0.80/1.20/1.50)</td>
+                        <td style="padding:2px 6px;color:#555">${cantBaston} und. ${haciaExtremos ? '(hacia los extremos)' : ''} (según elegido: 0.80/1.20/1.50)</td>
                      </tr>`;
         }
         html += `<tr style="border-top:1px solid #d6efdd">
@@ -1049,12 +1056,14 @@
         const anchoInput = fila.querySelector('.campo-ancho-riel');
         const poleaCheck = fila.querySelector('.campo-usa-polea-riel');
         const filaBaston = fila.querySelector('.campo-baston-riel');
+        const selectApertura = fila.querySelector('.campo-lado-apertura-riel');
 
         anchoInput.addEventListener('input', () => calcularRielPreviewFila(fila));
         poleaCheck.addEventListener('change', () => {
             calcularRielPreviewFila(fila);
             filaBaston.style.display = poleaCheck.checked ? 'none' : '';
         });
+        selectApertura.addEventListener('change', () => calcularRielPreviewFila(fila));
 
         filaBaston.style.display = poleaCheck.checked ? 'none' : '';
     }
@@ -1089,8 +1098,8 @@
                 </div>
             </div>
 
-            <div class="row g-2 mt-2 campo-baston-riel" style="display:none;">
-                <div class="col-md-6">
+            <div class="row g-2 mt-2">
+                <div class="col-md-6 campo-baston-riel" style="display:none;">
                     <label class="form-label">Bastón</label>
                     <select name="bastonElegido[${idx}]" class="form-select form-select-sm">
                         <option value="Bastón 0.80">Bastón 0.80</option>
@@ -1100,9 +1109,10 @@
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">Abre hacia</label>
-                    <select name="ladoApertura[${idx}]" class="form-select form-select-sm">
+                    <select name="ladoApertura[${idx}]" class="form-select form-select-sm campo-lado-apertura-riel">
                         <option value="Izquierda">Izquierda</option>
                         <option value="Derecha">Derecha</option>
+                        <option value="Hacia los extremos">Hacia los extremos</option>
                     </select>
                 </div>
             </div>

@@ -265,7 +265,8 @@ public class Pedido {
 
     @Transient
     public int getCantidadTerminalPolea() {
-        return Boolean.TRUE.equals(this.usaPolea) ? 1 : 0;
+        if(!Boolean.TRUE.equals(this.usaPolea)) return 0;
+        return "Hacia los extremos".equalsIgnoreCase(this.ladoApertura) ? 2 :1;
     }
 
     @Transient
@@ -275,7 +276,8 @@ public class Pedido {
 
     @Transient
     public int getCantidadBaston() {
-        return Boolean.TRUE.equals(this.usaPolea) ? 0 : 1;
+        if(Boolean.TRUE.equals(this.usaPolea)) return 0;
+        return "Hacia los extremos".equalsIgnoreCase(this.ladoApertura) ? 2 : 1;
     }
 
     @Transient

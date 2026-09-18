@@ -84,8 +84,8 @@
                 <label for="ckUsaPolea" class="form-check-label">⚙ Lleva polea</label>
             </div>
 
-            <div class="row g-2 mt-2" id="filaBastonRiel">
-                <div class="col-md-6">
+            <div class="row g-2 mt-2">
+                <div class="col-md-6" id="filaBastonRiel">
                     <label class="form-label fw-bold">Bastón</label>
                     <select name="bastonElegido" class="form-select">
                         <option value="Bastón 0.80" th:selected="${pedido.bastonElegido == 'Bastón 0.80'}">Bastón 0.80</option>
@@ -95,9 +95,10 @@
                 </div>
                 <div class="col-md-6">
                     <label class="form-label fw-bold">Abre hacia</label>
-                    <select name="ladoApertura" class="form-select">
+                    <select name="ladoApertura" id="selectLadoApertura" class="form-select">
                         <option value="Izquierda" th:selected="${pedido.ladoApertura == 'Izquierda'}">Izquierda</option>
                         <option value="Derecha" th:selected="${pedido.ladoApertura == 'Derecha'}">Derecha</option>
+                        <option value="Hacia los extremos" th:selected="${pedido.ladoApertura == 'Hacia los extremos'}">Hacia los extremos</option>
                     </select>
                 </div>
             </div>
@@ -144,6 +145,8 @@
     function calcularPreview() {
         const ancho = parseFloat(campoAncho.value);
         const usaPolea = ckUsaPolea.checked;
+        const selectApertura = document.getElementById('selectLadoApertura');
+        const haciaExtremos = selectApertura && selectApertura.value === 'Hacia los extremos';
 
         if (!ancho || ancho <= 0) {
             caja.className = 'previsualizacion';
@@ -177,6 +180,7 @@
                  </tr>`;
         if (usaPolea) {
             const corteCuerda = (ancho * 2 + 4).toFixed(3);
+            const cantCrusador = haciaExtremos ? 2 : 1;
             html += `<tr style="border-top:1px solid #d6efdd">
                         <td style="padding:2px 4px;font-weight:600;white-space:nowrap">🧶 Cuerda de onda</td>
                         <td style="padding:2px 6px;color:#555">${corteCuerda} m</td>
@@ -187,16 +191,17 @@
                      </tr>`;
             html += `<tr style="border-top:1px solid #d6efdd">
                         <td style="padding:2px 4px;font-weight:600;white-space:nowrap">🎛 Crusador</td>
-                        <td style="padding:2px 6px;color:#555">1 und. (automático)</td>
+                        <td style="padding:2px 6px;color:#555">${cantCrusador} und. ${haciaExtremos ? '(hacia los extremos)' : '(automático)'}</td>
                      </tr>`;
         } else {
+            const cantBaston = haciaExtremos ? 2 : 1;
             html += `<tr style="border-top:1px solid #d6efdd">
                         <td style="padding:2px 4px;font-weight:600;white-space:nowrap">🧢 Tapas de riel</td>
                         <td style="padding:2px 6px;color:#555">2 und. (automático)</td>
                      </tr>`;
             html += `<tr style="border-top:1px solid #d6efdd">
                         <td style="padding:2px 4px;font-weight:600;white-space:nowrap">🪄 Bastón</td>
-                        <td style="padding:2px 6px;color:#555">1 und. fija (según elegido: 0.80/1.20/1.50)</td>
+                        <td style="padding:2px 6px;color:#555">${cantBaston} und. ${haciaExtremos ? '(hacia los extremos)' : ''} (según elegido: 0.80/1.20/1.50)</td>
                      </tr>`;
         }
         html += `<tr style="border-top:1px solid #d6efdd">
@@ -214,6 +219,7 @@
     ckUsaPolea.addEventListener('change', function() {
         document.getElementById('filaBastonRiel').style.display = this.checked ? 'none' : '';
     });
+    document.getElementById('selectLadoApertura').addEventListener('change', calcularPreview);
 
     // ════════════════════════════════════════════════════════════
     //  INSUMOS ADICIONALES (extras) — misma lógica reutilizada del
