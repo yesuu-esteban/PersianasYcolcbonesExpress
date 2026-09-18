@@ -394,7 +394,8 @@ public class PedidoControlador {
     }
 
     // ═══════════════════════════════════════════════════════════════
-    // RIEL DE ONDA SERENA — creación
+    // RIEL DE ONDA SERENA — creación (MULTI-FILA: varios rieles distintos
+    // en una sola orden, cada uno con su propio ancho/alto/polea/bastón)
     // ═══════════════════════════════════════════════════════════════
 
     @PostMapping("/guardar-riel-onda")
@@ -402,14 +403,11 @@ public class PedidoControlador {
     public String guardarRielOnda(
             @RequestParam String nombreDecorador,
             @RequestParam String nombreClienteFinal,
-            @RequestParam(required = false) String descripcion,
-            @RequestParam(required = false, defaultValue = "1") int cantidad,
-            @RequestParam double ancho,
-            @RequestParam(required = false) Double altura,
-            @RequestParam(required = false, defaultValue = "false") boolean usaPolea,
+            @RequestParam List<String> descripciones,
+            @RequestParam List<Integer> cantidades,
+            @RequestParam List<String> anchos,
+            @RequestParam List<String> alturas,
             @RequestParam Map<String, String> allParams,
-            @RequestParam(required = false) String bastonElegido,
-            @RequestParam(required = false) String ladoApertura,
             RedirectAttributes redirectAttributes) {
 
         if (nombreDecorador == null || nombreDecorador.isBlank()
@@ -417,29 +415,62 @@ public class PedidoControlador {
             redirectAttributes.addFlashAttribute("error", "Debes indicar distribuidor y cliente.");
             return "redirect:/taller/nuevo";
         }
-        if (ancho <= 0) {
-            redirectAttributes.addFlashAttribute("error", "El ancho debe ser mayor a 0.");
+
+        int n = anchos.size();
+        if (cantidades.size() != n || alturas.size() != n || descripciones.size() != n) {
+            redirectAttributes.addFlashAttribute("error",
+                    "Error al leer el formulario: verifica que todos los rieles estén completos.");
             return "redirect:/taller/nuevo";
         }
 
         List<Pedido> pedidosDelLote = new ArrayList<>();
-        for (int j = 0; j < Math.max(cantidad, 1); j++) {
-            Pedido p = new Pedido();
-            p.setTipo("RIEL_ONDA_SERENA");
-            p.setNombreDecorador(nombreDecorador);
-            p.setNombreClienteFinal(nombreClienteFinal);
-            p.setDescripcion(descripcion != null ? descripcion : "");
-            p.setAncho(ancho);
-            p.setAltura(altura != null ? altura : 0.0);
-            p.setUsaPolea(usaPolea);
-            p.setUsaCabezal(false);
-            p.setUsaPitilloPesa(false);
-            p.setUsaConectorTope(false);
-            p.calcularFichaTecnica();
-            p.calcularEstadoGeneral();
-            p.setBastonElegido(bastonElegido);
-            p.setLadoApertura(ladoApertura);
-            pedidosDelLote.add(p);
+
+        for (int i = 0; i < n; i++) {
+            double ancho;
+            try {
+                ancho = Double.parseDouble(anchos.get(i).trim());
+            } catch (Exception e) {
+                redirectAttributes.addFlashAttribute("error",
+                        "El ancho del riel #" + (i + 1) + " no es válido.");
+                return "redirect:/taller/nuevo";
+            }
+            if (ancho <= 0) {
+                redirectAttributes.addFlashAttribute("error",
+                        "El ancho del riel #" + (i + 1) + " debe ser mayor a 0.");
+                return "redirect:/taller/nuevo";
+            }
+            double altura = parsearDoubleSeguro(alturas.get(i), 0.0);
+
+            boolean usaPolea = leerBooleanoFila(allParams, "usaPolea", i, false);
+            String bastonElegido = leerTextoOpcionalFila(allParams, "bastonElegido", i);
+            String ladoApertura = leerTextoOpcionalFila(allParams, "ladoApertura", i);
+
+            int cantidad = cantidades.get(i);
+            for (int j = 0; j < Math.max(cantidad, 1); j++) {
+                Pedido p = new Pedido();
+                p.setTipo("RIEL_ONDA_SERENA");
+                p.setNombreDecorador(nombreDecorador);
+                p.setNombreClienteFinal(nombreClienteFinal);
+                p.setDescripcion(cantidad > 1
+                        ? descripciones.get(i) + " (" + (j + 1) + "/" + cantidad + ")"
+                        : descripciones.get(i));
+                p.setAncho(ancho);
+                p.setAltura(altura);
+                p.setUsaPolea(usaPolea);
+                p.setUsaCabezal(false);
+                p.setUsaPitilloPesa(false);
+                p.setUsaConectorTope(false);
+                p.calcularFichaTecnica();
+                p.calcularEstadoGeneral();
+                p.setBastonElegido(bastonElegido);
+                p.setLadoApertura(ladoApertura);
+                pedidosDelLote.add(p);
+            }
+        }
+
+        if (pedidosDelLote.isEmpty()) {
+            redirectAttributes.addFlashAttribute("error", "Agrega al menos un riel para guardar.");
+            return "redirect:/taller/nuevo";
         }
 
         try {

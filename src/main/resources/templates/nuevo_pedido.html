@@ -16,7 +16,7 @@
         .previsualizacion.ok    { border-color: #198754; background-color: #f0fbf4; }
         .previsualizacion.falta { border-color: #dc3545; background-color: #fdf2f3; color: #842029; }
         .previsualizacion .cargando { color: #888; }
-        .fila-producto {
+        .fila-producto, .fila-riel {
             background: #fff;
             border: 1px solid #dee2e6;
             border-radius: 6px;
@@ -278,7 +278,7 @@
     <!-- ══════════════════ FIN TAB VENTA DIRECTA ══════════════════ -->
 
     <!-- ══════════════════════════════════════════════════════════════ -->
-    <!-- TAB: RIEL DE ONDA SERENA                                       -->
+    <!-- TAB: RIEL DE ONDA SERENA — MULTI-FILA (varios rieles por orden)  -->
     <!-- ══════════════════════════════════════════════════════════════ -->
     <div class="tab-pane fade" id="tabRielOnda">
         <form th:action="@{/taller/guardar-riel-onda}" method="post" class="bg-white p-4 shadow-sm border rounded">
@@ -293,67 +293,75 @@
                     <input type="text" name="nombreClienteFinal" class="form-control" required>
                 </div>
             </div>
+            <hr>
 
-            <div class="row mb-3 g-2">
-                <div class="col-md-6">
-                    <label class="form-label fw-bold">Descripción (opcional)</label>
-                    <input type="text" name="descripcion" class="form-control" placeholder="Ej: riel sala principal">
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label fw-bold">Cant.</label>
-                    <input type="number" name="cantidad" id="rielCantidad" class="form-control" value="1" min="1">
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label fw-bold">Ancho (m)</label>
-                    <input type="number" step="0.001" name="ancho" id="rielAncho" class="form-control" required>
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label fw-bold">Alto (m)</label>
-                    <input type="number" step="0.001" name="altura" id="rielAlto" class="form-control" placeholder="opcional">
+            <div id="contenedor-rieles">
+                <div class="fila-riel" data-indice="0">
+                    <div class="row align-items-end g-2 mb-1">
+                        <div class="col-md-3">
+                            <label class="form-label fw-bold mb-1" style="font-size:0.82rem">Descripción</label>
+                            <input type="text" name="descripciones" class="form-control form-control-sm" placeholder="Ej: riel sala principal">
+                        </div>
+                        <div class="col-md-1">
+                            <label class="form-label fw-bold mb-1" style="font-size:0.82rem">Cant.</label>
+                            <input type="number" name="cantidades" class="form-control form-control-sm campo-cantidad-riel" value="1" min="1" required>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label fw-bold mb-1" style="font-size:0.82rem">Ancho (m)</label>
+                            <input type="number" step="0.001" name="anchos" class="form-control form-control-sm campo-ancho-riel" required>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label fw-bold mb-1" style="font-size:0.82rem">Alto (m)</label>
+                            <input type="number" step="0.001" name="alturas" class="form-control form-control-sm campo-alto-riel" placeholder="opcional">
+                        </div>
+                        <div class="col-md-3 text-center">
+                            <label class="form-label fw-bold mb-1 d-block" style="font-size:0.82rem">Lleva polea</label>
+                            <input type="checkbox" name="usaPolea[0]" value="true" class="form-check-input fs-5 campo-usa-polea-riel">
+                        </div>
+                        <div class="col-md-1"></div>
+                    </div>
+
+                    <div class="row g-2 mt-2 campo-baston-riel" style="display:none;">
+                        <div class="col-md-6">
+                            <label class="form-label">Bastón</label>
+                            <select name="bastonElegido[0]" class="form-select form-select-sm">
+                                <option value="Bastón 0.80">Bastón 0.80</option>
+                                <option value="Bastón 1.20">Bastón 1.20</option>
+                                <option value="Bastón 1.50">Bastón 1.50</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Abre hacia</label>
+                            <select name="ladoApertura[0]" class="form-select form-select-sm">
+                                <option value="Izquierda">Izquierda</option>
+                                <option value="Derecha">Derecha</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="previsualizacion-riel previsualizacion mt-2">
+                        <span class="cargando">Completa el ancho para ver el corte estimado.</span>
+                    </div>
                 </div>
             </div>
 
-            <div class="seccion-manual mb-3">
-                <div class="form-check mb-2">
-                    <input type="checkbox" name="usaPolea" value="true" id="rielUsaPolea" class="form-check-input">
-                    <label for="rielUsaPolea" class="form-check-label">⚙ Lleva polea</label>
-                </div>
+            <button type="button" class="btn btn-info btn-sm mt-1" onclick="agregarFilaRiel()">+ Agregar otro riel</button>
 
-                <div class="row g-2 mt-2" id="filaBastonRiel" style="display:none;">
-                    <div class="col-md-6">
-                        <label class="form-label fw-bold">Bastón</label>
-                        <select name="bastonElegido" class="form-select">
-                            <option value="Bastón 0.80">Bastón 0.80</option>
-                            <option value="Bastón 1.20">Bastón 1.20</option>
-                            <option value="Bastón 1.50">Bastón 1.50</option>
-                        </select>
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label fw-bold">Abre hacia</label>
-                        <select name="ladoApertura" class="form-select">
-                            <option value="Izquierda">Izquierda</option>
-                            <option value="Derecha">Derecha</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div id="rielPrevisualizacion" class="previsualizacion">
-                    <span class="cargando">Completa el ancho para ver el corte estimado.</span>
-                </div>
-            </div>
+            <hr class="mt-4">
 
             <div class="seccion-extras">
-                <p class="fw-bold mb-2">➕ Insumos adicionales del riel (opcional)</p>
+                <p class="fw-bold mb-2">➕ Insumos adicionales (opcional)</p>
                 <p class="text-muted mb-2" style="font-size:0.82rem;">
                     Los accesorios obligatorios (poleas/crusador, o tapas/bastón, riata, soportes según corresponda)
-                    ya se calculan y descuentan automáticamente. Usa esto solo para material extra fuera de lo normal.
+                    ya se calculan y descuentan automáticamente para cada riel. Usa esto solo para material extra
+                    fuera de lo normal, aplicado una sola vez a toda la orden.
                 </p>
                 <div id="contenedorExtrasRiel"></div>
                 <button type="button" class="btn btn-sm btn-outline-dark mt-1" onclick="agregarFilaExtraRiel()">+ Agregar insumo</button>
             </div>
 
             <div class="mt-4">
-                <button type="submit" class="btn btn-success w-100">💾 Guardar Riel de Onda Serena</button>
+                <button type="submit" class="btn btn-success w-100">💾 Guardar Riel(es) de Onda Serena</button>
                 <a href="/taller/pedidos" class="btn btn-secondary w-100 mt-2">Cancelar</a>
             </div>
         </form>
@@ -960,15 +968,21 @@
         actualizarInfoInsumoVenta(select);
     }
 
+    // ════════════════════════════════════════════════════════════
+    //  RIEL DE ONDA SERENA — ahora es MULTI-FILA: se pueden agregar
+    //  varios rieles (cada uno con su propio ancho/alto/polea/bastón)
+    //  en una sola orden, igual que la pestaña de Fabricación.
+    // ════════════════════════════════════════════════════════════
+    let filaRielIndex = 1;
     let extraIndexRiel = 0;
 
-    function calcularRielPreview() {
-        const caja = document.getElementById('rielPrevisualizacion');
-        const ancho = parseFloat(document.getElementById('rielAncho').value);
-        const usaPolea = document.getElementById('rielUsaPolea').checked;
+    function calcularRielPreviewFila(fila) {
+        const caja = fila.querySelector('.previsualizacion-riel');
+        const ancho = parseFloat(fila.querySelector('.campo-ancho-riel').value);
+        const usaPolea = fila.querySelector('.campo-usa-polea-riel').checked;
 
         if (!ancho || ancho <= 0) {
-            caja.className = 'previsualizacion';
+            caja.className = 'previsualizacion-riel previsualizacion';
             caja.innerHTML = '<span class="cargando">Completa el ancho para ver el corte estimado.</span>';
             return;
         }
@@ -1027,8 +1041,84 @@
                  </tr>`;
         html += '</table>';
 
-        caja.className = 'previsualizacion ok';
+        caja.className = 'previsualizacion-riel previsualizacion ok';
         caja.innerHTML = html;
+    }
+
+    function engancharEventosFilaRiel(fila) {
+        const anchoInput = fila.querySelector('.campo-ancho-riel');
+        const poleaCheck = fila.querySelector('.campo-usa-polea-riel');
+        const filaBaston = fila.querySelector('.campo-baston-riel');
+
+        anchoInput.addEventListener('input', () => calcularRielPreviewFila(fila));
+        poleaCheck.addEventListener('change', () => {
+            calcularRielPreviewFila(fila);
+            filaBaston.style.display = poleaCheck.checked ? 'none' : '';
+        });
+
+        filaBaston.style.display = poleaCheck.checked ? 'none' : '';
+    }
+
+    function htmlFilaRiel(idx) {
+        return `
+        <div class="fila-riel" data-indice="${idx}">
+            <div class="row align-items-end g-2 mb-1">
+                <div class="col-md-3">
+                    <label class="form-label fw-bold mb-1" style="font-size:0.82rem">Descripción</label>
+                    <input type="text" name="descripciones" class="form-control form-control-sm" placeholder="Ej: riel sala principal">
+                </div>
+                <div class="col-md-1">
+                    <label class="form-label fw-bold mb-1" style="font-size:0.82rem">Cant.</label>
+                    <input type="number" name="cantidades" class="form-control form-control-sm campo-cantidad-riel" value="1" min="1" required>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label fw-bold mb-1" style="font-size:0.82rem">Ancho (m)</label>
+                    <input type="number" step="0.001" name="anchos" class="form-control form-control-sm campo-ancho-riel" required>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label fw-bold mb-1" style="font-size:0.82rem">Alto (m)</label>
+                    <input type="number" step="0.001" name="alturas" class="form-control form-control-sm campo-alto-riel" placeholder="opcional">
+                </div>
+                <div class="col-md-2 text-center">
+                    <label class="form-label fw-bold mb-1 d-block" style="font-size:0.82rem">Lleva polea</label>
+                    <input type="checkbox" name="usaPolea[${idx}]" value="true" class="form-check-input fs-5 campo-usa-polea-riel">
+                </div>
+                <div class="col-md-2 text-end">
+                    <button type="button" class="btn btn-outline-danger btn-sm mt-3"
+                            onclick="this.closest('.fila-riel').remove()">✕</button>
+                </div>
+            </div>
+
+            <div class="row g-2 mt-2 campo-baston-riel" style="display:none;">
+                <div class="col-md-6">
+                    <label class="form-label">Bastón</label>
+                    <select name="bastonElegido[${idx}]" class="form-select form-select-sm">
+                        <option value="Bastón 0.80">Bastón 0.80</option>
+                        <option value="Bastón 1.20">Bastón 1.20</option>
+                        <option value="Bastón 1.50">Bastón 1.50</option>
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Abre hacia</label>
+                    <select name="ladoApertura[${idx}]" class="form-select form-select-sm">
+                        <option value="Izquierda">Izquierda</option>
+                        <option value="Derecha">Derecha</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="previsualizacion-riel previsualizacion mt-2">
+                <span class="cargando">Completa el ancho para ver el corte estimado.</span>
+            </div>
+        </div>`;
+    }
+
+    function agregarFilaRiel() {
+        const contenedor = document.getElementById('contenedor-rieles');
+        contenedor.insertAdjacentHTML('beforeend', htmlFilaRiel(filaRielIndex));
+        const nueva = contenedor.lastElementChild;
+        filaRielIndex++;
+        engancharEventosFilaRiel(nueva);
     }
 
     function agregarFilaExtraRiel() {
@@ -1041,12 +1131,6 @@
         actualizarInfoExtra(select);
     }
 
-    document.getElementById('rielAncho').addEventListener('input', calcularRielPreview);
-    document.getElementById('rielUsaPolea').addEventListener('change', calcularRielPreview);
-    document.getElementById('rielUsaPolea').addEventListener('change', function() {
-        document.getElementById('filaBastonRiel').style.display = this.checked ? 'none' : '';
-    });
-
     document.addEventListener('DOMContentLoaded', () => {
         const fila0 = document.querySelector('.fila-producto[data-indice="0"]');
         if (fila0) {
@@ -1055,8 +1139,10 @@
         }
         agregarFilaTelaVenta();
 
-        document.getElementById('filaBastonRiel').style.display =
-            document.getElementById('rielUsaPolea').checked ? 'none' : '';
+        const filaRiel0 = document.querySelector('.fila-riel[data-indice="0"]');
+        if (filaRiel0) {
+            engancharEventosFilaRiel(filaRiel0);
+        }
     });
 </script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
