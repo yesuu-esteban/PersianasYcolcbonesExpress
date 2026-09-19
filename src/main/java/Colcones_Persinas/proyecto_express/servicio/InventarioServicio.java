@@ -78,6 +78,16 @@ public class InventarioServicio {
         public String tornilloPerforanteInfo;
         public String acopleInfo;
         public String terminalInfo;
+        // ── Riel de Onda Serena ──
+        public String rielInfo;
+        public String roachinaInfo;
+        public String riataInfo;
+        public String cuerdaOndaInfo;
+        public String poleaInfo;
+        public String crusadorInfo;
+        public String tapaRielInfo;
+        public String bastonInfo;
+        public String soporteRielInfo;
         public List<String> faltantes = new ArrayList<>();
     }
 
@@ -1004,7 +1014,7 @@ public class InventarioServicio {
     }
 
     // ═══════════════════════════════════════════════════════════════
-    // PREVISUALIZACIÓN EN VIVO
+    // PREVISUALIZACIÓN EN VIVO — FABRICACIÓN
     // ═══════════════════════════════════════════════════════════════
 
     public PrevisualizacionMaterial previsualizar(Pedido pedido) {
@@ -1176,6 +1186,93 @@ public class InventarioServicio {
                 res.tornilloPerforanteInfo = "Tornillo Perforante ×" + necesario + " · quedarían " + (stock - necesario);
             });
         }
+
+        return res;
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // PREVISUALIZACIÓN EN VIVO — RIEL DE ONDA SERENA
+    //
+    // Consulta el inventario REAL, igual que previsualizar() hace para
+    // fabricación. Antes la vista previa del riel era solo un cálculo
+    // matemático en el navegador que nunca consultaba si el material
+    // realmente existía en stock.
+    // ═══════════════════════════════════════════════════════════════
+
+    public PrevisualizacionMaterial previsualizarRiel(Pedido pedido) {
+        PrevisualizacionMaterial res = new PrevisualizacionMaterial();
+
+        intentar(res, () -> {
+            Insumo riel = obtenerInsumoPorNombre("Riel Onda Serena");
+            PiezaInsumo p = buscarMejorPieza(riel, pedido.getCorteRiel());
+            res.rielInfo = "Riel Onda Serena (#" + p.getId() + ") · quedarían "
+                    + redondear(p.getLargoRestante() - pedido.getCorteRiel()) + " m";
+        });
+
+        intentar(res, () -> {
+            Insumo roachina = obtenerInsumoPorNombre("Roachina");
+            PiezaInsumo p = buscarMejorPieza(roachina, pedido.getCorteRielPines());
+            res.roachinaInfo = "Roachina (#" + p.getId() + ") · quedarían "
+                    + redondear(p.getLargoRestante() - pedido.getCorteRielPines()) + " m";
+        });
+
+        intentar(res, () -> {
+            Insumo riata = obtenerInsumoPorNombre("Riata");
+            PiezaInsumo p = buscarMejorPieza(riata, pedido.getMedidaRiata());
+            res.riataInfo = "Riata (#" + p.getId() + ") · quedarían "
+                    + redondear(p.getLargoRestante() - pedido.getMedidaRiata()) + " m";
+        });
+
+        if (Boolean.TRUE.equals(pedido.getUsaPolea())) {
+            intentar(res, () -> {
+                Insumo cuerdaOnda = obtenerInsumoPorNombre("Cuerda Onda Serena");
+                PiezaInsumo p = buscarMejorPieza(cuerdaOnda, pedido.getCorteCuerdaOnda());
+                res.cuerdaOndaInfo = "Cuerda Onda Serena (#" + p.getId() + ") · quedarían "
+                        + redondear(p.getLargoRestante() - pedido.getCorteCuerdaOnda()) + " m";
+            });
+
+            intentar(res, () -> {
+                Insumo polea = obtenerInsumoPorNombre("Polea");
+                int stock = polea.getStockUnidades() != null ? polea.getStockUnidades() : 0;
+                int necesario = pedido.getCantidadPoleas();
+                if (stock < necesario) throw new MaterialInsuficienteException("Sin stock suficiente de \"Polea\".");
+                res.poleaInfo = "Polea ×" + necesario + " · quedarían " + (stock - necesario);
+            });
+
+            intentar(res, () -> {
+                Insumo crusador = obtenerInsumoPorNombre("Crusador");
+                int stock = crusador.getStockUnidades() != null ? crusador.getStockUnidades() : 0;
+                int necesario = pedido.getCantidadTerminalPolea();
+                if (stock < necesario) throw new MaterialInsuficienteException("Sin stock suficiente de \"Crusador\".");
+                res.crusadorInfo = "Crusador ×" + necesario + " · quedarían " + (stock - necesario);
+            });
+        } else {
+            intentar(res, () -> {
+                Insumo tapaRiel = obtenerInsumoPorNombre("Tapa Riel");
+                int stock = tapaRiel.getStockUnidades() != null ? tapaRiel.getStockUnidades() : 0;
+                int necesario = pedido.getCantidadTapasRiel();
+                if (stock < necesario) throw new MaterialInsuficienteException("Sin stock suficiente de \"Tapa Riel\".");
+                res.tapaRielInfo = "Tapa Riel ×" + necesario + " · quedarían " + (stock - necesario);
+            });
+
+            intentar(res, () -> {
+                String nombreBaston = (pedido.getBastonElegido() != null && !pedido.getBastonElegido().isBlank())
+                        ? pedido.getBastonElegido() : "Bastón 0.80";
+                Insumo baston = obtenerInsumoPorNombre(nombreBaston);
+                int stock = baston.getStockUnidades() != null ? baston.getStockUnidades() : 0;
+                int necesario = pedido.getCantidadBaston();
+                if (stock < necesario) throw new MaterialInsuficienteException("Sin stock suficiente de \"" + nombreBaston + "\".");
+                res.bastonInfo = nombreBaston + " ×" + necesario + " · quedarían " + (stock - necesario);
+            });
+        }
+
+        intentar(res, () -> {
+            Insumo soporteRiel = obtenerInsumoPorNombre("Soporte Riel");
+            int stock = soporteRiel.getStockUnidades() != null ? soporteRiel.getStockUnidades() : 0;
+            int necesario = pedido.getCantidadSoportesRiel();
+            if (stock < necesario) throw new MaterialInsuficienteException("Sin stock suficiente de \"Soporte Riel\".");
+            res.soporteRielInfo = "Soporte Riel ×" + necesario + " · quedarían " + (stock - necesario);
+        });
 
         return res;
     }

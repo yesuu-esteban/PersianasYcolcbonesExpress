@@ -14,6 +14,7 @@
             margin-top: 8px;
         }
         .previsualizacion.ok { border-color: #198754; background-color: #f0fbf4; }
+        .previsualizacion.falta { border-color: #dc3545; background-color: #fdf2f3; color: #842029; }
         .previsualizacion .cargando { color: #888; }
         .seccion-manual {
             background: #fffbea;
@@ -138,15 +139,20 @@
 <script>
     // ── Referencias DOM ───────────────────────────────────────────
     const campoAncho    = document.getElementById('campoAncho');
+    const campoAltura   = document.getElementById('campoAltura');
     const ckUsaPolea    = document.getElementById('ckUsaPolea');
     const caja          = document.getElementById('cajaPrevisualizacion');
 
-    // ── Previsualización client-side (mismo cálculo que "nuevo riel") ──
-    function calcularPreview() {
+    // ── Previsualización EN VIVO consultando el inventario real ──
+    async function calcularPreview() {
         const ancho = parseFloat(campoAncho.value);
+        const alto = parseFloat(campoAltura.value) || 0;
         const usaPolea = ckUsaPolea.checked;
         const selectApertura = document.getElementById('selectLadoApertura');
-        const haciaExtremos = selectApertura && selectApertura.value === 'Hacia los extremos';
+        const ladoApertura = selectApertura ? selectApertura.value : 'Izquierda';
+        const haciaExtremos = ladoApertura === 'Hacia los extremos';
+        const selectBastonEl = document.querySelector('select[name="bastonElegido"]');
+        const bastonElegido = selectBastonEl ? selectBastonEl.value : 'Bastón 0.80';
 
         if (!ancho || ancho <= 0) {
             caja.className = 'previsualizacion';
@@ -154,72 +160,78 @@
             return;
         }
 
-        const corteRiel = (ancho - 0.075).toFixed(3);
-        const corteRoachina = corteRiel;
-        const corteRiata = corteRiel;
+        caja.className = 'previsualizacion';
+        caja.innerHTML = '<span class="cargando">🔍 Consultando inventario...</span>';
 
+        const corteRiel = (ancho - 0.075).toFixed(3);
         let soportes;
         if (ancho >= 3.50) soportes = 5;
         else if (ancho >= 2.50) soportes = 4;
         else if (ancho >= 1.50) soportes = 3;
         else soportes = 2;
 
-        let html = '<strong>Corte y accesorios estimados</strong>';
-        html += '<table style="width:100%;border-collapse:collapse;margin-top:6px">';
-        html += `<tr style="border-top:1px solid #d6efdd">
-                    <td style="padding:2px 4px;font-weight:600;white-space:nowrap">🪟 Riel</td>
-                    <td style="padding:2px 6px;color:#555">${corteRiel} m</td>
-                 </tr>`;
-        html += `<tr style="border-top:1px solid #d6efdd">
-                    <td style="padding:2px 4px;font-weight:600;white-space:nowrap">📌 Roachina</td>
-                    <td style="padding:2px 6px;color:#555">${corteRoachina} m</td>
-                 </tr>`;
-        html += `<tr style="border-top:1px solid #d6efdd">
-                    <td style="padding:2px 4px;font-weight:600;white-space:nowrap">🪢 Riata</td>
-                    <td style="padding:2px 6px;color:#555">${corteRiata} m (siempre obligatoria)</td>
-                 </tr>`;
-        if (usaPolea) {
-            const corteCuerda = (ancho * 2 + 4).toFixed(3);
-            const cantCrusador = haciaExtremos ? 2 : 1;
-            html += `<tr style="border-top:1px solid #d6efdd">
-                        <td style="padding:2px 4px;font-weight:600;white-space:nowrap">🧶 Cuerda de onda</td>
-                        <td style="padding:2px 6px;color:#555">${corteCuerda} m</td>
-                     </tr>`;
-            html += `<tr style="border-top:1px solid #d6efdd">
-                        <td style="padding:2px 4px;font-weight:600;white-space:nowrap">🔧 Poleas</td>
-                        <td style="padding:2px 6px;color:#555">2 und. (automático)</td>
-                     </tr>`;
-            html += `<tr style="border-top:1px solid #d6efdd">
-                        <td style="padding:2px 4px;font-weight:600;white-space:nowrap">🎛 Crusador</td>
-                        <td style="padding:2px 6px;color:#555">${cantCrusador} und. ${haciaExtremos ? '(hacia los extremos)' : '(automático)'}</td>
-                     </tr>`;
-        } else {
-            const cantBaston = haciaExtremos ? 2 : 1;
-            html += `<tr style="border-top:1px solid #d6efdd">
-                        <td style="padding:2px 4px;font-weight:600;white-space:nowrap">🧢 Tapas de riel</td>
-                        <td style="padding:2px 6px;color:#555">2 und. (automático)</td>
-                     </tr>`;
-            html += `<tr style="border-top:1px solid #d6efdd">
-                        <td style="padding:2px 4px;font-weight:600;white-space:nowrap">🪄 Bastón</td>
-                        <td style="padding:2px 6px;color:#555">${cantBaston} und. ${haciaExtremos ? '(hacia los extremos)' : ''} (según elegido: 0.80/1.20/1.50)</td>
-                     </tr>`;
-        }
-        html += `<tr style="border-top:1px solid #d6efdd">
-                    <td style="padding:2px 4px;font-weight:600;white-space:nowrap">🔩 Soportes de riel</td>
-                    <td style="padding:2px 6px;color:#555">${soportes} und. (según ancho)</td>
-                 </tr>`;
-        html += '</table>';
+        try {
+            const params = new URLSearchParams({ ancho, altura: alto, usaPolea, bastonElegido, ladoApertura });
+            const token = sessionStorage.getItem('authToken');
+            if (token) params.set('token', token);
 
-        caja.className = 'previsualizacion ok';
-        caja.innerHTML = html;
+            const resp = await fetch('/taller/previsualizar-material-riel?' + params.toString());
+            if (!resp.ok) throw new Error('HTTP ' + resp.status);
+            const d = await resp.json();
+
+            if (d.disponible) {
+                let html = '<strong>✓ Material disponible</strong>';
+                html += '<table style="width:100%;border-collapse:collapse;margin-top:6px">';
+                if (d.rielInfo)     html += trRiel('🪟 Riel',      corteRiel + ' m', d.rielInfo);
+                if (d.roachinaInfo) html += trRiel('📌 Roachina',  corteRiel + ' m', d.roachinaInfo);
+                if (d.riataInfo)    html += trRiel('🪢 Riata',     corteRiel + ' m (siempre obligatoria)', d.riataInfo);
+                if (usaPolea) {
+                    const corteCuerda = (ancho * 2 + 4).toFixed(3);
+                    if (d.cuerdaOndaInfo) html += trRiel('🧶 Cuerda de onda', corteCuerda + ' m', d.cuerdaOndaInfo);
+                    if (d.poleaInfo)      html += trRiel('🔧 Poleas', '2 und.', d.poleaInfo);
+                    if (d.crusadorInfo)   html += trRiel('🎛 Crusador', (haciaExtremos ? '2' : '1') + ' und.' + (haciaExtremos ? ' (hacia los extremos)' : ''), d.crusadorInfo);
+                } else {
+                    if (d.tapaRielInfo) html += trRiel('🧢 Tapas de riel', '2 und.', d.tapaRielInfo);
+                    if (d.bastonInfo)   html += trRiel('🪄 Bastón', (haciaExtremos ? '2' : '1') + ' und.' + (haciaExtremos ? ' (hacia los extremos)' : ''), d.bastonInfo);
+                }
+                if (d.soporteRielInfo) html += trRiel('🔩 Soportes de riel', soportes + ' und. (según ancho)', d.soporteRielInfo);
+                html += '</table>';
+                caja.className = 'previsualizacion ok';
+                caja.innerHTML = html;
+            } else {
+                caja.className = 'previsualizacion falta';
+                caja.innerHTML = '<strong>⚠ Falta material:</strong><br>' + d.faltantes.join('<br>');
+            }
+        } catch (e) {
+            console.error('Error consultando previsualización de riel:', e);
+            caja.className = 'previsualizacion falta';
+            caja.innerHTML = '<span>No se pudo consultar el inventario.</span>';
+        }
     }
 
-    campoAncho.addEventListener('input', calcularPreview);
-    ckUsaPolea.addEventListener('change', calcularPreview);
+    function trRiel(mat, med, info) {
+        return `<tr style="border-top:1px solid #d6efdd">
+            <td style="padding:2px 4px;font-weight:600;white-space:nowrap">${mat}</td>
+            <td style="padding:2px 6px;color:#555;white-space:nowrap">${med}</td>
+            <td style="padding:2px 4px;color:#1a6b3a">${info}</td>
+        </tr>`;
+    }
+
+    let timerRiel = null;
+    function dispararPreviewRiel() {
+        clearTimeout(timerRiel);
+        timerRiel = setTimeout(calcularPreview, 420);
+    }
+
+    campoAncho.addEventListener('input', dispararPreviewRiel);
+    campoAltura.addEventListener('input', dispararPreviewRiel);
+    ckUsaPolea.addEventListener('change', dispararPreviewRiel);
     ckUsaPolea.addEventListener('change', function() {
         document.getElementById('filaBastonRiel').style.display = this.checked ? 'none' : '';
     });
-    document.getElementById('selectLadoApertura').addEventListener('change', calcularPreview);
+    document.getElementById('selectLadoApertura').addEventListener('change', dispararPreviewRiel);
+    const selectBastonListener = document.querySelector('select[name="bastonElegido"]');
+    if (selectBastonListener) selectBastonListener.addEventListener('change', dispararPreviewRiel);
 
     // ════════════════════════════════════════════════════════════
     //  INSUMOS ADICIONALES (extras) — misma lógica reutilizada del

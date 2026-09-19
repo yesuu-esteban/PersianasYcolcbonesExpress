@@ -164,7 +164,7 @@ public class PedidoControlador {
         return "nuevo_pedido";
     }
 
-    // ─── Previsualización AJAX ────────────────────────────────────────────
+    // ─── Previsualización AJAX — Fabricación ────────────────────────────────
     @GetMapping("/previsualizar-material")
     @ResponseBody
     public InventarioServicio.PrevisualizacionMaterial previsualizarMaterial(
@@ -186,6 +186,26 @@ public class PedidoControlador {
         p.setTuboManualElegido(normalizarTuboManual(tipoTuboManual));
         p.calcularFichaTecnica();
         return inventarioServicio.previsualizar(p);
+    }
+
+    // ─── Previsualización AJAX — Riel de Onda Serena ───────────────────────
+    @GetMapping("/previsualizar-material-riel")
+    @ResponseBody
+    public InventarioServicio.PrevisualizacionMaterial previsualizarMaterialRiel(
+            @RequestParam double ancho,
+            @RequestParam(required = false) Double altura,
+            @RequestParam(required = false, defaultValue = "false") boolean usaPolea,
+            @RequestParam(required = false) String bastonElegido,
+            @RequestParam(required = false) String ladoApertura) {
+
+        Pedido p = new Pedido();
+        p.setTipo("RIEL_ONDA_SERENA");
+        p.setAncho(ancho);
+        p.setAltura(altura != null ? altura : 0.0);
+        p.setUsaPolea(usaPolea);
+        p.setBastonElegido(bastonElegido);
+        p.setLadoApertura(ladoApertura);
+        return inventarioServicio.previsualizarRiel(p);
     }
 
     // ─── Guardar lista de pedidos ─────────────────────────────────────────
