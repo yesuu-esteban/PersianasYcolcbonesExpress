@@ -58,7 +58,10 @@ public class Pedido {
     @Column(name = "baston_elegido")
     private String bastonElegido;
 
-    /** Solo aplica a Riel de Onda Serena: hacia qué lado abre ("Izquierda" o "Derecha"). */
+    /**
+     * Solo aplica a Riel de Onda Serena: hacia qué lado abre.
+     * Valores: "Izquierda", "Derecha" o "Hacia los extremos".
+     */
     @Column(name = "lado_apertura")
     private String ladoApertura;
 
@@ -263,10 +266,15 @@ public class Pedido {
         return Boolean.TRUE.equals(this.usaPolea) ? 2 : 0;
     }
 
+    /**
+     * Crusador: obligatorio solo cuando el riel lleva polea.
+     * Normalmente 1, pero si el riel abre "Hacia los extremos" se necesitan
+     * 2 (uno en cada extremo).
+     */
     @Transient
     public int getCantidadTerminalPolea() {
-        if(!Boolean.TRUE.equals(this.usaPolea)) return 0;
-        return "Hacia los extremos".equalsIgnoreCase(this.ladoApertura) ? 2 :1;
+        if (!Boolean.TRUE.equals(this.usaPolea)) return 0;
+        return "Hacia los extremos".equalsIgnoreCase(this.ladoApertura) ? 2 : 1;
     }
 
     @Transient
@@ -274,9 +282,15 @@ public class Pedido {
         return Boolean.TRUE.equals(this.usaPolea) ? 0 : 2;
     }
 
+    /**
+     * Bastón: pieza fija por unidad (0.80 / 1.20 / 1.50 m según el elegido).
+     * Solo aplica cuando el riel NO lleva polea. Normalmente 1 unidad
+     * completa, pero si el riel abre "Hacia los extremos" se necesitan 2
+     * unidades del mismo tipo elegido (una en cada extremo).
+     */
     @Transient
     public int getCantidadBaston() {
-        if(Boolean.TRUE.equals(this.usaPolea)) return 0;
+        if (Boolean.TRUE.equals(this.usaPolea)) return 0;
         return "Hacia los extremos".equalsIgnoreCase(this.ladoApertura) ? 2 : 1;
     }
 
@@ -309,7 +323,12 @@ public class Pedido {
                 && !"auto".equalsIgnoreCase(this.tuboManualElegido.trim())) {
             this.tuboRecomendado = this.tuboManualElegido.trim().toUpperCase();
         } else {
-            boolean esPesado = (this.ancho > 2.50 || this.altura > 2.50 || Boolean.TRUE.equals(this.usaCabezal));
+            // El cabezal NO debe forzar por sí solo el tubo a R24: la elección
+            // de tubo sigue siempre el mismo algoritmo basado en ancho/alto,
+            // tenga o no tenga cabezal el pedido. Antes esto estaba mal: un
+            // pedido con cabezal pero medidas normales terminaba agarrando
+            // R24 igual, sin necesitarlo.
+            boolean esPesado = (this.ancho > 2.50 || this.altura > 2.50);
             this.tuboRecomendado = esPesado ? "R24" : "R16";
         }
 
