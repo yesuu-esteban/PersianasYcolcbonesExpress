@@ -960,6 +960,11 @@ public class PedidoControlador {
      * HISTÓRICOS que ya tenían ese registro guardado antes de la fusión de
      * "Tope Pesa" con "Tapa Perfil". Los pedidos nuevos ya no generan este
      * código — el insumo "Tope Pesa" ya no existe en el catálogo.
+     *
+     * NOTA sobre "PAQUETE_DE_CONTROL_R24": cuando el pedido usa Control R24,
+     * ya no se descuentan Control/Terminal/Acople/Soporte por separado — se
+     * descuenta 1 unidad de este paquete combinado. Este nombre amigable es
+     * el que aparece en el registro de material utilizado para ese caso.
      */
     private Map<String, String> construirNombresAmigables() {
         Map<String, String> m = new HashMap<>();
@@ -972,6 +977,7 @@ public class PedidoControlador {
         m.put("CUERDA", "Cuerda / Cadenilla (Blackout)");
         m.put("CONTROL_R16", "Mecanismo (Control y accesorios)");
         m.put("CONTROL_R24", "Mecanismo (Control y accesorios) R24");
+        m.put("PAQUETE_DE_CONTROL_R24", "Paquete de Control R24 (control + terminal + acoples + soportes)");
         m.put("CONTROL_R8_A", "Mecanismo (Control y accesorios)");
         m.put("CONTROL_R8_B", "Mecanismo (Control y accesorios)");
         m.put("TERMINAL", "Terminal · incluido en Mecanismo");

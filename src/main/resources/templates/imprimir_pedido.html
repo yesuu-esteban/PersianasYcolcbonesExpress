@@ -132,7 +132,7 @@
             display: flex;
             flex-wrap: wrap;
             align-items: baseline;
-            column-gap: 5px;
+            column-gap: 4px;
             row-gap: 1px;
         }
         .origen-rollo  { background: #eaf2fd; border-left: 3px solid #1976d2; }
@@ -430,8 +430,11 @@
                 · <span th:text="${#numbers.formatDecimal(pedido.corteTuberia,1,3)+' m'}"></span>
             </p>
 
-            <p><strong>Terminal:</strong> 1 und.</p>
-            <p th:if="${pedido.cantidadAcoples > 0}"><strong>Acoples:</strong> 2 und.</p>
+            <p th:if="${pedido.isUsaPaqueteControlR24()}">
+                <strong>Paquete R24:</strong> incluye control, terminal, acoples y soportes (1 und.)
+            </p>
+            <p th:unless="${pedido.isUsaPaqueteControlR24()}"><strong>Terminal:</strong> 1 und.</p>
+            <p th:if="${!pedido.isUsaPaqueteControlR24() and pedido.cantidadAcoples > 0}"><strong>Acoples:</strong> 2 und.</p>
 
             <div class="fila-cabezal" th:if="${pedido.usaCabezal}">
                 <strong>Cabezal:</strong>
@@ -445,7 +448,7 @@
             </div>
 
             <p style="margin-top:5px;"><strong>Tapa Perfil:</strong> 2 und.</p>
-            <p><strong>Soportes:</strong> 2 und.</p>
+            <p th:unless="${pedido.isUsaPaqueteControlR24()}"><strong>Soportes:</strong> 2 und.</p>
 
             <div class="fila-cabezal" th:if="${pedido.usaCabezal}">
                 <strong>Tapa Cabezal:</strong> 2 und.
