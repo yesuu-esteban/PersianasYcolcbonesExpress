@@ -319,6 +319,7 @@
         <!-- 4: Despacho -->
         <div class="etiqueta">
             <h3>🏠 Despacho</h3>
+            <p><strong>Distribuidor:</strong> <span th:text="${pedido.nombreDecorador}"></span></p>
             <p><strong>Cliente:</strong>     <span th:text="${pedido.nombreClienteFinal}"></span></p>
             <p><strong>Descripción:</strong> <span th:text="${pedido.descripcion}"></span></p>
             <p><strong>Ancho:</strong>
@@ -462,11 +463,13 @@
         <!-- 4: Cliente (etiqueta para despacho) -->
         <div class="etiqueta">
             <h3>🏠 Despacho</h3>
+            <p><strong>Distribuidor:</strong> <span th:text="${pedido.nombreDecorador}"></span></p>
             <p><strong>Cliente:</strong>     <span th:text="${pedido.nombreClienteFinal}"></span></p>
             <p><strong>Descripción:</strong> <span th:text="${pedido.descripcion}"></span></p>
             <p><strong>Medida final:</strong>
                 <span th:text="${#numbers.formatDecimal(pedido.ancho,1,2)+'m × '+#numbers.formatDecimal(pedido.altura,1,2)+'m'}"></span>
             </p>
+            <p><strong>Color:</strong> <span th:text="${pedido.colorTelaDeseado}"></span></p>
             <p><strong>Mando:</strong>  <span class="valor-mando" th:text="${pedido.ladoControl}"></span></p>
             <p><strong>Cuerda:</strong> <span th:text="${pedido.medidaCuerda}"></span></p>
             <p><strong>Control:</strong><span th:text="${pedido.tipoControl}"></span></p>
