@@ -167,6 +167,13 @@ public class Pedido {
         return esControlR16() ? 0 : 1;
     }
 
+    /**
+     * Acoples: obligatorios cuando el corte de ancho llega a 2.0m o más,
+     * SIN IMPORTAR si el control termina siendo R16, R8 B o R24 — es una
+     * regla independiente de refuerzo estructural del tubo. Cuando el
+     * control es R24, este valor no se descuenta suelto (queda embebido
+     * dentro del Paquete de Control R24); ver isUsaPaqueteControlR24().
+     */
     @Transient
     public int getCantidadAcoples() {
         return getCorteTelaAncho() >= 2.0 ? 2 : 0;
@@ -220,6 +227,13 @@ public class Pedido {
      * InventarioServicio y a CalculadoraCostoFabricacionServicio cuándo
      * tomar esa ruta especial en vez de la normal (Control + Acople +
      * Terminal + Soporte por separado).
+     *
+     * Nota: esto responde SOLO a lo que diga tipoControl en este momento,
+     * sea cual sea el origen (la recomendación automática de
+     * calcularFichaTecnica() o un cambio manual que haga el jefe al editar
+     * el pedido). Si el jefe fuerza manualmente "Control R24" aunque el
+     * tamaño automático no lo hubiera elegido, el sistema igual usa el
+     * Paquete completo — y viceversa.
      */
     @Transient
     public boolean isUsaPaqueteControlR24() {
@@ -333,20 +347,32 @@ public class Pedido {
             return;
         }
 
+        // ── Regla única de "tamaño grande" → R24 (tubo Y control JUNTOS,
+        // como un solo Paquete de Control R24). Antes el tubo y el control
+        // usaban fórmulas distintas y desalineadas (una con OR y medidas
+        // crudas, otra con AND y medidas de corte), lo que dejaba casos
+        // raros como Acoples sueltos combinados con Control R16. La regla
+        // real de taller es: solo se pasa a R24 cuando AMBAS medidas
+        // (ancho Y alto, sin cortar) superan 2.50m A LA VEZ — igual con o
+        // sin cabezal, el cabezal no influye en esta decisión. ──
+        boolean esTamanoGrande = (this.ancho > 2.50 && this.altura > 2.50);
+
         if (this.tuboManualElegido != null && !this.tuboManualElegido.isBlank()
                 && !"auto".equalsIgnoreCase(this.tuboManualElegido.trim())) {
             this.tuboRecomendado = this.tuboManualElegido.trim().toUpperCase();
         } else {
-            // El cabezal NO debe forzar por sí solo el tubo a R24: la elección
-            // de tubo sigue siempre el mismo algoritmo basado en ancho/alto,
-            // tenga o no tenga cabezal el pedido.
-            boolean esPesado = (this.ancho > 2.50 || this.altura > 2.50);
-            this.tuboRecomendado = esPesado ? "R24" : "R16";
+            this.tuboRecomendado = esTamanoGrande ? "R24" : "R16";
         }
 
+        // El control sigue la MISMA regla de tamaño que el tubo
+        // (esTamanoGrande), no una fórmula distinta. Si el tubo terminó
+        // siendo R8 (elegido manualmente), el control va a Control R8 A
+        // sin importar el tamaño. El jefe siempre puede sobreescribir el
+        // control manualmente al editar el pedido; esta es solo la
+        // recomendación automática al crearlo.
         if ("R8".equalsIgnoreCase(this.tuboRecomendado)) {
             this.tipoControl = "Control R8 A";
-        } else if (getCorteTelaAncho() >= 2.0 && getCorteTelaAlto() >= 2.50) {
+        } else if (esTamanoGrande) {
             this.tipoControl = "Control R24";
         } else {
             this.tipoControl = (this.ancho > 1.50) ? "Control R16" : "Control R8 B";
@@ -373,4 +399,4 @@ public class Pedido {
             this.estado = "Pendiente";
         }
     }
-}
+} 

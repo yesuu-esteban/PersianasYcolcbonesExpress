@@ -321,8 +321,11 @@
         if (tipoTuboOverride && tipoTuboOverride !== 'auto') {
             nombreTubo = 'Tubo ' + tipoTuboOverride;
         } else {
-            const esPesado = ancho > 2.50 || alto > 2.50 || cabezal;
-            nombreTubo = esPesado ? 'Tubo R24' : 'Tubo R16';
+            // Misma regla que el servidor (Pedido.calcularFichaTecnica): solo
+            // pasa a R24 cuando ANCHO Y ALTO superan 2.50m A LA VEZ. El
+            // cabezal ya NO influye en esta decisión.
+            const esTamanoGrande = ancho > 2.50 && alto > 2.50;
+            nombreTubo = esTamanoGrande ? 'Tubo R24' : 'Tubo R16';
         }
 
         const descTela   = cabezal ? 0.035 : 0.03;
@@ -595,21 +598,12 @@
         cont.insertAdjacentHTML('beforeend', filaExtraHtml(idx));
         const filaCampos = cont.querySelector(`.fila-extra[data-indice="${idx}"]`);
         const sel = filaCampos.querySelector('.select-extra-insumo');
+        sel.addEventListener('change', function () { toggleLibre(this); });
         if (valSelect) sel.value = valSelect;
         if (valLibre) filaCampos.querySelector('input[name^="extraNombreLibre"]').value = valLibre;
         if (valCant) filaCampos.querySelector('input[name^="extraCantidad"]').value = valCant;
-        actualizarInfoExtra(sel);
-    }
-
-    function agregarFilaExtra(valSelect, valLibre, valCant) {
-        const cont = document.getElementById('contenedorExtras');
-        cont.insertAdjacentHTML('beforeend', filaExtraHtml(extraIndex++));
-        const fila = cont.lastElementChild;
-        const sel = fila.querySelector('.select-extra-insumo');
-        if (valSelect) sel.value = valSelect;
-        if (valLibre) fila.querySelector('input[name="extraNombreLibre"]').value = valLibre;
-        if (valCant) fila.querySelector('input[name="extraCantidad"]').value = valCant;
         toggleLibre(sel);
+        actualizarInfoExtra(sel);
     }
 
     document.addEventListener('DOMContentLoaded', () => {

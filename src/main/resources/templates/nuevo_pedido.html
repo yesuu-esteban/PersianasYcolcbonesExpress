@@ -441,8 +441,12 @@
         if (tipoTuboOverride && tipoTuboOverride !== 'auto') {
             nombreTubo = 'Tubo ' + tipoTuboOverride;
         } else {
-            const esPesado = ancho > 2.50 || alto > 2.50 || cabezal;
-            nombreTubo = esPesado ? 'Tubo R24' : 'Tubo R16';
+            // Misma regla que el servidor (Pedido.calcularFichaTecnica): solo
+            // pasa a R24 cuando ANCHO Y ALTO superan 2.50m A LA VEZ. El
+            // cabezal ya NO influye en esta decisión — antes esta copia en
+            // el navegador estaba desalineada con el servidor.
+            const esTamanoGrande = ancho > 2.50 && alto > 2.50;
+            nombreTubo = esTamanoGrande ? 'Tubo R24' : 'Tubo R16';
         }
 
         const descTela = cabezal ? 0.035 : 0.03;
