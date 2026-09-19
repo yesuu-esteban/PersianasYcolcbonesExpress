@@ -212,6 +212,20 @@ public class Pedido {
         return this.tipoControl != null && this.tipoControl.trim().startsWith("Control R16");
     }
 
+    /**
+     * Cuando el pedido usa Control R24, el control, terminal, acoples y
+     * soportes ya NO se descuentan por separado del inventario: todo eso
+     * viene físicamente empacado junto en un solo ítem, "Paquete de Control
+     * R24", del que se descuenta 1 unidad. Este helper le indica a
+     * InventarioServicio y a CalculadoraCostoFabricacionServicio cuándo
+     * tomar esa ruta especial en vez de la normal (Control + Acople +
+     * Terminal + Soporte por separado).
+     */
+    @Transient
+    public boolean isUsaPaqueteControlR24() {
+        return "Control R24".equals(this.tipoControl);
+    }
+
     @Transient
     public double getAnchoComercialUsado() {
         double largo = getCorteTelaAlto();
@@ -325,9 +339,7 @@ public class Pedido {
         } else {
             // El cabezal NO debe forzar por sí solo el tubo a R24: la elección
             // de tubo sigue siempre el mismo algoritmo basado en ancho/alto,
-            // tenga o no tenga cabezal el pedido. Antes esto estaba mal: un
-            // pedido con cabezal pero medidas normales terminaba agarrando
-            // R24 igual, sin necesitarlo.
+            // tenga o no tenga cabezal el pedido.
             boolean esPesado = (this.ancho > 2.50 || this.altura > 2.50);
             this.tuboRecomendado = esPesado ? "R24" : "R16";
         }

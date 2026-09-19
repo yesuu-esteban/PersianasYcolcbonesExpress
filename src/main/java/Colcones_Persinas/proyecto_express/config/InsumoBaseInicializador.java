@@ -23,35 +23,50 @@ public class InsumoBaseInicializador implements CommandLineRunner {
         crearSiNoExiste("Tubo R8",    true,  "Tubo pequeño. Se carga por barras con medida.");
         crearSiNoExiste("Pesa",                  true,  "Pesa inferior, se corta a la misma medida que el tubo.");
         crearSiNoExiste("Control R16",           false, "Control para pedidos con ancho > 1.50 m. Se maneja por unidad.");
-        crearSiNoExiste("Control R24",           false, "Control especial para pedidos con corte de tela >= 2.00m ancho y >= 2.50m largo. Soportes más grandes. Se maneja por unidad.");
-        crearSiNoExiste("Acople",                false, "Acople necesario cuando el ancho de corte es >= 2.00m (2 por pedido), sin importar qué control termine asignado. Se maneja por unidad.");
-        crearSiNoExiste("Terminal",              false, "Terminal acompañante del control. Obligatorio en TODO pedido de fabricación, sin importar ancho, alto o tipo de control/tubo. Se maneja por unidad.");
+        crearSiNoExiste("Control R24",           false, "Control especial para pedidos con corte de tela >= 2.00m ancho y >= 2.50m largo. [YA NO SE DESCUENTA DIRECTAMENTE: se dejó en catálogo por compatibilidad histórica; ahora se usa \"Paquete de Control R24\", que trae todo empacado junto].");
+        crearSiNoExiste("Paquete de Control R24", false, "Combo completo para pedidos con Control R24: incluye el control, terminal, acoples y soportes (más grandes) en un solo paquete físico. Se descuenta 1 unidad por pedido, en vez de descontar cada pieza por separado.");
+        crearSiNoExiste("Acople",                false, "Acople necesario cuando el ancho de corte es >= 2.00m (2 por pedido). Solo aplica a Control R16, R8 A y R8 B — Control R24 usa su propio Paquete. Se maneja por unidad.");
+        crearSiNoExiste("Terminal",              false, "Terminal acompañante del control. Obligatorio en pedidos de fabricación que NO usan Control R24 (ese ya trae su propio terminal dentro del Paquete). Se maneja por unidad.");
         crearSiNoExiste("Control R8 A", false, "Control para pedidos con Tubo R8. Se maneja por unidad.");
         crearSiNoExiste("Control R8 B",          false, "Control para pedidos con ancho <= 1.50 m. Se maneja por unidad.");
-        crearSiNoExiste("Soporte",               false, "Soporte de instalación. Se usan 2 en todo pedido, con o sin cabezal.");
+        crearSiNoExiste("Soporte",               false, "Soporte de instalación. Se usan 2 en todo pedido de fabricación que NO use Control R24 (ese ya trae sus propios soportes, más grandes, dentro del Paquete).");
         crearSiNoExiste("Tapa Cabezal",          false, "Tapa de cabezal. Se usan 2 únicamente en pedidos CON cabezal.");
         crearSiNoExiste("Tapa Perfil",           false, "Tapas de perfil de la pesa. Se usan 2 en TODO pedido de fabricación, con o sin cabezal. (Fusiona lo que antes era 'Tope Pesa': mismo accesorio físico.)");
         crearSiNoExiste("Tornillo",              false, "Tornillo normal. Sin cabezal: 2 (soportes). Con cabezal: 8 (soportes + tapas).");
         crearSiNoExiste("Tornillo Perforante",   false, "Tornillo perforante. Solo en pedidos CON cabezal: 4 unidades.");
 
+        // ── Riel de Onda Serena ──────────────────────────────────────────
         crearSiNoExiste("Polea",                 false, "Polea del riel de onda serena. Obligatoria (2 por pedido) cuando el riel lleva polea.");
-        crearSiNoExiste("Crusador",              false, "Terminal/control de la polea del riel de onda serena (antes 'Terminal Control Polea'). Obligatorio (1 por pedido) cuando el riel lleva polea.");
+        crearSiNoExiste("Crusador",              false, "Terminal/control de la polea del riel de onda serena (antes 'Terminal Control Polea'). Obligatorio cuando el riel lleva polea: 1 normalmente, 2 si abre \"Hacia los extremos\".");
         crearSiNoExiste("Tapa Riel",             false, "Tapa de riel de onda serena. Obligatoria (2 por pedido) cuando el riel NO lleva polea.");
         crearSiNoExiste("Roachina",              true,  "Riel de pines del riel de onda serena (antes 'Riel de Pines'). Por medida, obligatoria siempre.");
         crearSiNoExiste("Riata",                 true,  "Riata del riel de onda serena. Por medida, se corta al mismo ancho que el riel. Obligatoria SIEMPRE, con o sin polea.");
+
         crearSiNoExiste("Soporte Riel", false, "Soporte de instalación del riel de onda serena. Cantidad variable según el ancho del pedido.");
 
+        // ── Bastones de riel: piezas FIJAS por unidad (NO se cortan ni se
+        // miden). Cada uno tiene una longitud fija de fábrica, y esa medida ES
+        // el nombre del insumo. El jefe elige manualmente cuál usar; el
+        // sistema descuenta 1 unidad completa del tipo elegido normalmente,
+        // o 2 si el riel abre "Hacia los extremos". Se usan cuando el riel
+        // NO lleva polea. ──
         crearSiNoExiste("Bastón 0.80", false, "Bastón fijo de 0.80 m del riel de onda serena. Se descuenta como unidad completa, no se corta.");
         crearSiNoExiste("Bastón 1.20", false, "Bastón fijo de 1.20 m del riel de onda serena. Se descuenta como unidad completa, no se corta.");
         crearSiNoExiste("Bastón 1.50", false, "Bastón fijo de 1.50 m del riel de onda serena. Se descuenta como unidad completa, no se corta.");
 
-        // ── Migraciones de nombres antiguos ──
+        // ── FIX de migración: renombra los insumos viejos "Bastón Tipo A/B/C" a
+        // los nombres nuevos por medida ("Bastón 0.80" etc.) si ya existían en
+        // la base de datos, conservando su stock actual. También corrige a
+        // tieneMedida = false si por error habían quedado como por medida. ──
         migrarNombreInsumo("Bastón Tipo A", "Bastón 0.80");
         migrarNombreInsumo("Bastón Tipo B", "Bastón 1.20");
         migrarNombreInsumo("Bastón Tipo C", "Bastón 1.50");
         corregirBastonAPorUnidad("Bastón 0.80");
         corregirBastonAPorUnidad("Bastón 1.20");
         corregirBastonAPorUnidad("Bastón 1.50");
+
+        // ── FIX de migración: renombra el insumo viejo "Tapa" a "Tapa Cabezal"
+        // si ya existía en la base de datos, conservando su stock actual. ──
         migrarNombreInsumo("Tapa", "Tapa Cabezal");
 
         // ── FIX: "Tope Pesa" se fusiona con "Tapa Perfil" (eran el mismo

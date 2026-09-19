@@ -444,9 +444,10 @@ public class InventarioServicio {
     // ═══════════════════════════════════════════════════════════════
     // VERIFICACIÓN PREVIA — respeta la selección manual del jefe
     //
-    // NOTA: "Tope Pesa" se ELIMINÓ como concepto: se fusionó con "Tapa
-    // Perfil" (eran el mismo accesorio físico). Ahora solo se verifica
-    // y descuenta "Tapa Perfil" (2 und., siempre).
+    // NOTA sobre Control R24: cuando el pedido usa Control R24, el control,
+    // terminal, acoples y soportes ya NO se verifican por separado — todo
+    // eso viene físicamente empacado junto en "Paquete de Control R24", del
+    // que basta verificar 1 unidad disponible.
     // ═══════════════════════════════════════════════════════════════
 
     public void verificarDisponibilidad(Pedido pedido) {
@@ -500,29 +501,41 @@ public class InventarioServicio {
             buscarMejorPieza(cuerda, pedido.getMetrosCuerda());
         }
 
-        Insumo control = obtenerInsumoPorNombre(pedido.getTipoControl().trim());
-        int stockControl = control.getStockUnidades() != null ? control.getStockUnidades() : 0;
-        if (stockControl < 1) {
-            throw new MaterialInsuficienteException(
-                    "No hay stock de \"" + control.getNombre() + "\". Disponible: 0 unidades.");
-        }
-
-        if (pedido.getCantidadAcoples() > 0) {
-            Insumo acople = obtenerInsumoPorNombre("Acople");
-            int stockAcople = acople.getStockUnidades() != null ? acople.getStockUnidades() : 0;
-            if (stockAcople < pedido.getCantidadAcoples()) {
+        // ── Control R24: viene empacado con terminal, acoples y soportes
+        // en un solo ítem físico ("Paquete de Control R24"). Para R16/R8 A/
+        // R8 B se mantiene el flujo normal de piezas separadas. ──
+        if (pedido.isUsaPaqueteControlR24()) {
+            Insumo paqueteR24 = obtenerInsumoPorNombre("Paquete de Control R24");
+            int stockPaquete = paqueteR24.getStockUnidades() != null ? paqueteR24.getStockUnidades() : 0;
+            if (stockPaquete < 1) {
                 throw new MaterialInsuficienteException(
-                        "No hay suficiente \"Acople\". Disponible: " + stockAcople
-                        + " unidad(es), necesario: " + pedido.getCantidadAcoples() + ".");
+                        "No hay stock de \"Paquete de Control R24\". Disponible: 0 unidades.");
             }
-        }
+        } else {
+            Insumo control = obtenerInsumoPorNombre(pedido.getTipoControl().trim());
+            int stockControl = control.getStockUnidades() != null ? control.getStockUnidades() : 0;
+            if (stockControl < 1) {
+                throw new MaterialInsuficienteException(
+                        "No hay stock de \"" + control.getNombre() + "\". Disponible: 0 unidades.");
+            }
 
-        Insumo terminal = obtenerInsumoPorNombre("Terminal");
-        int stockTerminal = terminal.getStockUnidades() != null ? terminal.getStockUnidades() : 0;
-        if (stockTerminal < pedido.getCantidadTerminal()) {
-            throw new MaterialInsuficienteException(
-                    "No hay suficiente \"Terminal\". Disponible: " + stockTerminal
-                    + " unidad(es), necesario: " + pedido.getCantidadTerminal() + ".");
+            if (pedido.getCantidadAcoples() > 0) {
+                Insumo acople = obtenerInsumoPorNombre("Acople");
+                int stockAcople = acople.getStockUnidades() != null ? acople.getStockUnidades() : 0;
+                if (stockAcople < pedido.getCantidadAcoples()) {
+                    throw new MaterialInsuficienteException(
+                            "No hay suficiente \"Acople\". Disponible: " + stockAcople
+                            + " unidad(es), necesario: " + pedido.getCantidadAcoples() + ".");
+                }
+            }
+
+            Insumo terminal = obtenerInsumoPorNombre("Terminal");
+            int stockTerminal = terminal.getStockUnidades() != null ? terminal.getStockUnidades() : 0;
+            if (stockTerminal < pedido.getCantidadTerminal()) {
+                throw new MaterialInsuficienteException(
+                        "No hay suficiente \"Terminal\". Disponible: " + stockTerminal
+                        + " unidad(es), necesario: " + pedido.getCantidadTerminal() + ".");
+            }
         }
 
         if (Boolean.TRUE.equals(pedido.getUsaPitilloPesa())) {
@@ -554,12 +567,16 @@ public class InventarioServicio {
             }
         }
 
-        Insumo soporte = obtenerInsumoPorNombre("Soporte");
-        int stockSoporte = soporte.getStockUnidades() != null ? soporte.getStockUnidades() : 0;
-        if (stockSoporte < pedido.getCantidadSoportes()) {
-            throw new MaterialInsuficienteException(
-                    "No hay suficiente \"Soporte\". Disponible: " + stockSoporte
-                    + " unidad(es), necesario: " + pedido.getCantidadSoportes() + ".");
+        // Soporte normal: solo aplica si NO es Control R24 (ese ya trae sus
+        // propios soportes más grandes dentro del paquete).
+        if (!pedido.isUsaPaqueteControlR24()) {
+            Insumo soporte = obtenerInsumoPorNombre("Soporte");
+            int stockSoporte = soporte.getStockUnidades() != null ? soporte.getStockUnidades() : 0;
+            if (stockSoporte < pedido.getCantidadSoportes()) {
+                throw new MaterialInsuficienteException(
+                        "No hay suficiente \"Soporte\". Disponible: " + stockSoporte
+                        + " unidad(es), necesario: " + pedido.getCantidadSoportes() + ".");
+            }
         }
 
         if (Boolean.TRUE.equals(pedido.getUsaCabezal())) {
@@ -707,13 +724,19 @@ public class InventarioServicio {
         descontarInsumoConMedida(pedido, piezaCuerda, pedido.getMetrosCuerda(),
                 sel != null && sel.piezaCuerdaId != null);
 
-        descontarInsumoPorUnidad(pedido, pedido.getTipoControl().trim(), 1);
+        // ── Control R24: 1 unidad de "Paquete de Control R24" en vez de
+        // Control + Acople + Terminal por separado. ──
+        if (pedido.isUsaPaqueteControlR24()) {
+            descontarInsumoPorUnidad(pedido, "Paquete de Control R24", 1);
+        } else {
+            descontarInsumoPorUnidad(pedido, pedido.getTipoControl().trim(), 1);
 
-        if (pedido.getCantidadAcoples() > 0) {
-            descontarInsumoPorUnidad(pedido, "Acople", pedido.getCantidadAcoples());
+            if (pedido.getCantidadAcoples() > 0) {
+                descontarInsumoPorUnidad(pedido, "Acople", pedido.getCantidadAcoples());
+            }
+
+            descontarInsumoPorUnidad(pedido, "Terminal", pedido.getCantidadTerminal());
         }
-
-        descontarInsumoPorUnidad(pedido, "Terminal", pedido.getCantidadTerminal());
 
         if (Boolean.TRUE.equals(pedido.getUsaPitilloPesa())) {
             Insumo pitillo = obtenerInsumoPorNombre("Pitillo");
@@ -741,7 +764,10 @@ public class InventarioServicio {
             }
         }
 
-        descontarInsumoPorUnidad(pedido, "Soporte", pedido.getCantidadSoportes());
+        // Soporte normal: solo si NO es Control R24 (ese ya trae los suyos).
+        if (!pedido.isUsaPaqueteControlR24()) {
+            descontarInsumoPorUnidad(pedido, "Soporte", pedido.getCantidadSoportes());
+        }
 
         if (Boolean.TRUE.equals(pedido.getUsaCabezal())) {
             descontarInsumoPorUnidad(pedido, "Tapa Cabezal", pedido.getCantidadTapas());
@@ -1036,30 +1062,40 @@ public class InventarioServicio {
                     + redondear(p.getLargoRestante() - pedido.getMetrosCuerda()) + " m";
         });
 
-        intentar(res, () -> {
-            Insumo control = obtenerInsumoPorNombre(pedido.getTipoControl().trim());
-            int stock = control.getStockUnidades() != null ? control.getStockUnidades() : 0;
-            if (stock < 1) throw new MaterialInsuficienteException("Sin stock de \"" + control.getNombre() + "\".");
-            res.controlInfo = control.getNombre() + " · quedarían " + (stock - 1) + " unidad(es)";
-        });
-
-        if (pedido.getCantidadAcoples() > 0) {
+        // ── Control (bifurcado: Paquete R24 vs. flujo normal) ──
+        if (pedido.isUsaPaqueteControlR24()) {
             intentar(res, () -> {
-                Insumo acople = obtenerInsumoPorNombre("Acople");
-                int stock = acople.getStockUnidades() != null ? acople.getStockUnidades() : 0;
-                int necesario = pedido.getCantidadAcoples();
-                if (stock < necesario) throw new MaterialInsuficienteException("Sin stock suficiente de \"Acople\".");
-                res.acopleInfo = "Acople ×" + necesario + " · quedarían " + (stock - necesario);
+                Insumo paquete = obtenerInsumoPorNombre("Paquete de Control R24");
+                int stock = paquete.getStockUnidades() != null ? paquete.getStockUnidades() : 0;
+                if (stock < 1) throw new MaterialInsuficienteException("Sin stock de \"Paquete de Control R24\".");
+                res.controlInfo = "Paquete de Control R24 (incluye control, terminal, acoples y soportes) · quedarían " + (stock - 1) + " unidad(es)";
+            });
+        } else {
+            intentar(res, () -> {
+                Insumo control = obtenerInsumoPorNombre(pedido.getTipoControl().trim());
+                int stock = control.getStockUnidades() != null ? control.getStockUnidades() : 0;
+                if (stock < 1) throw new MaterialInsuficienteException("Sin stock de \"" + control.getNombre() + "\".");
+                res.controlInfo = control.getNombre() + " · quedarían " + (stock - 1) + " unidad(es)";
+            });
+
+            if (pedido.getCantidadAcoples() > 0) {
+                intentar(res, () -> {
+                    Insumo acople = obtenerInsumoPorNombre("Acople");
+                    int stock = acople.getStockUnidades() != null ? acople.getStockUnidades() : 0;
+                    int necesario = pedido.getCantidadAcoples();
+                    if (stock < necesario) throw new MaterialInsuficienteException("Sin stock suficiente de \"Acople\".");
+                    res.acopleInfo = "Acople ×" + necesario + " · quedarían " + (stock - necesario);
+                });
+            }
+
+            intentar(res, () -> {
+                Insumo terminal = obtenerInsumoPorNombre("Terminal");
+                int stock = terminal.getStockUnidades() != null ? terminal.getStockUnidades() : 0;
+                int necesario = pedido.getCantidadTerminal();
+                if (stock < necesario) throw new MaterialInsuficienteException("Sin stock suficiente de \"Terminal\".");
+                res.terminalInfo = "Terminal ×" + necesario + " · quedarían " + (stock - necesario);
             });
         }
-
-        intentar(res, () -> {
-            Insumo terminal = obtenerInsumoPorNombre("Terminal");
-            int stock = terminal.getStockUnidades() != null ? terminal.getStockUnidades() : 0;
-            int necesario = pedido.getCantidadTerminal();
-            if (stock < necesario) throw new MaterialInsuficienteException("Sin stock suficiente de \"Terminal\".");
-            res.terminalInfo = "Terminal ×" + necesario + " · quedarían " + (stock - necesario);
-        });
 
         if (Boolean.TRUE.equals(pedido.getUsaPitilloPesa())) {
             intentar(res, () -> {
@@ -1094,13 +1130,16 @@ public class InventarioServicio {
             });
         }
 
-        intentar(res, () -> {
-            Insumo soporte = obtenerInsumoPorNombre("Soporte");
-            int stock = soporte.getStockUnidades() != null ? soporte.getStockUnidades() : 0;
-            int necesario = pedido.getCantidadSoportes();
-            if (stock < necesario) throw new MaterialInsuficienteException("Sin stock suficiente de \"Soporte\".");
-            res.soporteInfo = "Soporte ×" + necesario + " · quedarían " + (stock - necesario);
-        });
+        // Soporte: solo si NO es Control R24.
+        if (!pedido.isUsaPaqueteControlR24()) {
+            intentar(res, () -> {
+                Insumo soporte = obtenerInsumoPorNombre("Soporte");
+                int stock = soporte.getStockUnidades() != null ? soporte.getStockUnidades() : 0;
+                int necesario = pedido.getCantidadSoportes();
+                if (stock < necesario) throw new MaterialInsuficienteException("Sin stock suficiente de \"Soporte\".");
+                res.soporteInfo = "Soporte ×" + necesario + " · quedarían " + (stock - necesario);
+            });
+        }
 
         if (Boolean.TRUE.equals(pedido.getUsaCabezal())) {
             intentar(res, () -> {
