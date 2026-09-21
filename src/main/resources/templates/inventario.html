@@ -36,6 +36,38 @@
             display: inline-block;
         }
 
+        /* ───────── Pestañas de sección (Rollos / Retazos / Insumos) ───────── */
+        .nav-tabs-inventario {
+            background: #fff;
+            border-radius: 8px 8px 0 0;
+            padding: 4px 10px 0;
+            box-shadow: 0 1px 3px rgba(0,0,0,.08);
+        }
+        .nav-tabs-inventario .nav-link {
+            color: #495057;
+            font-weight: 600;
+            border: none;
+            border-bottom: 3px solid transparent;
+            padding: 10px 18px;
+        }
+        .nav-tabs-inventario .nav-link.active {
+            color: #212529;
+            border-bottom-color: #212529;
+            background: transparent;
+        }
+        .nav-tabs-inventario .nav-link .badge { font-weight: 700; }
+        .tab-content-inventario {
+            background: #fff;
+            border-radius: 0 0 8px 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,.08);
+            margin-bottom: 28px;
+        }
+        .tab-content-inventario .seccion-card {
+            box-shadow: none;
+            margin-bottom: 0;
+            border-radius: 0 0 8px 8px;
+        }
+
         /* ───────── Barra de filtros ───────── */
         .filtros-bar {
             background: #f8f9fa;
@@ -122,6 +154,10 @@
             overflow: hidden;
         }
         .grupo-insumo:first-of-type { margin-top: 14px; }
+        .grupo-insumo.stock-critico { border-color: #dc3545; border-width: 2px; }
+        .grupo-insumo.stock-critico .grupo-header { background: #f8d7da; }
+        .grupo-insumo.stock-agotado .grupo-header { background: #2b2b2b; color: #fff; }
+        .grupo-insumo.stock-agotado .grupo-header .grupo-meta { color: #d6d6d6; }
 
         .badge-tipo-medida { background-color: #0dcaf0; color: #000; }
         .badge-tipo-unidad { background-color: #6c757d; color: #fff; }
@@ -184,6 +220,7 @@
             border-radius: 5px;
             border-left: 4px solid transparent;
             font-size: 0.82rem;
+            cursor: pointer;
         }
         .item-alerta .icono-alerta {
             font-size: 0.95rem;
@@ -291,14 +328,16 @@
                           class="badge bg-danger ms-1"
                           th:text="${#lists.size(alertasInventario)}"></span>
                 </div>
-                <span class="text-white-50" style="font-size:0.8rem;">Tela, tubos, riel, pitillo y demás insumos con poco stock</span>
+                <span class="text-white-50" style="font-size:0.8rem;">Clic en una alerta para ir directo a ese insumo o material</span>
             </div>
             <div class="panel-alertas-body abierto" id="panelAlertasBody">
                 <ul class="lista-alertas" id="listaAlertas" th:if="${not #lists.isEmpty(alertasInventario)}">
                     <li th:each="a : ${alertasInventario}"
                         class="item-alerta"
                         th:classappend="${a.nivel.name() == 'AGOTADO'} ? 'nivel-agotado' : (${a.nivel.name() == 'CRITICO'} ? 'nivel-critico' : 'nivel-advertencia')"
-                        th:attr="data-alerta-key=|${a.titulo}::${a.mensaje}|">
+                        th:attr="data-alerta-key=|${a.titulo}::${a.mensaje}|"
+                        th:data-categoria="${a.categoria}"
+                        th:data-titulo="${a.titulo}">
                         <span class="icono-alerta"
                               th:text="${a.nivel.name() == 'AGOTADO'} ? '⛔' : (${a.nivel.name() == 'CRITICO'} ? '🔴' : '🟡')"></span>
                         <span class="texto-alerta">
@@ -333,7 +372,7 @@
                 <ul class="lista-alertas" th:if="${not #lists.isEmpty(movimientosRecientes)}">
                     <li th:each="m : ${movimientosRecientes}" class="item-alerta"
                         th:classappend="${m.tipoMovimiento == 'LIMPIEZA_AUTOMATICA'} ? 'nivel-advertencia' : ''"
-                        style="background-color:#f1f3f5;">
+                        style="background-color:#f1f3f5; cursor:default;">
                         <span class="icono-alerta" th:text="${m.tipoMovimiento == 'LIMPIEZA_AUTOMATICA'} ? '🧹' : '➕'"></span>
                         <span class="texto-alerta">
                             <span class="titulo-alerta" th:text="${m.categoria}"></span>
@@ -350,14 +389,40 @@
             </div>
         </div>
 
-        <div class="mb-4">
+        <div class="mb-3">
             <span class="resumen-pill">Rollos totales: <strong th:text="${#lists.size(rollos)}"></strong></span>
             <span class="resumen-pill">Retazos de rollo (&lt; 3m): <strong th:text="${rollosRetazo}"></strong></span>
             <span class="resumen-pill">Agotados: <strong th:text="${rollosAgotados}"></strong></span>
             <span class="resumen-pill">✂ Retazos registrados: <strong th:text="${#lists.size(retazos)}"></strong></span>
+            <span class="resumen-pill">🔧 Insumos: <strong th:text="${#lists.size(insumos)}"></strong></span>
         </div>
 
-        <!-- ───────────── ROLLOS DE TELA ───────────── -->
+        <!-- ═══════════════════ PESTAÑAS: Rollos / Retazos / Insumos ═══════════════════
+             Antes las tres secciones estaban apiladas verticalmente, obligando a mucho
+             scroll y haciendo fácil "perder" de vista un material. Ahora cada una vive en
+             su propia pestaña; solo una se muestra a la vez. -->
+        <ul class="nav nav-tabs-inventario" id="tabsInventario" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="tab-btn-rollos" data-bs-toggle="tab" data-bs-target="#tab-rollos" type="button" role="tab">
+                    🧵 Rollos de Tela
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="tab-btn-retazos" data-bs-toggle="tab" data-bs-target="#tab-retazos" type="button" role="tab">
+                    ✂ Retazos de Tela
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="tab-btn-insumos" data-bs-toggle="tab" data-bs-target="#tab-insumos" type="button" role="tab">
+                    🔧 Insumos
+                </button>
+            </li>
+        </ul>
+
+        <div class="tab-content tab-content-inventario">
+
+        <!-- ───────────── PESTAÑA: ROLLOS DE TELA ───────────── -->
+        <div class="tab-pane fade show active" id="tab-rollos" role="tabpanel">
         <div class="seccion-card">
             <div class="seccion-header">
                 <h5 class="mb-0">🧵 Rollos de Tela</h5>
@@ -425,8 +490,10 @@
                 </tbody>
             </table>
         </div>
+        </div>
 
-        <!-- ───────────── RETAZOS DE TELA ───────────── -->
+        <!-- ───────────── PESTAÑA: RETAZOS DE TELA ───────────── -->
+        <div class="tab-pane fade" id="tab-retazos" role="tabpanel">
         <div class="seccion-card">
             <div class="seccion-header">
                 <h5 class="mb-0">✂ Retazos de Tela</h5>
@@ -507,8 +574,10 @@
                 </tbody>
             </table>
         </div>
+        </div>
 
-        <!-- ───────────── INSUMOS ───────────── -->
+        <!-- ───────────── PESTAÑA: INSUMOS ───────────── -->
+        <div class="tab-pane fade" id="tab-insumos" role="tabpanel">
         <div class="seccion-card">
             <div class="seccion-header">
                 <h5 class="mb-0">🔧 Insumos</h5>
@@ -528,6 +597,13 @@
                 <div style="flex:1; min-width:180px;">
                     <label class="form-label d-block">Buscar por nombre</label>
                     <input id="filtroInsumoNombre" type="text" class="form-control form-control-sm" placeholder="ej: tubo, cabezal, riel...">
+                </div>
+                <div>
+                    <label class="form-label d-block">Orden</label>
+                    <select id="ordenInsumo" class="form-select form-select-sm" style="min-width:170px;">
+                        <option value="nombre">Alfabético</option>
+                        <option value="stock_bajo">Stock más bajo primero</option>
+                    </select>
                 </div>
                 <div>
                     <button id="btnLimpiarFiltroInsumo" type="button" class="btn btn-sm btn-link filtro-chip-clear">Limpiar filtros</button>
@@ -561,6 +637,9 @@
                 </tbody>
             </table>
         </div>
+        </div>
+
+        </div><!-- /tab-content-inventario -->
 
         <!-- ───────────── PIEZAS DE INSUMOS CON MEDIDA (detalle, agrupado dentro de cada insumo arriba) ───────────── -->
         <table id="datosPiezasRaw" style="display:none;">
@@ -580,6 +659,7 @@
 
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
     // Paleta aproximada para el "swatch" visual de color. Si el nombre de color
     // no está en este mapa, se usa un cuadro gris neutro como respaldo.
@@ -633,6 +713,7 @@
 
     // ════════════════════════════════════════════════════════════
     //  PANEL DE ALERTAS → acordeón + silenciar individualmente (7 días)
+    //  + clic en una alerta lleva directo a su pestaña y abre su grupo.
     // ════════════════════════════════════════════════════════════
     (function initPanelAlertas() {
         const header = document.getElementById('panelAlertasHeader');
@@ -739,14 +820,44 @@
 
         todosLosItems.forEach(li => {
             const btn = li.querySelector('.btn-silenciar-alerta');
-            if (!btn) return;
-            btn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                const key = li.dataset.alertaKey || '';
-                silenciar(key);
-                actualizarVisibilidad();
+            if (btn) {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const key = li.dataset.alertaKey || '';
+                    silenciar(key);
+                    actualizarVisibilidad();
+                });
+            }
+
+            // Clic en el cuerpo de la alerta (no en el botón de silenciar):
+            // salta a la pestaña correspondiente, limpia filtros de esa
+            // sección, busca por el nombre del insumo/material y abre su grupo.
+            li.addEventListener('click', (e) => {
+                if (e.target.closest('.btn-silenciar-alerta')) return;
+                const categoria = li.dataset.categoria || '';
+                const titulo = li.dataset.titulo || '';
+                irAMaterialDesdeAlerta(categoria, titulo);
             });
         });
+
+        function irAMaterialDesdeAlerta(categoria, titulo) {
+            if (categoria === 'TELA') {
+                new bootstrap.Tab(document.getElementById('tab-btn-rollos')).show();
+                document.getElementById('filtroRolloColor').value = '';
+                // El título trae "Tela <Color> <Ancho>m"; se intenta extraer el color.
+                const partes = titulo.replace('Tela ', '').split(' ');
+                const colorPosible = partes.slice(0, -1).join(' ');
+                const selColor = document.getElementById('filtroRolloColor');
+                if (Array.from(selColor.options).some(o => o.value === colorPosible)) {
+                    selColor.value = colorPosible;
+                }
+                selColor.dispatchEvent(new Event('change'));
+            } else {
+                new bootstrap.Tab(document.getElementById('tab-btn-insumos')).show();
+                document.getElementById('filtroInsumoNombre').value = titulo;
+                document.getElementById('filtroInsumoNombre').dispatchEvent(new Event('input'));
+            }
+        }
 
         if (btnMostrarSilenciadas) {
             btnMostrarSilenciadas.addEventListener('click', (e) => {
@@ -1097,8 +1208,9 @@
     })();
 
     // ════════════════════════════════════════════════════════════
-    //  INSUMOS → agrupados por Nombre, con filtro por Tipo y por texto.
-    //  Cada grupo, si "tieneMedida", despliega sus piezas individuales adentro.
+    //  INSUMOS → agrupados por Nombre, con filtro por Tipo, por texto
+    //  y por orden (alfabético o stock más bajo primero, para ver
+    //  primero lo que se está por acabar).
     // ════════════════════════════════════════════════════════════
     (function initInsumos() {
         const filasInsumo = Array.from(document.querySelectorAll('#datosInsumosRaw tbody tr'));
@@ -1130,11 +1242,30 @@
             });
         });
 
-        const insumosOrdenados = insumos.slice().sort((a, b) => a.nombre.localeCompare(b.nombre));
+        // "Nivel de stock" comparable, sea el insumo por medida o por unidad,
+        // usado únicamente para poder ordenar de menor a mayor cuando se
+        // elige "Stock más bajo primero".
+        function nivelStockDe(ins) {
+            if (ins.tieneMedida) {
+                const piezas = piezasPorInsumo[ins.id] || [];
+                return piezas
+                    .filter(p => !p.agotada)
+                    .reduce((sum, p) => sum + (parseFloat(p.largoRestante.replace(',', '.')) || 0), 0);
+            }
+            return parseFloat(ins.stockUnidades) || 0;
+        }
 
         function render() {
             const fTipo = document.getElementById('filtroInsumoTipo').value;
             const fNombre = document.getElementById('filtroInsumoNombre').value.toLowerCase().trim();
+            const fOrden = document.getElementById('ordenInsumo').value;
+
+            let insumosOrdenados = insumos.slice();
+            if (fOrden === 'stock_bajo') {
+                insumosOrdenados.sort((a, b) => nivelStockDe(a) - nivelStockDe(b));
+            } else {
+                insumosOrdenados.sort((a, b) => a.nombre.localeCompare(b.nombre));
+            }
 
             contenedor.innerHTML = '';
             let visibles = 0;
@@ -1149,6 +1280,7 @@
 
                 const div = document.createElement('div');
                 div.className = 'grupo-insumo';
+                div.id = 'insumo-' + ins.id;
 
                 const badgeTipo = ins.tieneMedida
                     ? '<span class="badge badge-tipo-medida">Por medida</span>'
@@ -1162,6 +1294,9 @@
                 if (ins.tieneMedida) {
                     const disponibles = piezas.filter(p => !p.agotada).length;
                     const agotadas = piezas.filter(p => p.agotada).length;
+
+                    if (disponibles === 0 && piezas.length > 0) div.classList.add('stock-agotado');
+                    else if (disponibles <= 2) div.classList.add('stock-critico');
 
                     let filasPiezasHtml = '';
                     piezas.forEach(p => {
@@ -1201,6 +1336,10 @@
                     div.dataset.disponibles = disponibles;
                     div.dataset.agotadas = agotadas;
                 } else {
+                    const stockNum = parseFloat(ins.stockUnidades) || 0;
+                    if (stockNum === 0) div.classList.add('stock-agotado');
+                    else if (stockNum <= 5) div.classList.add('stock-critico');
+
                     cuerpoInterno = `
                         <div class="grupo-body">
                             <div class="p-3">
@@ -1238,9 +1377,11 @@
 
         document.getElementById('filtroInsumoTipo').addEventListener('change', render);
         document.getElementById('filtroInsumoNombre').addEventListener('input', render);
+        document.getElementById('ordenInsumo').addEventListener('change', render);
         document.getElementById('btnLimpiarFiltroInsumo').addEventListener('click', () => {
             document.getElementById('filtroInsumoTipo').value = '';
             document.getElementById('filtroInsumoNombre').value = '';
+            document.getElementById('ordenInsumo').value = 'nombre';
             render();
         });
         document.getElementById('btnExpandirTodosInsumo').addEventListener('click', () => {
