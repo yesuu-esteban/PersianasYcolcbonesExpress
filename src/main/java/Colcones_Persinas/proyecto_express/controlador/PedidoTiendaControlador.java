@@ -62,6 +62,14 @@ public class PedidoTiendaControlador {
             return "redirect:/almacen/nuevo";
         }
 
+        // Si el jefe no eligió una fecha de inicio manual en el formulario
+        // (campo "Fecha de inicio del pedido"), se usa el momento actual,
+        // igual que se hacía antes con el valor por defecto del campo en
+        // la entidad (LocalDateTime.now()).
+        if (pedidoTienda.getFechaPedido() == null) {
+            pedidoTienda.setFechaPedido(LocalDateTime.now());
+        }
+
         recalcularTotales(pedidoTienda);
         pedidoTiendaRepository.save(pedidoTienda);
         redirectAttributes.addFlashAttribute("mensaje", "Pedido registrado correctamente.");
@@ -214,6 +222,13 @@ public class PedidoTiendaControlador {
         pedido.setDescripcion(formPedido.getDescripcion());
         pedido.setVendedor(formPedido.getVendedor());
         pedido.setFabrica(formPedido.getFabrica());
+        // Si el jefe deja vacía la fecha de inicio al editar (raro, pero
+        // posible si borra el campo), se conserva la que ya tenía el
+        // pedido en vez de perderla o ponerla en null. Si trae un valor
+        // nuevo (la cambió a propósito), se aplica ese cambio.
+        if (formPedido.getFechaPedido() != null) {
+            pedido.setFechaPedido(formPedido.getFechaPedido());
+        }
         pedido.setFechaEntrega(formPedido.getFechaEntrega());
         pedido.setAbono(formPedido.getAbono());
         pedido.setDescuento(formPedido.getDescuento());

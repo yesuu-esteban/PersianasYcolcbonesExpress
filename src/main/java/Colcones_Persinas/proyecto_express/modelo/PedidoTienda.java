@@ -25,7 +25,15 @@ public class PedidoTienda {
     private String direccion = "";
     private String telefono = "";
 
-    private LocalDateTime fechaPedido = LocalDateTime.now();
+    /**
+     * Fecha de inicio del pedido. Ya NO tiene un valor por defecto en el
+     * campo (antes era LocalDateTime.now()) porque ahora el formulario de
+     * creación permite elegirla manualmente; si el jefe la deja vacía, el
+     * controlador (PedidoTiendaControlador.guardarPedido) la completa con
+     * el momento actual, igual que se hacía antes.
+     */
+    @DateTimeFormat(pattern = "yyyy-MM-dd'T'HH:mm")
+    private LocalDateTime fechaPedido;
 
     @DateTimeFormat(pattern = "yyyy-MM-dd'T'HH:mm")
     private LocalDateTime fechaEntrega;

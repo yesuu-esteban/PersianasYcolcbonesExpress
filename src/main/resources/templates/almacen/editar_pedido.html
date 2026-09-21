@@ -189,11 +189,15 @@
         </div>
 
         <div class="row g-3 mb-3">
-            <div class="col-md-6">
+            <div class="col-md-4">
+                <label class="form-label fw-bold">Fecha de inicio del pedido</label>
+                <input type="datetime-local" th:field="*{fechaPedido}" class="form-control">
+            </div>
+            <div class="col-md-4">
                 <label class="form-label fw-bold">Fecha de entrega</label>
                 <input type="datetime-local" th:field="*{fechaEntrega}" class="form-control">
             </div>
-            <div class="col-md-6">
+            <div class="col-md-4">
                 <label class="form-label fw-bold">Método de pago</label>
                 <input type="text" th:field="*{metodoPago}" class="form-control">
             </div>

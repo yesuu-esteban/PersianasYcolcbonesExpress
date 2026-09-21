@@ -185,6 +185,11 @@
 
         <div class="row g-3 mb-3">
             <div class="col-md-6">
+                <label class="form-label fw-bold">Fecha de inicio del pedido <small class="text-muted">(opcional)</small></label>
+                <input type="datetime-local" th:field="*{fechaPedido}" class="form-control">
+                <small class="text-muted" style="font-size:0.76rem;">Déjalo vacío para usar la fecha y hora actuales.</small>
+            </div>
+            <div class="col-md-6">
                 <label class="form-label fw-bold">Fecha de entrega</label>
                 <input type="datetime-local" th:field="*{fechaEntrega}" class="form-control">
             </div>
