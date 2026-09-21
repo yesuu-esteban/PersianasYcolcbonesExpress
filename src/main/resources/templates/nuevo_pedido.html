@@ -93,7 +93,7 @@
     <div class="tab-pane fade show active" id="tabFabricacion">
     <form th:action="@{/taller/guardar-lista}" method="post" class="bg-white p-4 shadow-sm border rounded">
 
-        <div class="row mb-4">
+        <div class="row mb-3">
             <div class="col-md-6">
                 <label class="form-label fw-bold">Nombre del Distribuidor</label>
                 <input type="text" name="nombreDecorador" class="form-control" required>
@@ -101,6 +101,13 @@
             <div class="col-md-6">
                 <label class="form-label fw-bold">Nombre del Cliente Final</label>
                 <input type="text" name="nombreClienteFinal" class="form-control" required>
+            </div>
+        </div>
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <label class="form-label fw-bold">Fecha de inicio del pedido <small class="text-muted">(opcional)</small></label>
+                <input type="datetime-local" name="fechaInicio" class="form-control">
+                <small class="text-muted" style="font-size:0.76rem;">Déjalo vacío para usar la fecha y hora actuales.</small>
             </div>
         </div>
         <hr>
@@ -283,7 +290,7 @@
     <div class="tab-pane fade" id="tabRielOnda">
         <form th:action="@{/taller/guardar-riel-onda}" method="post" class="bg-white p-4 shadow-sm border rounded">
 
-            <div class="row mb-4">
+            <div class="row mb-3">
                 <div class="col-md-6">
                     <label class="form-label fw-bold">Nombre del Distribuidor</label>
                     <input type="text" name="nombreDecorador" class="form-control" required>
@@ -291,6 +298,13 @@
                 <div class="col-md-6">
                     <label class="form-label fw-bold">Nombre del Cliente Final</label>
                     <input type="text" name="nombreClienteFinal" class="form-control" required>
+                </div>
+            </div>
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <label class="form-label fw-bold">Fecha de inicio del pedido <small class="text-muted">(opcional)</small></label>
+                    <input type="datetime-local" name="fechaInicio" class="form-control">
+                    <small class="text-muted" style="font-size:0.76rem;">Déjalo vacío para usar la fecha y hora actuales.</small>
                 </div>
             </div>
             <hr>
@@ -441,11 +455,13 @@
         if (tipoTuboOverride && tipoTuboOverride !== 'auto') {
             nombreTubo = 'Tubo ' + tipoTuboOverride;
         } else {
-            // Misma regla que el servidor (Pedido.calcularFichaTecnica): solo
-            // pasa a R24 cuando ANCHO Y ALTO superan 2.50m A LA VEZ. El
-            // cabezal ya NO influye en esta decisión.
-            const esTamanoGrande = ancho > 2.50 && alto > 2.50;
-            nombreTubo = esTamanoGrande ? 'Tubo R24' : 'Tubo R16';
+            // Misma regla que el servidor (Pedido.calcularFichaTecnica): el
+            // TUBO pasa a R24 si CUALQUIERA de las dos medidas (ancho O
+            // alto) supera 2.50m — el Control R24 (Paquete) es una regla
+            // aparte que solo requiere las dos a la vez, pero eso no cambia
+            // qué pieza de TUBO sugerir aquí.
+            const esTuboGrande = ancho > 2.50 || alto > 2.50;
+            nombreTubo = esTuboGrande ? 'Tubo R24' : 'Tubo R16';
         }
 
         const descTela = cabezal ? 0.035 : 0.03;

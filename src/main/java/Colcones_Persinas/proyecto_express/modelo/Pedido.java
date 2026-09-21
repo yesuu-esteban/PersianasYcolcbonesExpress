@@ -74,7 +74,12 @@ public class Pedido {
     @PrePersist
     protected void alCrear() {
         LocalDateTime ahora = LocalDateTime.now();
-        this.fechaCreacion = ahora;
+        // Si el formulario ya trajo una fecha de inicio elegida manualmente
+        // (fechaCreacion viene distinta de null), se respeta tal cual; si no
+        // se especificó, se usa el momento actual como antes.
+        if (this.fechaCreacion == null) {
+            this.fechaCreacion = ahora;
+        }
         this.fechaActualizacion = ahora;
         if (this.tipo == null || this.tipo.isBlank()) {
             this.tipo = "FABRICACION";
@@ -168,15 +173,27 @@ public class Pedido {
     }
 
     /**
-     * Acoples: obligatorios cuando el corte de ancho llega a 2.0m o más,
-     * SIN IMPORTAR si el control termina siendo R16, R8 B o R24 — es una
-     * regla independiente de refuerzo estructural del tubo. Cuando el
-     * control es R24, este valor no se descuenta suelto (queda embebido
-     * dentro del Paquete de Control R24); ver isUsaPaqueteControlR24().
+     * Acoples: obligatorios en cualquiera de estos dos casos, independientes
+     * entre sí:
+     *  1) El corte de ancho llega a 2.0m o más (refuerzo por ancho grande).
+     *  2) El tubo elegido es R24, sin importar el ancho — un tubo R24 es más
+     *     pesado/rígido y necesita acoples de refuerzo aunque el pedido no
+     *     llegue al tamaño de "Paquete de Control R24" (eso pasa cuando solo
+     *     UNA de las dos medidas —ancho o alto— supera 2.50m: ahí el tubo ya
+     *     es R24 pero el control se queda en R16, y hacen falta los acoples
+     *     sueltos).
+     * Cuando el control SÍ es el Paquete R24 (isUsaPaqueteControlR24(), que
+     * requiere AMBAS medidas por encima de 2.50m), los acoples ya vienen
+     * embebidos dentro del Paquete y no se descuentan sueltos — por eso este
+     * método regresa 0 en ese caso, y es InventarioServicio quien decide no
+     * descontarlos aparte usando isUsaPaqueteControlR24().
      */
     @Transient
     public int getCantidadAcoples() {
-        return getCorteTelaAncho() >= 2.0 ? 2 : 0;
+        if (isUsaPaqueteControlR24()) return 0;
+        boolean necesarioPorAncho = getCorteTelaAncho() >= 2.0;
+        boolean necesarioPorTuboR24 = "R24".equalsIgnoreCase(this.tuboRecomendado);
+        return (necesarioPorAncho || necesarioPorTuboR24) ? 2 : 0;
     }
 
     @Transient
@@ -347,32 +364,34 @@ public class Pedido {
             return;
         }
 
-        // ── Regla única de "tamaño grande" → R24 (tubo Y control JUNTOS,
-        // como un solo Paquete de Control R24). Antes el tubo y el control
-        // usaban fórmulas distintas y desalineadas (una con OR y medidas
-        // crudas, otra con AND y medidas de corte), lo que dejaba casos
-        // raros como Acoples sueltos combinados con Control R16. La regla
-        // real de taller es: solo se pasa a R24 cuando AMBAS medidas
-        // (ancho Y alto, sin cortar) superan 2.50m A LA VEZ — igual con o
-        // sin cabezal, el cabezal no influye en esta decisión. ──
-        boolean esTamanoGrande = (this.ancho > 2.50 && this.altura > 2.50);
+        // ── Tubo R24: se usa si CUALQUIERA de las dos medidas (ancho O
+        // alto) supera 2.50m. ──
+        // ── Control R24 (Paquete completo, con acoples/terminal/soportes
+        // incluidos): solo se usa si AMBAS medidas superan 2.50m A LA VEZ.
+        // Si solo una de las dos supera 2.50m, el tubo ya es R24 (por la
+        // regla anterior) pero el control se queda en R16 — y como el tubo
+        // R24 igual necesita refuerzo, se agregan 2 Acoples aparte (ver
+        // getCantidadAcoples(), que ya revisa si tuboRecomendado es R24).
+        // El cabezal no influye en ninguna de estas dos decisiones. ──
+        boolean esTuboGrande = (this.ancho > 2.50 || this.altura > 2.50);
+        boolean esPaqueteControlR24 = (this.ancho > 2.50 && this.altura > 2.50);
 
         if (this.tuboManualElegido != null && !this.tuboManualElegido.isBlank()
                 && !"auto".equalsIgnoreCase(this.tuboManualElegido.trim())) {
             this.tuboRecomendado = this.tuboManualElegido.trim().toUpperCase();
         } else {
-            this.tuboRecomendado = esTamanoGrande ? "R24" : "R16";
+            this.tuboRecomendado = esTuboGrande ? "R24" : "R16";
         }
 
-        // El control sigue la MISMA regla de tamaño que el tubo
-        // (esTamanoGrande), no una fórmula distinta. Si el tubo terminó
-        // siendo R8 (elegido manualmente), el control va a Control R8 A
-        // sin importar el tamaño. El jefe siempre puede sobreescribir el
-        // control manualmente al editar el pedido; esta es solo la
-        // recomendación automática al crearlo.
+        // El control usa su PROPIA regla (esPaqueteControlR24), distinta a
+        // la del tubo (esTuboGrande) — a propósito, porque un tubo R24
+        // "suelto" (sin llegar al tamaño de Paquete) sigue usando Control
+        // R16 + Acoples, no el Paquete completo. Si el tubo terminó siendo
+        // R8 (elegido manualmente), el control va a Control R8 A sin
+        // importar el tamaño.
         if ("R8".equalsIgnoreCase(this.tuboRecomendado)) {
             this.tipoControl = "Control R8 A";
-        } else if (esTamanoGrande) {
+        } else if (esPaqueteControlR24) {
             this.tipoControl = "Control R24";
         } else {
             this.tipoControl = (this.ancho > 1.50) ? "Control R16" : "Control R8 B";
@@ -399,4 +418,4 @@ public class Pedido {
             this.estado = "Pendiente";
         }
     }
-} 
+}

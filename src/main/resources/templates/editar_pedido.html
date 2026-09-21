@@ -321,11 +321,13 @@
         if (tipoTuboOverride && tipoTuboOverride !== 'auto') {
             nombreTubo = 'Tubo ' + tipoTuboOverride;
         } else {
-            // Misma regla que el servidor (Pedido.calcularFichaTecnica): solo
-            // pasa a R24 cuando ANCHO Y ALTO superan 2.50m A LA VEZ. El
-            // cabezal ya NO influye en esta decisión.
-            const esTamanoGrande = ancho > 2.50 && alto > 2.50;
-            nombreTubo = esTamanoGrande ? 'Tubo R24' : 'Tubo R16';
+            // Misma regla que el servidor (Pedido.calcularFichaTecnica): el
+            // TUBO pasa a R24 si CUALQUIERA de las dos medidas (ancho O
+            // alto) supera 2.50m — el Control R24 (Paquete) es una regla
+            // aparte que solo requiere las dos a la vez, pero eso no cambia
+            // qué pieza de TUBO sugerir aquí.
+            const esTuboGrande = ancho > 2.50 || alto > 2.50;
+            nombreTubo = esTuboGrande ? 'Tubo R24' : 'Tubo R16';
         }
 
         const descTela   = cabezal ? 0.035 : 0.03;
