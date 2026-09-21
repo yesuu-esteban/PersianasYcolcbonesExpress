@@ -47,9 +47,17 @@ public class PedidoControlador {
             @RequestParam(name = "desde", required = false) String desde,
             @RequestParam(name = "hasta", required = false) String hasta,
             @RequestParam(name = "anio", required = false) Integer anio,
+            @RequestParam(name = "buscar", required = false) String buscar,
+            @RequestParam(name = "distribuidor", required = false) String distribuidor,
+            @RequestParam(name = "tipo", required = false) String tipoFiltro,
+            @RequestParam(name = "sistema", required = false) String sistemaFiltro,
             @RequestParam(name = "pagina", required = false, defaultValue = "0") int pagina,
             Model model) {
         try {
+            // El orden SIEMPRE es por fecha de creación descendente (lo más
+            // nuevo primero). Ningún filtro ni parámetro cambia este orden;
+            // los filtros solo acotan qué pedidos se muestran, nunca en qué
+            // secuencia aparecen.
             List<Pedido> todos = pedidoRepository.findAll(
                  Sort.by(Sort.Direction.DESC, "fechaCreacion")
                     .and(Sort.by(Sort.Direction.DESC, "id"))
@@ -75,6 +83,15 @@ public class PedidoControlador {
             aniosDisponibles.add(LocalDate.now().getYear());
             model.addAttribute("aniosDisponibles", aniosDisponibles);
 
+            // Lista de distribuidores para el filtro desplegable.
+            TreeSet<String> distribuidoresDisponibles = new TreeSet<>();
+            for (Pedido p : todos) {
+                if (p.getNombreDecorador() != null && !p.getNombreDecorador().isBlank()) {
+                    distribuidoresDisponibles.add(p.getNombreDecorador());
+                }
+            }
+            model.addAttribute("distribuidoresDisponibles", distribuidoresDisponibles);
+
             final String estadoFiltro = (estado == null || estado.isBlank() || "Todos".equalsIgnoreCase(estado))
                     ? "Todos" : estado;
 
@@ -84,6 +101,17 @@ public class PedidoControlador {
             LocalDate fechaDesde = (desde != null && !desde.isBlank()) ? LocalDate.parse(desde) : null;
             LocalDate fechaHasta = (hasta != null && !hasta.isBlank()) ? LocalDate.parse(hasta) : null;
 
+            final String buscarNorm = (buscar != null) ? buscar.trim().toLowerCase() : "";
+            final String distribuidorFiltro = (distribuidor != null && !distribuidor.isBlank()
+                    && !"Todos".equalsIgnoreCase(distribuidor)) ? distribuidor : null;
+            final String tipoFiltroNorm = (tipoFiltro != null && !tipoFiltro.isBlank()
+                    && !"Todos".equalsIgnoreCase(tipoFiltro)) ? tipoFiltro : null;
+            final String sistemaFiltroNorm = (sistemaFiltro != null && !sistemaFiltro.isBlank()
+                    && !"Todos".equalsIgnoreCase(sistemaFiltro)) ? sistemaFiltro : null;
+
+            // El .stream() sobre "todos" (ya ordenado por fecha desc desde
+            // el repositorio) conserva ese orden durante todo el filtrado:
+            // ningún filter() reordena la lista, solo descarta elementos.
             List<Pedido> pedidosFiltrados = pedidosEstado.stream()
                     .filter(p -> fechaDesde == null
                             || (p.getFechaCreacion() != null && !p.getFechaCreacion().toLocalDate().isBefore(fechaDesde)))
@@ -91,9 +119,15 @@ public class PedidoControlador {
                             || (p.getFechaCreacion() != null && !p.getFechaCreacion().toLocalDate().isAfter(fechaHasta)))
                     .filter(p -> anio == null
                             || (p.getFechaCreacion() != null && p.getFechaCreacion().getYear() == anio))
+                    .filter(p -> buscarNorm.isEmpty() || coincideBusqueda(p, buscarNorm))
+                    .filter(p -> distribuidorFiltro == null || distribuidorFiltro.equalsIgnoreCase(p.getNombreDecorador()))
+                    .filter(p -> tipoFiltroNorm == null || tipoFiltroNorm.equalsIgnoreCase(p.getTipo()))
+                    .filter(p -> sistemaFiltroNorm == null
+                            || p.isRielOndaSerena() || p.isVentaDirecta()
+                            || ("con_cabezal".equalsIgnoreCase(sistemaFiltroNorm) == Boolean.TRUE.equals(p.getUsaCabezal())))
                     .collect(Collectors.toList());
 
-            int tamanoPagina = 10;
+            int tamanoPagina = 15;
             int totalFiltrados = pedidosFiltrados.size();
             int totalPaginas = (int) Math.ceil((double) totalFiltrados / tamanoPagina);
             if (totalPaginas == 0) totalPaginas = 1;
@@ -109,6 +143,10 @@ public class PedidoControlador {
             model.addAttribute("desde",           desde != null ? desde : "");
             model.addAttribute("hasta",           hasta != null ? hasta : "");
             model.addAttribute("anio",            anio);
+            model.addAttribute("buscar",          buscar != null ? buscar : "");
+            model.addAttribute("distribuidor",    distribuidor != null ? distribuidor : "");
+            model.addAttribute("tipoFiltro",      tipoFiltro != null ? tipoFiltro : "");
+            model.addAttribute("sistemaFiltro",   sistemaFiltro != null ? sistemaFiltro : "");
             model.addAttribute("paginaActual",    paginaActual);
             model.addAttribute("totalPaginas",    totalPaginas);
             model.addAttribute("totalFiltrados",  totalFiltrados);
@@ -142,14 +180,30 @@ public class PedidoControlador {
             model.addAttribute("telaUsadaPorPedido", new HashMap<>());
             model.addAttribute("conteoPorDecorador", new HashMap<>());
             model.addAttribute("aniosDisponibles",   new TreeSet<Integer>());
+            model.addAttribute("distribuidoresDisponibles", new TreeSet<String>());
             model.addAttribute("paginaActual", 0);
             model.addAttribute("totalPaginas", 1);
             model.addAttribute("totalFiltrados", 0);
             model.addAttribute("desde", "");
             model.addAttribute("hasta", "");
+            model.addAttribute("buscar", "");
+            model.addAttribute("distribuidor", "");
+            model.addAttribute("tipoFiltro", "");
+            model.addAttribute("sistemaFiltro", "");
             model.addAttribute("costoFabricacionRealPorPedido", new HashMap<>());
         }
         return "pedidos";
+    }
+
+    private boolean coincideBusqueda(Pedido p, String buscarNorm) {
+        return contiene(p.getNombreDecorador(), buscarNorm)
+                || contiene(p.getNombreClienteFinal(), buscarNorm)
+                || contiene(p.getDescripcion(), buscarNorm)
+                || contiene(p.getColorTelaDeseado(), buscarNorm);
+    }
+
+    private boolean contiene(String valor, String buscarNorm) {
+        return valor != null && valor.toLowerCase().contains(buscarNorm);
     }
 
     // ─── Formulario nuevo pedido ──────────────────────────────────────────
@@ -220,8 +274,11 @@ public class PedidoControlador {
             @RequestParam List<Double> alturas,
             @RequestParam List<String> colores,
             @RequestParam List<String> mandos,
+            @RequestParam(required = false) String fechaInicio,
             @RequestParam Map<String, String> allParams,
             RedirectAttributes redirectAttributes) {
+
+        LocalDateTime fechaInicioElegida = parsearFechaInicio(fechaInicio);
 
         int n = anchos.size();
         if (cantidades.size() != n || alturas.size() != n ||
@@ -270,6 +327,9 @@ public class PedidoControlador {
                 p.setUsaPitilloPesa(usaPitilloPesa);
                 p.setUsaConectorTope(usaConectorTope);
                 p.setTuboManualElegido(tipoTuboManual);
+                if (fechaInicioElegida != null) {
+                    p.setFechaCreacion(fechaInicioElegida);
+                }
                 p.calcularFichaTecnica();
                 p.calcularEstadoGeneral();
                 pedidosDelLote.add(p);
@@ -427,8 +487,11 @@ public class PedidoControlador {
             @RequestParam List<Integer> cantidades,
             @RequestParam List<String> anchos,
             @RequestParam List<String> alturas,
+            @RequestParam(required = false) String fechaInicio,
             @RequestParam Map<String, String> allParams,
             RedirectAttributes redirectAttributes) {
+
+        LocalDateTime fechaInicioElegida = parsearFechaInicio(fechaInicio);
 
         if (nombreDecorador == null || nombreDecorador.isBlank()
                 || nombreClienteFinal == null || nombreClienteFinal.isBlank()) {
@@ -480,6 +543,9 @@ public class PedidoControlador {
                 p.setUsaCabezal(false);
                 p.setUsaPitilloPesa(false);
                 p.setUsaConectorTope(false);
+                if (fechaInicioElegida != null) {
+                    p.setFechaCreacion(fechaInicioElegida);
+                }
                 p.calcularFichaTecnica();
                 p.calcularEstadoGeneral();
                 p.setBastonElegido(bastonElegido);
@@ -866,6 +932,20 @@ public class PedidoControlador {
     private String normalizarTuboManual(String valor) {
         if (valor == null || valor.isBlank() || "auto".equalsIgnoreCase(valor.trim())) return null;
         return valor.trim();
+    }
+
+    /**
+     * Convierte el valor de un <input type="datetime-local"> (formato
+     * "yyyy-MM-ddTHH:mm") en LocalDateTime. Si viene vacío o mal formado,
+     * devuelve null y el pedido usa la fecha/hora actual como siempre.
+     */
+    private LocalDateTime parsearFechaInicio(String valor) {
+        if (valor == null || valor.isBlank()) return null;
+        try {
+            return LocalDateTime.parse(valor.trim());
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     // ─── Actualizar estado ────────────────────────────────────────────────
