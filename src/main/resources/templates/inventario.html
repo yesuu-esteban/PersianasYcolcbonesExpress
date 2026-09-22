@@ -1,9 +1,10 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
-<head>
-    <meta charset="UTF-8">
-    <title>Inventario de Materiales</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<body>
+
+<div th:replace="~{fragments/sidebar :: layout(contenido=~{::seccion-contenido}, activo='inventario-fabrica', titulo='📦 Inventario de Materiales')}">
+
+<div th:fragment="seccion-contenido">
     <style>
         .table-small { font-size: 0.88rem; }
         .fila-retazo { background-color: #fff8e1 !important; }
@@ -36,7 +37,6 @@
             display: inline-block;
         }
 
-        /* ───────── Pestañas de sección (Rollos / Retazos / Insumos) ───────── */
         .nav-tabs-inventario {
             background: #fff;
             border-radius: 8px 8px 0 0;
@@ -68,7 +68,6 @@
             border-radius: 0 0 8px 8px;
         }
 
-        /* ───────── Barra de filtros ───────── */
         .filtros-bar {
             background: #f8f9fa;
             border-bottom: 1px solid #e9ecef;
@@ -88,12 +87,6 @@
             font-size: 0.78rem;
         }
 
-        /* ───────── Acordeón de grupos (color + ancho) ─────────
-           IMPORTANTE: max-height ya NO se fija por CSS con un número
-           arbitrario (eso cortaba grupos con muchos elementos). Se
-           calcula dinámicamente por JS según el contenido real
-           (ver calcularAlturaGrupo() más abajo) SOLO al momento de
-           abrir el grupo — por defecto todos empiezan cerrados. */
         .grupo-rollo {
             border: 1px solid #e3e3e3;
             border-radius: 6px;
@@ -146,7 +139,6 @@
         }
         .grupo-resumen-badges .badge { font-size: 0.72rem; }
 
-        /* ───────── Grupos de insumos por nombre ───────── */
         .grupo-insumo {
             border: 1px solid #e3e3e3;
             border-radius: 6px;
@@ -170,7 +162,6 @@
             padding: 0 18px;
         }
 
-        /* ───────── Panel de alertas de stock bajo ───────── */
         .panel-alertas {
             background: #fff;
             border-radius: 8px;
@@ -200,8 +191,6 @@
             overflow: hidden;
             transition: max-height 0.25s ease;
         }
-        /* La lista interna sí mantiene su propio scroll acotado (400px),
-           eso es intencional y no corta nada: simplemente se desplaza. */
         .lista-alertas {
             list-style: none;
             margin: 0;
@@ -303,366 +292,336 @@
             font-family: 'Courier New', monospace;
         }
     </style>
-</head>
-<body class="bg-light p-4">
-    <div class="container-fluid">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <div class="d-flex align-items-center gap-3">
-                <h2 class="mb-0">📦 Inventario de Materiales</h2>
-                <a href="/inventario/precios" class="btn btn-sm btn-outline-dark">🧮 Precios de Fabricación</a>
+
+    <div class="d-flex justify-content-end align-items-center mb-3">
+        <a href="/inventario/precios" class="btn btn-sm btn-outline-dark">🧮 Precios de Fabricación</a>
+    </div>
+
+    <div th:if="${mensaje}" class="alert alert-success" th:text="${mensaje}"></div>
+    <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
+
+    <div class="panel-alertas">
+        <div class="panel-alertas-header abierto" id="panelAlertasHeader" role="button">
+            <div class="d-flex align-items-center gap-2">
+                <span class="chevron">▶</span>
+                <strong>⚠️ Alertas de inventario</strong>
+                <span id="badgeConteoAlertas"
+                      th:if="${not #lists.isEmpty(alertasInventario)}"
+                      class="badge bg-danger ms-1"
+                      th:text="${#lists.size(alertasInventario)}"></span>
             </div>
-            <a href="/taller/pedidos" class="btn btn-outline-secondary">← Volver a Pedidos</a>
+            <span class="text-white-50" style="font-size:0.8rem;">Clic en una alerta para ir directo a ese insumo o material</span>
         </div>
-
-        <div th:if="${mensaje}" class="alert alert-success" th:text="${mensaje}"></div>
-        <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
-
-        <!-- ───────────── PANEL DE ALERTAS DE STOCK BAJO ───────────── -->
-        <div class="panel-alertas">
-            <div class="panel-alertas-header abierto" id="panelAlertasHeader" role="button">
-                <div class="d-flex align-items-center gap-2">
-                    <span class="chevron">▶</span>
-                    <strong>⚠️ Alertas de inventario</strong>
-                    <span id="badgeConteoAlertas"
-                          th:if="${not #lists.isEmpty(alertasInventario)}"
-                          class="badge bg-danger ms-1"
-                          th:text="${#lists.size(alertasInventario)}"></span>
-                </div>
-                <span class="text-white-50" style="font-size:0.8rem;">Clic en una alerta para ir directo a ese insumo o material</span>
+        <div class="panel-alertas-body abierto" id="panelAlertasBody">
+            <ul class="lista-alertas" id="listaAlertas" th:if="${not #lists.isEmpty(alertasInventario)}">
+                <li th:each="a : ${alertasInventario}"
+                    class="item-alerta"
+                    th:classappend="${a.nivel.name() == 'AGOTADO'} ? 'nivel-agotado' : (${a.nivel.name() == 'CRITICO'} ? 'nivel-critico' : 'nivel-advertencia')"
+                    th:attr="data-alerta-key=|${a.titulo}::${a.mensaje}|"
+                    th:data-categoria="${a.categoria}"
+                    th:data-titulo="${a.titulo}">
+                    <span class="icono-alerta"
+                          th:text="${a.nivel.name() == 'AGOTADO'} ? '⛔' : (${a.nivel.name() == 'CRITICO'} ? '🔴' : '🟡')"></span>
+                    <span class="texto-alerta">
+                        <span class="titulo-alerta" th:text="${a.titulo}"></span>
+                        <span th:if="${a.titulo == 'Riel Onda Serena' or a.titulo == 'Riel de Pines' or a.titulo == 'Cuerda Onda Serena'}"
+                              class="badge bg-primary" style="font-size:0.62rem;">🪟 Riel</span>
+                        <span class="mensaje-alerta" th:text="${a.mensaje}"></span>
+                    </span>
+                    <button type="button" class="btn-silenciar-alerta" title="Silenciar esta alerta por 7 días">🔇</button>
+                </li>
+            </ul>
+            <div class="sin-alertas" id="sinAlertasMensaje" th:if="${#lists.isEmpty(alertasInventario)}">
+                ✅ Todo el inventario está en niveles saludables. No hay alertas por ahora.
             </div>
-            <div class="panel-alertas-body abierto" id="panelAlertasBody">
-                <ul class="lista-alertas" id="listaAlertas" th:if="${not #lists.isEmpty(alertasInventario)}">
-                    <li th:each="a : ${alertasInventario}"
-                        class="item-alerta"
-                        th:classappend="${a.nivel.name() == 'AGOTADO'} ? 'nivel-agotado' : (${a.nivel.name() == 'CRITICO'} ? 'nivel-critico' : 'nivel-advertencia')"
-                        th:attr="data-alerta-key=|${a.titulo}::${a.mensaje}|"
-                        th:data-categoria="${a.categoria}"
-                        th:data-titulo="${a.titulo}">
-                        <span class="icono-alerta"
-                              th:text="${a.nivel.name() == 'AGOTADO'} ? '⛔' : (${a.nivel.name() == 'CRITICO'} ? '🔴' : '🟡')"></span>
-                        <span class="texto-alerta">
-                            <span class="titulo-alerta" th:text="${a.titulo}"></span>
-                            <span th:if="${a.titulo == 'Riel Onda Serena' or a.titulo == 'Riel de Pines' or a.titulo == 'Cuerda Onda Serena'}"
-                                  class="badge bg-primary" style="font-size:0.62rem;">🪟 Riel</span>
-                            <span class="mensaje-alerta" th:text="${a.mensaje}"></span>
-                        </span>
-                        <button type="button" class="btn-silenciar-alerta" title="Silenciar esta alerta por 7 días">🔇</button>
-                    </li>
-                </ul>
-                <div class="sin-alertas" id="sinAlertasMensaje" th:if="${#lists.isEmpty(alertasInventario)}">
-                    ✅ Todo el inventario está en niveles saludables. No hay alertas por ahora.
-                </div>
-                <div class="alertas-silenciadas-info" id="alertasSilenciadasInfo" style="display:none;">
-                    <span id="alertasSilenciadasTexto"></span>
-                    <a href="#" id="btnMostrarSilenciadas">mostrar de nuevo</a>
-                </div>
+            <div class="alertas-silenciadas-info" id="alertasSilenciadasInfo" style="display:none;">
+                <span id="alertasSilenciadasTexto"></span>
+                <a href="#" id="btnMostrarSilenciadas">mostrar de nuevo</a>
             </div>
         </div>
+    </div>
 
-        <!-- ───────────── HISTORIAL DE MOVIMIENTOS ───────────── -->
-        <div class="panel-alertas">
-            <div class="panel-alertas-header" id="panelHistorialHeader" role="button" style="background-color:#495057;">
-                <div class="d-flex align-items-center gap-2">
-                    <span class="chevron">▶</span>
-                    <strong>🗂 Historial de Movimientos</strong>
-                </div>
-                <span class="text-white-50" style="font-size:0.8rem;">Entradas manuales y limpieza automática de retazos/piezas pequeñas</span>
+    <div class="panel-alertas">
+        <div class="panel-alertas-header" id="panelHistorialHeader" role="button" style="background-color:#495057;">
+            <div class="d-flex align-items-center gap-2">
+                <span class="chevron">▶</span>
+                <strong>🗂 Historial de Movimientos</strong>
             </div>
-            <div class="panel-alertas-body" id="panelHistorialBody">
-                <ul class="lista-alertas" th:if="${not #lists.isEmpty(movimientosRecientes)}">
-                    <li th:each="m : ${movimientosRecientes}" class="item-alerta"
-                        th:classappend="${m.tipoMovimiento == 'LIMPIEZA_AUTOMATICA'} ? 'nivel-advertencia' : ''"
-                        style="background-color:#f1f3f5; cursor:default;">
-                        <span class="icono-alerta" th:text="${m.tipoMovimiento == 'LIMPIEZA_AUTOMATICA'} ? '🧹' : '➕'"></span>
-                        <span class="texto-alerta">
-                            <span class="titulo-alerta" th:text="${m.categoria}"></span>
-                            <span class="mensaje-alerta" th:text="${m.descripcion}"></span>
-                        </span>
-                        <small class="text-muted" style="white-space:nowrap;">
-                            <span th:text="${m.fechaFormateada}"></span> · <span th:text="${m.creadoPor}"></span>
-                        </small>
-                    </li>
-                </ul>
-                <div class="sin-alertas" th:if="${#lists.isEmpty(movimientosRecientes)}">
-                    Aún no hay movimientos registrados.
-                </div>
+            <span class="text-white-50" style="font-size:0.8rem;">Entradas manuales y limpieza automática de retazos/piezas pequeñas</span>
+        </div>
+        <div class="panel-alertas-body" id="panelHistorialBody">
+            <ul class="lista-alertas" th:if="${not #lists.isEmpty(movimientosRecientes)}">
+                <li th:each="m : ${movimientosRecientes}" class="item-alerta"
+                    th:classappend="${m.tipoMovimiento == 'LIMPIEZA_AUTOMATICA'} ? 'nivel-advertencia' : ''"
+                    style="background-color:#f1f3f5; cursor:default;">
+                    <span class="icono-alerta" th:text="${m.tipoMovimiento == 'LIMPIEZA_AUTOMATICA'} ? '🧹' : '➕'"></span>
+                    <span class="texto-alerta">
+                        <span class="titulo-alerta" th:text="${m.categoria}"></span>
+                        <span class="mensaje-alerta" th:text="${m.descripcion}"></span>
+                    </span>
+                    <small class="text-muted" style="white-space:nowrap;">
+                        <span th:text="${m.fechaFormateada}"></span> · <span th:text="${m.creadoPor}"></span>
+                    </small>
+                </li>
+            </ul>
+            <div class="sin-alertas" th:if="${#lists.isEmpty(movimientosRecientes)}">
+                Aún no hay movimientos registrados.
+            </div>
+        </div>
+    </div>
+
+    <div class="mb-3">
+        <span class="resumen-pill">Rollos totales: <strong th:text="${#lists.size(rollos)}"></strong></span>
+        <span class="resumen-pill">Retazos de rollo (&lt; 3m): <strong th:text="${rollosRetazo}"></strong></span>
+        <span class="resumen-pill">Agotados: <strong th:text="${rollosAgotados}"></strong></span>
+        <span class="resumen-pill">✂ Retazos registrados: <strong th:text="${#lists.size(retazos)}"></strong></span>
+        <span class="resumen-pill">🔧 Insumos: <strong th:text="${#lists.size(insumos)}"></strong></span>
+    </div>
+
+    <ul class="nav nav-tabs-inventario" id="tabsInventario" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="tab-btn-rollos" data-bs-toggle="tab" data-bs-target="#tab-rollos" type="button" role="tab">
+                🧵 Rollos de Tela
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="tab-btn-retazos" data-bs-toggle="tab" data-bs-target="#tab-retazos" type="button" role="tab">
+                ✂ Retazos de Tela
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="tab-btn-insumos" data-bs-toggle="tab" data-bs-target="#tab-insumos" type="button" role="tab">
+                🔧 Insumos
+            </button>
+        </li>
+    </ul>
+
+    <div class="tab-content tab-content-inventario">
+
+    <div class="tab-pane fade show active" id="tab-rollos" role="tabpanel">
+    <div class="seccion-card">
+        <div class="seccion-header">
+            <h5 class="mb-0">🧵 Rollos de Tela</h5>
+            <a href="/inventario/rollo/nuevo" class="btn btn-sm btn-light">+ Agregar Rollo</a>
+        </div>
+
+        <div class="filtros-bar">
+            <div>
+                <label class="form-label d-block">Color</label>
+                <select id="filtroRolloColor" class="form-select form-select-sm" style="min-width:140px;">
+                    <option value="">Todos</option>
+                    <option th:each="c : ${colores}" th:value="${c}" th:text="${c}"></option>
+                </select>
+            </div>
+            <div>
+                <label class="form-label d-block">Ancho</label>
+                <select id="filtroRolloAncho" class="form-select form-select-sm" style="min-width:110px;">
+                    <option value="">Todos</option>
+                </select>
+            </div>
+            <div>
+                <label class="form-label d-block">Estado</label>
+                <select id="filtroRolloEstado" class="form-select form-select-sm" style="min-width:130px;">
+                    <option value="">Todos</option>
+                    <option value="disponible">Disponible</option>
+                    <option value="retazo">Retazo</option>
+                    <option value="agotado">Agotado</option>
+                </select>
+            </div>
+            <div>
+                <button id="btnLimpiarFiltroRollo" type="button" class="btn btn-sm btn-link filtro-chip-clear">Limpiar filtros</button>
+            </div>
+            <div class="ms-auto d-flex gap-2">
+                <button id="btnExpandirTodosRollo" type="button" class="btn btn-sm btn-outline-secondary">Expandir todos</button>
+                <button id="btnColapsarTodosRollo" type="button" class="btn btn-sm btn-outline-secondary">Colapsar todos</button>
             </div>
         </div>
 
-        <div class="mb-3">
-            <span class="resumen-pill">Rollos totales: <strong th:text="${#lists.size(rollos)}"></strong></span>
-            <span class="resumen-pill">Retazos de rollo (&lt; 3m): <strong th:text="${rollosRetazo}"></strong></span>
-            <span class="resumen-pill">Agotados: <strong th:text="${rollosAgotados}"></strong></span>
-            <span class="resumen-pill">✂ Retazos registrados: <strong th:text="${#lists.size(retazos)}"></strong></span>
-            <span class="resumen-pill">🔧 Insumos: <strong th:text="${#lists.size(insumos)}"></strong></span>
+        <div id="contadorRollo" class="contador-resultados pt-2"></div>
+
+        <div id="gruposRollosContainer"></div>
+
+        <div th:if="${#lists.isEmpty(rollos)}" class="text-center text-muted py-4">
+            No hay rollos registrados todavía.
         </div>
 
-        <!-- ═══════════════════ PESTAÑAS: Rollos / Retazos / Insumos ═══════════════════
-             Antes las tres secciones estaban apiladas verticalmente, obligando a mucho
-             scroll y haciendo fácil "perder" de vista un material. Ahora cada una vive en
-             su propia pestaña; solo una se muestra a la vez. -->
-        <ul class="nav nav-tabs-inventario" id="tabsInventario" role="tablist">
-            <li class="nav-item" role="presentation">
-                <button class="nav-link active" id="tab-btn-rollos" data-bs-toggle="tab" data-bs-target="#tab-rollos" type="button" role="tab">
-                    🧵 Rollos de Tela
-                </button>
-            </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link" id="tab-btn-retazos" data-bs-toggle="tab" data-bs-target="#tab-retazos" type="button" role="tab">
-                    ✂ Retazos de Tela
-                </button>
-            </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link" id="tab-btn-insumos" data-bs-toggle="tab" data-bs-target="#tab-insumos" type="button" role="tab">
-                    🔧 Insumos
-                </button>
-            </li>
-        </ul>
-
-        <div class="tab-content tab-content-inventario">
-
-        <!-- ───────────── PESTAÑA: ROLLOS DE TELA ───────────── -->
-        <div class="tab-pane fade show active" id="tab-rollos" role="tabpanel">
-        <div class="seccion-card">
-            <div class="seccion-header">
-                <h5 class="mb-0">🧵 Rollos de Tela</h5>
-                <a href="/inventario/rollo/nuevo" class="btn btn-sm btn-light">+ Agregar Rollo</a>
-            </div>
-
-            <!-- Filtros -->
-            <div class="filtros-bar">
-                <div>
-                    <label class="form-label d-block">Color</label>
-                    <select id="filtroRolloColor" class="form-select form-select-sm" style="min-width:140px;">
-                        <option value="">Todos</option>
-                        <option th:each="c : ${colores}" th:value="${c}" th:text="${c}"></option>
-                    </select>
-                </div>
-                <div>
-                    <label class="form-label d-block">Ancho</label>
-                    <select id="filtroRolloAncho" class="form-select form-select-sm" style="min-width:110px;">
-                        <option value="">Todos</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="form-label d-block">Estado</label>
-                    <select id="filtroRolloEstado" class="form-select form-select-sm" style="min-width:130px;">
-                        <option value="">Todos</option>
-                        <option value="disponible">Disponible</option>
-                        <option value="retazo">Retazo</option>
-                        <option value="agotado">Agotado</option>
-                    </select>
-                </div>
-                <div>
-                    <button id="btnLimpiarFiltroRollo" type="button" class="btn btn-sm btn-link filtro-chip-clear">Limpiar filtros</button>
-                </div>
-                <div class="ms-auto d-flex gap-2">
-                    <button id="btnExpandirTodosRollo" type="button" class="btn btn-sm btn-outline-secondary">Expandir todos</button>
-                    <button id="btnColapsarTodosRollo" type="button" class="btn btn-sm btn-outline-secondary">Colapsar todos</button>
-                </div>
-            </div>
-
-            <div id="contadorRollo" class="contador-resultados pt-2"></div>
-
-            <!-- Contenedor de grupos: se construye con JS a partir de las filas ocultas de abajo -->
-            <div id="gruposRollosContainer"></div>
-
-            <div th:if="${#lists.isEmpty(rollos)}" class="text-center text-muted py-4">
-                No hay rollos registrados todavía.
-            </div>
-
-            <!-- Datos crudos (ocultos) que Thymeleaf sí sabe renderizar; el JS los agrupa visualmente -->
-            <table id="datosRollosRaw" style="display:none;">
-                <tbody>
-                    <tr th:each="r : ${rollos}"
-                        th:data-color="${r.color}"
-                        th:data-ancho="${r.ancho}"
-                        th:data-id="${r.id}"
-                        th:data-agotado="${r.agotado}"
-                        th:data-retazo="${r.retazo}"
-                        th:data-area="${#numbers.formatDecimal(r.areaRestante, 1, 2)}"
-                        th:data-largo-restante="${#numbers.formatDecimal(r.largoRestante, 1, 2)}"
-                        th:data-largo-inicial="${#numbers.formatDecimal(r.largoInicial, 1, 0)}"
-                        th:data-fecha="${#temporals.format(r.fechaIngreso, 'dd/MM/yyyy HH:mm')}"
-                        th:data-url-eliminar="@{/inventario/rollo/eliminar/{id}(id=${r.id})}"
-                        th:data-url-corregir="@{/inventario/rollo/{id}/corregir(id=${r.id})}">
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-        </div>
-
-        <!-- ───────────── PESTAÑA: RETAZOS DE TELA ───────────── -->
-        <div class="tab-pane fade" id="tab-retazos" role="tabpanel">
-        <div class="seccion-card">
-            <div class="seccion-header">
-                <h5 class="mb-0">✂ Retazos de Tela</h5>
-            </div>
-
-            <!-- Formulario para registrar un retazo nuevo: ancho y alto son medidas variables (sobrantes) -->
-            <div class="p-3 border-bottom" style="background:#fffbea;">
-                <form th:action="@{/inventario/retazo/nuevo}" method="post" class="row g-2 align-items-end">
-                    <div class="col-md-3">
-                        <label class="form-label fw-bold mb-1" style="font-size:0.83rem">Color</label>
-                        <select name="color" class="form-select form-select-sm">
-                            <option th:each="c : ${colores}" th:value="${c}" th:text="${c}"></option>
-                        </select>
-                    </div>
-                    <div class="col-md-3">
-                        <label class="form-label fw-bold mb-1" style="font-size:0.83rem">Ancho disponible (m)</label>
-                        <input type="number" step="0.01" name="ancho" class="form-control form-control-sm"
-                               placeholder="ej: 1.20" required min="0.01">
-                    </div>
-                    <div class="col-md-3">
-                        <label class="form-label fw-bold mb-1" style="font-size:0.83rem">Alto disponible (m)</label>
-                        <input type="number" step="0.01" name="alto" class="form-control form-control-sm" placeholder="ej: 1.50" required min="0.01">
-                    </div>
-                    <div class="col-md-3">
-                        <button type="submit" class="btn btn-sm btn-warning w-100">✂ Registrar Retazo</button>
-                    </div>
-                </form>
-            </div>
-
-            <!-- Filtros -->
-            <div class="filtros-bar">
-                <div>
-                    <label class="form-label d-block">Color</label>
-                    <select id="filtroRetazoColor" class="form-select form-select-sm" style="min-width:140px;">
-                        <option value="">Todos</option>
-                        <option th:each="c : ${colores}" th:value="${c}" th:text="${c}"></option>
-                    </select>
-                </div>
-                <div>
-                    <label class="form-label d-block">Estado</label>
-                    <select id="filtroRetazoEstado" class="form-select form-select-sm" style="min-width:130px;">
-                        <option value="">Todos</option>
-                        <option value="disponible">Disponible</option>
-                        <option value="agotado">Agotado</option>
-                    </select>
-                </div>
-                <div>
-                    <button id="btnLimpiarFiltroRetazo" type="button" class="btn btn-sm btn-link filtro-chip-clear">Limpiar filtros</button>
-                </div>
-                <div class="ms-auto d-flex gap-2">
-                    <button id="btnExpandirTodosRetazo" type="button" class="btn btn-sm btn-outline-secondary">Expandir todos</button>
-                    <button id="btnColapsarTodosRetazo" type="button" class="btn btn-sm btn-outline-secondary">Colapsar todos</button>
-                </div>
-            </div>
-
-            <div id="contadorRetazo" class="contador-resultados pt-2"></div>
-
-            <!-- Contenedor de grupos de retazos, agrupados por color (igual que los rollos) -->
-            <div id="gruposRetazosContainer"></div>
-
-            <div th:if="${#lists.isEmpty(retazos)}" class="text-center text-muted py-4">
-                No hay retazos registrados. Usa el formulario de arriba para agregar uno.
-            </div>
-
-            <!-- Datos crudos (ocultos); el JS los agrupa visualmente por color -->
-            <table id="datosRetazosRaw" style="display:none;">
-                <tbody>
-                    <tr th:each="rt : ${retazos}"
-                        th:data-id="${rt.id}"
-                        th:data-color="${rt.color}"
-                        th:data-ancho="${rt.ancho}"
-                        th:data-alto="${#numbers.formatDecimal(rt.alto, 1, 2)}"
-                        th:data-area="${#numbers.formatDecimal(rt.area, 1, 2)}"
-                        th:data-agotado="${rt.agotado}"
-                        th:data-fecha="${rt.fechaIngresoFormateada}"
-                        th:data-url-eliminar="@{/inventario/retazo/eliminar/{id}(id=${rt.id})}">
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-        </div>
-
-        <!-- ───────────── PESTAÑA: INSUMOS ───────────── -->
-        <div class="tab-pane fade" id="tab-insumos" role="tabpanel">
-        <div class="seccion-card">
-            <div class="seccion-header">
-                <h5 class="mb-0">🔧 Insumos</h5>
-                <a href="/inventario/insumo/nuevo" class="btn btn-sm btn-light">+ Crear Insumo Nuevo</a>
-            </div>
-
-            <!-- Filtros -->
-            <div class="filtros-bar">
-                <div>
-                    <label class="form-label d-block">Tipo</label>
-                    <select id="filtroInsumoTipo" class="form-select form-select-sm" style="min-width:150px;">
-                        <option value="">Todos</option>
-                        <option value="medida">Por medida</option>
-                        <option value="unidad">Por unidad</option>
-                    </select>
-                </div>
-                <div style="flex:1; min-width:180px;">
-                    <label class="form-label d-block">Buscar por nombre</label>
-                    <input id="filtroInsumoNombre" type="text" class="form-control form-control-sm" placeholder="ej: tubo, cabezal, riel...">
-                </div>
-                <div>
-                    <label class="form-label d-block">Orden</label>
-                    <select id="ordenInsumo" class="form-select form-select-sm" style="min-width:170px;">
-                        <option value="nombre">Alfabético</option>
-                        <option value="stock_bajo">Stock más bajo primero</option>
-                    </select>
-                </div>
-                <div>
-                    <button id="btnLimpiarFiltroInsumo" type="button" class="btn btn-sm btn-link filtro-chip-clear">Limpiar filtros</button>
-                </div>
-                <div class="ms-auto d-flex gap-2">
-                    <button id="btnExpandirTodosInsumo" type="button" class="btn btn-sm btn-outline-secondary">Expandir todos</button>
-                    <button id="btnColapsarTodosInsumo" type="button" class="btn btn-sm btn-outline-secondary">Colapsar todos</button>
-                </div>
-            </div>
-
-            <div id="contadorInsumo" class="contador-resultados pt-2"></div>
-
-            <div id="gruposInsumosContainer"></div>
-
-            <div th:if="${#lists.isEmpty(insumos)}" class="text-center text-muted py-4">
-                No hay insumos registrados todavía.
-            </div>
-
-            <!-- Datos crudos de insumos -->
-            <table id="datosInsumosRaw" style="display:none;">
-                <tbody>
-                    <tr th:each="ins : ${insumos}"
-                        th:data-id="${ins.id}"
-                        th:data-nombre="${ins.nombre}"
-                        th:data-tiene-medida="${ins.tieneMedida}"
-                        th:data-descripcion="${ins.descripcion}"
-                        th:data-stock-unidades="${ins.stockUnidades}"
-                        th:data-num-piezas="${piezasPorInsumo.get(ins.id) != null ? #lists.size(piezasPorInsumo.get(ins.id)) : 0}"
-                        th:data-url-cargar="@{/inventario/insumo/{id}/cargar(id=${ins.id})}">
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-        </div>
-
-        </div><!-- /tab-content-inventario -->
-
-        <!-- ───────────── PIEZAS DE INSUMOS CON MEDIDA (detalle, agrupado dentro de cada insumo arriba) ───────────── -->
-        <table id="datosPiezasRaw" style="display:none;">
+        <table id="datosRollosRaw" style="display:none;">
             <tbody>
-                <tr th:each="pz : ${piezas}"
-                    th:data-id="${pz.id}"
-                    th:data-insumo-id="${pz.insumo.id}"
-                    th:data-insumo-nombre="${pz.insumo.nombre}"
-                    th:data-agotada="${pz.agotada}"
-                    th:data-largo-restante="${#numbers.formatDecimal(pz.largoRestante, 1, 2)}"
-                    th:data-largo-inicial="${#numbers.formatDecimal(pz.largoInicial, 1, 2)}"
-                    th:data-fecha="${#temporals.format(pz.fechaIngreso, 'dd/MM/yyyy HH:mm')}"
-                    th:data-url-eliminar="@{/inventario/insumo/pieza/eliminar/{id}(id=${pz.id})}">
+                <tr th:each="r : ${rollos}"
+                    th:data-color="${r.color}"
+                    th:data-ancho="${r.ancho}"
+                    th:data-id="${r.id}"
+                    th:data-agotado="${r.agotado}"
+                    th:data-retazo="${r.retazo}"
+                    th:data-area="${#numbers.formatDecimal(r.areaRestante, 1, 2)}"
+                    th:data-largo-restante="${#numbers.formatDecimal(r.largoRestante, 1, 2)}"
+                    th:data-largo-inicial="${#numbers.formatDecimal(r.largoInicial, 1, 0)}"
+                    th:data-fecha="${#temporals.format(r.fechaIngreso, 'dd/MM/yyyy HH:mm')}"
+                    th:data-url-eliminar="@{/inventario/rollo/eliminar/{id}(id=${r.id})}"
+                    th:data-url-corregir="@{/inventario/rollo/{id}/corregir(id=${r.id})}">
                 </tr>
             </tbody>
         </table>
-
+    </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <div class="tab-pane fade" id="tab-retazos" role="tabpanel">
+    <div class="seccion-card">
+        <div class="seccion-header">
+            <h5 class="mb-0">✂ Retazos de Tela</h5>
+        </div>
+
+        <div class="p-3 border-bottom" style="background:#fffbea;">
+            <form th:action="@{/inventario/retazo/nuevo}" method="post" class="row g-2 align-items-end">
+                <div class="col-md-3">
+                    <label class="form-label fw-bold mb-1" style="font-size:0.83rem">Color</label>
+                    <select name="color" class="form-select form-select-sm">
+                        <option th:each="c : ${colores}" th:value="${c}" th:text="${c}"></option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-bold mb-1" style="font-size:0.83rem">Ancho disponible (m)</label>
+                    <input type="number" step="0.01" name="ancho" class="form-control form-control-sm"
+                           placeholder="ej: 1.20" required min="0.01">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-bold mb-1" style="font-size:0.83rem">Alto disponible (m)</label>
+                    <input type="number" step="0.01" name="alto" class="form-control form-control-sm" placeholder="ej: 1.50" required min="0.01">
+                </div>
+                <div class="col-md-3">
+                    <button type="submit" class="btn btn-sm btn-warning w-100">✂ Registrar Retazo</button>
+                </div>
+            </form>
+        </div>
+
+        <div class="filtros-bar">
+            <div>
+                <label class="form-label d-block">Color</label>
+                <select id="filtroRetazoColor" class="form-select form-select-sm" style="min-width:140px;">
+                    <option value="">Todos</option>
+                    <option th:each="c : ${colores}" th:value="${c}" th:text="${c}"></option>
+                </select>
+            </div>
+            <div>
+                <label class="form-label d-block">Estado</label>
+                <select id="filtroRetazoEstado" class="form-select form-select-sm" style="min-width:130px;">
+                    <option value="">Todos</option>
+                    <option value="disponible">Disponible</option>
+                    <option value="agotado">Agotado</option>
+                </select>
+            </div>
+            <div>
+                <button id="btnLimpiarFiltroRetazo" type="button" class="btn btn-sm btn-link filtro-chip-clear">Limpiar filtros</button>
+            </div>
+            <div class="ms-auto d-flex gap-2">
+                <button id="btnExpandirTodosRetazo" type="button" class="btn btn-sm btn-outline-secondary">Expandir todos</button>
+                <button id="btnColapsarTodosRetazo" type="button" class="btn btn-sm btn-outline-secondary">Colapsar todos</button>
+            </div>
+        </div>
+
+        <div id="contadorRetazo" class="contador-resultados pt-2"></div>
+
+        <div id="gruposRetazosContainer"></div>
+
+        <div th:if="${#lists.isEmpty(retazos)}" class="text-center text-muted py-4">
+            No hay retazos registrados. Usa el formulario de arriba para agregar uno.
+        </div>
+
+        <table id="datosRetazosRaw" style="display:none;">
+            <tbody>
+                <tr th:each="rt : ${retazos}"
+                    th:data-id="${rt.id}"
+                    th:data-color="${rt.color}"
+                    th:data-ancho="${rt.ancho}"
+                    th:data-alto="${#numbers.formatDecimal(rt.alto, 1, 2)}"
+                    th:data-area="${#numbers.formatDecimal(rt.area, 1, 2)}"
+                    th:data-agotado="${rt.agotado}"
+                    th:data-fecha="${rt.fechaIngresoFormateada}"
+                    th:data-url-eliminar="@{/inventario/retazo/eliminar/{id}(id=${rt.id})}">
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    </div>
+
+    <div class="tab-pane fade" id="tab-insumos" role="tabpanel">
+    <div class="seccion-card">
+        <div class="seccion-header">
+            <h5 class="mb-0">🔧 Insumos</h5>
+            <a href="/inventario/insumo/nuevo" class="btn btn-sm btn-light">+ Crear Insumo Nuevo</a>
+        </div>
+
+        <div class="filtros-bar">
+            <div>
+                <label class="form-label d-block">Tipo</label>
+                <select id="filtroInsumoTipo" class="form-select form-select-sm" style="min-width:150px;">
+                    <option value="">Todos</option>
+                    <option value="medida">Por medida</option>
+                    <option value="unidad">Por unidad</option>
+                </select>
+            </div>
+            <div style="flex:1; min-width:180px;">
+                <label class="form-label d-block">Buscar por nombre</label>
+                <input id="filtroInsumoNombre" type="text" class="form-control form-control-sm" placeholder="ej: tubo, cabezal, riel...">
+            </div>
+            <div>
+                <label class="form-label d-block">Orden</label>
+                <select id="ordenInsumo" class="form-select form-select-sm" style="min-width:170px;">
+                    <option value="nombre">Alfabético</option>
+                    <option value="stock_bajo">Stock más bajo primero</option>
+                </select>
+            </div>
+            <div>
+                <button id="btnLimpiarFiltroInsumo" type="button" class="btn btn-sm btn-link filtro-chip-clear">Limpiar filtros</button>
+            </div>
+            <div class="ms-auto d-flex gap-2">
+                <button id="btnExpandirTodosInsumo" type="button" class="btn btn-sm btn-outline-secondary">Expandir todos</button>
+                <button id="btnColapsarTodosInsumo" type="button" class="btn btn-sm btn-outline-secondary">Colapsar todos</button>
+            </div>
+        </div>
+
+        <div id="contadorInsumo" class="contador-resultados pt-2"></div>
+
+        <div id="gruposInsumosContainer"></div>
+
+        <div th:if="${#lists.isEmpty(insumos)}" class="text-center text-muted py-4">
+            No hay insumos registrados todavía.
+        </div>
+
+        <table id="datosInsumosRaw" style="display:none;">
+            <tbody>
+                <tr th:each="ins : ${insumos}"
+                    th:data-id="${ins.id}"
+                    th:data-nombre="${ins.nombre}"
+                    th:data-tiene-medida="${ins.tieneMedida}"
+                    th:data-descripcion="${ins.descripcion}"
+                    th:data-stock-unidades="${ins.stockUnidades}"
+                    th:data-num-piezas="${piezasPorInsumo.get(ins.id) != null ? #lists.size(piezasPorInsumo.get(ins.id)) : 0}"
+                    th:data-url-cargar="@{/inventario/insumo/{id}/cargar(id=${ins.id})}">
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    </div>
+
+    </div><!-- /tab-content-inventario -->
+
+    <table id="datosPiezasRaw" style="display:none;">
+        <tbody>
+            <tr th:each="pz : ${piezas}"
+                th:data-id="${pz.id}"
+                th:data-insumo-id="${pz.insumo.id}"
+                th:data-insumo-nombre="${pz.insumo.nombre}"
+                th:data-agotada="${pz.agotada}"
+                th:data-largo-restante="${#numbers.formatDecimal(pz.largoRestante, 1, 2)}"
+                th:data-largo-inicial="${#numbers.formatDecimal(pz.largoInicial, 1, 2)}"
+                th:data-fecha="${#temporals.format(pz.fechaIngreso, 'dd/MM/yyyy HH:mm')}"
+                th:data-url-eliminar="@{/inventario/insumo/pieza/eliminar/{id}(id=${pz.id})}">
+            </tr>
+        </tbody>
+    </table>
+
     <script>
-    // Paleta aproximada para el "swatch" visual de color. Si el nombre de color
-    // no está en este mapa, se usa un cuadro gris neutro como respaldo.
     const MAPA_COLORES = {
         'blanco': '#ffffff', 'negro': '#1a1a1a', 'rojo': '#d32f2f', 'azul': '#1976d2',
         'verde': '#388e3c', 'amarillo': '#fbc02d', 'naranja': '#f57c00', 'morado': '#7b1fa2',
@@ -680,16 +639,7 @@
             .replace(/"/g, '&quot;');
     }
 
-    // ════════════════════════════════════════════════════════════
-    //  HELPER GENÉRICO DE ACORDEÓN — usado por rollos, retazos e
-    //  insumos. En vez de un max-height fijo (que cortaba grupos con
-    //  muchos elementos), calcula el alto real del contenido con
-    //  scrollHeight y lo aplica como estilo inline SOLO cuando el
-    //  grupo se abre. Por defecto todos los grupos empiezan cerrados.
-    // ════════════════════════════════════════════════════════════
     function calcularAlturaGrupo(body) {
-        // +2px de margen para evitar que un borde/padding redondeado
-        // quede recortado por error de redondeo del navegador.
         body.style.maxHeight = (body.scrollHeight + 2) + 'px';
     }
 
@@ -711,10 +661,6 @@
         });
     }
 
-    // ════════════════════════════════════════════════════════════
-    //  PANEL DE ALERTAS → acordeón + silenciar individualmente (7 días)
-    //  + clic en una alerta lleva directo a su pestaña y abre su grupo.
-    // ════════════════════════════════════════════════════════════
     (function initPanelAlertas() {
         const header = document.getElementById('panelAlertasHeader');
         const body = document.getElementById('panelAlertasBody');
@@ -811,8 +757,6 @@
                 }
             }
 
-            // Recalcula el alto del panel si estaba abierto, ya que el
-            // número de filas visibles pudo haber cambiado.
             if (panelBody && panelBody.classList.contains('abierto')) {
                 calcularAlturaGrupo(panelBody);
             }
@@ -829,9 +773,6 @@
                 });
             }
 
-            // Clic en el cuerpo de la alerta (no en el botón de silenciar):
-            // salta a la pestaña correspondiente, limpia filtros de esa
-            // sección, busca por el nombre del insumo/material y abre su grupo.
             li.addEventListener('click', (e) => {
                 if (e.target.closest('.btn-silenciar-alerta')) return;
                 const categoria = li.dataset.categoria || '';
@@ -844,7 +785,6 @@
             if (categoria === 'TELA') {
                 new bootstrap.Tab(document.getElementById('tab-btn-rollos')).show();
                 document.getElementById('filtroRolloColor').value = '';
-                // El título trae "Tela <Color> <Ancho>m"; se intenta extraer el color.
                 const partes = titulo.replace('Tela ', '').split(' ');
                 const colorPosible = partes.slice(0, -1).join(' ');
                 const selColor = document.getElementById('filtroRolloColor');
@@ -871,10 +811,6 @@
         actualizarVisibilidad();
     })();
 
-    // ════════════════════════════════════════════════════════════
-    //  PANEL DE HISTORIAL DE MOVIMIENTOS → acordeón simple, cerrado
-    //  por defecto (segundo parámetro en false).
-    // ════════════════════════════════════════════════════════════
     (function initPanelHistorial() {
         const header = document.getElementById('panelHistorialHeader');
         const body = document.getElementById('panelHistorialBody');
@@ -883,9 +819,6 @@
         }
     })();
 
-    // ════════════════════════════════════════════════════════════
-    //  ROLLOS DE TELA → agrupados por Color + Ancho, en acordeón
-    // ════════════════════════════════════════════════════════════
     (function initRollos() {
         const filas = Array.from(document.querySelectorAll('#datosRollosRaw tbody tr'));
         const contenedor = document.getElementById('gruposRollosContainer');
@@ -1050,7 +983,6 @@
             });
         });
 
-
         contenedor.addEventListener('click', (e) => {
             const btn = e.target.closest('.btn-agotar-rollo');
             if (!btn) return;
@@ -1065,9 +997,6 @@
         render();
     })();
 
-    // ════════════════════════════════════════════════════════════
-    //  RETAZOS DE TELA → agrupados por Color, en acordeón (igual que rollos)
-    // ════════════════════════════════════════════════════════════
     (function initRetazos() {
         const filas = Array.from(document.querySelectorAll('#datosRetazosRaw tbody tr'));
         const contenedor = document.getElementById('gruposRetazosContainer');
@@ -1207,11 +1136,6 @@
         render();
     })();
 
-    // ════════════════════════════════════════════════════════════
-    //  INSUMOS → agrupados por Nombre, con filtro por Tipo, por texto
-    //  y por orden (alfabético o stock más bajo primero, para ver
-    //  primero lo que se está por acabar).
-    // ════════════════════════════════════════════════════════════
     (function initInsumos() {
         const filasInsumo = Array.from(document.querySelectorAll('#datosInsumosRaw tbody tr'));
         const filasPieza = Array.from(document.querySelectorAll('#datosPiezasRaw tbody tr'));
@@ -1242,9 +1166,6 @@
             });
         });
 
-        // "Nivel de stock" comparable, sea el insumo por medida o por unidad,
-        // usado únicamente para poder ordenar de menor a mayor cuando se
-        // elige "Stock más bajo primero".
         function nivelStockDe(ins) {
             if (ins.tieneMedida) {
                 const piezas = piezasPorInsumo[ins.id] || [];
@@ -1402,6 +1323,9 @@
         render();
     })();
     </script>
-    <script src="/js/token-nav.js"></script>
+</div>
+
+</div>
+
 </body>
 </html>

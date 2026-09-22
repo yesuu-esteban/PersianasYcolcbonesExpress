@@ -1,9 +1,10 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
-<head>
-    <meta charset="UTF-8">
-    <title>Editar Riel de Onda Serena</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<body>
+
+<div th:replace="~{fragments/sidebar :: layout(contenido=~{::seccion-contenido}, activo='pedidos-fabrica', titulo='✏️ Editar Riel de Onda Serena')}">
+
+<div th:fragment="seccion-contenido">
     <style>
         .previsualizacion {
             background-color: #f8f9fa;
@@ -39,95 +40,92 @@
         .info-stock-insumo.ok { color: #0a5c30; }
         .info-stock-insumo.sin-stock { color: #b02a37; font-weight: 600; }
     </style>
-</head>
-<body class="bg-light p-4">
-<div class="container col-md-7">
-    <h2 class="mb-4">✏️ Editar Riel de Onda Serena</h2>
 
-    <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
 
-    <form th:action="@{/taller/editar-riel/{id}(id=${pedido.id})}" method="post"
-          class="bg-white p-4 shadow-sm border rounded">
+            <form th:action="@{/taller/editar-riel/{id}(id=${pedido.id})}" method="post"
+                  class="bg-white p-4 shadow-sm border rounded">
 
-        <div class="row g-3 mb-3">
-            <div class="col-md-6">
-                <label class="form-label fw-bold">Distribuidor</label>
-                <input type="text" name="nombreDecorador" class="form-control" th:value="${pedido.nombreDecorador}" required>
-            </div>
-            <div class="col-md-6">
-                <label class="form-label fw-bold">Cliente Final</label>
-                <input type="text" name="nombreClienteFinal" class="form-control" th:value="${pedido.nombreClienteFinal}" required>
-            </div>
-        </div>
-
-        <div class="mb-3">
-            <label class="form-label fw-bold">Descripción</label>
-            <input type="text" name="descripcion" class="form-control" th:value="${pedido.descripcion}">
-        </div>
-
-        <div class="row g-3 mb-3">
-            <div class="col-md-6">
-                <label class="form-label fw-bold">Ancho (m)</label>
-                <input type="number" step="0.001" name="ancho" id="campoAncho"
-                       class="form-control" th:value="${pedido.ancho}" required>
-            </div>
-            <div class="col-md-6">
-                <label class="form-label fw-bold">Alto (m)</label>
-                <input type="number" step="0.001" name="altura" id="campoAltura"
-                       class="form-control" th:value="${pedido.altura}" placeholder="opcional">
-            </div>
-        </div>
-
-        <div class="seccion-manual mb-3">
-            <div class="form-check mb-2">
-                <input type="checkbox" name="usaPolea" value="true" id="ckUsaPolea" class="form-check-input"
-                       th:checked="${pedido.usaPolea}">
-                <label for="ckUsaPolea" class="form-check-label">⚙ Lleva polea</label>
-            </div>
-
-            <div class="row g-2 mt-2">
-                <div class="col-md-6" id="filaBastonRiel">
-                    <label class="form-label fw-bold">Bastón</label>
-                    <select name="bastonElegido" class="form-select">
-                        <option value="Bastón 0.80" th:selected="${pedido.bastonElegido == 'Bastón 0.80'}">Bastón 0.80</option>
-                        <option value="Bastón 1.20" th:selected="${pedido.bastonElegido == 'Bastón 1.20'}">Bastón 1.20</option>
-                        <option value="Bastón 1.50" th:selected="${pedido.bastonElegido == 'Bastón 1.50'}">Bastón 1.50</option>
-                    </select>
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">Distribuidor</label>
+                        <input type="text" name="nombreDecorador" class="form-control" th:value="${pedido.nombreDecorador}" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">Cliente Final</label>
+                        <input type="text" name="nombreClienteFinal" class="form-control" th:value="${pedido.nombreClienteFinal}" required>
+                    </div>
                 </div>
-                <div class="col-md-6">
-                    <label class="form-label fw-bold">Abre hacia</label>
-                    <select name="ladoApertura" id="selectLadoApertura" class="form-select">
-                        <option value="Izquierda" th:selected="${pedido.ladoApertura == 'Izquierda'}">Izquierda</option>
-                        <option value="Derecha" th:selected="${pedido.ladoApertura == 'Derecha'}">Derecha</option>
-                        <option value="Hacia los extremos" th:selected="${pedido.ladoApertura == 'Hacia los extremos'}">Hacia los extremos</option>
-                    </select>
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Descripción</label>
+                    <input type="text" name="descripcion" class="form-control" th:value="${pedido.descripcion}">
                 </div>
-            </div>
 
-            <div id="cajaPrevisualizacion" class="previsualizacion">
-                <span class="cargando">Cargando...</span>
-            </div>
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">Ancho (m)</label>
+                        <input type="number" step="0.001" name="ancho" id="campoAncho"
+                               class="form-control" th:value="${pedido.ancho}" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">Alto (m)</label>
+                        <input type="number" step="0.001" name="altura" id="campoAltura"
+                               class="form-control" th:value="${pedido.altura}" placeholder="opcional">
+                    </div>
+                </div>
+
+                <div class="seccion-manual mb-3">
+                    <div class="form-check mb-2">
+                        <input type="checkbox" name="usaPolea" value="true" id="ckUsaPolea" class="form-check-input"
+                               th:checked="${pedido.usaPolea}">
+                        <label for="ckUsaPolea" class="form-check-label">⚙ Lleva polea</label>
+                    </div>
+
+                    <div class="row g-2 mt-2">
+                        <div class="col-md-6" id="filaBastonRiel">
+                            <label class="form-label fw-bold">Bastón</label>
+                            <select name="bastonElegido" class="form-select">
+                                <option value="Bastón 0.80" th:selected="${pedido.bastonElegido == 'Bastón 0.80'}">Bastón 0.80</option>
+                                <option value="Bastón 1.20" th:selected="${pedido.bastonElegido == 'Bastón 1.20'}">Bastón 1.20</option>
+                                <option value="Bastón 1.50" th:selected="${pedido.bastonElegido == 'Bastón 1.50'}">Bastón 1.50</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Abre hacia</label>
+                            <select name="ladoApertura" id="selectLadoApertura" class="form-select">
+                                <option value="Izquierda" th:selected="${pedido.ladoApertura == 'Izquierda'}">Izquierda</option>
+                                <option value="Derecha" th:selected="${pedido.ladoApertura == 'Derecha'}">Derecha</option>
+                                <option value="Hacia los extremos" th:selected="${pedido.ladoApertura == 'Hacia los extremos'}">Hacia los extremos</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div id="cajaPrevisualizacion" class="previsualizacion">
+                        <span class="cargando">Cargando...</span>
+                    </div>
+                </div>
+
+                <div class="seccion-extras">
+                    <p class="fw-bold mb-2">➕ Insumos adicionales del riel (opcional)</p>
+                    <p class="text-muted mb-2" style="font-size:0.82rem;">
+                        Los accesorios obligatorios (poleas/crusador, o tapas/bastón, riata, soportes según corresponda)
+                        ya se calculan y descuentan automáticamente. Usa esto solo para material extra fuera de lo normal.
+                    </p>
+                    <div id="contenedorExtras"></div>
+                    <button type="button" class="btn btn-sm btn-outline-dark mt-1" onclick="agregarFilaExtra()">+ Agregar insumo extra</button>
+                </div>
+
+                <div class="mt-4">
+                    <button type="submit" class="btn btn-primary w-100">Guardar Cambios</button>
+                    <a href="/taller/pedidos" class="btn btn-secondary w-100 mt-2">Cancelar</a>
+                </div>
+            </form>
         </div>
+    </div>
 
-        <!-- ═══════════ INSUMOS ADICIONALES (extras de toda la orden) ═══════════ -->
-        <div class="seccion-extras">
-            <p class="fw-bold mb-2">➕ Insumos adicionales del riel (opcional)</p>
-            <p class="text-muted mb-2" style="font-size:0.82rem;">
-                Los accesorios obligatorios (poleas/crusador, o tapas/bastón, riata, soportes según corresponda)
-                ya se calculan y descuentan automáticamente. Usa esto solo para material extra fuera de lo normal.
-            </p>
-            <div id="contenedorExtras"></div>
-            <button type="button" class="btn btn-sm btn-outline-dark mt-1" onclick="agregarFilaExtra()">+ Agregar insumo extra</button>
-        </div>
-
-        <div class="mt-4">
-            <button type="submit" class="btn btn-primary w-100">Guardar Cambios</button>
-            <a href="/taller/pedidos" class="btn btn-secondary w-100 mt-2">Cancelar</a>
-        </div>
-    </form>
-</div>
-
-<!-- Variables del servidor inyectadas para el JS -->
 <script th:inline="javascript">
     /*<![CDATA[*/
     const piezasDisponibles = /*[[${piezasDisponibles}]]*/ [];
@@ -137,13 +135,11 @@
 </script>
 
 <script>
-    // ── Referencias DOM ───────────────────────────────────────────
     const campoAncho    = document.getElementById('campoAncho');
     const campoAltura   = document.getElementById('campoAltura');
     const ckUsaPolea    = document.getElementById('ckUsaPolea');
     const caja          = document.getElementById('cajaPrevisualizacion');
 
-    // ── Previsualización EN VIVO consultando el inventario real ──
     async function calcularPreview() {
         const ancho = parseFloat(campoAncho.value);
         const alto = parseFloat(campoAltura.value) || 0;
@@ -233,10 +229,6 @@
     const selectBastonListener = document.querySelector('select[name="bastonElegido"]');
     if (selectBastonListener) selectBastonListener.addEventListener('change', dispararPreviewRiel);
 
-    // ════════════════════════════════════════════════════════════
-    //  INSUMOS ADICIONALES (extras) — misma lógica reutilizada del
-    //  resto del sistema (nuevo_pedido.html / editar_pedido.html)
-    // ════════════════════════════════════════════════════════════
     let extraIndex = 0;
 
     function opcionesCatalogo() {
@@ -375,15 +367,11 @@
         actualizarInfoExtra(select);
     }
 
-    // ── Inicialización ────────────────────────────────────────────
     document.addEventListener('DOMContentLoaded', () => {
         calcularPreview();
 
         document.getElementById('filaBastonRiel').style.display = ckUsaPolea.checked ? 'none' : '';
 
-        // Precarga de extras ya registrados en este pedido, igual que en
-        // editar_pedido.html: se muestran como "texto libre" con la
-        // descripción y cantidad que ya tenían.
         if (typeof extrasExistentes !== 'undefined' && extrasExistentes.length) {
             extrasExistentes.forEach(ex => {
                 agregarFilaExtra('libre', ex.fuenteDescripcion, ex.metrosUsados);
@@ -391,7 +379,9 @@
         }
     });
 </script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-<script src="/js/token-nav.js"></script>
+</div>
+
+</div>
+
 </body>
 </html>

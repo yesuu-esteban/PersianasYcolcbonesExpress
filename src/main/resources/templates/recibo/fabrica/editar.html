@@ -1,25 +1,14 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Editar Recibo de Fábrica</title>
+<body>
+
+<div th:replace="~{fragments/sidebar :: layout(contenido=~{::seccion-contenido}, activo='recibos-fabrica', titulo='✏️ Editar Recibo #' + ${recibo.numeroFormateado})}">
+
+<div th:fragment="seccion-contenido">
     <style>
-        * { box-sizing: border-box; }
-        body { font-family: Arial, sans-serif; background-color: #f4f4f9; margin: 0; padding: 20px; }
-        .container { background: white; width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #ccc; border-radius: 5px; }
-        .barra-superior { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
-        .barra-superior a { font-size: 13px; color: #555; text-decoration: none; }
-        .barra-superior a:hover { color: #000; }
-        .badge-origen { display: inline-block; font-size: 11px; font-weight: bold; padding: 3px 10px; border-radius: 12px; color: #fff; background-color: #343a40; }
-        .alerta { padding: 10px 14px; border-radius: 4px; margin-bottom: 14px; font-size: 13px; }
-        .alerta-error { background: #f8d7da; border: 1px solid #dc3545; color: #842029; }
         fieldset { border: 1px solid #ccc; padding: 10px; border-radius: 4px; margin-bottom: 16px; }
-        legend { font-weight: bold; padding: 0 6px; }
-        label { font-size: 13px; color: #333; display: block; margin-top: 8px; }
-        input[type="text"], input[type="tel"], input[type="number"] { width: 100%; padding: 6px; margin-top: 4px; border: 1px solid #ccc; border-radius: 4px; }
+        legend { font-weight: bold; padding: 0 6px; font-size: 1rem; }
         .fila-producto-form { display: flex; gap: 8px; margin-bottom: 8px; align-items: center; }
-        .fila-producto-form input { margin-top: 0; }
         .fila-producto-form .col-nombre { flex: 2; }
         .fila-producto-form .col-precio { flex: 1; max-width: 110px; }
         .fila-producto-form .col-cant { flex: 1; max-width: 80px; }
@@ -36,68 +25,64 @@
             padding: 8px 12px; border-radius: 4px; font-size: 12px; margin-bottom: 14px;
         }
     </style>
-</head>
-<body>
-    <div class="container">
-        <div class="barra-superior">
-            <h3 style="margin:0;">✏️ Editar Recibo #<span th:text="${recibo.numeroFormateado}"></span></h3>
-            <a th:href="@{/recibos/imprimir/{id}(id=${recibo.id})}">← Cancelar y ver recibo</a>
-        </div>
 
-        <p style="font-size:13px; color:#555; margin-top:-8px; margin-bottom:16px;">
-            <span class="badge-origen">FABRICA</span>
-        </p>
-
-        <div th:if="${error}" class="alerta alerta-error" th:text="${error}"></div>
-
-        <div class="aviso-firmado" th:if="${recibo.isFirmado()}">
-            ⚠️ Este recibo ya tiene una firma registrada. Si cambias los productos o el total,
-            la firma seguirá guardada tal cual, pero no corresponderá a los nuevos valores —
-            considera pedirle al cliente que vuelva a firmar después de editar.
-        </div>
-
-        <form th:action="@{/recibos/fabrica/editar/{id}(id=${recibo.id})}" method="post" id="formRecibo">
-            <fieldset>
-                <legend>Datos del Cliente</legend>
-                <label for="cliente">Cliente:</label>
-                <input type="text" id="cliente" name="cliente" th:value="${recibo.cliente}" required>
-                <label for="direccion">Dirección:</label>
-                <input type="text" id="direccion" name="direccion" th:value="${recibo.direccion}">
-                <label for="cedula">Cédula:</label>
-                <input type="text" id="cedula" name="cedula" th:value="${recibo.cedula}">
-                <label for="telefono">Teléfono:</label>
-                <input type="tel" id="telefono" name="telefono" th:value="${recibo.telefono}">
-            </fieldset>
-
-            <fieldset>
-                <legend>Productos</legend>
-                <div id="contenedorProductos">
-                    <div class="fila-producto-form" th:each="it : ${recibo.items}">
-                        <input type="text" name="nombresProducto" class="col-nombre" placeholder="Nombre del producto" th:value="${it.nombre}" required>
-                        <input type="number" name="precios" class="col-precio" step="0.01" min="0.01" placeholder="Precio" th:value="${it.precio}" required>
-                        <input type="number" name="cantidades" class="col-cant" min="1" th:value="${it.cantidad}" placeholder="Cant.">
-                        <button type="button" class="btn-eliminar-producto" onclick="eliminarFila(this)">Quitar</button>
-                    </div>
-                </div>
-                <button type="button" class="btn-agregar-producto" onclick="agregarFila()">+ Añadir Producto</button>
-            </fieldset>
-
-            <div class="totales">
-                <p><strong>Total General: $<span id="lblTotalGeneral">0.00</span></strong></p>
-                <label for="descuento">Descuento:</label>
-                <input type="number" id="descuento" name="descuento" step="0.01" min="0" th:value="${recibo.descuento}">
-                <p class="descuento-aplicado" id="lineaDescuentoAplicado" style="display:none;">
-                    Descuento aplicado: -$<span id="lblDescuentoAplicado">0.00</span>
-                </p>
-                <p><strong>Total con descuento: $<span id="lblTotalConDescuento">0.00</span></strong></p>
-                <label for="abono">Abono:</label>
-                <input type="number" id="abono" name="abono" step="0.01" min="0" th:value="${recibo.abono}">
-                <label for="saldo">Saldo pendiente:</label>
-                <input type="number" id="saldo" readonly>
+    <div class="row justify-content-center">
+        <div class="col-md-7">
+            <div class="d-flex justify-content-end mb-2">
+                <a th:href="@{/recibos/imprimir/{id}(id=${recibo.id})}" class="text-muted small">← Cancelar y ver recibo</a>
             </div>
 
-            <button type="submit" class="btn-generar">💾 Guardar Cambios</button>
-        </form>
+            <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
+
+            <div class="aviso-firmado" th:if="${recibo.isFirmado()}">
+                ⚠️ Este recibo ya tiene una firma registrada. Si cambias los productos o el total,
+                la firma seguirá guardada tal cual, pero no corresponderá a los nuevos valores —
+                considera pedirle al cliente que vuelva a firmar después de editar.
+            </div>
+
+            <form th:action="@{/recibos/fabrica/editar/{id}(id=${recibo.id})}" method="post" id="formRecibo" class="bg-white p-4 shadow-sm border rounded">
+                <fieldset>
+                    <legend>Datos del Cliente</legend>
+                    <label for="cliente" class="form-label mt-2">Cliente:</label>
+                    <input type="text" id="cliente" name="cliente" class="form-control" th:value="${recibo.cliente}" required>
+                    <label for="direccion" class="form-label mt-2">Dirección:</label>
+                    <input type="text" id="direccion" name="direccion" class="form-control" th:value="${recibo.direccion}">
+                    <label for="cedula" class="form-label mt-2">Cédula:</label>
+                    <input type="text" id="cedula" name="cedula" class="form-control" th:value="${recibo.cedula}">
+                    <label for="telefono" class="form-label mt-2">Teléfono:</label>
+                    <input type="tel" id="telefono" name="telefono" class="form-control" th:value="${recibo.telefono}">
+                </fieldset>
+
+                <fieldset>
+                    <legend>Productos</legend>
+                    <div id="contenedorProductos">
+                        <div class="fila-producto-form" th:each="it : ${recibo.items}">
+                            <input type="text" name="nombresProducto" class="form-control col-nombre" placeholder="Nombre del producto" th:value="${it.nombre}" required>
+                            <input type="number" name="precios" class="form-control col-precio" step="0.01" min="0.01" placeholder="Precio" th:value="${it.precio}" required>
+                            <input type="number" name="cantidades" class="form-control col-cant" min="1" th:value="${it.cantidad}" placeholder="Cant.">
+                            <button type="button" class="btn-eliminar-producto" onclick="eliminarFila(this)">Quitar</button>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-agregar-producto" onclick="agregarFila()">+ Añadir Producto</button>
+                </fieldset>
+
+                <div class="totales">
+                    <p><strong>Total General: $<span id="lblTotalGeneral">0.00</span></strong></p>
+                    <label for="descuento" class="form-label">Descuento:</label>
+                    <input type="number" id="descuento" name="descuento" class="form-control" step="0.01" min="0" th:value="${recibo.descuento}">
+                    <p class="descuento-aplicado" id="lineaDescuentoAplicado" style="display:none;">
+                        Descuento aplicado: -$<span id="lblDescuentoAplicado">0.00</span>
+                    </p>
+                    <p><strong>Total con descuento: $<span id="lblTotalConDescuento">0.00</span></strong></p>
+                    <label for="abono" class="form-label">Abono:</label>
+                    <input type="number" id="abono" name="abono" class="form-control" step="0.01" min="0" th:value="${recibo.abono}">
+                    <label for="saldo" class="form-label">Saldo pendiente:</label>
+                    <input type="number" id="saldo" class="form-control" readonly>
+                </div>
+
+                <button type="submit" class="btn-generar">💾 Guardar Cambios</button>
+            </form>
+        </div>
     </div>
 
     <script>
@@ -145,9 +130,9 @@
             const div = document.createElement('div');
             div.className = 'fila-producto-form';
             div.innerHTML = `
-                <input type="text" name="nombresProducto" class="col-nombre" placeholder="Nombre del producto" required>
-                <input type="number" name="precios" class="col-precio" step="0.01" min="0.01" placeholder="Precio" required>
-                <input type="number" name="cantidades" class="col-cant" min="1" value="1" placeholder="Cant.">
+                <input type="text" name="nombresProducto" class="form-control col-nombre" placeholder="Nombre del producto" required>
+                <input type="number" name="precios" class="form-control col-precio" step="0.01" min="0.01" placeholder="Precio" required>
+                <input type="number" name="cantidades" class="form-control col-cant" min="1" value="1" placeholder="Cant.">
                 <button type="button" class="btn-eliminar-producto" onclick="eliminarFila(this)">Quitar</button>
             `;
             contenedor.appendChild(div);
@@ -167,6 +152,9 @@
         document.querySelectorAll('.fila-producto-form').forEach(engancharFila);
         recalcularTotales();
     </script>
-    <script src="/js/token-nav.js"></script>
+</div>
+
+</div>
+
 </body>
 </html>

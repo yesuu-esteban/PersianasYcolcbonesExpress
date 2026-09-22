@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head><meta charset="UTF-8"></head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     FRAGMENTO REUTILIZABLE: Layout con sidebar fijo a la izquierda.
+     Uso en cualquier página:
+       th:replace="~{fragments/sidebar :: layout(contenido=~{::seccion-contenido}, activo='pedidos-fabrica', titulo='Pedidos')}"
+     El parámetro "activo" resalta el ítem correspondiente del menú.
+     Valores válidos: pedidos-fabrica, inventario-fabrica, precios-fabrica,
+     recibos-fabrica, reportes-fabrica, pedidos-almacen, recibos-almacen,
+     reporte-almacen.
+     ═══════════════════════════════════════════════════════════════ -->
+<div th:fragment="layout(contenido, activo, titulo)">
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title th:text="${titulo} + ' - Persianas Express'">Persianas Express</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --sidebar-w: 240px;
+            --sidebar-bg: #1c1f26;
+            --sidebar-bg-hover: #2a2f3a;
+            --accent: #ec1561;
+            --accent-dark: #a5107f;
+        }
+        * { box-sizing: border-box; }
+        html, body { height: 100%; margin: 0; background: #f4f5f7; font-family: 'Segoe UI', Arial, sans-serif; }
+
+        .app-shell { display: flex; min-height: 100vh; }
+
+        /* ── Sidebar ── */
+        .app-sidebar {
+            width: var(--sidebar-w); flex-shrink: 0; background: var(--sidebar-bg); color: #cfd3da;
+            display: flex; flex-direction: column; position: sticky; top: 0; height: 100vh; overflow-y: auto;
+        }
+        .app-sidebar .brand {
+            display: flex; align-items: center; gap: 10px; padding: 18px 16px;
+            border-bottom: 1px solid rgba(255,255,255,0.08); flex-shrink: 0;
+        }
+        .app-sidebar .brand .icono { font-size: 1.4rem; }
+        .app-sidebar .brand .texto { font-weight: 800; font-size: 0.92rem; color: #fff; line-height: 1.1; letter-spacing: 0.3px; }
+        .app-sidebar .brand .texto small { display: block; font-weight: 500; font-size: 0.6rem; color: #8b909c; letter-spacing: 1px; margin-top: 2px; }
+
+        .app-sidebar .seccion-titulo {
+            padding: 16px 18px 6px; font-size: 0.68rem; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 0.8px; color: #6b7280;
+        }
+        .app-sidebar .seccion-titulo.fabrica { color: #ff8fb3; }
+        .app-sidebar .seccion-titulo.almacen { color: #7fd4e8; }
+
+        .app-sidebar nav a {
+            display: flex; align-items: center; gap: 10px; padding: 9px 18px; color: #cfd3da;
+            text-decoration: none; font-size: 0.86rem; border-left: 3px solid transparent; transition: all 0.15s ease;
+        }
+        .app-sidebar nav a:hover { background: var(--sidebar-bg-hover); color: #fff; }
+        .app-sidebar nav a.activo {
+            background: var(--sidebar-bg-hover); color: #fff; border-left-color: var(--accent); font-weight: 600;
+        }
+        .app-sidebar nav a .icono-item { width: 18px; text-align: center; flex-shrink: 0; }
+
+        .app-sidebar .sidebar-footer {
+            margin-top: auto; padding: 14px 18px; border-top: 1px solid rgba(255,255,255,0.08);
+        }
+        .app-sidebar .sidebar-footer a {
+            display: flex; align-items: center; gap: 8px; color: #ff8f8f; text-decoration: none; font-size: 0.84rem;
+        }
+        .app-sidebar .sidebar-footer a:hover { color: #ffb3b3; }
+
+        /* ── Contenido principal ── */
+        .app-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+        .app-topbar {
+            background: #fff; border-bottom: 1px solid #e5e7eb; padding: 14px 24px;
+            display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;
+        }
+        .app-topbar h1 { font-size: 1.25rem; font-weight: 700; margin: 0; color: #1c1f26; }
+        .app-content { padding: 22px 24px; flex: 1; }
+
+        .btn-toggle-sidebar {
+            display: none; background: none; border: none; font-size: 1.3rem; cursor: pointer; color: #1c1f26;
+        }
+
+        @media (max-width: 860px) {
+            .app-sidebar {
+                position: fixed; left: 0; top: 0; z-index: 1050; transform: translateX(-100%);
+                transition: transform 0.2s ease; box-shadow: 4px 0 18px rgba(0,0,0,0.25);
+            }
+            .app-sidebar.abierto { transform: translateX(0); }
+            .btn-toggle-sidebar { display: inline-block; }
+            .app-content { padding: 16px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-shell">
+
+        <!-- ═══ SIDEBAR ═══ -->
+        <aside class="app-sidebar" id="appSidebar">
+            <div class="brand">
+                <span class="icono">⚙️</span>
+                <div class="texto">PERSIANAS EXPRESS<small>PANEL DE GESTIÓN</small></div>
+            </div>
+
+            <nav class="flex-grow-1 py-2">
+                <div class="seccion-titulo fabrica">🏭 Fábrica</div>
+                <a th:href="@{/taller/pedidos}" th:classappend="${activo == 'pedidos-fabrica'} ? 'activo'">
+                    <span class="icono-item">📋</span> Pedidos
+                </a>
+                <a th:href="@{/inventario}" th:classappend="${activo == 'inventario-fabrica'} ? 'activo'">
+                    <span class="icono-item">📦</span> Inventario
+                </a>
+                <a th:href="@{/inventario/precios}" th:classappend="${activo == 'precios-fabrica'} ? 'activo'">
+                    <span class="icono-item">🧮</span> Precios
+                </a>
+                <a th:href="@{/recibos/fabrica}" th:classappend="${activo == 'recibos-fabrica'} ? 'activo'">
+                    <span class="icono-item">🧾</span> Recibos
+                </a>
+                <a th:href="@{/reportes}" th:classappend="${activo == 'reportes-fabrica'} ? 'activo'">
+                    <span class="icono-item">📊</span> Reportes
+                </a>
+
+                <div class="seccion-titulo almacen mt-2">🛒 Almacén</div>
+                <a th:href="@{/almacen/listado}" th:classappend="${activo == 'pedidos-almacen'} ? 'activo'">
+                    <span class="icono-item">🛒</span> Pedidos
+                </a>
+                <a th:href="@{/recibos/almacen}" th:classappend="${activo == 'recibos-almacen'} ? 'activo'">
+                    <span class="icono-item">🧾</span> Recibos
+                </a>
+                <a th:href="@{/almacen/reporte}" th:classappend="${activo == 'reporte-almacen'} ? 'activo'">
+                    <span class="icono-item">📊</span> Reporte de Ventas
+                </a>
+            </nav>
+
+            <div class="sidebar-footer">
+                <a href="/logout">🚪 Cerrar sesión</a>
+            </div>
+        </aside>
+
+        <!-- ═══ CONTENIDO ═══ -->
+        <div class="app-main">
+            <div class="app-topbar">
+                <div class="d-flex align-items-center gap-2">
+                    <button type="button" class="btn-toggle-sidebar" onclick="document.getElementById('appSidebar').classList.toggle('abierto')">☰</button>
+                    <h1 th:text="${titulo}">Título</h1>
+                </div>
+            </div>
+            <div class="app-content">
+                <th:block th:replace="${contenido}"></th:block>
+            </div>
+        </div>
+
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/js/token-nav.js"></script>
+</body>
+</html>
+</div>
+
+</body>
+</html>

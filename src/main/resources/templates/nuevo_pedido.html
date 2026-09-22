@@ -1,9 +1,10 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
-<head>
-    <meta charset="UTF-8">
-    <title>Nuevo Pedido</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<body>
+
+<div th:replace="~{fragments/sidebar :: layout(contenido=~{::seccion-contenido}, activo='pedidos-fabrica', titulo='➕ Registrar Pedido')}">
+
+<div th:fragment="seccion-contenido">
     <style>
         .previsualizacion {
             background-color: #f8f9fa;
@@ -63,13 +64,6 @@
         .nav-tabs .nav-link { font-weight: 600; }
         .nav-tabs .nav-link.active { border-bottom-color: #fff; }
     </style>
-</head>
-<body class="bg-light p-4">
-<div class="container col-md-11">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2>➕ Registrar Pedido</h2>
-        <a href="/inventario" class="btn btn-outline-dark btn-sm">📦 Ver Inventario</a>
-    </div>
 
     <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
     <div th:if="${mensaje}" class="alert alert-success" th:text="${mensaje}"></div>
@@ -87,9 +81,6 @@
     </ul>
 
     <div class="tab-content">
-    <!-- ══════════════════════════════════════════════════════════════ -->
-    <!-- TAB: FABRICACIÓN (formulario original, sin cambios de lógica)  -->
-    <!-- ══════════════════════════════════════════════════════════════ -->
     <div class="tab-pane fade show active" id="tabFabricacion">
     <form th:action="@{/taller/guardar-lista}" method="post" class="bg-white p-4 shadow-sm border rounded">
 
@@ -227,7 +218,6 @@
 
         <hr class="mt-4">
 
-        <!-- ═══════════ INSUMOS ADICIONALES (extras de toda la orden) ═══════════ -->
         <div class="seccion-extras">
             <p class="fw-bold mb-2">➕ Insumos adicionales (opcional)</p>
             <p class="text-muted mb-2" style="font-size:0.82rem;">
@@ -244,11 +234,7 @@
         </div>
     </form>
     </div>
-    <!-- ══════════════════ FIN TAB FABRICACIÓN ══════════════════ -->
 
-    <!-- ══════════════════════════════════════════════════════════════ -->
-    <!-- TAB: VENTA DIRECTA                                              -->
-    <!-- ══════════════════════════════════════════════════════════════ -->
     <div class="tab-pane fade" id="tabVentaDirecta">
         <form th:action="@{/taller/guardar-venta-directa}" method="post" class="bg-white p-4 shadow-sm border rounded">
             <div class="row g-3 mb-3">
@@ -262,14 +248,12 @@
                 </div>
             </div>
 
-            <!-- Ítems de tela por metros -->
             <div class="seccion-extras mb-3">
                 <p class="fw-bold mb-2">🧵 Tela vendida por metros</p>
                 <div id="contenedorTelaVenta"></div>
                 <button type="button" class="btn btn-sm btn-outline-dark" onclick="agregarFilaTelaVenta()">+ Agregar tela</button>
             </div>
 
-            <!-- Ítems de insumo de catálogo -->
             <div class="seccion-extras mb-3">
                 <p class="fw-bold mb-2">🔧 Insumos vendidos</p>
                 <div id="contenedorInsumoVenta"></div>
@@ -282,11 +266,7 @@
             </div>
         </form>
     </div>
-    <!-- ══════════════════ FIN TAB VENTA DIRECTA ══════════════════ -->
 
-    <!-- ══════════════════════════════════════════════════════════════ -->
-    <!-- TAB: RIEL DE ONDA SERENA — MULTI-FILA (varios rieles por orden)  -->
-    <!-- ══════════════════════════════════════════════════════════════ -->
     <div class="tab-pane fade" id="tabRielOnda">
         <form th:action="@{/taller/guardar-riel-onda}" method="post" class="bg-white p-4 shadow-sm border rounded">
 
@@ -381,9 +361,7 @@
             </div>
         </form>
     </div>
-    <!-- ══════════════════ FIN TAB RIEL DE ONDA SERENA ══════════════════ -->
     </div>
-</div>
 
 <script th:inline="javascript">
     const listaColores        = /*[[${listaColores}]]*/        [];
@@ -455,11 +433,6 @@
         if (tipoTuboOverride && tipoTuboOverride !== 'auto') {
             nombreTubo = 'Tubo ' + tipoTuboOverride;
         } else {
-            // Misma regla que el servidor (Pedido.calcularFichaTecnica): el
-            // TUBO pasa a R24 si CUALQUIERA de las dos medidas (ancho O
-            // alto) supera 2.50m — el Control R24 (Paquete) es una regla
-            // aparte que solo requiere las dos a la vez, pero eso no cambia
-            // qué pieza de TUBO sugerir aquí.
             const esTuboGrande = ancho > 2.50 || alto > 2.50;
             nombreTubo = esTuboGrande ? 'Tubo R24' : 'Tubo R16';
         }
@@ -988,11 +961,6 @@
         actualizarInfoInsumoVenta(select);
     }
 
-    // ════════════════════════════════════════════════════════════
-    //  RIEL DE ONDA SERENA — MULTI-FILA con PREVISUALIZACIÓN REAL
-    //  contra el inventario (consulta AJAX al servidor, igual que
-    //  Fabricación). Ya no es solo un cálculo matemático local.
-    // ════════════════════════════════════════════════════════════
     let filaRielIndex = 1;
     let extraIndexRiel = 0;
 
@@ -1182,7 +1150,9 @@
         }
     });
 </script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-<script src="/js/token-nav.js"></script>
+</div>
+
+</div>
+
 </body>
 </html>

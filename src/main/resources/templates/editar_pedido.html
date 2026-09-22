@@ -1,9 +1,10 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
-<head>
-    <meta charset="UTF-8">
-    <title>Editar Pedido</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<body>
+
+<div th:replace="~{fragments/sidebar :: layout(contenido=~{::seccion-contenido}, activo='pedidos-fabrica', titulo='✏️ Editar Pedido')}">
+
+<div th:fragment="seccion-contenido">
     <style>
         .previsualizacion {
             background-color: #f8f9fa;
@@ -42,187 +43,186 @@
         }
         .fila-extra select, .fila-extra input { font-size: 0.85rem; }
     </style>
-</head>
-<body class="bg-light p-4">
-<div class="container col-md-7">
-    <h2 class="mb-4">✏️ Editar Pedido</h2>
 
-    <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
 
-    <form th:action="@{/taller/editar/{id}(id=${pedido.id})}" method="post"
-          class="bg-white p-4 shadow-sm border rounded">
-        <input type="hidden" name="id" th:value="${pedido.id}">
+            <form th:action="@{/taller/editar/{id}(id=${pedido.id})}" method="post"
+                  class="bg-white p-4 shadow-sm border rounded">
+                <input type="hidden" name="id" th:value="${pedido.id}">
 
-        <div class="row g-3 mb-3">
-            <div class="col-md-6">
-                <label class="form-label fw-bold">Distribuidor</label>
-                <input type="text" name="nombreDecorador" class="form-control" th:value="${pedido.nombreDecorador}" required>
-            </div>
-            <div class="col-md-6">
-                <label class="form-label fw-bold">Cliente Final</label>
-                <input type="text" name="nombreClienteFinal" class="form-control" th:value="${pedido.nombreClienteFinal}" required>
-            </div>
-        </div>
-
-        <div class="mb-3">
-            <label class="form-label fw-bold">Descripción</label>
-            <input type="text" name="descripcion" class="form-control" th:value="${pedido.descripcion}">
-        </div>
-
-        <div class="row g-3 mb-3">
-            <div class="col-md-6">
-                <label class="form-label fw-bold">Ancho (m)</label>
-                <input type="number" step="0.001" name="ancho" id="campoAncho"
-                       class="form-control" th:value="${pedido.ancho}" required>
-            </div>
-            <div class="col-md-6">
-                <label class="form-label fw-bold">Alto (m)</label>
-                <input type="number" step="0.001" name="altura" id="campoAltura"
-                       class="form-control" th:value="${pedido.altura}" required>
-            </div>
-        </div>
-
-        <div class="row g-3 mb-3">
-            <div class="col-md-6">
-                <label class="form-label fw-bold">Color de tela</label>
-                <select name="colorTelaDeseado" id="campoColor" class="form-select">
-                    <option th:each="c : ${listaColores}" th:value="${c}" th:text="${c}"
-                            th:selected="${c == pedido.colorTelaDeseado}"></option>
-                </select>
-            </div>
-            <div class="col-md-6">
-                <label class="form-label fw-bold">Mando</label>
-                <select name="ladoControl" class="form-select">
-                    <option th:value="'Mando Derecho'"   th:selected="${pedido.ladoControl == 'Mando Derecho'}">Mando Derecho</option>
-                    <option th:value="'Mando Izquierdo'" th:selected="${pedido.ladoControl == 'Mando Izquierdo'}">Mando Izquierdo</option>
-                </select>
-            </div>
-        </div>
-
-        <div class="mb-3">
-            <label class="form-label fw-bold">Estado</label>
-            <select name="estado" class="form-select">
-                <option th:value="'Pendiente'"            th:selected="${pedido.estado == 'Pendiente'}">Pendiente</option>
-                <option th:value="'En Proceso'"           th:selected="${pedido.estado == 'En Proceso'}">En Proceso</option>
-                <option th:value="'Listo para Ensamblar'" th:selected="${pedido.estado == 'Listo para Ensamblar'}">Listo para Ensamblar</option>
-                <option th:value="'Listo para Despacho'"  th:selected="${pedido.estado == 'Listo para Despacho'}">Listo para Despacho</option>
-            </select>
-        </div>
-
-        <div class="mb-3">
-            <label class="form-label fw-bold">Tipo de tubo</label>
-            <select name="tipoTuboManual" id="selectTipoTubo" class="form-select">
-                <option value="auto" th:selected="${pedido.tuboManualElegido == null}">⚡ Automático (según medida)</option>
-                <option value="R8"  th:selected="${pedido.tuboManualElegido == 'R8'}">Tubo R8</option>
-                <option value="R16" th:selected="${pedido.tuboManualElegido == 'R16'}">Tubo R16</option>
-                <option value="R24" th:selected="${pedido.tuboManualElegido == 'R24'}">Tubo R24</option>
-            </select>
-        </div>
-
-        <div class="card mb-3 border-secondary-subtle">
-            <div class="card-body pb-2">
-                <p class="fw-bold mb-2">Materiales opcionales</p>
-                <div class="d-flex gap-4 flex-wrap">
-                    <div class="form-check">
-                        <input class="form-check-input" type="checkbox" id="ckCabezal"
-                               name="usaCabezal" value="true" th:checked="${pedido.usaCabezal}">
-                        <label class="form-check-label" for="ckCabezal">🪟 Con cabezal</label>
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">Distribuidor</label>
+                        <input type="text" name="nombreDecorador" class="form-control" th:value="${pedido.nombreDecorador}" required>
                     </div>
-                    <div class="form-check">
-                        <input class="form-check-input" type="checkbox" id="ckPitillo"
-                               name="usaPitilloPesa" value="true" th:checked="${pedido.usaPitilloPesa}">
-                        <label class="form-check-label" for="ckPitillo">🪡 Pitillo</label>
-                    </div>
-                    <div class="form-check">
-                        <input class="form-check-input" type="checkbox" id="ckConector"
-                               name="usaConectorTope" value="true" th:checked="${pedido.usaConectorTope}">
-                        <label class="form-check-label" for="ckConector">🔗 Conector / Tope</label>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">Cliente Final</label>
+                        <input type="text" name="nombreClienteFinal" class="form-control" th:value="${pedido.nombreClienteFinal}" required>
                     </div>
                 </div>
-            </div>
-        </div>
 
-        <div class="previsualizacion mb-3" id="cajaPrevisualizacion">
-            <span class="cargando">Cargando disponibilidad de material...</span>
-        </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Descripción</label>
+                    <input type="text" name="descripcion" class="form-control" th:value="${pedido.descripcion}">
+                </div>
 
-        <div class="mb-3">
-            <button type="button" class="toggle-manual" onclick="toggleManual(this)">
-                ⚙ Cambiar material manualmente (retazos, piezas específicas)
-            </button>
-        </div>
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">Ancho (m)</label>
+                        <input type="number" step="0.001" name="ancho" id="campoAncho"
+                               class="form-control" th:value="${pedido.ancho}" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">Alto (m)</label>
+                        <input type="number" step="0.001" name="altura" id="campoAltura"
+                               class="form-control" th:value="${pedido.altura}" required>
+                    </div>
+                </div>
 
-        <div class="seccion-manual" style="display:none;" id="panelManual">
-            <p class="fw-bold mb-2" style="font-size:0.83rem">
-                ⚙ Selección manual
-                <small class="text-muted">(deja "Automático" para que el sistema elija)</small>
-            </p>
-            <div class="row g-2">
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">Color de tela</label>
+                        <select name="colorTelaDeseado" id="campoColor" class="form-select">
+                            <option th:each="c : ${listaColores}" th:value="${c}" th:text="${c}"
+                                    th:selected="${c == pedido.colorTelaDeseado}"></option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">Mando</label>
+                        <select name="ladoControl" class="form-select">
+                            <option th:value="'Mando Derecho'"   th:selected="${pedido.ladoControl == 'Mando Derecho'}">Mando Derecho</option>
+                            <option th:value="'Mando Izquierdo'" th:selected="${pedido.ladoControl == 'Mando Izquierdo'}">Mando Izquierdo</option>
+                        </select>
+                    </div>
+                </div>
 
-                <div class="col-md-6 col-lg-4">
-                    <label class="form-label">🧵 Tela (rollo o retazo)</label>
-                    <select name="retazoManual" id="selectRetazo" class="form-select form-select-sm">
-                        <option value="auto">⚡ Automático (retazo si hay, si no rollo)</option>
-                    </select>
-                    <select name="rolloManual" id="selectRollo" class="form-select form-select-sm mt-1">
-                        <option value="auto">⚡ Automático (rollo)</option>
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Estado</label>
+                    <select name="estado" class="form-select">
+                        <option th:value="'Pendiente'"            th:selected="${pedido.estado == 'Pendiente'}">Pendiente</option>
+                        <option th:value="'En Proceso'"           th:selected="${pedido.estado == 'En Proceso'}">En Proceso</option>
+                        <option th:value="'Listo para Ensamblar'" th:selected="${pedido.estado == 'Listo para Ensamblar'}">Listo para Ensamblar</option>
+                        <option th:value="'Listo para Despacho'"  th:selected="${pedido.estado == 'Listo para Despacho'}">Listo para Despacho</option>
                     </select>
                 </div>
 
-                <div class="col-md-6 col-lg-4">
-                    <label class="form-label">🔩 Pieza de tubo</label>
-                    <select name="tuboManual" id="selectTubo" class="form-select form-select-sm">
-                        <option value="auto">⚡ Automático</option>
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Tipo de tubo</label>
+                    <select name="tipoTuboManual" id="selectTipoTubo" class="form-select">
+                        <option value="auto" th:selected="${pedido.tuboManualElegido == null}">⚡ Automático (según medida)</option>
+                        <option value="R8"  th:selected="${pedido.tuboManualElegido == 'R8'}">Tubo R8</option>
+                        <option value="R16" th:selected="${pedido.tuboManualElegido == 'R16'}">Tubo R16</option>
+                        <option value="R24" th:selected="${pedido.tuboManualElegido == 'R24'}">Tubo R24</option>
                     </select>
                 </div>
 
-                <div class="col-md-6 col-lg-4" id="filaCabezalManual" style="display:none;">
-                    <label class="form-label">🪟 Pieza de cabezal</label>
-                    <select name="cabezalManual" id="selectCabezal" class="form-select form-select-sm">
-                        <option value="auto">⚡ Automático</option>
-                    </select>
+                <div class="card mb-3 border-secondary-subtle">
+                    <div class="card-body pb-2">
+                        <p class="fw-bold mb-2">Materiales opcionales</p>
+                        <div class="d-flex gap-4 flex-wrap">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="ckCabezal"
+                                       name="usaCabezal" value="true" th:checked="${pedido.usaCabezal}">
+                                <label class="form-check-label" for="ckCabezal">🪟 Con cabezal</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="ckPitillo"
+                                       name="usaPitilloPesa" value="true" th:checked="${pedido.usaPitilloPesa}">
+                                <label class="form-check-label" for="ckPitillo">🪡 Pitillo</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="ckConector"
+                                       name="usaConectorTope" value="true" th:checked="${pedido.usaConectorTope}">
+                                <label class="form-check-label" for="ckConector">🔗 Conector / Tope</label>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
-                <div class="col-md-6 col-lg-4">
-                    <label class="form-label">⚖ Pieza de pesa</label>
-                    <select name="pesaManual" id="selectPesa" class="form-select form-select-sm">
-                        <option value="auto">⚡ Automático</option>
-                    </select>
+                <div class="previsualizacion mb-3" id="cajaPrevisualizacion">
+                    <span class="cargando">Cargando disponibilidad de material...</span>
                 </div>
 
-                <div class="col-md-6 col-lg-4">
-                    <label class="form-label">🧶 Pieza de cuerda</label>
-                    <select name="cuerdaManual" id="selectCuerda" class="form-select form-select-sm">
-                        <option value="auto">⚡ Automático</option>
-                    </select>
+                <div class="mb-3">
+                    <button type="button" class="toggle-manual" onclick="toggleManual(this)">
+                        ⚙ Cambiar material manualmente (retazos, piezas específicas)
+                    </button>
                 </div>
 
-                <div class="col-md-6 col-lg-4" id="filaPitilloManual">
-                    <label class="form-label">🪡 Pieza de pitillo</label>
-                    <select name="pitilloManual" id="selectPitillo" class="form-select form-select-sm">
-                        <option value="auto">⚡ Automático</option>
-                    </select>
+                <div class="seccion-manual" style="display:none;" id="panelManual">
+                    <p class="fw-bold mb-2" style="font-size:0.83rem">
+                        ⚙ Selección manual
+                        <small class="text-muted">(deja "Automático" para que el sistema elija)</small>
+                    </p>
+                    <div class="row g-2">
+
+                        <div class="col-md-6 col-lg-4">
+                            <label class="form-label">🧵 Tela (rollo o retazo)</label>
+                            <select name="retazoManual" id="selectRetazo" class="form-select form-select-sm">
+                                <option value="auto">⚡ Automático (retazo si hay, si no rollo)</option>
+                            </select>
+                            <select name="rolloManual" id="selectRollo" class="form-select form-select-sm mt-1">
+                                <option value="auto">⚡ Automático (rollo)</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-6 col-lg-4">
+                            <label class="form-label">🔩 Pieza de tubo</label>
+                            <select name="tuboManual" id="selectTubo" class="form-select form-select-sm">
+                                <option value="auto">⚡ Automático</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-6 col-lg-4" id="filaCabezalManual" style="display:none;">
+                            <label class="form-label">🪟 Pieza de cabezal</label>
+                            <select name="cabezalManual" id="selectCabezal" class="form-select form-select-sm">
+                                <option value="auto">⚡ Automático</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-6 col-lg-4">
+                            <label class="form-label">⚖ Pieza de pesa</label>
+                            <select name="pesaManual" id="selectPesa" class="form-select form-select-sm">
+                                <option value="auto">⚡ Automático</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-6 col-lg-4">
+                            <label class="form-label">🧶 Pieza de cuerda</label>
+                            <select name="cuerdaManual" id="selectCuerda" class="form-select form-select-sm">
+                                <option value="auto">⚡ Automático</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-6 col-lg-4" id="filaPitilloManual">
+                            <label class="form-label">🪡 Pieza de pitillo</label>
+                            <select name="pitilloManual" id="selectPitillo" class="form-select form-select-sm">
+                                <option value="auto">⚡ Automático</option>
+                            </select>
+                        </div>
+
+                    </div>
                 </div>
 
-            </div>
+                <div class="seccion-extras">
+                    <p class="fw-bold mb-2">➕ Insumos adicionales (opcional)</p>
+                    <p class="text-muted mb-2" style="font-size:0.82rem;">
+                        Material extra que se agregó a esta orden, fuera del cálculo automático.
+                        Se descuenta del inventario igual que el resto del material.
+                    </p>
+                    <div id="contenedorExtras"></div>
+                    <button type="button" class="btn btn-sm btn-outline-dark mt-1" onclick="agregarFilaExtra()">+ Agregar insumo extra</button>
+                </div>
+
+                <div class="mt-4">
+                    <button type="submit" class="btn btn-primary w-100">Guardar Cambios</button>
+                    <a href="/taller/pedidos" class="btn btn-secondary w-100 mt-2">Cancelar</a>
+                </div>
+            </form>
         </div>
-
-        <div class="seccion-extras">
-            <p class="fw-bold mb-2">➕ Insumos adicionales (opcional)</p>
-            <p class="text-muted mb-2" style="font-size:0.82rem;">
-                Material extra que se agregó a esta orden, fuera del cálculo automático.
-                Se descuenta del inventario igual que el resto del material.
-            </p>
-            <div id="contenedorExtras"></div>
-            <button type="button" class="btn btn-sm btn-outline-dark mt-1" onclick="agregarFilaExtra()">+ Agregar insumo extra</button>
-        </div>
-
-        <div class="mt-4">
-            <button type="submit" class="btn btn-primary w-100">Guardar Cambios</button>
-            <a href="/taller/pedidos" class="btn btn-secondary w-100 mt-2">Cancelar</a>
-        </div>
-    </form>
-</div>
+    </div>
 
 <script th:inline="javascript">
     /*<![CDATA[*/
@@ -321,11 +321,6 @@
         if (tipoTuboOverride && tipoTuboOverride !== 'auto') {
             nombreTubo = 'Tubo ' + tipoTuboOverride;
         } else {
-            // Misma regla que el servidor (Pedido.calcularFichaTecnica): el
-            // TUBO pasa a R24 si CUALQUIERA de las dos medidas (ancho O
-            // alto) supera 2.50m — el Control R24 (Paquete) es una regla
-            // aparte que solo requiere las dos a la vez, pero eso no cambia
-            // qué pieza de TUBO sugerir aquí.
             const esTuboGrande = ancho > 2.50 || alto > 2.50;
             nombreTubo = esTuboGrande ? 'Tubo R24' : 'Tubo R16';
         }
@@ -619,7 +614,9 @@
         }
     });
 </script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-<script src="/js/token-nav.js"></script>
+</div>
+
+</div>
+
 </body>
 </html>
