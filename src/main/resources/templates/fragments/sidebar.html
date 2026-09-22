@@ -9,8 +9,8 @@
        th:replace="~{fragments/sidebar :: layout(contenido=~{::seccion-contenido}, activo='pedidos-fabrica', titulo='Pedidos')}"
      El parámetro "activo" resalta el ítem correspondiente del menú.
      Valores válidos: pedidos-fabrica, inventario-fabrica, precios-fabrica,
-     recibos-fabrica, reportes-fabrica, pedidos-almacen, recibos-almacen,
-     reporte-almacen.
+     recibos-fabrica, reportes-fabrica.
+     Por ahora este sidebar solo muestra el módulo de Fábrica.
      ═══════════════════════════════════════════════════════════════ -->
 <div th:fragment="layout(contenido, activo, titulo)">
 <!DOCTYPE html>
@@ -50,7 +50,6 @@
             letter-spacing: 0.8px; color: #6b7280;
         }
         .app-sidebar .seccion-titulo.fabrica { color: #ff8fb3; }
-        .app-sidebar .seccion-titulo.almacen { color: #7fd4e8; }
 
         .app-sidebar nav a {
             display: flex; align-items: center; gap: 10px; padding: 9px 18px; color: #cfd3da;
@@ -120,17 +119,6 @@
                 </a>
                 <a th:href="@{/reportes}" th:classappend="${activo == 'reportes-fabrica'} ? 'activo'">
                     <span class="icono-item">📊</span> Reportes
-                </a>
-
-                <div class="seccion-titulo almacen mt-2">🛒 Almacén</div>
-                <a th:href="@{/almacen/listado}" th:classappend="${activo == 'pedidos-almacen'} ? 'activo'">
-                    <span class="icono-item">🛒</span> Pedidos
-                </a>
-                <a th:href="@{/recibos/almacen}" th:classappend="${activo == 'recibos-almacen'} ? 'activo'">
-                    <span class="icono-item">🧾</span> Recibos
-                </a>
-                <a th:href="@{/almacen/reporte}" th:classappend="${activo == 'reporte-almacen'} ? 'activo'">
-                    <span class="icono-item">📊</span> Reporte de Ventas
                 </a>
             </nav>
 

@@ -2,81 +2,65 @@
 <html xmlns:th="http://www.thymeleaf.org">
 <body>
 
-<div th:replace="~{fragments/sidebar :: layout(contenido=~{::seccion-contenido}, activo='reportes-fabrica', titulo='📊 Reporte de Consumo de Materiales')}">
+<div th:replace="~{fragments/sidebar :: layout(contenido=~{::seccion-contenido}, activo='reportes-fabrica', titulo='📊 Reportes')}">
 
 <div th:fragment="seccion-contenido">
     <style>
-        table { border-collapse: collapse; width: 100%; margin-bottom: 24px; }
-        th, td { border: 1px solid #ccc; padding: 8px 12px; text-align: left; }
-        th { background: #f0f0f0; }
-        h2 { margin-top: 32px; }
-        .filtros { margin-bottom: 24px; display: flex; gap: 16px; align-items: flex-end; flex-wrap: wrap; }
-        .filtros label { display: flex; flex-direction: column; gap: 4px; font-size: 14px; }
-        .filtros input { padding: 6px; border: 1px solid #ccc; border-radius: 4px; }
-        .filtros button { padding: 7px 18px; background: #333; color: white; border: none; border-radius: 4px; cursor: pointer; }
-        .sin-datos { color: #888; font-style: italic; }
-        details summary { cursor: pointer; color: #1a6aab; font-weight: bold; margin: 8px 0 4px; }
+        .card-reporte {
+            background: #fff; border: 1px solid #dee2e6; border-radius: 8px;
+            padding: 20px 22px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,.08);
+        }
+        .card-reporte h5 { font-weight: 700; margin-bottom: 6px; }
+        .card-reporte p.descripcion { color: #6c757d; font-size: 0.86rem; margin-bottom: 16px; }
     </style>
 
-    <form method="get" th:action="@{/taller/reporte-materiales}" class="filtros">
-        <label>Desde
-            <input type="date" name="desde" th:value="${desde}">
-        </label>
-        <label>Hasta
-            <input type="date" name="hasta" th:value="${hasta}">
-        </label>
-        <button type="submit">Filtrar</button>
-        <a th:href="@{/taller/reporte-materiales}" style="align-self:center; font-size:13px;">Ver todo</a>
-    </form>
+    <p class="text-muted mb-4" style="font-size:0.9rem;">
+        Descarga un reporte completo en Excel con el consumo de materiales, detalle por pedido,
+        inventario actual, movimientos y totales de venta/costo del período que elijas.
+        Cada descarga incluye 5 hojas dentro del mismo archivo.
+    </p>
 
-    <h2>Resumen por material</h2>
-    <div th:if="${resumen.isEmpty()}" class="sin-datos">No hay registros de consumo en el período seleccionado.</div>
-    <table th:if="${!resumen.isEmpty()}">
-        <thead>
-            <tr>
-                <th>Material</th>
-                <th>Total usado</th>
-                <th>N° de usos</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr th:each="r : ${resumen}">
-                <td th:text="${r.tipoMaterial}"></td>
-                <td th:text="${r.totalUsado} + ' ' + ${r.unidad}"></td>
-                <td th:text="${r.vecesUsado}"></td>
-            </tr>
-        </tbody>
-    </table>
+    <div class="card-reporte">
+        <h5>📅 Reporte de un mes completo</h5>
+        <p class="descripcion">Descarga el reporte de todo un mes calendario, de principio a fin.</p>
+        <form th:action="@{/reportes/descargar-mes}" method="get" class="row g-2 align-items-end">
+            <div class="col-md-4">
+                <label class="form-label fw-bold">Mes</label>
+                <input type="month" name="mes" class="form-control" th:value="${mesDefecto}" required>
+            </div>
+            <div class="col-md-3">
+                <button type="submit" class="btn btn-success">⬇️ Descargar Excel</button>
+            </div>
+        </form>
+    </div>
 
-    <h2>Detalle por material</h2>
-    <div th:each="r : ${resumen}">
-        <details>
-            <summary th:text="${r.tipoMaterial} + ' (' + ${r.vecesUsado} + ' registros · ' + ${r.totalUsado} + ' ' + ${r.unidad} + ' total)'"></summary>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Pedido #</th>
-                        <th>Fuente</th>
-                        <th th:text="${r.unidad == 'm²'} ? 'Usado (lineal)' : 'Cantidad usada'"></th>
-                        <th th:if="${r.unidad == 'm²'}">Área (m²)</th>
-                        <th>Sobrante después</th>
-                        <th>Selección</th>
-                        <th>Fecha</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr th:each="m : ${r.detalle}">
-                        <td th:text="${m.pedidoId}"></td>
-                        <td th:text="${m.fuenteDescripcion}"></td>
-                        <td th:text="${m.metrosUsados}"></td>
-                        <td th:if="${r.unidad == 'm²'}" th:text="${m.metrosCuadrados}"></td>
-                        <td th:text="${m.metrosSobrantes}"></td>
-                        <td th:text="${m.seleccionManual} ? 'Manual' : 'Automática'"></td>
-                        <td th:text="${#temporals.format(m.fecha, 'dd/MM/yyyy HH:mm')}"></td>
-                    </tr>
-                </tbody>
-            </table>
-        </details>
+    <div class="card-reporte">
+        <h5>🗓️ Reporte por rango de fechas</h5>
+        <p class="descripcion">Elige cualquier rango de fechas, sin importar si abarca uno o varios meses.</p>
+        <form th:action="@{/reportes/descargar-rango}" method="get" class="row g-2 align-items-end">
+            <div class="col-md-4">
+                <label class="form-label fw-bold">Desde</label>
+                <input type="date" name="desde" class="form-control" required>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label fw-bold">Hasta</label>
+                <input type="date" name="hasta" class="form-control" required>
+            </div>
+            <div class="col-md-3">
+                <button type="submit" class="btn btn-success">⬇️ Descargar Excel</button>
+            </div>
+        </form>
+    </div>
+
+    <div class="card-reporte" style="background:#eaf2fd; border-left: 4px solid #1976d2;">
+        <h5 style="margin-bottom:4px;">ℹ️ ¿Qué incluye el Excel?</h5>
+        <p class="descripcion mb-0">
+            <strong>Resumen</strong> (consumo total por material) ·
+            <strong>Detalle por Pedido</strong> (línea por línea, con fecha del corte) ·
+            <strong>Inventario Actual</strong> (rollos, retazos e insumos al momento de generar) ·
+            <strong>Movimientos de Inventario</strong> (entradas y limpieza automática del período) ·
+            <strong>Pedidos del Período</strong> (con precio de venta y costo de fabricación real).
+        </p>
     </div>
 </div>
 
