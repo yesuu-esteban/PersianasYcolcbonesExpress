@@ -31,18 +31,21 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 // El portal es público: cualquiera lo ve, pero las tarjetas
                 // aparecen bloqueadas hasta iniciar sesión (lo decide sec:authorize en Vista.html).
-                // "/recuperar-password/**" también es público: es precisamente el flujo
-                // para gente que NO puede iniciar sesión porque olvidó su contraseña.
                 .requestMatchers("/css/**", "/js/**", "/images/**", "/login", "/login-jwt", "/", "/portal").permitAll()
 
                 // Gestión de pedidos de almacén (antes "tienda" — los roles internos
-                // TIENDA/TIENDA_ADMIN se conservan igual en la base de datos para no
-                // romper usuarios ya creados; solo cambian las rutas visibles).
+                // TIENDA/TIENDA_ADMIN se conservan igual en la base de datos).
                 .requestMatchers("/almacen/nuevo", "/almacen/guardar", "/almacen/editar/**", "/almacen/eliminar/**")
                     .hasAnyRole("TIENDA", "ADMIN")
 
                 // Resto de almacén
                 .requestMatchers("/almacen/**").hasAnyRole("TIENDA", "TIENDA_ADMIN", "ADMIN")
+
+                // ── NUEVO: módulo de Instalaciones (el jefe asigna y gestiona las tareas) ──
+                .requestMatchers("/instalaciones", "/instalaciones/**").hasAnyRole("TIENDA_ADMIN", "ADMIN")
+
+                // ── NUEVO: agenda personal de cada instalador ──
+                .requestMatchers("/mi-calendario", "/mi-calendario/**").hasRole("INSTALADOR")
 
                 // Fábrica
                 .requestMatchers("/taller/**", "/inventario/**", "/reportes/**").hasAnyRole("FABRICA", "ADMIN")
@@ -54,7 +57,7 @@ public class SecurityConfig {
                 .requestMatchers("/usuarios/**").hasRole("ADMIN")
 
                 .requestMatchers("/recibos/**").authenticated()
-                
+
                 .anyRequest().authenticated()
             )
             .formLogin(login -> login.disable())
@@ -70,8 +73,7 @@ public class SecurityConfig {
         return config.getAuthenticationManager();
     }
 
-    // Ahora se conecta a UsuarioDetailsService (busca en la tabla `usuario`)
-    // en vez del InMemoryUserDetailsManager que tenía los usuarios hardcodeados.
+    // Se conecta a UsuarioDetailsService (busca en la tabla `usuario`).
     @Bean
     public DaoAuthenticationProvider authenticationProvider(UsuarioDetailsService usuarioDetailsService) {
         DaoAuthenticationProvider provider = new DaoAuthenticationProvider();

@@ -24,6 +24,7 @@ import java.util.stream.Collectors;
 import Colcones_Persinas.proyecto_express.modelo.PedidoTienda;
 import Colcones_Persinas.proyecto_express.modelo.DetallePedidoTienda;
 import Colcones_Persinas.proyecto_express.repository.PedidoTiendaRepository;
+import Colcones_Persinas.proyecto_express.repository.TareaCalendarioRepository;
 
 /**
  * Controlador del módulo de Almacén (antes llamado "Tienda").
@@ -32,6 +33,10 @@ import Colcones_Persinas.proyecto_express.repository.PedidoTiendaRepository;
  * en el código y en la base de datos para no romper usuarios ni datos
  * ya existentes. Solo cambian las RUTAS visibles (/almacen/...) y los
  * TEXTOS que ve el usuario (plantillas "almacen/...").
+ *
+ * Cuando un pedido pasa a "En Bodega" (actualizarEstado), aparece solo en
+ * "Instalaciones pendientes" del módulo /instalaciones. No hace falta
+ * ningún código extra aquí: el módulo lee el estado directamente.
  */
 @Controller
 @RequestMapping("/almacen")
@@ -42,6 +47,10 @@ public class PedidoTiendaControlador {
 
     @Autowired
     private PedidoTiendaRepository pedidoTiendaRepository;
+
+    // ── NUEVO ──
+    @Autowired
+    private TareaCalendarioRepository tareaCalendarioRepository;
 
     @PreAuthorize("hasAnyRole('TIENDA','ADMIN')")
     @GetMapping("/nuevo")
@@ -254,6 +263,11 @@ public class PedidoTiendaControlador {
     @PostMapping("/eliminar/{id}")
     public String eliminarPedido(@PathVariable("id") int id, RedirectAttributes redirectAttributes) {
         try {
+            // ── NUEVO: las tareas de instalación ligadas a este pedido NO se borran
+            // (son historial de los instaladores); solo se desligan. El cliente, la
+            // dirección y el teléfono ya quedaron copiados en cada tarea. ──
+            tareaCalendarioRepository.desvincularPedido(id);
+
             pedidoTiendaRepository.deleteById(id);
             redirectAttributes.addFlashAttribute("mensaje", "Pedido #" + id + " eliminado correctamente.");
         } catch (Exception e) {

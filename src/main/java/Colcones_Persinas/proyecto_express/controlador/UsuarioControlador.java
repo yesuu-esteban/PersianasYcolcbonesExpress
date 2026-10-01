@@ -1,6 +1,7 @@
 package Colcones_Persinas.proyecto_express.controlador;
 
 import Colcones_Persinas.proyecto_express.modelo.Usuario;
+import Colcones_Persinas.proyecto_express.repository.TareaCalendarioRepository;
 import Colcones_Persinas.proyecto_express.repository.UsuarioRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -19,11 +20,16 @@ import java.util.Optional;
 @Controller
 public class UsuarioControlador {
 
+    // ── NUEVO: "INSTALADOR" (cada instalador tiene su agenda en /mi-calendario) ──
     private static final List<String> ROLES_DISPONIBLES =
-            Arrays.asList("TIENDA", "TIENDA_ADMIN", "FABRICA", "ADMIN");
+            Arrays.asList("TIENDA", "TIENDA_ADMIN", "FABRICA", "INSTALADOR", "ADMIN");
 
     @Autowired
     private UsuarioRepository usuarioRepository;
+
+    // ── NUEVO ──
+    @Autowired
+    private TareaCalendarioRepository tareaCalendarioRepository;
 
     @Autowired
     private PasswordEncoder passwordEncoder;
@@ -173,6 +179,14 @@ public class UsuarioControlador {
 
         if (usuario.getUsername().equalsIgnoreCase(nombreUsuarioActual())) {
             redirectAttributes.addFlashAttribute("error", "No puedes eliminar tu propia cuenta.");
+            return "redirect:/usuarios";
+        }
+
+        // ── NUEVO: un instalador con tareas en su agenda no se borra (se perdería el
+        // historial y la base de datos lo impediría por la llave foránea). ──
+        if (tareaCalendarioRepository.existsByInstaladoresId(id)) {
+            redirectAttributes.addFlashAttribute("error",
+                    "\"" + usuario.getUsername() + "\" tiene tareas en su agenda. Desactívalo en vez de eliminarlo.");
             return "redirect:/usuarios";
         }
 

@@ -9,10 +9,7 @@ import org.springframework.stereotype.Component;
 /**
  * Garantiza que ciertos usuarios existan en la base de datos.
  *
- * A diferencia de la versión anterior (que solo corría si la tabla estaba
- * vacía con count() == 0), este runner revisa CADA usuario individualmente
- * con findByUsernameIgnoreCase(...). Así:
- *
+ * Revisa CADA usuario individualmente con findByUsernameIgnoreCase(...):
  *  - Si el usuario YA existe, no se toca (ni contraseña, ni rol, ni nada).
  *  - Si el usuario NO existe, se crea con los datos indicados aquí.
  *
@@ -44,6 +41,11 @@ public class UsuarioInicializador implements CommandLineRunner {
         crearSiNoExiste("jefe2", "123456", "FABRICA", "Jefe de Fábrica 2");
         crearSiNoExiste("tiendaadmin2", "123456", "TIENDA_ADMIN", "Administrador de Tienda 2");
         crearSiNoExiste("admin2", "123456", "ADMIN", "Administrador General 2");
+
+        // ── NUEVO: instaladores de prueba (cada uno tiene su agenda en /mi-calendario) ──
+        // Cambia la contraseña desde "Mi cuenta" la primera vez que entres.
+        crearSiNoExiste("instalador1", "123456", "INSTALADOR", "Instalador 1");
+        crearSiNoExiste("instalador2", "123456", "INSTALADOR", "Instalador 2");
     }
 
     private void crearSiNoExiste(String username, String password, String rol, String nombreCompleto) {

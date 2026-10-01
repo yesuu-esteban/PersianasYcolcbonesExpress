@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${tarea == null} ? 'Nueva tarea' : 'Editar tarea'">Tarea</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-card: #2a1b42; --bg-input: #1e1330; --accent: #ec1561; --accent-light: #ff4d94;
+            --gold: #ffc107; --texto: #f4f0fb; --texto-suave: #cbb8e0;
+        }
+        * { font-family: 'Poppins', sans-serif; }
+        body { background: linear-gradient(160deg, #1a0f2e 0%, #241536 100%); color: #fff; padding: 24px; min-height: 100vh; }
+        [hidden] { display: none !important; }
+        .contenedor { max-width: 1050px; margin: 0 auto; }
+        .volver { color: var(--texto-suave); text-decoration: none; font-size: 0.88rem; }
+        .volver:hover { color: #fff; }
+        h1 { font-weight: 700; font-size: 1.35rem; margin: 10px 0 18px; }
+
+        .caja { background: var(--bg-card); border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; padding: 22px; box-shadow: 0 4px 22px rgba(0,0,0,0.3); }
+        .form-label { color: var(--texto); font-size: 0.86rem; font-weight: 600; }
+        .form-control, .form-select { background: var(--bg-input); border: 1px solid rgba(255,255,255,0.15); color: #fff; }
+        .form-control:focus, .form-select:focus { background: var(--bg-input); color: #fff; border-color: var(--accent); box-shadow: 0 0 0 0.2rem rgba(236,21,97,0.25); }
+        .form-control::placeholder { color: #8f84a8; }
+        .form-select option { background: var(--bg-input); color: #fff; }
+        .form-select:disabled { opacity: 0.6; }
+        .ayuda { font-size: 0.76rem; color: var(--texto-suave); margin-top: 4px; }
+
+        .tipos { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 8px; }
+        .tipos input { position: absolute; opacity: 0; pointer-events: none; }
+        .tipos label {
+            display: block; text-align: center; padding: 10px 6px; border-radius: 10px; cursor: pointer;
+            background: var(--bg-input); border: 2px solid rgba(255,255,255,0.12); font-weight: 600; font-size: 0.86rem;
+        }
+        .tipos input:checked + label { border-color: var(--c); background: var(--c); }
+        .tipos input:focus-visible + label { outline: 2px solid var(--gold); outline-offset: 2px; }
+
+        .bloque-instaladores { background: var(--bg-input); border-radius: 12px; padding: 14px; }
+
+        .btn-primary { background: linear-gradient(135deg, var(--accent), #b81050) !important; border: none !important; font-weight: 600; }
+        .btn-outline-danger { color: #ff8a80; border-color: #e74c3c; }
+        .btn-outline-danger:hover { background: #e74c3c; color: #fff; }
+        .alert-danger { background: rgba(231,76,60,0.15); border: 1px solid #e74c3c; color: #ff9a90; }
+        .alert-warning { background: rgba(255,193,7,0.12); border: 1px solid var(--gold); color: #ffe08a; }
+        .alert-warning a { color: #fff; }
+
+        .ficha { border-left: 4px solid #0dcaf0; }
+        .ficha h2 { font-size: 0.98rem; font-weight: 700; margin-bottom: 12px; }
+        .ficha dl { display: grid; grid-template-columns: 100px 1fr; gap: 6px 10px; margin: 0; font-size: 0.86rem; }
+        .ficha dt { color: var(--texto-suave); font-weight: 600; }
+        .ficha dd { margin: 0; word-break: break-word; }
+        .origen { display: inline-block; font-size: 0.75rem; font-weight: 600; padding: 3px 10px; border-radius: 20px; background: rgba(255,255,255,0.1); }
+        .reporte { background: rgba(46,204,113,0.12); border: 1px solid rgba(46,204,113,0.5); border-radius: 12px; padding: 14px; font-size: 0.86rem; }
+
+        @media (max-width: 576px) { body { padding: 12px; } .caja { padding: 16px; } }
+    </style>
+</head>
+<body>
+<div class="contenedor">
+    <a href="/instalaciones" class="volver">← Volver a Instalaciones</a>
+    <h1 th:text="${tarea == null} ? (${form.pedidoTiendaId != null} ? 'Asignar instalación' : 'Nueva tarea') : 'Editar tarea'">Tarea</h1>
+
+    <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
+    <div th:if="${#lists.isEmpty(instaladores)}" class="alert alert-warning">
+        No hay usuarios con el rol INSTALADOR. El administrador general puede crearlos en
+        <a href="/usuarios/nuevo">Usuarios → Nuevo usuario</a>.
+    </div>
+
+    <div class="row g-4">
+        <div class="col-lg-7">
+            <form method="post" th:action="@{${accionFormulario}}" th:object="${form}" class="caja">
+
+                <div class="mb-3">
+                    <span class="form-label d-block mb-2">Tipo de tarea</span>
+                    <div class="tipos">
+                        <div style="--c:#1976d2">
+                            <input type="radio" id="tipoInstalacion" th:field="*{tipo}" value="INSTALACION">
+                            <label for="tipoInstalacion">Instalación</label>
+                        </div>
+                        <div style="--c:#0c8599">
+                            <input type="radio" id="tipoLimpieza" th:field="*{tipo}" value="LIMPIEZA">
+                            <label for="tipoLimpieza">Limpieza</label>
+                        </div>
+                        <div style="--c:#e8590c">
+                            <input type="radio" id="tipoArreglo" th:field="*{tipo}" value="ARREGLO">
+                            <label for="tipoArreglo">Arreglo</label>
+                        </div>
+                        <div style="--c:#7048e8">
+                            <input type="radio" id="tipoCotizacion" th:field="*{tipo}" value="COTIZACION">
+                            <label for="tipoCotizacion">Cotización</label>
+                        </div>
+                        <div style="--c:#a61e4d">
+                            <input type="radio" id="tipoOtro" th:field="*{tipo}" value="OTRO">
+                            <label for="tipoOtro">Otro</label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Pedido en bodega: solo para Instalación -->
+                <div class="mb-3" data-tipos="INSTALACION">
+                    <label class="form-label" for="pedidoTiendaId">Pedido en bodega</label>
+                    <select id="pedidoTiendaId" th:field="*{pedidoTiendaId}" class="form-select">
+                        <option value="" th:text="${#lists.isEmpty(pedidosDisponibles)} ? 'No hay pedidos en bodega · escribir datos del cliente' : 'Sin pedido · escribir datos del cliente'"></option>
+                        <option th:each="p : ${pedidosDisponibles}" th:value="${p.id}"
+                                th:text="'#' + ${p.id} + ' · ' + ${p.nombreCliente}"
+                                th:data-cliente="${p.nombreCliente}"
+                                th:data-direccion="${p.direccion}"
+                                th:data-telefono="${p.telefono}"
+                                th:data-entrega="${p.fechaEntrega != null ? #temporals.format(p.fechaEntrega, 'dd/MM/yyyy HH:mm') : 'Sin definir'}"
+                                th:data-productos="${#strings.listJoin(p.detalles.![producto + ' ×' + cantidad], ', ')}"></option>
+                    </select>
+                    <div class="ayuda">Solo aparecen pedidos en estado "En Bodega". Al terminar la instalación, el pedido pasa a "Instalado".</div>
+                </div>
+
+                <!-- Instaladores: máximo 2 -->
+                <div class="bloque-instaladores mb-3">
+                    <div class="row g-3">
+                        <div class="col-sm-6">
+                            <label class="form-label" for="instaladorId">Instalador</label>
+                            <select id="instaladorId" th:field="*{instaladorId}" class="form-select" required>
+                                <option value="">Elige el instalador</option>
+                                <option th:each="u : ${instaladores}" th:value="${u.id}"
+                                        th:text="${u.nombreCompleto != null and u.nombreCompleto != '' ? u.nombreCompleto : u.username}"></option>
+                            </select>
+                        </div>
+                        <div class="col-sm-6">
+                            <label class="form-label" for="instalador2Id">Segundo instalador <span class="fw-normal" style="color:var(--texto-suave)">(opcional)</span></label>
+                            <select id="instalador2Id" th:field="*{instalador2Id}" class="form-select">
+                                <option value="">Ninguno</option>
+                                <option th:each="u : ${instaladores}" th:value="${u.id}"
+                                        th:text="${u.nombreCompleto != null and u.nombreCompleto != '' ? u.nombreCompleto : u.username}"></option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="ayuda mt-2">Máximo 2 instaladores por tarea. La tarea aparece en la agenda de ambos.</div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label" for="titulo" id="lblTitulo">Asunto (opcional)</label>
+                    <input type="text" id="titulo" th:field="*{titulo}" class="form-control" maxlength="120">
+                </div>
+
+                <div class="row g-3 mb-3" data-tipos="INSTALACION LIMPIEZA ARREGLO COTIZACION" data-sin-pedido>
+                    <div class="col-sm-7">
+                        <label class="form-label" for="cliente">Cliente</label>
+                        <input type="text" id="cliente" th:field="*{cliente}" class="form-control" maxlength="120">
+                    </div>
+                    <div class="col-sm-5">
+                        <label class="form-label" for="telefono">Teléfono</label>
+                        <input type="tel" id="telefono" th:field="*{telefono}" class="form-control" maxlength="40">
+                    </div>
+                </div>
+
+                <div class="mb-3" data-sin-pedido>
+                    <label class="form-label" for="direccion" id="lblDireccion">Dirección</label>
+                    <input type="text" id="direccion" th:field="*{direccion}" class="form-control" maxlength="200">
+                </div>
+
+                <div class="row g-3 mb-3">
+                    <div class="col-sm-7">
+                        <label class="form-label" for="fechaProgramada">Fecha y hora</label>
+                        <input type="datetime-local" id="fechaProgramada" th:field="*{fechaProgramada}" class="form-control" required>
+                    </div>
+                    <div class="col-sm-5">
+                        <label class="form-label" for="duracionMinutos">Duración</label>
+                        <select id="duracionMinutos" th:field="*{duracionMinutos}" class="form-select">
+                            <option value="30">30 min</option>
+                            <option value="60">1 hora</option>
+                            <option value="90">1 h 30 min</option>
+                            <option value="120">2 horas</option>
+                            <option value="180">3 horas</option>
+                            <option value="240">4 horas</option>
+                            <option value="360">6 horas</option>
+                            <option value="480">Jornada (8 h)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="mb-3" th:if="${tarea != null}">
+                    <label class="form-label" for="estado">Estado</label>
+                    <select id="estado" th:field="*{estado}" class="form-select">
+                        <option th:each="e : ${estados}" th:value="${e}"
+                                th:text="${T(Colcones_Persinas.proyecto_express.modelo.TareaCalendario).etiquetaEstado(e)}"></option>
+                    </select>
+                </div>
+
+                <div class="mb-4">
+                    <label class="form-label" for="notas">Indicaciones para los instaladores <span class="fw-normal" style="color:var(--texto-suave)">(opcional)</span></label>
+                    <textarea id="notas" th:field="*{notas}" rows="3" class="form-control"
+                              placeholder="Ej: llevar escalera grande, preguntar por la señora Marta en portería"></textarea>
+                </div>
+
+                <button type="submit" class="btn btn-primary w-100"
+                        th:text="${tarea == null} ? 'Guardar y asignar' : 'Guardar cambios'">Guardar</button>
+            </form>
+
+            <form th:if="${tarea != null}" method="post" class="mt-2"
+                  th:action="@{/instalaciones/{id}/eliminar(id=${tarea.id})}"
+                  onsubmit="return confirm('¿Eliminar esta tarea? Desaparece de la agenda de los instaladores.');">
+                <button type="submit" class="btn btn-outline-danger w-100">Eliminar tarea</button>
+            </form>
+        </div>
+
+        <div class="col-lg-5">
+            <div class="caja ficha mb-3" id="fichaPedido" hidden>
+                <h2>Datos del pedido</h2>
+                <dl>
+                    <dt>Cliente</dt><dd id="fCliente"></dd>
+                    <dt>Dirección</dt><dd id="fDireccion"></dd>
+                    <dt>Teléfono</dt><dd id="fTelefono"></dd>
+                    <dt>Entrega</dt><dd id="fEntrega"></dd>
+                    <dt>Productos</dt><dd id="fProductos"></dd>
+                </dl>
+            </div>
+
+            <div th:if="${tarea != null}" class="caja">
+                <span class="origen" th:text="${tarea.origenEtiqueta}"></span>
+                <p class="mt-2 mb-0" style="font-size:0.84rem;color:var(--texto-suave);">
+                    Creada por <strong th:text="${tarea.creadoPor}"></strong>.
+                    <span th:if="${tarea.asignadaPorAdmin}">Los instaladores no la pueden editar ni eliminar.</span>
+                    <span th:unless="${tarea.asignadaPorAdmin}">Ese instalador también la puede editar o eliminar.</span>
+                </p>
+                <div th:if="${tarea.estado == 'COMPLETADA'}" class="reporte mt-3">
+                    <strong>Reporte del instalador</strong>
+                    <div th:text="'Terminada el ' + ${tarea.fechaCompletadaFormateada} + (${tarea.completadaPor != null and tarea.completadaPor != ''} ? ' por ' + ${tarea.completadaPor} : '')"></div>
+                    <div class="mt-1" th:text="${tarea.observacionesInstalador != null and tarea.observacionesInstalador != ''} ? ${tarea.observacionesInstalador} : 'Sin observaciones.'"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    (function () {
+        const selPedido = document.getElementById('pedidoTiendaId');
+        const selInst1 = document.getElementById('instaladorId');
+        const selInst2 = document.getElementById('instalador2Id');
+        const ficha = document.getElementById('fichaPedido');
+        const lblTitulo = document.getElementById('lblTitulo');
+        const lblDireccion = document.getElementById('lblDireccion');
+        const inputTitulo = document.getElementById('titulo');
+
+        function tipoActual() {
+            const r = document.querySelector('input[name="tipo"]:checked');
+            return r ? r.value : 'INSTALACION';
+        }
+
+        function actualizar() {
+            const tipo = tipoActual();
+            const op = selPedido.options[selPedido.selectedIndex];
+            const conPedido = tipo === 'INSTALACION' && op && op.value !== '';
+
+            document.querySelectorAll('[data-tipos]').forEach(el => {
+                el.hidden = !el.dataset.tipos.split(' ').includes(tipo);
+            });
+            document.querySelectorAll('[data-sin-pedido]').forEach(el => {
+                if (conPedido) el.hidden = true;
+                else if (!el.dataset.tipos) el.hidden = false;
+            });
+
+            const esOtro = tipo === 'OTRO';
+            lblTitulo.textContent = esOtro ? '¿De qué se trata?' : 'Asunto (opcional)';
+            inputTitulo.placeholder = esOtro ? 'Ej: recoger material en la fábrica' : 'Ej: revisar motor de la persiana de la sala';
+            lblDireccion.textContent = esOtro ? 'Lugar (opcional)' : 'Dirección';
+
+            ficha.hidden = !conPedido;
+            if (conPedido) {
+                document.getElementById('fCliente').textContent = op.dataset.cliente || '—';
+                document.getElementById('fDireccion').textContent = op.dataset.direccion || '—';
+                document.getElementById('fTelefono').textContent = op.dataset.telefono || '—';
+                document.getElementById('fEntrega').textContent = op.dataset.entrega || '—';
+                document.getElementById('fProductos').textContent = op.dataset.productos || '—';
+            }
+        }
+
+        // No dejar elegir la misma persona como primer y segundo instalador.
+        function sincronizarInstaladores() {
+            Array.from(selInst2.options).forEach(o => {
+                o.disabled = o.value !== '' && o.value === selInst1.value;
+            });
+            if (selInst2.value !== '' && selInst2.value === selInst1.value) selInst2.value = '';
+        }
+
+        document.querySelectorAll('input[name="tipo"]').forEach(r => r.addEventListener('change', actualizar));
+        selPedido.addEventListener('change', actualizar);
+        selInst1.addEventListener('change', sincronizarInstaladores);
+        actualizar();
+        sincronizarInstaladores();
+    })();
+</script>
+<script src="/js/token-nav.js"></script>
+</body>
+</html>

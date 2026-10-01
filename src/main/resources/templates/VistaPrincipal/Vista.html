@@ -317,6 +317,33 @@
                 </div>
             </div>
 
+            <!-- ── NUEVO: INSTALACIONES (el jefe asigna pedidos en bodega y tareas) ── -->
+            <a class="module-card" th:href="@{/instalaciones}" sec:authorize="hasAnyRole('TIENDA_ADMIN','ADMIN')">
+                <div class="module-content">
+                    <span class="module-category">Módulo de Instalaciones</span>
+                    <h2>Instalaciones</h2>
+                    <p>Asigna los pedidos que están en bodega a tus instaladores y organiza limpiezas, arreglos y cotizaciones.</p>
+                    <span class="module-action">Acceder al módulo &rarr;</span>
+                </div>
+            </a>
+            <!-- ── NUEVO: AGENDA DEL INSTALADOR ── -->
+            <a class="module-card" th:href="@{/mi-calendario}" sec:authorize="hasRole('INSTALADOR')">
+                <div class="module-content">
+                    <span class="module-category">Instalador</span>
+                    <h2>Mi agenda</h2>
+                    <p>Tus instalaciones, limpiezas, arreglos y cotizaciones del día y de la semana.</p>
+                    <span class="module-action">Ver mi agenda &rarr;</span>
+                </div>
+            </a>
+            <div class="module-card module-card--locked" sec:authorize="!hasAnyRole('TIENDA_ADMIN','ADMIN','INSTALADOR')">
+                <div class="module-content">
+                    <span class="module-category">Módulo de Instalaciones</span>
+                    <h2>Instalaciones</h2>
+                    <p>Asignación de instalaciones y agenda de los instaladores.</p>
+                    <span class="module-action module-action--locked">Sin acceso</span>
+                </div>
+            </div>
+
             <!-- FÁBRICA: activa para jefe (fabrica) y admin -->
             <a class="module-card" th:href="@{/taller/pedidos}" sec:authorize="hasAnyRole('FABRICA','ADMIN')">
                 <div class="module-content">

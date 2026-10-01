@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Instalaciones - Persianas Express</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-card: #2a1b42; --bg-input: #1e1330; --accent: #ec1561; --accent-light: #ff4d94;
+            --gold: #ffc107; --texto: #f4f0fb; --texto-suave: #cbb8e0;
+        }
+        * { font-family: 'Poppins', sans-serif; }
+        body { background: linear-gradient(160deg, #1a0f2e 0%, #241536 100%); color: #fff; padding: 24px; min-height: 100vh; }
+
+        .marca-header {
+            display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;
+            background: var(--bg-card); border: 1px solid rgba(236,21,97,0.35); border-radius: 14px;
+            padding: 16px 24px; margin-bottom: 22px; box-shadow: 0 4px 22px rgba(236,21,97,0.15);
+        }
+        .marca-header .logo-marca { display: flex; align-items: center; gap: 12px; }
+        .marca-header .icono {
+            width: 46px; height: 46px; background: linear-gradient(135deg, var(--accent), #a5107f);
+            border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.4rem; flex-shrink: 0;
+        }
+        .marca-header .titulo-marca { font-weight: 800; font-size: 1.1rem; line-height: 1.1; }
+        .marca-header .titulo-marca small { display: block; font-weight: 600; font-size: 0.62rem; color: var(--gold); letter-spacing: 1.2px; margin-top: 2px; }
+
+        h2.seccion { font-weight: 700; font-size: 1.15rem; margin: 0 0 4px; }
+        .seccion-ayuda { color: var(--texto-suave); font-size: 0.84rem; margin-bottom: 14px; }
+
+        .btn-primary { background: linear-gradient(135deg, var(--accent), #b81050) !important; border: none !important; font-weight: 600; box-shadow: 0 3px 10px rgba(236,21,97,0.35); }
+        .btn-outline-secondary { color: var(--texto); border-color: rgba(255,255,255,0.25); }
+        .btn-outline-secondary:hover { background: rgba(255,255,255,0.1); color: #fff; }
+        .btn-outline-danger { color: #ff8a80; border-color: rgba(255,255,255,0.25); }
+        .btn-outline-danger:hover { background: #e74c3c; color: #fff; }
+        .alert-success { background: rgba(46,204,113,0.15); border: 1px solid #2ecc71; color: #7ff0a8; }
+        .alert-danger  { background: rgba(231,76,60,0.15); border: 1px solid #e74c3c; color: #ff9a90; }
+        .alert-warning { background: rgba(255,193,7,0.12); border: 1px solid var(--gold); color: #ffe08a; }
+        .alert-warning a { color: #fff; }
+
+        /* ── Instalaciones pendientes ── */
+        .pendientes { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; margin-bottom: 30px; }
+        .pendiente {
+            background: var(--bg-card); border-radius: 12px; padding: 16px; border: 1px solid rgba(13,202,240,0.35);
+            display: flex; flex-direction: column; gap: 4px;
+        }
+        .pendiente .num { font-size: 0.74rem; font-weight: 700; color: #6fdcf5; letter-spacing: 0.5px; }
+        .pendiente .cliente { font-weight: 700; font-size: 1rem; }
+        .pendiente .dato { font-size: 0.8rem; color: var(--texto-suave); }
+        .pendiente .vencida { color: #ff9a90; font-weight: 600; }
+        .pendiente .btn { margin-top: auto; }
+        .pendiente .productos { font-size: 0.78rem; color: var(--texto); margin: 4px 0 10px; }
+        .sin-pendientes { background: var(--bg-card); border: 1px dashed rgba(255,255,255,0.2); border-radius: 12px; padding: 18px; color: var(--texto-suave); font-size: 0.9rem; margin-bottom: 30px; }
+        .contador { background: #0dcaf0; color: #03171c; border-radius: 20px; font-size: 0.78rem; padding: 2px 10px; margin-left: 6px; vertical-align: 2px; }
+
+        /* ── Agenda ── */
+        .barra-agenda { display: flex; flex-wrap: wrap; gap: 12px; justify-content: space-between; align-items: flex-end; margin-bottom: 12px; }
+        .selector-instalador { display: flex; flex-wrap: wrap; gap: 8px; }
+        .selector-instalador a {
+            padding: 7px 16px; border-radius: 30px; text-decoration: none; font-size: 0.86rem; font-weight: 600;
+            color: var(--texto); background: var(--bg-card); border: 1px solid rgba(255,255,255,0.14);
+        }
+        .selector-instalador a:hover { border-color: var(--accent-light); }
+        .selector-instalador a.activo { background: var(--accent); border-color: var(--accent); color: #fff; }
+        .selector-instalador a:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+        .leyenda { display: flex; flex-wrap: wrap; gap: 14px; font-size: 0.78rem; color: var(--texto-suave); margin-bottom: 12px; }
+        .leyenda span::before { content: ""; display: inline-block; width: 11px; height: 11px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; background: var(--c); }
+
+        .caja { background: var(--bg-card); border-radius: 14px; padding: 14px; box-shadow: 0 4px 22px rgba(0,0,0,0.3); }
+        .fc {
+            --fc-border-color: rgba(255,255,255,0.10); --fc-page-bg-color: var(--bg-card); --fc-neutral-bg-color: var(--bg-input);
+            --fc-today-bg-color: rgba(236,21,97,0.12); --fc-now-indicator-color: var(--accent-light);
+            --fc-list-event-hover-bg-color: rgba(236,21,97,0.12);
+            --fc-button-bg-color: var(--bg-input); --fc-button-border-color: rgba(255,255,255,0.2);
+            --fc-button-hover-bg-color: #3a2858; --fc-button-hover-border-color: rgba(255,255,255,0.3);
+            --fc-button-active-bg-color: var(--accent); --fc-button-active-border-color: var(--accent);
+            color: var(--texto);
+        }
+        .fc .fc-toolbar-title { font-size: 1.15rem; font-weight: 700; text-transform: capitalize; }
+        .fc a.fc-col-header-cell-cushion, .fc a.fc-daygrid-day-number, .fc .fc-list-day-text, .fc .fc-list-day-side-text { color: var(--texto); text-decoration: none; }
+        .fc .fc-list-day-cushion { background: var(--bg-input); }
+        .fc .fc-timegrid-slot-label { color: var(--texto-suave); }
+        .fc .fc-daygrid-day-frame, .fc .fc-timegrid-slot { cursor: copy; }
+        .fc-event { cursor: pointer; font-size: 0.78rem; }
+        .evento-terminado { opacity: 0.55; }
+        .evento-terminado .fc-event-title::before, .evento-terminado .fc-list-event-title a::before { content: "✓ "; }
+        .evento-cancelado .fc-event-title, .evento-cancelado .fc-list-event-title a { text-decoration: line-through; }
+        .evento-en-curso { box-shadow: 0 0 0 2px var(--gold); }
+        .aviso-carga { display: none; }
+
+        @media (max-width: 576px) { body { padding: 12px; } .marca-header { padding: 12px 16px; } }
+    </style>
+</head>
+<body>
+<div class="container-fluid">
+
+    <div class="marca-header">
+        <div class="logo-marca">
+            <div class="icono">🔧</div>
+            <div class="titulo-marca">PERSIANAS EXPRESS<small>INSTALACIONES Y TAREAS</small></div>
+        </div>
+        <div class="d-flex gap-2 flex-wrap">
+            <a href="/portal" class="btn btn-outline-secondary">← Portal</a>
+            <a href="/instalaciones/nueva" class="btn btn-primary">+ Nueva tarea</a>
+            <a href="/logout" class="btn btn-outline-danger">Cerrar sesión</a>
+        </div>
+    </div>
+
+    <div th:if="${mensaje}" class="alert alert-success" th:text="${mensaje}"></div>
+    <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
+    <div th:if="${#lists.isEmpty(instaladores)}" class="alert alert-warning">
+        Todavía no hay usuarios con el rol INSTALADOR. El administrador general puede crearlos en
+        <a href="/usuarios/nuevo">Usuarios → Nuevo usuario</a>.
+    </div>
+
+    <!-- ═══════ INSTALACIONES PENDIENTES ═══════ -->
+    <h2 class="seccion">Instalaciones pendientes
+        <span class="contador" th:text="${#lists.size(pendientes)}">0</span>
+    </h2>
+    <p class="seccion-ayuda">
+        Pedidos de almacén que ya están <strong>En Bodega</strong> y todavía no tienen instaladores.
+        Asigna 1 o 2 instaladores a cada uno.
+    </p>
+
+    <div th:if="${#lists.isEmpty(pendientes)}" class="sin-pendientes">
+        No hay instalaciones pendientes. Cuando un pedido pase a "En Bodega" en el listado de almacén, aparecerá aquí.
+    </div>
+
+    <div class="pendientes" th:unless="${#lists.isEmpty(pendientes)}">
+        <div class="pendiente" th:each="p : ${pendientes}">
+            <span class="num" th:text="'PEDIDO #' + ${p.id}"></span>
+            <span class="cliente" th:text="${p.nombreCliente}"></span>
+            <span class="dato" th:if="${p.direccion != null and p.direccion != ''}" th:text="'📍 ' + ${p.direccion}"></span>
+            <span class="dato" th:if="${p.telefono != null and p.telefono != ''}" th:text="'📞 ' + ${p.telefono}"></span>
+            <span class="dato" th:if="${p.fechaEntrega != null}"
+                  th:classappend="${p.fechaEntrega.isBefore(#temporals.createNow())} ? 'vencida'"
+                  th:text="'Entrega: ' + ${#temporals.format(p.fechaEntrega, 'dd/MM/yyyy HH:mm')}"></span>
+            <span class="dato" th:unless="${p.fechaEntrega != null}">Entrega: sin definir</span>
+            <span class="productos" th:text="${#strings.listJoin(p.detalles.![producto + ' ×' + cantidad], ', ')}"></span>
+            <a class="btn btn-primary btn-sm" th:href="@{/instalaciones/nueva(pedidoId=${p.id})}">Asignar instaladores</a>
+        </div>
+    </div>
+
+    <!-- ═══════ AGENDA ═══════ -->
+    <h2 class="seccion" th:text="${instaladorSelNombre != null} ? 'Agenda de ' + ${instaladorSelNombre} : 'Agenda de todos los instaladores'">Agenda</h2>
+    <p class="seccion-ayuda">Haz clic en un día u hora libre para poner una tarea, o en una tarea para editarla o eliminarla.</p>
+
+    <div id="avisoCarga" class="alert alert-danger aviso-carga">
+        No se pudo cargar la agenda. Recarga la página; si sigue fallando, cierra sesión y vuelve a entrar.
+    </div>
+
+    <div class="barra-agenda">
+        <nav class="selector-instalador" aria-label="Elegir instalador">
+            <a href="/instalaciones" th:classappend="${instaladorSel == null} ? 'activo'">Todos</a>
+            <a th:each="u : ${instaladores}"
+               th:href="@{/instalaciones(instalador=${u.id})}"
+               th:classappend="${instaladorSel != null and instaladorSel.id == u.id} ? 'activo'"
+               th:text="${u.nombreCompleto != null and u.nombreCompleto != '' ? u.nombreCompleto : u.username}"></a>
+        </nav>
+    </div>
+    <div class="leyenda">
+        <span style="--c:#1976d2">Instalación</span>
+        <span style="--c:#0c8599">Limpieza</span>
+        <span style="--c:#e8590c">Arreglo</span>
+        <span style="--c:#7048e8">Cotización</span>
+        <span style="--c:#a61e4d">Otro</span>
+        <span style="--c:#868e96">Cancelada</span>
+    </div>
+
+    <div class="caja">
+        <div id="calendario" th:data-instalador="${instaladorSel != null ? instaladorSel.id : ''}"></div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@fullcalendar/core@6.1.15/locales/es.global.min.js"></script>
+<script>
+    function tokenActual() {
+        try { return localStorage.getItem('authToken'); } catch (e) { return null; }
+    }
+    function irA(url) {
+        const t = tokenActual();
+        window.location.href = t ? url + (url.includes('?') ? '&' : '?') + 'token=' + encodeURIComponent(t) : url;
+    }
+    function cabecerasAuth() {
+        const t = tokenActual();
+        return t ? { 'Authorization': 'Bearer ' + t } : {};
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const el = document.getElementById('calendario');
+        const instaladorId = el.dataset.instalador || '';
+        const esMovil = window.innerWidth < 768;
+
+        const calendario = new FullCalendar.Calendar(el, {
+            locale: 'es',
+            timeZone: 'local',
+            firstDay: 1,
+            initialView: esMovil ? 'listWeek' : (instaladorId ? 'timeGridWeek' : 'dayGridMonth'),
+            headerToolbar: esMovil
+                ? { left: 'prev,next', center: 'title', right: 'listWeek,dayGridMonth' }
+                : { left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek,listWeek' },
+            buttonText: { today: 'Hoy', month: 'Mes', week: 'Semana', day: 'Día', list: 'Lista' },
+            noEventsContent: 'No hay tareas en estas fechas',
+            height: 'auto',
+            nowIndicator: true,
+            allDaySlot: false,
+            slotMinTime: '06:00:00',
+            slotMaxTime: '20:00:00',
+            eventDisplay: 'block',
+            eventTimeFormat: { hour: '2-digit', minute: '2-digit', hour12: false },
+
+            events: (info, exito, fallo) => {
+                const params = new URLSearchParams({ start: info.startStr, end: info.endStr });
+                if (instaladorId) params.set('instaladorId', instaladorId);
+                fetch('/instalaciones/eventos?' + params, { headers: cabecerasAuth(), credentials: 'same-origin' })
+                    .then(r => {
+                        const tipo = r.headers.get('content-type') || '';
+                        if (!r.ok || !tipo.includes('application/json')) throw new Error('Sesión vencida o error del servidor');
+                        return r.json();
+                    })
+                    .then(datos => { document.getElementById('avisoCarga').style.display = 'none'; exito(datos); })
+                    .catch(err => { document.getElementById('avisoCarga').style.display = 'block'; fallo(err); });
+            },
+            eventClick: info => {
+                info.jsEvent.preventDefault();
+                irA(info.event.extendedProps.urlDetalle);
+            },
+            dateClick: info => {
+                let url = '/instalaciones/nueva?fecha=' + encodeURIComponent(info.dateStr.substring(0, 16));
+                if (instaladorId) url += '&instaladorId=' + instaladorId;
+                irA(url);
+            },
+            eventDidMount: info => {
+                const p = info.event.extendedProps;
+                info.el.title = p.horario + ' · ' + p.tipo + ' · ' + p.estado + '\n' + p.instaladores
+                    + (p.direccion ? '\n' + p.direccion : '') + '\n' + p.origen;
+            }
+        });
+        calendario.render();
+    });
+</script>
+<script src="/js/token-nav.js"></script>
+</body>
+</html>

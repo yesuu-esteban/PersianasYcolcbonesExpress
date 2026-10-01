@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${tarea == null} ? 'Agregar a mi agenda' : 'Editar tarea'">Tarea</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        :root { --accent: #ec1561; --oscuro: #1c1f26; --fondo: #f4f5f7; }
+        body { background: var(--fondo); font-family: 'Segoe UI', Arial, sans-serif; color: var(--oscuro); }
+        [hidden] { display: none !important; }
+        .topbar { background: var(--oscuro); padding: 12px 18px; }
+        .topbar a { color: #cfd3da; text-decoration: none; font-size: 0.9rem; }
+        .topbar a:hover { color: #fff; }
+        .contenido { max-width: 600px; margin: 0 auto; padding: 18px 16px 48px; }
+        h1 { font-size: 1.35rem; font-weight: 800; margin-bottom: 16px; }
+        .caja { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 18px; }
+        .form-label { font-weight: 600; font-size: 0.88rem; }
+
+        .tipos { display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 8px; }
+        .tipos input { position: absolute; opacity: 0; pointer-events: none; }
+        .tipos label {
+            display: block; text-align: center; padding: 11px 6px; border-radius: 10px; cursor: pointer;
+            border: 2px solid #dee2e6; font-weight: 600; font-size: 0.88rem; color: #495057; background: #fff;
+        }
+        .tipos input:checked + label { border-color: var(--c); background: var(--c); color: #fff; }
+        .tipos input:focus-visible + label { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+        .btn-guardar { width: 100%; padding: 13px; font-weight: 700; border-radius: 12px; background: var(--oscuro); color: #fff; border: none; }
+        .btn-guardar:hover { background: #000; color: #fff; }
+    </style>
+</head>
+<body>
+
+<header class="topbar">
+    <a th:href="${tarea == null} ? @{/mi-calendario} : @{/mi-calendario/{id}(id=${tarea?.id})}">← Volver</a>
+</header>
+
+<main class="contenido">
+    <h1 th:text="${tarea == null} ? 'Agregar a mi agenda' : 'Editar tarea'">Tarea</h1>
+    <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
+
+    <form method="post" th:action="@{${accionFormulario}}" th:object="${form}" class="caja">
+
+        <div class="mb-3">
+            <span class="form-label d-block mb-2">¿Qué vas a agregar?</span>
+            <div class="tipos">
+                <div style="--c:#1976d2">
+                    <input type="radio" id="tipoInstalacion" th:field="*{tipo}" value="INSTALACION">
+                    <label for="tipoInstalacion">Instalación</label>
+                </div>
+                <div style="--c:#0c8599">
+                    <input type="radio" id="tipoLimpieza" th:field="*{tipo}" value="LIMPIEZA">
+                    <label for="tipoLimpieza">Limpieza</label>
+                </div>
+                <div style="--c:#e8590c">
+                    <input type="radio" id="tipoArreglo" th:field="*{tipo}" value="ARREGLO">
+                    <label for="tipoArreglo">Arreglo</label>
+                </div>
+                <div style="--c:#7048e8">
+                    <input type="radio" id="tipoCotizacion" th:field="*{tipo}" value="COTIZACION">
+                    <label for="tipoCotizacion">Cotización</label>
+                </div>
+                <div style="--c:#a61e4d">
+                    <input type="radio" id="tipoOtro" th:field="*{tipo}" value="OTRO">
+                    <label for="tipoOtro">Otro</label>
+                </div>
+            </div>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label" for="titulo" id="lblTitulo">Asunto (opcional)</label>
+            <input type="text" id="titulo" th:field="*{titulo}" class="form-control" maxlength="120">
+        </div>
+
+        <div data-tipos="INSTALACION LIMPIEZA ARREGLO COTIZACION">
+            <div class="mb-3">
+                <label class="form-label" for="cliente">Cliente</label>
+                <input type="text" id="cliente" th:field="*{cliente}" class="form-control" maxlength="120">
+            </div>
+            <div class="mb-3">
+                <label class="form-label" for="telefono">Teléfono</label>
+                <input type="tel" id="telefono" th:field="*{telefono}" class="form-control" maxlength="40">
+            </div>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label" for="direccion" id="lblDireccion">Dirección</label>
+            <input type="text" id="direccion" th:field="*{direccion}" class="form-control" maxlength="200">
+        </div>
+
+        <div class="row g-3 mb-3">
+            <div class="col-7">
+                <label class="form-label" for="fechaProgramada">Fecha y hora</label>
+                <input type="datetime-local" id="fechaProgramada" th:field="*{fechaProgramada}" class="form-control" required>
+            </div>
+            <div class="col-5">
+                <label class="form-label" for="duracionMinutos">Duración</label>
+                <select id="duracionMinutos" th:field="*{duracionMinutos}" class="form-select">
+                    <option value="30">30 min</option>
+                    <option value="60">1 hora</option>
+                    <option value="90">1 h 30</option>
+                    <option value="120">2 horas</option>
+                    <option value="180">3 horas</option>
+                    <option value="240">4 horas</option>
+                    <option value="360">6 horas</option>
+                    <option value="480">8 horas</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="mb-4">
+            <label class="form-label" for="notas">Notas <span class="fw-normal text-muted">(opcional)</span></label>
+            <textarea id="notas" th:field="*{notas}" rows="3" class="form-control"
+                      placeholder="Ej: el cliente quiere cotizar 3 ventanas en blackout"></textarea>
+        </div>
+
+        <button type="submit" class="btn-guardar"
+                th:text="${tarea == null} ? 'Agregar a mi agenda' : 'Guardar cambios'">Guardar</button>
+    </form>
+</main>
+
+<script>
+    (function () {
+        const lblTitulo = document.getElementById('lblTitulo');
+        const lblDireccion = document.getElementById('lblDireccion');
+        const inputTitulo = document.getElementById('titulo');
+
+        function actualizar() {
+            const r = document.querySelector('input[name="tipo"]:checked');
+            const tipo = r ? r.value : 'COTIZACION';
+            document.querySelectorAll('[data-tipos]').forEach(el => {
+                el.hidden = !el.dataset.tipos.split(' ').includes(tipo);
+            });
+            const esOtro = tipo === 'OTRO';
+            lblTitulo.textContent = esOtro ? '¿De qué se trata?' : 'Asunto (opcional)';
+            inputTitulo.placeholder = esOtro ? 'Ej: cita médica, recoger material' : 'Ej: revisar motor de la persiana';
+            lblDireccion.textContent = esOtro ? 'Lugar (opcional)' : 'Dirección';
+        }
+
+        document.querySelectorAll('input[name="tipo"]').forEach(r => r.addEventListener('change', actualizar));
+        actualizar();
+    })();
+</script>
+<script src="/js/token-nav.js"></script>
+</body>
+</html>
