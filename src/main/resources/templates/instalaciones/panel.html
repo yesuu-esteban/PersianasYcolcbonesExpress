@@ -82,6 +82,9 @@
         .fc a.fc-col-header-cell-cushion, .fc a.fc-daygrid-day-number, .fc .fc-list-day-text, .fc .fc-list-day-side-text { color: var(--texto); text-decoration: none; }
         .fc .fc-list-day-cushion { background: var(--bg-input); }
         .fc .fc-timegrid-slot-label { color: var(--texto-suave); }
+        .fc .fc-timegrid-slot-label-cushion { font-size: 0.78rem; }
+        .fc a.fc-col-header-cell-cushion { text-transform: capitalize; font-weight: 600; padding: 6px 4px; }
+        .fc .fc-day-today .fc-col-header-cell-cushion { color: var(--accent-light); }
         .fc .fc-daygrid-day-frame, .fc .fc-timegrid-slot { cursor: copy; }
         .fc-event { cursor: pointer; font-size: 0.78rem; }
         .evento-terminado { opacity: 0.55; }
@@ -210,7 +213,12 @@
             slotMinTime: '06:00:00',
             slotMaxTime: '20:00:00',
             eventDisplay: 'block',
-            eventTimeFormat: { hour: '2-digit', minute: '2-digit', hour12: false },
+            // ── Formato colombiano: 12 horas con a. m. / p. m. ──
+            slotLabelFormat: { hour: 'numeric', minute: '2-digit', hour12: true },
+            eventTimeFormat: { hour: 'numeric', minute: '2-digit', hour12: true },
+            dayHeaderFormat: { weekday: 'short', day: 'numeric', month: 'numeric', omitCommas: true },
+            slotLabelInterval: '01:00',
+            scrollTime: '07:00:00',
 
             events: (info, exito, fallo) => {
                 const params = new URLSearchParams({ start: info.startStr, end: info.endStr });

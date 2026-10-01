@@ -156,8 +156,9 @@ public class TareaCalendario {
 
     // ─── Presentación ───────────────────────────────────────────────────
 
-    private static final DateTimeFormatter FMT_HORA  = DateTimeFormatter.ofPattern("HH:mm");
-    private static final DateTimeFormatter FMT_FECHA = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+    /** Hora al estilo colombiano: "3:30 p. m." */
+    private static final DateTimeFormatter FMT_HORA  = DateTimeFormatter.ofPattern("h:mm a", new Locale("es", "CO"));
+    private static final DateTimeFormatter FMT_FECHA = DateTimeFormatter.ofPattern("dd/MM/yyyy h:mm a", new Locale("es", "CO"));
     private static final DateTimeFormatter FMT_LARGA =
             DateTimeFormatter.ofPattern("EEEE d 'de' MMMM", new Locale("es", "CO"));
 
@@ -236,6 +237,16 @@ public class TareaCalendario {
     @Transient
     public String getNombresInstaladores() {
         return instaladores.stream().map(TareaCalendario::nombreVisible).collect(Collectors.joining(" y "));
+    }
+
+    @Transient
+    public String getHoraInicio() {
+        return fechaProgramada != null ? fechaProgramada.format(FMT_HORA) : "";
+    }
+
+    @Transient
+    public String getHoraFin() {
+        return fechaProgramada != null ? getFechaFin().format(FMT_HORA) : "";
     }
 
     @Transient

@@ -34,14 +34,14 @@
         .seccion-titulo { font-weight: 700; font-size: 1rem; margin: 22px 0 10px; }
 
         .tarea {
-            display: grid; grid-template-columns: 70px 1fr; gap: 14px; align-items: start;
+            display: grid; grid-template-columns: 82px 1fr; gap: 14px; align-items: start;
             background: #fff; border-radius: 12px; padding: 14px 16px; margin-bottom: 10px;
             text-decoration: none; color: inherit; border: 1px solid #e5e7eb; border-left: 6px solid var(--c);
         }
         .tarea:hover { border-color: var(--c); }
         .tarea:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
         .tarea.terminada { opacity: 0.6; }
-        .tarea .hora { font-weight: 800; font-size: 1.12rem; line-height: 1.1; }
+        .tarea .hora { font-weight: 800; font-size: 1rem; line-height: 1.15; white-space: nowrap; }
         .tarea .hora small { display: block; font-weight: 500; font-size: 0.74rem; color: #6b7280; }
         .tarea .tipo { font-size: 0.76rem; font-weight: 700; color: var(--c); }
         .tarea .titulo { font-weight: 700; }
@@ -51,6 +51,12 @@
 
         .caja-calendario { background: #fff; border-radius: 12px; border: 1px solid #e5e7eb; padding: 12px; }
         .fc .fc-toolbar-title { font-size: 1.05rem; font-weight: 700; text-transform: capitalize; }
+        /* Los días y números del calendario son <a>: quitarles el azul subrayado de Bootstrap */
+        .fc a.fc-col-header-cell-cushion, .fc a.fc-daygrid-day-number,
+        .fc .fc-list-day-text, .fc .fc-list-day-side-text { color: var(--oscuro); text-decoration: none; text-transform: capitalize; }
+        .fc .fc-col-header-cell-cushion { padding: 6px 4px; font-weight: 600; }
+        .fc .fc-timegrid-slot-label-cushion { font-size: 0.78rem; color: #6b7280; }
+        .fc .fc-day-today .fc-col-header-cell-cushion { color: var(--accent); }
         .fc .fc-button-primary { background: var(--oscuro); border-color: var(--oscuro); }
         .fc .fc-button-primary:not(:disabled).fc-button-active { background: var(--accent); border-color: var(--accent); }
         .fc .fc-timegrid-col.fc-day-today, .fc .fc-daygrid-day.fc-day-today { background: #fff1f6; }
@@ -102,8 +108,8 @@
        th:href="@{/mi-calendario/{id}(id=${t.id})}"
        th:style="'--c:' + ${t.color}">
         <div class="hora">
-            <span th:text="${#temporals.format(t.fechaProgramada, 'HH:mm')}"></span>
-            <small th:text="'hasta ' + ${#temporals.format(t.fechaFin, 'HH:mm')}"></small>
+            <span th:text="${t.horaInicio}"></span>
+            <small th:text="'hasta ' + ${t.horaFin}"></small>
         </div>
         <div>
             <div class="tipo" th:text="${t.tipoEtiqueta}"></div>
@@ -160,7 +166,12 @@
             slotMinTime: '06:00:00',
             slotMaxTime: '20:00:00',
             eventDisplay: 'block',
-            eventTimeFormat: { hour: '2-digit', minute: '2-digit', hour12: false },
+            // ── Formato colombiano: 12 horas con a. m. / p. m. ──
+            slotLabelFormat: { hour: 'numeric', minute: '2-digit', hour12: true },
+            eventTimeFormat: { hour: 'numeric', minute: '2-digit', hour12: true },
+            dayHeaderFormat: { weekday: 'short', day: 'numeric', month: 'numeric', omitCommas: true },
+            slotLabelInterval: '01:00',
+            scrollTime: '07:00:00',
 
             events: (info, exito, fallo) => {
                 const params = new URLSearchParams({ start: info.startStr, end: info.endStr });

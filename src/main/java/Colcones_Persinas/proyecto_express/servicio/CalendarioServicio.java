@@ -41,7 +41,7 @@ public class CalendarioServicio {
     public static final String PEDIDO_INSTALADO = "Instalado";
 
     private static final DateTimeFormatter FMT_ISO  = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss");
-    private static final DateTimeFormatter FMT_HORA = DateTimeFormatter.ofPattern("HH:mm");
+    private static final DateTimeFormatter FMT_HORA = DateTimeFormatter.ofPattern("h:mm a", new Locale("es", "CO"));
 
     private final TareaCalendarioRepository tareaRepository;
     private final PedidoTiendaRepository pedidoTiendaRepository;
