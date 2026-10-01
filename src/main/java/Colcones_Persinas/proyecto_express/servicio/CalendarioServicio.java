@@ -136,32 +136,14 @@ public class CalendarioServicio {
         List<Usuario> instaladores = resolverInstaladores(f.getInstaladorId(), f.getInstalador2Id(),
                 esNueva ? List.of() : t.getInstaladores());
 
-        // ── Pedido (solo instalaciones) ──
-        PedidoTienda pedido = null;
-        if (TareaCalendario.INSTALACION.equals(tipo) && f.getPedidoTiendaId() != null) {
-            pedido = pedidoTiendaRepository.findById(f.getPedidoTiendaId())
-                    .orElseThrow(() -> new IllegalArgumentException("El pedido elegido no existe."));
-            boolean cambioPedido = pedidoAnterior == null || pedidoAnterior.getId() != pedido.getId();
-            if (cambioPedido && !PEDIDO_EN_BODEGA.equalsIgnoreCase(pedido.getEstado())) {
-                throw new IllegalArgumentException("El pedido de " + pedido.getNombreCliente() + " está en \""
-                        + pedido.getEstado() + "\". Solo se asignan pedidos que ya están En Bodega.");
-            }
-            if (TareaCalendario.ESTADOS_ACTIVOS.contains(estado)) {
-                boolean yaAsignado = tareaRepository.findByPedidoTiendaIdAndTipoAndEstadoIn(
-                                pedido.getId(), TareaCalendario.INSTALACION, TareaCalendario.ESTADOS_ACTIVOS).stream()
-                        .anyMatch(otra -> esNueva || otra.getId() != t.getId());
-                if (yaAsignado) {
-                    throw new IllegalArgumentException("Ese pedido ya tiene una instalación asignada. "
-                            + "Edítala en el calendario en vez de crear otra.");
-                }
-            }
-        }
+        // ── Pedido: OBLIGATORIO en instalaciones (sale de los pedidos "En Bodega") ──
+        PedidoTienda pedido = TareaCalendario.INSTALACION.equals(tipo)
+                ? resolverPedidoEnBodega(f.getPedidoTiendaId(), pedidoAnterior, estado, esNueva ? null : t.getId())
+                : null;
 
         // ── Contenido ──
         if (pedido != null) {
-            t.setCliente(nvl(pedido.getNombreCliente()));
-            t.setDireccion(nvl(pedido.getDireccion()));
-            t.setTelefono(nvl(pedido.getTelefono()));
+            copiarDatosDelPedido(t, pedido);
         } else {
             copiarContacto(t, tipo, f);
         }
@@ -275,19 +257,30 @@ public class CalendarioServicio {
         LocalDateTime fecha = exigirFecha(f.getFechaProgramada());
         int duracion = validarDuracion(f.getDuracionMinutos());
 
-        copiarContacto(t, tipo, f);
+        // ── Instalación: OBLIGATORIO elegir un pedido que esté "En Bodega" ──
+        PedidoTienda pedidoAnterior = esNueva ? null : t.getPedidoTienda();
+        String estadoActual = esNueva ? TareaCalendario.PROGRAMADA : t.getEstado();
+        PedidoTienda pedido = TareaCalendario.INSTALACION.equals(tipo)
+                ? resolverPedidoEnBodega(f.getPedidoTiendaId(), pedidoAnterior, estadoActual, esNueva ? null : t.getId())
+                : null;
+
+        if (pedido != null) {
+            copiarDatosDelPedido(t, pedido);
+        } else {
+            copiarContacto(t, tipo, f);
+        }
         t.setTitulo(nvl(f.getTitulo()).trim());
         validarContenido(tipo, t);
 
         validarCruce(yo, fecha, duracion, esNueva ? null : t.getId(), true);
 
         t.setTipo(tipo);
+        t.setPedidoTienda(pedido);
         t.setFechaProgramada(fecha);
         t.setDuracionMinutos(duracion);
         t.setNotas(nvl(f.getNotas()).trim());
         if (esNueva) {
             t.getInstaladores().add(yo);
-            t.setPedidoTienda(null);
             t.setOrigen(TareaCalendario.ORIGEN_INSTALADOR);
             t.setEstado(TareaCalendario.PROGRAMADA);
             t.setCreadoPor(yo.getUsername());
@@ -298,7 +291,11 @@ public class CalendarioServicio {
     @Transactional
     public void eliminarComoInstalador(int id, String username) {
         TareaCalendario t = obtenerPropiaModificable(id, username);
+        if (TareaCalendario.COMPLETADA.equals(t.getEstado())) {
+            throw new IllegalArgumentException("Esta tarea ya está terminada. Si hay que borrarla, pídeselo al jefe.");
+        }
         tareaRepository.delete(t);
+        // Si era una instalación de un pedido, el pedido vuelve solo a "Instalaciones pendientes".
     }
 
     @Transactional
@@ -326,6 +323,43 @@ public class CalendarioServicio {
     // ═══════════════════════════════════════════════════════════════
     // VALIDACIONES Y ESTADOS
     // ═══════════════════════════════════════════════════════════════
+
+    /**
+     * Una INSTALACIÓN siempre sale de un pedido de almacén que está "En Bodega".
+     * - Si es un pedido nuevo para esta tarea, debe estar En Bodega.
+     * - Si la tarea queda activa, el pedido no puede tener otra instalación activa.
+     */
+    private PedidoTienda resolverPedidoEnBodega(Integer pedidoId, PedidoTienda pedidoAnterior,
+                                                String estado, Integer tareaId) {
+        if (pedidoId == null) {
+            throw new IllegalArgumentException("Para una instalación debes elegir el pedido que está en bodega.");
+        }
+        PedidoTienda pedido = pedidoTiendaRepository.findById(pedidoId)
+                .orElseThrow(() -> new IllegalArgumentException("El pedido elegido no existe."));
+
+        boolean cambioPedido = pedidoAnterior == null || pedidoAnterior.getId() != pedido.getId();
+        if (cambioPedido && !PEDIDO_EN_BODEGA.equalsIgnoreCase(pedido.getEstado())) {
+            throw new IllegalArgumentException("El pedido de " + pedido.getNombreCliente() + " está en \""
+                    + pedido.getEstado() + "\". Solo se pueden instalar pedidos que ya están En Bodega.");
+        }
+        if (TareaCalendario.ESTADOS_ACTIVOS.contains(estado)) {
+            boolean yaAsignado = tareaRepository.findByPedidoTiendaIdAndTipoAndEstadoIn(
+                            pedido.getId(), TareaCalendario.INSTALACION, TareaCalendario.ESTADOS_ACTIVOS).stream()
+                    .anyMatch(otra -> tareaId == null || otra.getId() != tareaId);
+            if (yaAsignado) {
+                throw new IllegalArgumentException("El pedido de " + pedido.getNombreCliente()
+                        + " ya tiene una instalación asignada.");
+            }
+        }
+        return pedido;
+    }
+
+    /** Copia a la tarea los datos del cliente que están en el pedido de almacén. */
+    private void copiarDatosDelPedido(TareaCalendario t, PedidoTienda pedido) {
+        t.setCliente(nvl(pedido.getNombreCliente()));
+        t.setDireccion(nvl(pedido.getDireccion()));
+        t.setTelefono(nvl(pedido.getTelefono()));
+    }
 
     private String validarTipo(String tipo) {
         if (tipo == null || !TareaCalendario.TIPOS.contains(tipo)) {
@@ -360,8 +394,7 @@ public class CalendarioServicio {
                 throw new IllegalArgumentException("Escribe de qué se trata (ej: \"Recoger material en la fábrica\").");
             }
         } else if (t.getCliente() == null || t.getCliente().isBlank()) {
-            throw new IllegalArgumentException("Escribe el nombre del cliente"
-                    + (TareaCalendario.INSTALACION.equals(tipo) ? " o elige un pedido en bodega." : "."));
+            throw new IllegalArgumentException("Escribe el nombre del cliente.");
         }
     }
 

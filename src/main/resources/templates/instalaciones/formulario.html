@@ -9,12 +9,12 @@
     <style>
         :root {
             --bg-card: #2a1b42; --bg-input: #1e1330; --accent: #ec1561; --accent-light: #ff4d94;
-            --gold: #ffc107; --texto: #f4f0fb; --texto-suave: #cbb8e0;
+            --gold: #ffc107; --texto: #f4f0fb; --texto-suave: #cbb8e0; --bodega: #0dcaf0;
         }
         * { font-family: 'Poppins', sans-serif; }
         body { background: linear-gradient(160deg, #1a0f2e 0%, #241536 100%); color: #fff; padding: 24px; min-height: 100vh; }
         [hidden] { display: none !important; }
-        .contenedor { max-width: 1050px; margin: 0 auto; }
+        .contenedor { max-width: 1100px; margin: 0 auto; }
         .volver { color: var(--texto-suave); text-decoration: none; font-size: 0.88rem; }
         .volver:hover { color: #fff; }
         h1 { font-weight: 700; font-size: 1.35rem; margin: 10px 0 18px; }
@@ -25,7 +25,6 @@
         .form-control:focus, .form-select:focus { background: var(--bg-input); color: #fff; border-color: var(--accent); box-shadow: 0 0 0 0.2rem rgba(236,21,97,0.25); }
         .form-control::placeholder { color: #8f84a8; }
         .form-select option { background: var(--bg-input); color: #fff; }
-        .form-select:disabled { opacity: 0.6; }
         .ayuda { font-size: 0.76rem; color: var(--texto-suave); margin-top: 4px; }
 
         .tipos { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 8px; }
@@ -37,20 +36,33 @@
         .tipos input:checked + label { border-color: var(--c); background: var(--c); }
         .tipos input:focus-visible + label { outline: 2px solid var(--gold); outline-offset: 2px; }
 
+        /* Bloque de pedido en bodega */
+        .bloque-bodega { background: rgba(13,202,240,0.08); border: 1px solid rgba(13,202,240,0.45); border-radius: 12px; padding: 14px; }
+        .bloque-bodega .form-label { color: #9eeaf9; }
+        .sin-pedidos { background: rgba(255,193,7,0.12); border: 1px solid var(--gold); color: #ffe08a; border-radius: 10px; padding: 12px; font-size: 0.86rem; }
+        .sin-pedidos a { color: #fff; }
+
         .bloque-instaladores { background: var(--bg-input); border-radius: 12px; padding: 14px; }
 
         .btn-primary { background: linear-gradient(135deg, var(--accent), #b81050) !important; border: none !important; font-weight: 600; }
+        .btn-primary:disabled { opacity: 0.45; }
         .btn-outline-danger { color: #ff8a80; border-color: #e74c3c; }
         .btn-outline-danger:hover { background: #e74c3c; color: #fff; }
         .alert-danger { background: rgba(231,76,60,0.15); border: 1px solid #e74c3c; color: #ff9a90; }
         .alert-warning { background: rgba(255,193,7,0.12); border: 1px solid var(--gold); color: #ffe08a; }
         .alert-warning a { color: #fff; }
 
-        .ficha { border-left: 4px solid #0dcaf0; }
-        .ficha h2 { font-size: 0.98rem; font-weight: 700; margin-bottom: 12px; }
-        .ficha dl { display: grid; grid-template-columns: 100px 1fr; gap: 6px 10px; margin: 0; font-size: 0.86rem; }
+        /* Ficha del pedido */
+        .ficha { border-left: 4px solid var(--bodega); }
+        .ficha .etiqueta-bodega { display: inline-block; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.5px; color: #03171c; background: var(--bodega); border-radius: 20px; padding: 2px 10px; margin-bottom: 8px; }
+        .ficha h2 { font-size: 1.1rem; font-weight: 700; margin-bottom: 12px; }
+        .ficha dl { display: grid; grid-template-columns: 100px 1fr; gap: 6px 10px; margin: 0 0 12px; font-size: 0.86rem; }
         .ficha dt { color: var(--texto-suave); font-weight: 600; }
         .ficha dd { margin: 0; word-break: break-word; }
+        .ficha h3 { font-size: 0.86rem; font-weight: 700; color: var(--texto-suave); margin: 4px 0 6px; }
+        .ficha ul { list-style: none; padding: 0; margin: 0; font-size: 0.86rem; }
+        .ficha li { padding: 6px 0; border-top: 1px solid rgba(255,255,255,0.08); }
+        .ficha-vacia { color: var(--texto-suave); font-size: 0.86rem; }
         .origen { display: inline-block; font-size: 0.75rem; font-weight: 600; padding: 3px 10px; border-radius: 20px; background: rgba(255,255,255,0.1); }
         .reporte { background: rgba(46,204,113,0.12); border: 1px solid rgba(46,204,113,0.5); border-radius: 12px; padding: 14px; font-size: 0.86rem; }
 
@@ -70,7 +82,7 @@
 
     <div class="row g-4">
         <div class="col-lg-7">
-            <form method="post" th:action="@{${accionFormulario}}" th:object="${form}" class="caja">
+            <form method="post" th:action="@{${accionFormulario}}" th:object="${form}" class="caja" id="formTarea">
 
                 <div class="mb-3">
                     <span class="form-label d-block mb-2">Tipo de tarea</span>
@@ -98,23 +110,32 @@
                     </div>
                 </div>
 
-                <!-- Pedido en bodega: solo para Instalación -->
-                <div class="mb-3" data-tipos="INSTALACION">
-                    <label class="form-label" for="pedidoTiendaId">Pedido en bodega</label>
-                    <select id="pedidoTiendaId" th:field="*{pedidoTiendaId}" class="form-select">
-                        <option value="" th:text="${#lists.isEmpty(pedidosDisponibles)} ? 'No hay pedidos en bodega · escribir datos del cliente' : 'Sin pedido · escribir datos del cliente'"></option>
-                        <option th:each="p : ${pedidosDisponibles}" th:value="${p.id}"
-                                th:text="'#' + ${p.id} + ' · ' + ${p.nombreCliente}"
-                                th:data-cliente="${p.nombreCliente}"
-                                th:data-direccion="${p.direccion}"
-                                th:data-telefono="${p.telefono}"
-                                th:data-entrega="${p.fechaEntrega != null ? #temporals.format(p.fechaEntrega, 'dd/MM/yyyy HH:mm') : 'Sin definir'}"
-                                th:data-productos="${#strings.listJoin(p.detalles.![producto + ' ×' + cantidad], ', ')}"></option>
-                    </select>
-                    <div class="ayuda">Solo aparecen pedidos en estado "En Bodega". Al terminar la instalación, el pedido pasa a "Instalado".</div>
+                <!-- ═══ INSTALACIÓN: se elige un pedido que ya está EN BODEGA ═══ -->
+                <div class="bloque-bodega mb-3" data-tipos="INSTALACION">
+                    <div th:if="${#lists.isEmpty(pedidosDisponibles)}" class="sin-pedidos" id="sinPedidos">
+                        <strong>No hay pedidos en bodega listos para instalar.</strong><br>
+                        En el <a href="/almacen/listado">listado de almacén</a>, cambia el estado del pedido a
+                        <strong>"En Bodega"</strong> y aparecerá aquí.
+                    </div>
+                    <div th:unless="${#lists.isEmpty(pedidosDisponibles)}">
+                        <label class="form-label" for="pedidoTiendaId">Pedido en bodega</label>
+                        <select id="pedidoTiendaId" th:field="*{pedidoTiendaId}" class="form-select">
+                            <option value="">Elige el pedido que se va a instalar</option>
+                            <option th:each="p : ${pedidosDisponibles}" th:value="${p.id}"
+                                    th:text="'#' + ${p.id} + ' · ' + ${p.nombreCliente} + (${p.direccion != null and p.direccion != ''} ? ' — ' + ${p.direccion} : '')"
+                                    th:data-cliente="${p.nombreCliente}"
+                                    th:data-cedula="${p.cedula}"
+                                    th:data-telefono="${p.telefono}"
+                                    th:data-direccion="${p.direccion}"
+                                    th:data-entrega="${p.fechaEntrega != null ? #temporals.format(p.fechaEntrega, 'dd/MM/yyyy') : 'Sin definir'}"
+                                    th:data-vendedor="${p.vendedor}"
+                                    th:data-descripcion="${p.descripcion}"
+                                    th:data-productos="${#strings.listJoin(p.detalles.![producto + (material != null and material != '' ? ' · ' + material : '') + ' ×' + cantidad], '|')}"></option>
+                        </select>
+                        <div class="ayuda">Solo salen los pedidos de almacén en estado "En Bodega" que todavía no tienen instalador. Al terminar la instalación, el pedido pasa a "Instalado".</div>
+                    </div>
                 </div>
 
-                <!-- Instaladores: máximo 2 -->
                 <div class="bloque-instaladores mb-3">
                     <div class="row g-3">
                         <div class="col-sm-6">
@@ -142,7 +163,8 @@
                     <input type="text" id="titulo" th:field="*{titulo}" class="form-control" maxlength="120">
                 </div>
 
-                <div class="row g-3 mb-3" data-tipos="INSTALACION LIMPIEZA ARREGLO COTIZACION" data-sin-pedido>
+                <!-- Datos escritos a mano: solo para limpieza, arreglo, cotización y otro -->
+                <div class="row g-3 mb-3" data-tipos="LIMPIEZA ARREGLO COTIZACION">
                     <div class="col-sm-7">
                         <label class="form-label" for="cliente">Cliente</label>
                         <input type="text" id="cliente" th:field="*{cliente}" class="form-control" maxlength="120">
@@ -152,8 +174,7 @@
                         <input type="tel" id="telefono" th:field="*{telefono}" class="form-control" maxlength="40">
                     </div>
                 </div>
-
-                <div class="mb-3" data-sin-pedido>
+                <div class="mb-3" data-tipos="LIMPIEZA ARREGLO COTIZACION OTRO">
                     <label class="form-label" for="direccion" id="lblDireccion">Dirección</label>
                     <input type="text" id="direccion" th:field="*{direccion}" class="form-control" maxlength="200">
                 </div>
@@ -192,7 +213,7 @@
                               placeholder="Ej: llevar escalera grande, preguntar por la señora Marta en portería"></textarea>
                 </div>
 
-                <button type="submit" class="btn btn-primary w-100"
+                <button type="submit" class="btn btn-primary w-100" id="btnGuardar"
                         th:text="${tarea == null} ? 'Guardar y asignar' : 'Guardar cambios'">Guardar</button>
             </form>
 
@@ -203,16 +224,26 @@
             </form>
         </div>
 
+        <!-- ═══ Ficha con TODA la información del pedido en bodega ═══ -->
         <div class="col-lg-5">
             <div class="caja ficha mb-3" id="fichaPedido" hidden>
-                <h2>Datos del pedido</h2>
+                <span class="etiqueta-bodega">EN BODEGA · LISTO PARA INSTALAR</span>
+                <h2 id="fTitulo"></h2>
                 <dl>
                     <dt>Cliente</dt><dd id="fCliente"></dd>
-                    <dt>Dirección</dt><dd id="fDireccion"></dd>
+                    <dt>Cédula</dt><dd id="fCedula"></dd>
                     <dt>Teléfono</dt><dd id="fTelefono"></dd>
+                    <dt>Dirección</dt><dd id="fDireccion"></dd>
                     <dt>Entrega</dt><dd id="fEntrega"></dd>
-                    <dt>Productos</dt><dd id="fProductos"></dd>
+                    <dt>Vendedor</dt><dd id="fVendedor"></dd>
+                    <dt>Descripción</dt><dd id="fDescripcion"></dd>
                 </dl>
+                <h3>Productos a instalar</h3>
+                <ul id="fProductos"></ul>
+            </div>
+            <div class="caja ficha mb-3" id="fichaVacia" hidden>
+                <span class="etiqueta-bodega">EN BODEGA</span>
+                <p class="ficha-vacia mb-0">Elige un pedido de la lista para ver todos sus datos: cliente, dirección, teléfono y productos.</p>
             </div>
 
             <div th:if="${tarea != null}" class="caja">
@@ -234,10 +265,12 @@
 
 <script>
     (function () {
-        const selPedido = document.getElementById('pedidoTiendaId');
+        const selPedido = document.getElementById('pedidoTiendaId');   // null si no hay pedidos en bodega
         const selInst1 = document.getElementById('instaladorId');
         const selInst2 = document.getElementById('instalador2Id');
+        const btnGuardar = document.getElementById('btnGuardar');
         const ficha = document.getElementById('fichaPedido');
+        const fichaVacia = document.getElementById('fichaVacia');
         const lblTitulo = document.getElementById('lblTitulo');
         const lblDireccion = document.getElementById('lblDireccion');
         const inputTitulo = document.getElementById('titulo');
@@ -247,17 +280,42 @@
             return r ? r.value : 'INSTALACION';
         }
 
+        function texto(id, valor) {
+            document.getElementById(id).textContent = (valor && valor.trim()) ? valor : '—';
+        }
+
+        function pintarFicha(op) {
+            texto('fTitulo', '#' + op.value + ' · ' + (op.dataset.cliente || ''));
+            texto('fCliente', op.dataset.cliente);
+            texto('fCedula', op.dataset.cedula);
+            texto('fTelefono', op.dataset.telefono);
+            texto('fDireccion', op.dataset.direccion);
+            texto('fEntrega', op.dataset.entrega);
+            texto('fVendedor', op.dataset.vendedor);
+            texto('fDescripcion', op.dataset.descripcion);
+
+            const lista = document.getElementById('fProductos');
+            lista.innerHTML = '';
+            const productos = (op.dataset.productos || '').split('|').filter(x => x.trim());
+            if (productos.length === 0) {
+                const li = document.createElement('li');
+                li.textContent = 'Sin productos registrados.';
+                lista.appendChild(li);
+            } else {
+                productos.forEach(p => {
+                    const li = document.createElement('li');
+                    li.textContent = p;
+                    lista.appendChild(li);
+                });
+            }
+        }
+
         function actualizar() {
             const tipo = tipoActual();
-            const op = selPedido.options[selPedido.selectedIndex];
-            const conPedido = tipo === 'INSTALACION' && op && op.value !== '';
+            const esInstalacion = tipo === 'INSTALACION';
 
             document.querySelectorAll('[data-tipos]').forEach(el => {
                 el.hidden = !el.dataset.tipos.split(' ').includes(tipo);
-            });
-            document.querySelectorAll('[data-sin-pedido]').forEach(el => {
-                if (conPedido) el.hidden = true;
-                else if (!el.dataset.tipos) el.hidden = false;
             });
 
             const esOtro = tipo === 'OTRO';
@@ -265,14 +323,15 @@
             inputTitulo.placeholder = esOtro ? 'Ej: recoger material en la fábrica' : 'Ej: revisar motor de la persiana de la sala';
             lblDireccion.textContent = esOtro ? 'Lugar (opcional)' : 'Dirección';
 
+            // Instalación: el pedido es obligatorio; sin pedidos en bodega no se puede guardar.
+            if (selPedido) selPedido.required = esInstalacion;
+            btnGuardar.disabled = esInstalacion && !selPedido;
+
+            const op = selPedido ? selPedido.options[selPedido.selectedIndex] : null;
+            const conPedido = esInstalacion && op && op.value !== '';
             ficha.hidden = !conPedido;
-            if (conPedido) {
-                document.getElementById('fCliente').textContent = op.dataset.cliente || '—';
-                document.getElementById('fDireccion').textContent = op.dataset.direccion || '—';
-                document.getElementById('fTelefono').textContent = op.dataset.telefono || '—';
-                document.getElementById('fEntrega').textContent = op.dataset.entrega || '—';
-                document.getElementById('fProductos').textContent = op.dataset.productos || '—';
-            }
+            fichaVacia.hidden = !(esInstalacion && selPedido && !conPedido);
+            if (conPedido) pintarFicha(op);
         }
 
         // No dejar elegir la misma persona como primer y segundo instalador.
@@ -284,7 +343,7 @@
         }
 
         document.querySelectorAll('input[name="tipo"]').forEach(r => r.addEventListener('change', actualizar));
-        selPedido.addEventListener('change', actualizar);
+        if (selPedido) selPedido.addEventListener('change', actualizar);
         selInst1.addEventListener('change', sincronizarInstaladores);
         actualizar();
         sincronizarInstaladores();
