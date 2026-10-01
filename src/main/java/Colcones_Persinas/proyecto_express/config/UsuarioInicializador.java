@@ -17,8 +17,9 @@ import org.springframework.stereotype.Component;
  * línea "crearSiNoExiste(...)" más abajo con sus datos, y en el próximo
  * arranque de la app se creará solo si no existía ya.
  *
- * asegurarRol(...) es distinto: SÍ modifica a un usuario que ya existe, pero
- * solo su rol (la contraseña y lo demás se respetan).
+ * asegurarRol(...)      → cambia SOLO el rol de un usuario que ya existe.
+ * renombrarUsuario(...) → cambia el usuario (para iniciar sesión) y el nombre visible
+ *                         de un usuario que ya existe. Conserva su contraseña y su rol.
  */
 @Component
 public class UsuarioInicializador implements CommandLineRunner {
@@ -45,15 +46,19 @@ public class UsuarioInicializador implements CommandLineRunner {
         crearSiNoExiste("tiendaadmin2", "123456", "TIENDA_ADMIN", "Administrador de Tienda 2");
         crearSiNoExiste("admin2", "123456", "ADMIN", "Administrador General 2");
 
-        // ── Instaladores de prueba (cada uno tiene su agenda en /mi-calendario) ──
-        // Cambia la contraseña desde "Mi cuenta" la primera vez que entres.
-        crearSiNoExiste("instalador1", "123456", "INSTALADOR", "Instalador 1");
-        crearSiNoExiste("instalador2", "123456", "INSTALADOR", "Instalador 2");
-
-        // ── NUEVO: Fabian y Mono son jefes superiores → acceso a TODOS los módulos ──
-        // Como ya existían con rol TIENDA, aquí se les sube a ADMIN (su contraseña no cambia).
+        // ── Fabian y Mono son jefes superiores → acceso a TODOS los módulos ──
         asegurarRol("Fabian", "ADMIN");
         asegurarRol("Mono", "ADMIN");
+
+        // ── Instaladores ──
+        // 1) Los que ya estaban creados como instalador1 / instalador2 se renombran.
+        renombrarUsuario("instalador1", "arbey", "Arbey");
+        renombrarUsuario("instalador2", "fabianlopez", "Fabián López");
+
+        // 2) Se crean si no existen (por ejemplo, en una base de datos nueva).
+        crearSiNoExiste("arbey", "123456", "INSTALADOR", "Arbey");
+        crearSiNoExiste("fabianlopez", "123456", "INSTALADOR", "Fabián López");
+        crearSiNoExiste("juanpablo", "123456", "INSTALADOR", "Juan Pablo");
     }
 
     private void crearSiNoExiste(String username, String password, String rol, String nombreCompleto) {
@@ -76,12 +81,27 @@ public class UsuarioInicializador implements CommandLineRunner {
     private void asegurarRol(String username, String rol) {
         usuarioRepository.findByUsernameIgnoreCase(username).ifPresent(usuario -> {
             if (!rol.equals(usuario.getRol())) {
-                String rolAnterior = usuario.getRol();
                 usuario.setRol(rol);
                 usuarioRepository.save(usuario);
-                System.out.println("[UsuarioInicializador] Rol de \"" + usuario.getUsername()
-                        + "\" cambiado de " + rolAnterior + " a " + rol + ".");
             }
+        });
+    }
+
+    /**
+     * Cambia el usuario (para iniciar sesión) y el nombre visible de un usuario que ya existe.
+     * Conserva su contraseña y su rol.
+     *  - Si el usuario viejo no existe, no hace nada (ya se renombró antes o nunca se creó).
+     *  - Si el usuario nuevo ya existe, no hace nada (para no duplicar nombres).
+     */
+    private void renombrarUsuario(String usuarioViejo, String usuarioNuevo, String nombreCompleto) {
+        if (usuarioRepository.findByUsernameIgnoreCase(usuarioNuevo).isPresent()) {
+            return;
+        }
+        usuarioRepository.findByUsernameIgnoreCase(usuarioViejo).ifPresent(usuario -> {
+            usuario.setUsername(usuarioNuevo);
+            usuario.setNombreCompleto(nombreCompleto);
+            usuarioRepository.save(usuario);
+            System.out.println("[UsuarioInicializador] \"" + usuarioViejo + "\" ahora es \"" + usuarioNuevo + "\".");
         });
     }
 }
