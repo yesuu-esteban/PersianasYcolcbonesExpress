@@ -28,8 +28,9 @@ import java.util.stream.Collectors;
  *   INSTALADOR → tarea PERSONAL del instalador (sin pedido de almacén). SOLO él la edita o
  *                elimina; el jefe la ve pero no la puede tocar.
  *
- * COLOR: verde = terminada / pedido "Instalado" o "Terminado"; rojo = ya pasó la hora sin
- * terminarse; gris = cancelada; si está pendiente, el color de su tipo.
+ * COLOR: solo las INSTALACIONES cambian de color (verde = instalada / pedido "Instalado" o
+ * "Terminado"; rojo = pasó la hora sin instalarse). Los demás tipos conservan su color;
+ * gris = cancelada.
  */
 @Entity
 @Table(name = "agenda_tarea")
@@ -158,11 +159,20 @@ public class TareaCalendario {
                 && ESTADOS_PEDIDO_TERMINADO.stream().anyMatch(e -> e.equalsIgnoreCase(pedidoTienda.getEstado()));
     }
 
-    /** ROJO: ya pasó la hora de terminar y la tarea no se terminó ni se canceló. */
+    /**
+     * ROJO: SOLO para instalaciones. Ya pasó la hora de terminar y la instalación
+     * no quedó instalada ni se canceló. Los demás tipos nunca se ponen en rojo.
+     */
     @Transient
     public boolean isVencida() {
+        if (!isInstalacion()) return false;
         if (isTerminada() || CANCELADA.equals(estado) || fechaProgramada == null) return false;
         return getFechaFin().isBefore(LocalDateTime.now(ZONA_COLOMBIA));
+    }
+
+    @Transient
+    public boolean isInstalacion() {
+        return INSTALACION.equals(tipo);
     }
 
     @Transient
@@ -240,7 +250,7 @@ public class TareaCalendario {
 
     @Transient
     public String getEstadoEtiqueta() {
-        if (isTerminada()) return INSTALACION.equals(tipo) ? "Instalada" : "Terminada";
+        if (isTerminada()) return isInstalacion() ? "Instalada" : "Completada";
         if (CANCELADA.equals(estado)) return "Cancelada";
         if (isVencida()) return "Vencida · sin terminar";
         return etiquetaEstado(estado);
@@ -251,12 +261,19 @@ public class TareaCalendario {
         return isAsignadaPorAdmin() ? "Asignada por el jefe" : "Personal del instalador";
     }
 
-    /** Verde = terminada · Rojo = vencida · Gris = cancelada · Si está pendiente, el color de su tipo. */
+    /**
+     * Solo las INSTALACIONES cambian de color: verde = instalada, rojo = vencida.
+     * Limpiezas, arreglos, cotizaciones y otros conservan siempre el color de su tipo
+     * (si se completan, el calendario les pone un ✓ y las muestra más claras).
+     * Cualquier tarea cancelada sale en gris.
+     */
     @Transient
     public String getColor() {
-        if (isTerminada()) return COLOR_TERMINADA;
         if (CANCELADA.equals(estado)) return COLOR_CANCELADA;
-        if (isVencida()) return COLOR_VENCIDA;
+        if (isInstalacion()) {
+            if (isTerminada()) return COLOR_TERMINADA;
+            if (isVencida()) return COLOR_VENCIDA;
+        }
         return colorTipo(tipo);
     }
 

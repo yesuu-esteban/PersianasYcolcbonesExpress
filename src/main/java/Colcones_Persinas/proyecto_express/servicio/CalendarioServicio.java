@@ -23,8 +23,11 @@ import java.util.stream.Collectors;
  *  - Jefe (TIENDA_ADMIN / ADMIN): asigna los pedidos "En Bodega" a 1 o 2 instaladores y
  *    pone limpiezas, arreglos, cotizaciones, etc. Edita/elimina SOLO lo que puso él.
  *    Las tareas personales de un instalador las ve, pero NO las puede tocar.
- *  - Instalador: ve su agenda. Agrega tareas PERSONALES (sin pedido de almacén) y edita,
- *    elimina o marca como hechas SOLO esas. Lo que le asignó el jefe es de solo lectura.
+ *  - Instalador: ve su agenda. Agrega tareas PERSONALES (sin pedido de almacén) y edita
+ *    o elimina SOLO esas. Lo que le asignó el jefe no lo puede editar ni eliminar.
+ *    Puede marcar como COMPLETADOS los trabajos que no son instalaciones (limpieza,
+ *    arreglo, cotización, otro), aunque se los haya asignado el jefe. Las instalaciones
+ *    del jefe se completan desde la bodega (pedido "Instalado"/"Terminado").
  *    No ve los pedidos que están en bodega.
  *
  * REGLAS
@@ -263,6 +266,26 @@ public class CalendarioServicio {
         return !t.isAsignadaPorAdmin() && t.getCreadoPor() != null && t.getCreadoPor().equalsIgnoreCase(username);
     }
 
+    /**
+     * ¿Puede este instalador empezar / marcar como completada la tarea?
+     *  - Sus tareas personales: sí (de cualquier tipo).
+     *  - Trabajos que le asignó el jefe y NO son instalaciones: sí.
+     *  - Instalaciones que le asignó el jefe: no; esas se completan desde la bodega.
+     */
+    public boolean puedeCompletar(TareaCalendario t, String username) {
+        if (!t.tieneInstalador(username) || TareaCalendario.CANCELADA.equals(t.getEstado())) return false;
+        return puedeModificar(t, username) || !t.isInstalacion();
+    }
+
+    private TareaCalendario obtenerParaCompletar(int id, String username) {
+        TareaCalendario t = obtenerParaInstalador(id, username);
+        if (!puedeCompletar(t, username)) {
+            throw new IllegalArgumentException("Esta instalación te la asignó el jefe: se pone en verde cuando "
+                    + "el almacén marque el pedido como \"Instalado\" o \"Terminado\".");
+        }
+        return t;
+    }
+
     public TareaCalendario obtenerPropiaModificable(int id, String username) {
         TareaCalendario t = obtenerParaInstalador(id, username);
         if (t.isAsignadaPorAdmin()) {
@@ -327,7 +350,7 @@ public class CalendarioServicio {
 
     @Transactional
     public void iniciar(int id, String username) {
-        TareaCalendario t = obtenerPropiaModificable(id, username);
+        TareaCalendario t = obtenerParaCompletar(id, username);
         if (!TareaCalendario.PROGRAMADA.equals(t.getEstado())) {
             throw new IllegalArgumentException("Solo se puede empezar una tarea que está Programada.");
         }
@@ -337,7 +360,7 @@ public class CalendarioServicio {
 
     @Transactional
     public void completar(int id, String username, String observaciones) {
-        TareaCalendario t = obtenerPropiaModificable(id, username);
+        TareaCalendario t = obtenerParaCompletar(id, username);
         if (!t.isActiva()) {
             throw new IllegalArgumentException("Esta tarea ya estaba marcada como "
                     + t.getEstadoEtiqueta().toLowerCase() + ".");
@@ -504,6 +527,8 @@ public class CalendarioServicio {
 
         List<String> clases = new ArrayList<>();
         if (t.isTerminada()) clases.add("evento-terminado");
+        // Trabajos que no son instalaciones: al completarse NO cambian de color, solo se aclaran.
+        if (t.isTerminada() && !t.isInstalacion()) clases.add("evento-hecho");
         else if (TareaCalendario.CANCELADA.equals(t.getEstado())) clases.add("evento-cancelado");
         else if (t.isVencida()) clases.add("evento-vencido");
         else if (TareaCalendario.EN_CURSO.equals(t.getEstado())) clases.add("evento-en-curso");

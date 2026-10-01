@@ -44,6 +44,7 @@
         .btn-terminar { background: #2f9e44; color: #fff; }
         .btn-accion:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
         .terminada { background: #f0fbf3; border: 1px solid #b2e3c0; border-radius: 12px; padding: 16px; margin-bottom: 14px; }
+        .terminada.hecha { background: #f1f3f5; border-color: #dee2e6; }
         .propias { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
     </style>
 </head>
@@ -64,9 +65,13 @@
         <span class="chip chip-gris" th:if="${companero != null}" th:text="'Con ' + ${companero}"></span>
     </div>
 
-    <div class="aviso-jefe" th:if="${tarea.asignadaPorAdmin}">
-        🔒 Esta tarea te la asignó el jefe. Es de solo lectura: no la puedes editar, eliminar ni marcar.
-        Si hay algún problema con la fecha o el trabajo, avísale.
+    <div class="aviso-jefe" th:if="${tarea.asignadaPorAdmin and tarea.instalacion}">
+        🔒 Esta instalación te la asignó el jefe. No la puedes editar ni eliminar.
+        Se pone en <strong>verde</strong> cuando el almacén marque el pedido como "Instalado" o "Terminado".
+    </div>
+    <div class="aviso-jefe" th:if="${tarea.asignadaPorAdmin and !tarea.instalacion}">
+        🔒 Este trabajo te lo asignó el jefe. No lo puedes editar ni eliminar, pero
+        <strong>sí puedes marcarlo como completado</strong> cuando lo termines.
     </div>
 
     <div class="notas" th:if="${tarea.notas != null and tarea.notas != ''}">
@@ -113,28 +118,28 @@
            th:text="${tarea.pedidoTienda.descripcion}"></p>
     </section>
 
-    <div th:if="${tarea.terminada}" class="terminada">
-        <strong th:text="${tarea.estadoEtiqueta}"></strong>
+    <div th:if="${tarea.terminada}" class="terminada" th:classappend="${!tarea.instalacion} ? 'hecha'">
+        <strong th:text="'✓ ' + ${tarea.estadoEtiqueta}"></strong>
         <div th:if="${tarea.fechaCompletada != null}" th:text="'Registrada el ' + ${tarea.fechaCompletadaFormateada}"></div>
         <div class="mt-2" th:if="${tarea.observacionesInstalador != null and tarea.observacionesInstalador != ''}"
              th:text="${tarea.observacionesInstalador}"></div>
     </div>
 
-    <!-- Avance del trabajo: SOLO para tareas personales (lo del jefe es de solo lectura) -->
-    <form th:if="${esPersonal and tarea.estado == 'PROGRAMADA'}" method="post" class="mb-3"
+    <!-- Avance del trabajo: tareas personales y trabajos del jefe que NO son instalaciones -->
+    <form th:if="${puedeCompletar and tarea.estado == 'PROGRAMADA'}" method="post" class="mb-3"
           th:action="@{/mi-calendario/{id}/iniciar(id=${tarea.id})}">
         <button type="submit" class="btn-accion btn-empezar">Empezar</button>
     </form>
 
-    <form th:if="${esPersonal and tarea.activa}" method="post" class="bloque"
+    <form th:if="${puedeCompletar and tarea.activa}" method="post" class="bloque"
           th:action="@{/mi-calendario/{id}/completar(id=${tarea.id})}"
-          onsubmit="return confirm('¿Confirmas que esta tarea quedó hecha?');">
+          onsubmit="return confirm('¿Confirmas que este trabajo quedó completado?');">
         <h2>Al terminar</h2>
         <label for="observaciones" class="form-label" style="font-size:0.88rem;">Observaciones <span class="text-muted">(opcional)</span></label>
         <textarea id="observaciones" name="observaciones" rows="3" class="form-control mb-3"
                   placeholder="Ej: faltó un soporte, el cliente pidió ajustar la altura"></textarea>
         <button type="submit" class="btn-accion btn-terminar"
-                th:text="${tarea.tipo == 'INSTALACION'} ? 'Marcar como instalada' : 'Marcar como hecha'">Marcar como hecha</button>
+                th:text="${tarea.instalacion} ? 'Marcar como instalada' : 'Marcar como completado'">Marcar como completado</button>
     </form>
 
     <!-- Solo para tareas que este instalador agregó -->

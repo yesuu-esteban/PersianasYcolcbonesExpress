@@ -200,7 +200,7 @@
                 </div>
 
                 <div class="mb-3" th:if="${tarea != null}">
-                    <label class="form-label" for="estado">Estado <span class="fw-normal" style="color:var(--texto-suave)">(Terminada = verde en el calendario)</span></label>
+                    <label class="form-label" for="estado">Estado <span class="fw-normal" style="color:var(--texto-suave)">(en instalaciones, Terminada = verde)</span></label>
                     <select id="estado" th:field="*{estado}" class="form-select">
                         <option th:each="e : ${estados}" th:value="${e}"
                                 th:text="${T(Colcones_Persinas.proyecto_express.modelo.TareaCalendario).etiquetaEstado(e)}"></option>
@@ -250,10 +250,12 @@
                 <span class="origen" th:text="${tarea.origenEtiqueta}"></span>
                 <p class="mt-2 mb-0" style="font-size:0.84rem;color:var(--texto-suave);">
                     Creada por <strong th:text="${tarea.creadoPor}"></strong>.
-                    Para los instaladores es de solo lectura: no la pueden editar, eliminar ni marcar.
+                    Los instaladores no la pueden editar ni eliminar.
+                    <span th:if="${!tarea.instalacion}">Sí la pueden marcar como completada cuando terminen.</span>
+                    <span th:if="${tarea.instalacion}">Se pone en verde cuando el pedido pasa a "Instalado" o "Terminado".</span>
                 </p>
                 <div th:if="${tarea.terminada}" class="reporte mt-3">
-                    <strong th:text="${tarea.tipo == 'INSTALACION'} ? '✓ Instalada' : '✓ Terminada'">Terminada</strong>
+                    <strong th:text="${tarea.instalacion} ? '✓ Instalada' : '✓ Completada'">Completada</strong>
                     <div th:if="${tarea.fechaCompletada != null}" th:text="'Registrada el ' + ${tarea.fechaCompletadaFormateada} + (${tarea.completadaPor != null and tarea.completadaPor != ''} ? ' por ' + ${tarea.completadaPor} : '')"></div>
                     <div th:if="${tarea.pedidoTienda != null}" th:text="'Pedido #' + ${tarea.pedidoTienda.id} + ' en estado ' + ${tarea.pedidoTienda.estado}"></div>
                     <div class="mt-1" th:if="${tarea.observacionesInstalador != null and tarea.observacionesInstalador != ''}" th:text="${tarea.observacionesInstalador}"></div>

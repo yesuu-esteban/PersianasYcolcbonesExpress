@@ -87,8 +87,9 @@
         .fc .fc-day-today .fc-col-header-cell-cushion { color: var(--accent-light); }
         .fc .fc-daygrid-day-frame, .fc .fc-timegrid-slot { cursor: copy; }
         .fc-event { cursor: pointer; font-size: 0.78rem; }
-        /* Verde = terminada · Rojo = vencida sin terminar · Gris tachado = cancelada */
+        /* Instalaciones: verde = instalada, rojo = vencida. Los demás trabajos completados: ✓ y más claros. */
         .evento-terminado .fc-event-title::before, .evento-terminado .fc-list-event-title a::before { content: "✓ "; }
+        .evento-hecho { opacity: 0.55; }
         .evento-vencido .fc-event-title::before, .evento-vencido .fc-list-event-title a::before { content: "⚠ "; }
         .evento-cancelado { opacity: 0.6; }
         .evento-cancelado .fc-event-title, .evento-cancelado .fc-list-event-title a { text-decoration: line-through; }
@@ -173,19 +174,22 @@
     </div>
     <div class="leyenda">
         <div class="grupo">
-            <strong>Estado:</strong>
-            <span style="--c:#2f9e44">Terminada / instalada</span>
-            <span style="--c:#e03131">Vencida (pasó la hora y no se terminó)</span>
-            <span style="--c:#868e96">Cancelada</span>
-            <span class="punteado">Personal del instalador (solo lectura)</span>
+            <strong>Instalaciones:</strong>
+            <span style="--c:#1976d2">Pendiente</span>
+            <span style="--c:#2f9e44">Instalada (pedido "Instalado" o "Terminado")</span>
+            <span style="--c:#e03131">Vencida (pasó la hora y no se instaló)</span>
         </div>
         <div class="grupo">
-            <strong>Pendientes:</strong>
-            <span style="--c:#1976d2">Instalación</span>
+            <strong>Otros trabajos:</strong>
             <span style="--c:#0c8599">Limpieza</span>
             <span style="--c:#e8590c">Arreglo</span>
             <span style="--c:#7048e8">Cotización</span>
             <span style="--c:#a61e4d">Otro</span>
+            <span>✓ y más claro = completado</span>
+        </div>
+        <div class="grupo">
+            <span style="--c:#868e96">Cancelada</span>
+            <span class="punteado">Personal del instalador (solo lectura)</span>
         </div>
     </div>
 

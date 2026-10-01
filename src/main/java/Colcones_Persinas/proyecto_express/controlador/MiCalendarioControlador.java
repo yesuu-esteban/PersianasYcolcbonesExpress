@@ -23,8 +23,9 @@ import java.util.Map;
  *  - Ve las tareas donde participa (solo, o con un compañero).
  *  - Puede agregar tareas PERSONALES: instalación, limpieza, arreglo, cotización u otro
  *    (escritas a mano; NO ve los pedidos que están en bodega).
- *  - Solo puede editar, eliminar o marcar como hechas sus tareas personales.
- *    Lo que le asignó el jefe es de solo lectura.
+ *  - Solo puede editar o eliminar sus tareas personales.
+ *  - Puede marcar como completados los trabajos que NO son instalaciones, aunque se
+ *    los haya asignado el jefe. Las instalaciones del jefe se completan desde la bodega.
  */
 @Controller
 @RequestMapping("/mi-calendario")
@@ -89,6 +90,7 @@ public class MiCalendarioControlador {
         model.addAttribute("puedeModificar",
                 servicio.puedeModificar(t, yo) && !TareaCalendario.COMPLETADA.equals(t.getEstado()));
         model.addAttribute("esPersonal", servicio.puedeModificar(t, yo));
+        model.addAttribute("puedeCompletar", servicio.puedeCompletar(t, yo));
         model.addAttribute("whatsapp", numeroWhatsapp(t.getTelefono()));
         model.addAttribute("mensajeWhatsapp", "Hola " + t.getCliente() + ", le escribe "
                 + servicio.nombreVisible(yo) + " de Persianas Express. Vamos en camino.");
@@ -189,7 +191,7 @@ public class MiCalendarioControlador {
                             RedirectAttributes redirectAttributes) {
         try {
             servicio.completar(id, usuarioActual(), observaciones);
-            redirectAttributes.addFlashAttribute("mensaje", "Tarea registrada como terminada.");
+            redirectAttributes.addFlashAttribute("mensaje", "Trabajo marcado como completado.");
             return "redirect:/mi-calendario";
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("error", e.getMessage());
