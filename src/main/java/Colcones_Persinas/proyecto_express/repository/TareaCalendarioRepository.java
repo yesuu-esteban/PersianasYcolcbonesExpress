@@ -30,6 +30,9 @@ public interface TareaCalendarioRepository extends JpaRepository<TareaCalendario
     List<TareaCalendario> findByPedidoTiendaIdAndTipoAndEstadoIn(
             int pedidoTiendaId, String tipo, Collection<String> estados);
 
+    /** Todas las instalaciones ligadas a un pedido (para sincronizar con el estado del pedido). */
+    List<TareaCalendario> findByPedidoTiendaIdAndTipo(int pedidoTiendaId, String tipo);
+
     boolean existsByInstaladoresId(int instaladorId);
 
     /**

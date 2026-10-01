@@ -60,13 +60,13 @@
         <h1 th:text="${tarea.tituloMostrado}"></h1>
         <div class="cuando" th:text="${tarea.fechaLarga} + ', ' + ${tarea.horaRango}"></div>
         <span class="chip chip-estado" th:text="${tarea.estadoEtiqueta}"></span>
-        <span class="chip chip-gris" th:text="${tarea.asignadaPorAdmin} ? 'Asignada por el jefe' : 'Agregada por ' + ${tarea.creadoPor}"></span>
+        <span class="chip chip-gris" th:text="${tarea.asignadaPorAdmin} ? 'Asignada por el jefe' : 'Personal'"></span>
         <span class="chip chip-gris" th:if="${companero != null}" th:text="'Con ' + ${companero}"></span>
     </div>
 
     <div class="aviso-jefe" th:if="${tarea.asignadaPorAdmin}">
-        Esta tarea la puso el jefe. Solo él la puede editar o eliminar; si hay algún problema
-        con la fecha o el trabajo, avísale.
+        🔒 Esta tarea te la asignó el jefe. Es de solo lectura: no la puedes editar, eliminar ni marcar.
+        Si hay algún problema con la fecha o el trabajo, avísale.
     </div>
 
     <div class="notas" th:if="${tarea.notas != null and tarea.notas != ''}">
@@ -113,20 +113,20 @@
            th:text="${tarea.pedidoTienda.descripcion}"></p>
     </section>
 
-    <div th:if="${tarea.estado == 'COMPLETADA'}" class="terminada">
+    <div th:if="${tarea.terminada}" class="terminada">
         <strong th:text="${tarea.estadoEtiqueta}"></strong>
-        <div th:text="'Registrada el ' + ${tarea.fechaCompletadaFormateada} + (${tarea.completadaPor != null and tarea.completadaPor != ''} ? ' por ' + ${tarea.completadaPor} : '')"></div>
+        <div th:if="${tarea.fechaCompletada != null}" th:text="'Registrada el ' + ${tarea.fechaCompletadaFormateada}"></div>
         <div class="mt-2" th:if="${tarea.observacionesInstalador != null and tarea.observacionesInstalador != ''}"
              th:text="${tarea.observacionesInstalador}"></div>
     </div>
 
-    <!-- Avance del trabajo: sirve para tareas propias y del jefe -->
-    <form th:if="${tarea.estado == 'PROGRAMADA'}" method="post" class="mb-3"
+    <!-- Avance del trabajo: SOLO para tareas personales (lo del jefe es de solo lectura) -->
+    <form th:if="${esPersonal and tarea.estado == 'PROGRAMADA'}" method="post" class="mb-3"
           th:action="@{/mi-calendario/{id}/iniciar(id=${tarea.id})}">
         <button type="submit" class="btn-accion btn-empezar">Empezar</button>
     </form>
 
-    <form th:if="${tarea.activa}" method="post" class="bloque"
+    <form th:if="${esPersonal and tarea.activa}" method="post" class="bloque"
           th:action="@{/mi-calendario/{id}/completar(id=${tarea.id})}"
           onsubmit="return confirm('¿Confirmas que esta tarea quedó hecha?');">
         <h2>Al terminar</h2>

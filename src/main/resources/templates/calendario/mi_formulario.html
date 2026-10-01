@@ -6,7 +6,7 @@
     <title th:text="${tarea == null} ? 'Agregar a mi agenda' : 'Editar tarea'">Tarea</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        :root { --accent: #ec1561; --oscuro: #1c1f26; --fondo: #f4f5f7; --bodega: #0b9fc0; }
+        :root { --accent: #ec1561; --oscuro: #1c1f26; --fondo: #f4f5f7; }
         body { background: var(--fondo); font-family: 'Segoe UI', Arial, sans-serif; color: var(--oscuro); }
         [hidden] { display: none !important; }
         .topbar { background: var(--oscuro); padding: 12px 18px; }
@@ -27,18 +27,7 @@
         .tipos input:checked + label { border-color: var(--c); background: var(--c); color: #fff; }
         .tipos input:focus-visible + label { outline: 3px solid var(--accent); outline-offset: 2px; }
 
-        /* Pedido en bodega */
-        .bloque-bodega { background: #e8f8fc; border: 1px solid #9eeaf9; border-radius: 12px; padding: 14px; }
-        .sin-pedidos { background: #fff8e1; border: 1px solid #ffe08a; border-radius: 10px; padding: 12px; font-size: 0.88rem; }
-        .ficha { background: #fff; border: 1px solid #b6e9f5; border-left: 5px solid var(--bodega); border-radius: 12px; padding: 14px 16px; margin-top: 12px; }
-        .ficha .etiqueta { display: inline-block; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.5px; color: #fff; background: var(--bodega); border-radius: 20px; padding: 2px 10px; margin-bottom: 6px; }
-        .ficha h2 { font-size: 1.05rem; font-weight: 800; margin-bottom: 10px; }
-        .ficha dl { display: grid; grid-template-columns: 92px 1fr; gap: 5px 10px; margin: 0 0 10px; font-size: 0.88rem; }
-        .ficha dt { color: #6b7280; font-weight: 600; }
-        .ficha dd { margin: 0; word-break: break-word; }
-        .ficha h3 { font-size: 0.84rem; font-weight: 700; color: #6b7280; margin: 4px 0 4px; }
-        .ficha ul { list-style: none; padding: 0; margin: 0; font-size: 0.9rem; }
-        .ficha li { padding: 6px 0; border-top: 1px solid #f0f1f3; }
+        .aviso-personal { background: #f1f3f5; border-radius: 10px; padding: 10px 12px; font-size: 0.84rem; color: #495057; }
 
         .btn-guardar { width: 100%; padding: 13px; font-weight: 700; border-radius: 12px; background: var(--oscuro); color: #fff; border: none; }
         .btn-guardar:hover { background: #000; color: #fff; }
@@ -83,40 +72,8 @@
             </div>
         </div>
 
-        <!-- ═══ INSTALACIÓN: se elige un pedido que ya está EN BODEGA ═══ -->
-        <div class="bloque-bodega mb-3" data-tipos="INSTALACION">
-            <div th:if="${#lists.isEmpty(pedidosDisponibles)}" class="sin-pedidos">
-                <strong>No hay pedidos en bodega listos para instalar.</strong><br>
-                Cuando el almacén ponga un pedido en "En Bodega", aparecerá en esta lista.
-            </div>
-            <div th:unless="${#lists.isEmpty(pedidosDisponibles)}">
-                <label class="form-label" for="pedidoTiendaId">Pedido en bodega</label>
-                <select id="pedidoTiendaId" th:field="*{pedidoTiendaId}" class="form-select">
-                    <option value="">Elige el pedido que vas a instalar</option>
-                    <option th:each="p : ${pedidosDisponibles}" th:value="${p.id}"
-                            th:text="'#' + ${p.id} + ' · ' + ${p.nombreCliente}"
-                            th:data-cliente="${p.nombreCliente}"
-                            th:data-telefono="${p.telefono}"
-                            th:data-direccion="${p.direccion}"
-                            th:data-entrega="${p.fechaEntrega != null ? #temporals.format(p.fechaEntrega, 'dd/MM/yyyy') : 'Sin definir'}"
-                            th:data-descripcion="${p.descripcion}"
-                            th:data-productos="${#strings.listJoin(p.detalles.![producto + (material != null and material != '' ? ' · ' + material : '') + ' ×' + cantidad], '|')}"></option>
-                </select>
-                <div class="ayuda">Solo salen los pedidos que ya están en bodega y todavía no tienen instalador.</div>
-
-                <div class="ficha" id="fichaPedido" hidden>
-                    <span class="etiqueta">EN BODEGA · LISTO PARA INSTALAR</span>
-                    <h2 id="fCliente"></h2>
-                    <dl>
-                        <dt>Dirección</dt><dd id="fDireccion"></dd>
-                        <dt>Teléfono</dt><dd id="fTelefono"></dd>
-                        <dt>Entrega</dt><dd id="fEntrega"></dd>
-                        <dt>Descripción</dt><dd id="fDescripcion"></dd>
-                    </dl>
-                    <h3>Productos a instalar</h3>
-                    <ul id="fProductos"></ul>
-                </div>
-            </div>
+        <div class="aviso-personal mb-3">
+            Todo lo que agregues aquí es <strong>personal</strong>: solo tú lo puedes editar o eliminar.
         </div>
 
         <div class="mb-3">
@@ -124,8 +81,8 @@
             <input type="text" id="titulo" th:field="*{titulo}" class="form-control" maxlength="120">
         </div>
 
-        <!-- Datos escritos a mano: solo para limpieza, arreglo, cotización y otro -->
-        <div data-tipos="LIMPIEZA ARREGLO COTIZACION">
+        <!-- Datos del cliente (escritos a mano) -->
+        <div data-tipos="INSTALACION LIMPIEZA ARREGLO COTIZACION">
             <div class="mb-3">
                 <label class="form-label" for="cliente">Cliente</label>
                 <input type="text" id="cliente" th:field="*{cliente}" class="form-control" maxlength="120">
@@ -135,7 +92,7 @@
                 <input type="tel" id="telefono" th:field="*{telefono}" class="form-control" maxlength="40">
             </div>
         </div>
-        <div class="mb-3" data-tipos="LIMPIEZA ARREGLO COTIZACION OTRO">
+        <div class="mb-3">
             <label class="form-label" for="direccion" id="lblDireccion">Dirección</label>
             <input type="text" id="direccion" th:field="*{direccion}" class="form-control" maxlength="200">
         </div>
@@ -166,68 +123,30 @@
                       placeholder="Ej: el cliente quiere cotizar 3 ventanas en blackout"></textarea>
         </div>
 
-        <button type="submit" class="btn-guardar" id="btnGuardar"
+        <button type="submit" class="btn-guardar"
                 th:text="${tarea == null} ? 'Agregar a mi agenda' : 'Guardar cambios'">Guardar</button>
     </form>
 </main>
 
 <script>
     (function () {
-        const selPedido = document.getElementById('pedidoTiendaId');   // null si no hay pedidos en bodega
-        const ficha = document.getElementById('fichaPedido');
-        const btnGuardar = document.getElementById('btnGuardar');
         const lblTitulo = document.getElementById('lblTitulo');
         const lblDireccion = document.getElementById('lblDireccion');
         const inputTitulo = document.getElementById('titulo');
 
-        function texto(id, valor) {
-            document.getElementById(id).textContent = (valor && valor.trim()) ? valor : '—';
-        }
-
-        function pintarFicha(op) {
-            texto('fCliente', op.dataset.cliente);
-            texto('fDireccion', op.dataset.direccion);
-            texto('fTelefono', op.dataset.telefono);
-            texto('fEntrega', op.dataset.entrega);
-            texto('fDescripcion', op.dataset.descripcion);
-            const lista = document.getElementById('fProductos');
-            lista.innerHTML = '';
-            const productos = (op.dataset.productos || '').split('|').filter(x => x.trim());
-            (productos.length ? productos : ['Sin productos registrados.']).forEach(p => {
-                const li = document.createElement('li');
-                li.textContent = p;
-                lista.appendChild(li);
-            });
-        }
-
         function actualizar() {
             const r = document.querySelector('input[name="tipo"]:checked');
             const tipo = r ? r.value : 'COTIZACION';
-            const esInstalacion = tipo === 'INSTALACION';
-
             document.querySelectorAll('[data-tipos]').forEach(el => {
                 el.hidden = !el.dataset.tipos.split(' ').includes(tipo);
             });
-
             const esOtro = tipo === 'OTRO';
             lblTitulo.textContent = esOtro ? '¿De qué se trata?' : 'Asunto (opcional)';
-            inputTitulo.placeholder = esOtro ? 'Ej: cita médica, recoger material' : 'Ej: revisar motor de la persiana';
+            inputTitulo.placeholder = esOtro ? 'Ej: cita médica, recoger material' : 'Ej: instalar 2 persianas en la sala';
             lblDireccion.textContent = esOtro ? 'Lugar (opcional)' : 'Dirección';
-
-            // Instalación: el pedido es obligatorio; sin pedidos en bodega no se puede guardar.
-            if (selPedido) selPedido.required = esInstalacion;
-            btnGuardar.disabled = esInstalacion && !selPedido;
-
-            if (ficha && selPedido) {
-                const op = selPedido.options[selPedido.selectedIndex];
-                const conPedido = esInstalacion && op && op.value !== '';
-                ficha.hidden = !conPedido;
-                if (conPedido) pintarFicha(op);
-            }
         }
 
         document.querySelectorAll('input[name="tipo"]').forEach(r => r.addEventListener('change', actualizar));
-        if (selPedido) selPedido.addEventListener('change', actualizar);
         actualizar();
     })();
 </script>

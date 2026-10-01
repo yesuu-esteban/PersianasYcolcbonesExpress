@@ -20,11 +20,12 @@ import java.util.stream.Collectors;
  * Reglas del módulo de Instalaciones y de la agenda de los instaladores.
  *
  * PERMISOS
- *  - Jefe (TIENDA_ADMIN / ADMIN): crea, edita y elimina cualquier tarea y asigna
- *    los pedidos "En Bodega" a 1 o 2 instaladores  → métodos "...ComoAdmin".
- *  - Instalador: ve las tareas donde participa. Puede agregar tareas propias
- *    (instalación, limpieza, arreglo, cotización, otro) y editar/eliminar SOLO las
- *    que él mismo creó. Las que puso el jefe solo las puede empezar y terminar.
+ *  - Jefe (TIENDA_ADMIN / ADMIN): asigna los pedidos "En Bodega" a 1 o 2 instaladores y
+ *    pone limpiezas, arreglos, cotizaciones, etc. Edita/elimina SOLO lo que puso él.
+ *    Las tareas personales de un instalador las ve, pero NO las puede tocar.
+ *  - Instalador: ve su agenda. Agrega tareas PERSONALES (sin pedido de almacén) y edita,
+ *    elimina o marca como hechas SOLO esas. Lo que le asignó el jefe es de solo lectura.
+ *    No ve los pedidos que están en bodega.
  *
  * REGLAS
  *  - Máximo 2 instaladores por tarea.
@@ -123,6 +124,7 @@ public class CalendarioServicio {
         final boolean esNueva = (id == null);
         final TareaCalendario t = esNueva ? new TareaCalendario() : tareaRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Esa tarea ya no existe."));
+        if (!esNueva) exigirTareaDelJefe(t);
 
         String estadoAnterior = esNueva ? null : t.getEstado();
         PedidoTienda pedidoAnterior = esNueva ? null : t.getPedidoTienda();
@@ -175,8 +177,43 @@ public class CalendarioServicio {
     public void eliminarComoAdmin(int id) {
         TareaCalendario t = tareaRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Esa tarea ya no existe."));
+        exigirTareaDelJefe(t);
         aplicarCambioDeEstado(t, t.getEstado(), TareaCalendario.CANCELADA, t.getPedidoTienda(), null);
         tareaRepository.delete(t);
+    }
+
+    /** El jefe no puede modificar ni eliminar las tareas personales de un instalador. */
+    private void exigirTareaDelJefe(TareaCalendario t) {
+        if (!t.isAsignadaPorAdmin()) {
+            throw new IllegalArgumentException("Esta tarea es personal de " + t.getNombresInstaladores()
+                    + ". Solo esa persona la puede modificar o eliminar.");
+        }
+    }
+
+    /**
+     * Se llama cuando el almacén cambia el estado de un pedido.
+     *  - Si pasa a "Instalado" o "Terminado": sus instalaciones activas quedan TERMINADAS (verde).
+     *  - Si vuelve a un estado anterior: las que estaban terminadas vuelven a PROGRAMADA.
+     */
+    @Transactional
+    public void sincronizarConPedido(int pedidoId, String nuevoEstadoPedido, String usuario) {
+        boolean pedidoTerminado = nuevoEstadoPedido != null && TareaCalendario.ESTADOS_PEDIDO_TERMINADO.stream()
+                .anyMatch(e -> e.equalsIgnoreCase(nuevoEstadoPedido));
+        LocalDateTime ahora = LocalDateTime.now(TareaCalendario.ZONA_COLOMBIA);
+
+        for (TareaCalendario t : tareaRepository.findByPedidoTiendaIdAndTipo(pedidoId, TareaCalendario.INSTALACION)) {
+            if (pedidoTerminado && t.isActiva()) {
+                t.setEstado(TareaCalendario.COMPLETADA);
+                t.setFechaCompletada(ahora);
+                t.setCompletadaPor(nvl(usuario));
+                tareaRepository.save(t);
+            } else if (!pedidoTerminado && TareaCalendario.COMPLETADA.equals(t.getEstado())) {
+                t.setEstado(TareaCalendario.PROGRAMADA);
+                t.setFechaCompletada(null);
+                t.setCompletadaPor("");
+                tareaRepository.save(t);
+            }
+        }
     }
 
     /** Valida 1 o 2 instaladores distintos, con rol INSTALADOR y activos. */
@@ -229,12 +266,12 @@ public class CalendarioServicio {
     public TareaCalendario obtenerPropiaModificable(int id, String username) {
         TareaCalendario t = obtenerParaInstalador(id, username);
         if (t.isAsignadaPorAdmin()) {
-            throw new IllegalArgumentException("Esta tarea la puso el jefe: solo él la puede editar o eliminar. "
+            throw new IllegalArgumentException("Esta tarea te la asignó el jefe: solo él la puede modificar. "
                     + "Si hay algún problema, avísale.");
         }
         if (!puedeModificar(t, username)) {
             throw new IllegalArgumentException("Esta tarea la agregó " + t.getCreadoPor()
-                    + "; solo esa persona o el jefe la pueden editar o eliminar.");
+                    + "; solo esa persona la puede editar o eliminar.");
         }
         return t;
     }
@@ -257,25 +294,15 @@ public class CalendarioServicio {
         LocalDateTime fecha = exigirFecha(f.getFechaProgramada());
         int duracion = validarDuracion(f.getDuracionMinutos());
 
-        // ── Instalación: OBLIGATORIO elegir un pedido que esté "En Bodega" ──
-        PedidoTienda pedidoAnterior = esNueva ? null : t.getPedidoTienda();
-        String estadoActual = esNueva ? TareaCalendario.PROGRAMADA : t.getEstado();
-        PedidoTienda pedido = TareaCalendario.INSTALACION.equals(tipo)
-                ? resolverPedidoEnBodega(f.getPedidoTiendaId(), pedidoAnterior, estadoActual, esNueva ? null : t.getId())
-                : null;
-
-        if (pedido != null) {
-            copiarDatosDelPedido(t, pedido);
-        } else {
-            copiarContacto(t, tipo, f);
-        }
+        // Las tareas del instalador son PERSONALES: nunca van ligadas a un pedido de almacén.
+        copiarContacto(t, tipo, f);
         t.setTitulo(nvl(f.getTitulo()).trim());
         validarContenido(tipo, t);
 
         validarCruce(yo, fecha, duracion, esNueva ? null : t.getId(), true);
 
         t.setTipo(tipo);
-        t.setPedidoTienda(pedido);
+        t.setPedidoTienda(null);
         t.setFechaProgramada(fecha);
         t.setDuracionMinutos(duracion);
         t.setNotas(nvl(f.getNotas()).trim());
@@ -300,7 +327,7 @@ public class CalendarioServicio {
 
     @Transactional
     public void iniciar(int id, String username) {
-        TareaCalendario t = obtenerParaInstalador(id, username);
+        TareaCalendario t = obtenerPropiaModificable(id, username);
         if (!TareaCalendario.PROGRAMADA.equals(t.getEstado())) {
             throw new IllegalArgumentException("Solo se puede empezar una tarea que está Programada.");
         }
@@ -310,7 +337,7 @@ public class CalendarioServicio {
 
     @Transactional
     public void completar(int id, String username, String observaciones) {
-        TareaCalendario t = obtenerParaInstalador(id, username);
+        TareaCalendario t = obtenerPropiaModificable(id, username);
         if (!t.isActiva()) {
             throw new IllegalArgumentException("Esta tarea ya estaba marcada como "
                     + t.getEstadoEtiqueta().toLowerCase() + ".");
@@ -408,9 +435,12 @@ public class CalendarioServicio {
             if (excluirId != null && otra.getId() == excluirId) continue;
             if (otra.getFechaProgramada().isBefore(fin) && otra.getFechaFin().isAfter(inicio)) {
                 String quien = hablaElInstalador ? "Ya tienes" : TareaCalendario.nombreVisible(instalador) + " ya tiene";
+                String extra = (!hablaElInstalador && !otra.isAsignadaPorAdmin())
+                        ? " Es una tarea personal suya: solo queda libre si él la elimina."
+                        : "";
                 throw new IllegalArgumentException(quien + " " + otra.getTipoEtiqueta().toLowerCase()
                         + " \"" + otra.getTituloMostrado() + "\" de " + otra.getHoraRango()
-                        + " ese día, y se cruza con este horario.");
+                        + " ese día, y se cruza con este horario." + extra);
             }
         }
     }
@@ -473,9 +503,11 @@ public class CalendarioServicio {
         extra.put("horario", t.getFechaProgramada().format(FMT_HORA) + " – " + t.getFechaFin().format(FMT_HORA));
 
         List<String> clases = new ArrayList<>();
-        if (TareaCalendario.COMPLETADA.equals(t.getEstado())) clases.add("evento-terminado");
-        if (TareaCalendario.CANCELADA.equals(t.getEstado()))  clases.add("evento-cancelado");
-        if (TareaCalendario.EN_CURSO.equals(t.getEstado()))   clases.add("evento-en-curso");
+        if (t.isTerminada()) clases.add("evento-terminado");
+        else if (TareaCalendario.CANCELADA.equals(t.getEstado())) clases.add("evento-cancelado");
+        else if (t.isVencida()) clases.add("evento-vencido");
+        else if (TareaCalendario.EN_CURSO.equals(t.getEstado())) clases.add("evento-en-curso");
+        if (!t.isAsignadaPorAdmin()) clases.add("evento-personal");
 
         Map<String, Object> ev = new LinkedHashMap<>();
         ev.put("id", t.getId());

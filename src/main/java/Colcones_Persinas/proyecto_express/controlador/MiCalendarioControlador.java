@@ -1,7 +1,6 @@
 package Colcones_Persinas.proyecto_express.controlador;
 
 import Colcones_Persinas.proyecto_express.modelo.FormularioTarea;
-import Colcones_Persinas.proyecto_express.modelo.PedidoTienda;
 import Colcones_Persinas.proyecto_express.modelo.TareaCalendario;
 import Colcones_Persinas.proyecto_express.servicio.CalendarioServicio;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -15,7 +14,6 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -23,9 +21,10 @@ import java.util.Map;
 /**
  * Agenda personal del INSTALADOR.
  *  - Ve las tareas donde participa (solo, o con un compañero).
- *  - Puede agregar tareas propias: instalación, limpieza, arreglo, cotización u otro.
- *  - Solo puede editar/eliminar lo que él mismo agregó. Lo que puso el jefe
- *    solo lo puede empezar y marcar como terminado.
+ *  - Puede agregar tareas PERSONALES: instalación, limpieza, arreglo, cotización u otro
+ *    (escritas a mano; NO ve los pedidos que están en bodega).
+ *  - Solo puede editar, eliminar o marcar como hechas sus tareas personales.
+ *    Lo que le asignó el jefe es de solo lectura.
  */
 @Controller
 @RequestMapping("/mi-calendario")
@@ -89,6 +88,7 @@ public class MiCalendarioControlador {
         model.addAttribute("companero", companero);
         model.addAttribute("puedeModificar",
                 servicio.puedeModificar(t, yo) && !TareaCalendario.COMPLETADA.equals(t.getEstado()));
+        model.addAttribute("esPersonal", servicio.puedeModificar(t, yo));
         model.addAttribute("whatsapp", numeroWhatsapp(t.getTelefono()));
         model.addAttribute("mensajeWhatsapp", "Hola " + t.getCliente() + ", le escribe "
                 + servicio.nombreVisible(yo) + " de Persianas Express. Vamos en camino.");
@@ -99,15 +99,10 @@ public class MiCalendarioControlador {
     @GetMapping("/nueva")
     public String nueva(@RequestParam(required = false) String fecha,
                         @RequestParam(required = false) String tipo,
-                        @RequestParam(required = false) Integer pedidoId,
                         Model model) {
         if (!model.containsAttribute("form")) {
             FormularioTarea f = new FormularioTarea();
             f.setTipo(tipo != null && TareaCalendario.TIPOS.contains(tipo) ? tipo : TareaCalendario.COTIZACION);
-            if (pedidoId != null) {
-                f.setTipo(TareaCalendario.INSTALACION);
-                f.setPedidoTiendaId(pedidoId);
-            }
             f.setDuracionMinutos(TareaCalendario.INSTALACION.equals(f.getTipo()) ? 120 : 60);
             LocalDateTime fl = CalendarioServicio.parsearFechaFormulario(fecha);
             if (fl == null) fl = LocalDate.now(TareaCalendario.ZONA_COLOMBIA).plusDays(1).atTime(8, 0);
@@ -116,7 +111,6 @@ public class MiCalendarioControlador {
         }
         model.addAttribute("accionFormulario", "/mi-calendario/guardar");
         model.addAttribute("tipos", TareaCalendario.TIPOS);
-        model.addAttribute("pedidosDisponibles", pedidosParaFormulario(null));
         return "calendario/mi_formulario";
     }
 
@@ -147,7 +141,6 @@ public class MiCalendarioControlador {
         model.addAttribute("tarea", t);
         model.addAttribute("accionFormulario", "/mi-calendario/" + id + "/editar");
         model.addAttribute("tipos", TareaCalendario.TIPOS);
-        model.addAttribute("pedidosDisponibles", pedidosParaFormulario(t));
         return "calendario/mi_formulario";
     }
 
@@ -205,16 +198,6 @@ public class MiCalendarioControlador {
     }
 
     // ─── Helpers ──────────────────────────────────────────────────────
-
-    /** Pedidos "En Bodega" sin instalación; al editar, incluye también el pedido ya ligado. */
-    private List<PedidoTienda> pedidosParaFormulario(TareaCalendario tarea) {
-        List<PedidoTienda> pedidos = new ArrayList<>(servicio.instalacionesPendientes());
-        if (tarea != null && tarea.getPedidoTienda() != null
-                && pedidos.stream().noneMatch(p -> p.getId() == tarea.getPedidoTienda().getId())) {
-            pedidos.add(0, tarea.getPedidoTienda());
-        }
-        return pedidos;
-    }
 
     /** Deja solo dígitos y agrega el 57 si es un celular colombiano de 10 dígitos. */
     private String numeroWhatsapp(String telefono) {

@@ -65,7 +65,7 @@
         .selector-instalador a:hover { border-color: var(--accent-light); }
         .selector-instalador a.activo { background: var(--accent); border-color: var(--accent); color: #fff; }
         .selector-instalador a:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
-        .leyenda { display: flex; flex-wrap: wrap; gap: 14px; font-size: 0.78rem; color: var(--texto-suave); margin-bottom: 12px; }
+        .leyenda { display: flex; flex-direction: column; gap: 6px; font-size: 0.78rem; color: var(--texto-suave); margin-bottom: 12px; }
         .leyenda span::before { content: ""; display: inline-block; width: 11px; height: 11px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; background: var(--c); }
 
         .caja { background: var(--bg-card); border-radius: 14px; padding: 14px; box-shadow: 0 4px 22px rgba(0,0,0,0.3); }
@@ -87,10 +87,17 @@
         .fc .fc-day-today .fc-col-header-cell-cushion { color: var(--accent-light); }
         .fc .fc-daygrid-day-frame, .fc .fc-timegrid-slot { cursor: copy; }
         .fc-event { cursor: pointer; font-size: 0.78rem; }
-        .evento-terminado { opacity: 0.55; }
+        /* Verde = terminada · Rojo = vencida sin terminar · Gris tachado = cancelada */
         .evento-terminado .fc-event-title::before, .evento-terminado .fc-list-event-title a::before { content: "✓ "; }
+        .evento-vencido .fc-event-title::before, .evento-vencido .fc-list-event-title a::before { content: "⚠ "; }
+        .evento-cancelado { opacity: 0.6; }
         .evento-cancelado .fc-event-title, .evento-cancelado .fc-list-event-title a { text-decoration: line-through; }
         .evento-en-curso { box-shadow: 0 0 0 2px var(--gold); }
+        /* Tareas personales del instalador: borde punteado (el jefe solo las ve) */
+        .fc-timegrid-event.evento-personal, .fc-daygrid-event.evento-personal { border-style: dashed !important; border-width: 2px !important; border-color: rgba(255,255,255,0.75) !important; }
+        .leyenda .grupo { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; }
+        .leyenda .grupo strong { color: var(--texto); font-weight: 600; margin-right: 2px; }
+        .leyenda .punteado::before { background: transparent !important; border: 2px dashed #fff; }
         .aviso-carga { display: none; }
 
         @media (max-width: 576px) { body { padding: 12px; } .marca-header { padding: 12px 16px; } }
@@ -148,7 +155,8 @@
 
     <!-- ═══════ AGENDA ═══════ -->
     <h2 class="seccion" th:text="${instaladorSelNombre != null} ? 'Agenda de ' + ${instaladorSelNombre} : 'Agenda de todos los instaladores'">Agenda</h2>
-    <p class="seccion-ayuda">Haz clic en un día u hora libre para poner una tarea, o en una tarea para editarla o eliminarla.</p>
+    <p class="seccion-ayuda">Haz clic en un día u hora libre para poner una tarea, o en una tarea tuya para editarla o eliminarla.
+        Puedes poner varios equipos a la misma hora: cada tarea lleva 1 o 2 instaladores.</p>
 
     <div id="avisoCarga" class="alert alert-danger aviso-carga">
         No se pudo cargar la agenda. Recarga la página; si sigue fallando, cierra sesión y vuelve a entrar.
@@ -164,12 +172,21 @@
         </nav>
     </div>
     <div class="leyenda">
-        <span style="--c:#1976d2">Instalación</span>
-        <span style="--c:#0c8599">Limpieza</span>
-        <span style="--c:#e8590c">Arreglo</span>
-        <span style="--c:#7048e8">Cotización</span>
-        <span style="--c:#a61e4d">Otro</span>
-        <span style="--c:#868e96">Cancelada</span>
+        <div class="grupo">
+            <strong>Estado:</strong>
+            <span style="--c:#2f9e44">Terminada / instalada</span>
+            <span style="--c:#e03131">Vencida (pasó la hora y no se terminó)</span>
+            <span style="--c:#868e96">Cancelada</span>
+            <span class="punteado">Personal del instalador (solo lectura)</span>
+        </div>
+        <div class="grupo">
+            <strong>Pendientes:</strong>
+            <span style="--c:#1976d2">Instalación</span>
+            <span style="--c:#0c8599">Limpieza</span>
+            <span style="--c:#e8590c">Arreglo</span>
+            <span style="--c:#7048e8">Cotización</span>
+            <span style="--c:#a61e4d">Otro</span>
+        </div>
     </div>
 
     <div class="caja">

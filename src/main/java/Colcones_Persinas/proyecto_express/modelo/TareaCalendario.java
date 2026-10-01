@@ -23,8 +23,13 @@ import java.util.stream.Collectors;
  * INSTALADORES: 1 o 2 por tarea (MAX_INSTALADORES). El primero de la lista es el principal.
  *
  * ORIGEN (quién la puso y, por lo tanto, quién la puede editar/eliminar):
- *   ADMIN      → la puso el jefe (TIENDA_ADMIN / ADMIN). SOLO el jefe la edita o elimina.
- *   INSTALADOR → la puso un instalador en su propia agenda. La edita/elimina él (y el jefe).
+ *   ADMIN      → la puso el jefe (TIENDA_ADMIN / ADMIN). SOLO el jefe la edita o elimina;
+ *                para el instalador es de solo lectura.
+ *   INSTALADOR → tarea PERSONAL del instalador (sin pedido de almacén). SOLO él la edita o
+ *                elimina; el jefe la ve pero no la puede tocar.
+ *
+ * COLOR: verde = terminada / pedido "Instalado" o "Terminado"; rojo = ya pasó la hora sin
+ * terminarse; gris = cancelada; si está pendiente, el color de su tipo.
  */
 @Entity
 @Table(name = "agenda_tarea")
@@ -49,6 +54,14 @@ public class TareaCalendario {
     public static final String CANCELADA  = "CANCELADA";
     public static final List<String> ESTADOS = List.of(PROGRAMADA, EN_CURSO, COMPLETADA, CANCELADA);
     public static final List<String> ESTADOS_ACTIVOS = List.of(PROGRAMADA, EN_CURSO);
+
+    // ── Estados del PEDIDO de almacén que significan "ya quedó instalado" ──
+    public static final List<String> ESTADOS_PEDIDO_TERMINADO = List.of("Instalado", "Terminado");
+
+    // ── Colores de estado en el calendario ──
+    public static final String COLOR_TERMINADA = "#2f9e44";   // verde
+    public static final String COLOR_VENCIDA   = "#e03131";   // rojo
+    public static final String COLOR_CANCELADA = "#868e96";   // gris
 
     // ── Origen ──
     public static final String ORIGEN_ADMIN      = "ADMIN";
@@ -134,6 +147,24 @@ public class TareaCalendario {
         return ESTADOS_ACTIVOS.contains(estado);
     }
 
+    /**
+     * VERDE: la tarea se marcó como terminada, o es una instalación cuyo pedido
+     * el almacén ya pasó a "Instalado" o "Terminado".
+     */
+    @Transient
+    public boolean isTerminada() {
+        if (COMPLETADA.equals(estado)) return true;
+        return pedidoTienda != null && pedidoTienda.getEstado() != null
+                && ESTADOS_PEDIDO_TERMINADO.stream().anyMatch(e -> e.equalsIgnoreCase(pedidoTienda.getEstado()));
+    }
+
+    /** ROJO: ya pasó la hora de terminar y la tarea no se terminó ni se canceló. */
+    @Transient
+    public boolean isVencida() {
+        if (isTerminada() || CANCELADA.equals(estado) || fechaProgramada == null) return false;
+        return getFechaFin().isBefore(LocalDateTime.now(ZONA_COLOMBIA));
+    }
+
     @Transient
     public boolean isAsignadaPorAdmin() {
         return ORIGEN_ADMIN.equals(origen);
@@ -209,18 +240,24 @@ public class TareaCalendario {
 
     @Transient
     public String getEstadoEtiqueta() {
-        if (COMPLETADA.equals(estado) && INSTALACION.equals(tipo)) return "Instalada";
+        if (isTerminada()) return INSTALACION.equals(tipo) ? "Instalada" : "Terminada";
+        if (CANCELADA.equals(estado)) return "Cancelada";
+        if (isVencida()) return "Vencida · sin terminar";
         return etiquetaEstado(estado);
     }
 
     @Transient
     public String getOrigenEtiqueta() {
-        return isAsignadaPorAdmin() ? "Asignada por el jefe" : "Agregada por el instalador";
+        return isAsignadaPorAdmin() ? "Asignada por el jefe" : "Personal del instalador";
     }
 
+    /** Verde = terminada · Rojo = vencida · Gris = cancelada · Si está pendiente, el color de su tipo. */
     @Transient
     public String getColor() {
-        return CANCELADA.equals(estado) ? "#868e96" : colorTipo(tipo);
+        if (isTerminada()) return COLOR_TERMINADA;
+        if (CANCELADA.equals(estado)) return COLOR_CANCELADA;
+        if (isVencida()) return COLOR_VENCIDA;
+        return colorTipo(tipo);
     }
 
     @Transient

@@ -40,7 +40,8 @@
         }
         .tarea:hover { border-color: var(--c); }
         .tarea:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
-        .tarea.terminada { opacity: 0.6; }
+        .tarea.terminada { background: #f0fbf3; }
+        .tarea.vencida { background: #fff5f5; }
         .tarea .hora { font-weight: 800; font-size: 1rem; line-height: 1.15; white-space: nowrap; }
         .tarea .hora small { display: block; font-weight: 500; font-size: 0.74rem; color: #6b7280; }
         .tarea .tipo { font-size: 0.76rem; font-weight: 700; color: var(--c); }
@@ -62,9 +63,12 @@
         .fc .fc-timegrid-col.fc-day-today, .fc .fc-daygrid-day.fc-day-today { background: #fff1f6; }
         .fc .fc-daygrid-day-frame, .fc .fc-timegrid-slot { cursor: copy; }
         .fc-event { cursor: pointer; }
-        .evento-terminado { opacity: 0.55; }
+        /* Verde = terminada · Rojo = vencida sin terminar */
         .evento-terminado .fc-event-title::before, .evento-terminado .fc-list-event-title a::before { content: "✓ "; }
+        .evento-vencido .fc-event-title::before, .evento-vencido .fc-list-event-title a::before { content: "⚠ "; }
         .evento-en-curso { box-shadow: 0 0 0 2px #fab005; }
+        .leyenda { display: flex; flex-wrap: wrap; gap: 14px; font-size: 0.78rem; color: #6b7280; margin-bottom: 10px; }
+        .leyenda span::before { content: ""; display: inline-block; width: 11px; height: 11px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; background: var(--c); }
         .aviso-carga { display: none; }
     </style>
 </head>
@@ -97,14 +101,14 @@
         <a href="/mi-calendario/nueva?tipo=COTIZACION" style="--c:#7048e8">+ Cotización</a>
         <a href="/mi-calendario/nueva?tipo=OTRO" style="--c:#a61e4d">+ Otro</a>
     </div>
-    <p class="nota">Lo que agregues tú lo puedes editar o eliminar. Lo que pone el jefe solo lo puedes empezar y marcar como hecho.</p>
+    <p class="nota">Lo que agregues tú es personal: lo puedes editar, eliminar o marcar como hecho. Lo que te asigna el jefe solo lo puedes ver.</p>
 
     <div class="seccion-titulo">Hoy</div>
     <div th:if="${#lists.isEmpty(tareasHoy)}" class="vacio">
         No tienes nada para hoy. Revisa la agenda para ver lo que viene.
     </div>
     <a th:each="t : ${tareasHoy}" class="tarea"
-       th:classappend="${t.estado == 'COMPLETADA'} ? 'terminada'"
+       th:classappend="${t.terminada} ? 'terminada' : (${t.vencida} ? 'vencida' : '')"
        th:href="@{/mi-calendario/{id}(id=${t.id})}"
        th:style="'--c:' + ${t.color}">
         <div class="hora">
@@ -117,7 +121,7 @@
             <div class="direccion" th:if="${t.direccion != null and t.direccion != ''}" th:text="'📍 ' + ${t.direccion}"></div>
             <div class="meta">
                 <span th:text="${t.estadoEtiqueta}"></span>
-                <span th:text="${t.asignadaPorAdmin} ? ' · asignada por el jefe' : ' · agregada por ti'"></span>
+                <span th:text="${t.asignadaPorAdmin} ? ' · asignada por el jefe' : ' · personal'"></span>
                 <span th:if="${#lists.size(t.instaladores) > 1}" th:text="' · con ' + ${t.nombresInstaladores}"></span>
             </div>
         </div>
@@ -126,6 +130,15 @@
     <div class="seccion-titulo">Agenda</div>
     <div id="avisoCarga" class="alert alert-danger aviso-carga">
         No se pudo cargar la agenda. Recarga la página; si sigue fallando, cierra sesión y vuelve a entrar.
+    </div>
+    <div class="leyenda">
+        <span style="--c:#2f9e44">Terminada</span>
+        <span style="--c:#e03131">Vencida (pasó la hora y no se terminó)</span>
+        <span style="--c:#1976d2">Instalación</span>
+        <span style="--c:#0c8599">Limpieza</span>
+        <span style="--c:#e8590c">Arreglo</span>
+        <span style="--c:#7048e8">Cotización</span>
+        <span style="--c:#a61e4d">Otro</span>
     </div>
     <div class="caja-calendario">
         <div id="calendario"></div>

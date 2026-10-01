@@ -25,6 +25,7 @@ import Colcones_Persinas.proyecto_express.modelo.PedidoTienda;
 import Colcones_Persinas.proyecto_express.modelo.DetallePedidoTienda;
 import Colcones_Persinas.proyecto_express.repository.PedidoTiendaRepository;
 import Colcones_Persinas.proyecto_express.repository.TareaCalendarioRepository;
+import Colcones_Persinas.proyecto_express.servicio.CalendarioServicio;
 
 /**
  * Controlador del módulo de Almacén (antes llamado "Tienda").
@@ -34,9 +35,10 @@ import Colcones_Persinas.proyecto_express.repository.TareaCalendarioRepository;
  * ya existentes. Solo cambian las RUTAS visibles (/almacen/...) y los
  * TEXTOS que ve el usuario (plantillas "almacen/...").
  *
- * Cuando un pedido pasa a "En Bodega" (actualizarEstado), aparece solo en
- * "Instalaciones pendientes" del módulo /instalaciones. No hace falta
- * ningún código extra aquí: el módulo lee el estado directamente.
+ * Relación con el módulo /instalaciones:
+ *  - Cuando un pedido pasa a "En Bodega", aparece solo en "Instalaciones pendientes".
+ *  - Cuando pasa a "Instalado" o "Terminado", su instalación queda terminada (verde en el
+ *    calendario). Si vuelve a un estado anterior, la instalación vuelve a quedar pendiente.
  */
 @Controller
 @RequestMapping("/almacen")
@@ -51,6 +53,10 @@ public class PedidoTiendaControlador {
     // ── NUEVO ──
     @Autowired
     private TareaCalendarioRepository tareaCalendarioRepository;
+
+    // ── NUEVO: para pintar en verde las instalaciones cuando el pedido pasa a "Instalado"/"Terminado" ──
+    @Autowired
+    private CalendarioServicio calendarioServicio;
 
     @PreAuthorize("hasAnyRole('TIENDA','ADMIN')")
     @GetMapping("/nuevo")
@@ -254,6 +260,9 @@ public class PedidoTiendaControlador {
         recalcularTotales(pedido);
         pedidoTiendaRepository.save(pedido);
 
+        // ── NUEVO: sincroniza el color de la instalación en el calendario ──
+        calendarioServicio.sincronizarConPedido(id, pedido.getEstado(), usuarioActual());
+
         redirectAttributes.addFlashAttribute("mensaje", "Pedido #" + id + " actualizado correctamente.");
         return "redirect:/almacen/listado";
     }
@@ -286,6 +295,10 @@ public class PedidoTiendaControlador {
         PedidoTienda pedido = pedidoTiendaRepository.findById(id).orElseThrow();
         pedido.setEstado(estado);
         pedidoTiendaRepository.save(pedido);
+
+        // ── NUEVO: "Instalado"/"Terminado" → la instalación queda en verde en el calendario ──
+        calendarioServicio.sincronizarConPedido(id, estado, usuarioActual());
+
         redirectAttributes.addFlashAttribute("mensaje", "Estado actualizado a \"" + estado + "\".");
         return "redirect:/almacen/listado";
     }
@@ -549,6 +562,11 @@ public class PedidoTiendaControlador {
         }
 
         return sb.toString();
+    }
+
+    private String usuarioActual() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        return auth != null ? auth.getName() : "";
     }
 
     private boolean puedeGestionarPedidos() {

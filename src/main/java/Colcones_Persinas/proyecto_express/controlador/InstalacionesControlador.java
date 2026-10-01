@@ -25,8 +25,9 @@ import java.util.Map;
  * Lo usa el jefe (TIENDA_ADMIN / ADMIN) para:
  *  - Ver las "Instalaciones pendientes": pedidos que ya están "En Bodega".
  *  - Asignarlas a 1 o 2 instaladores con fecha y hora.
- *  - Poner, editar o eliminar cualquier tarea (limpieza, arreglo, cotización, otro).
- *  - Ver la agenda de cada instalador o de todos juntos.
+ *  - Poner, editar o eliminar SUS tareas (limpieza, arreglo, cotización, otro).
+ *  - Ver la agenda de cada instalador o de todos juntos. Las tareas personales de
+ *    un instalador las ve en solo lectura: no las puede modificar ni eliminar.
  */
 @Controller
 @RequestMapping("/instalaciones")
@@ -115,6 +116,11 @@ public class InstalacionesControlador {
         if (t == null) {
             redirectAttributes.addFlashAttribute("error", "Esa tarea ya no existe.");
             return "redirect:/instalaciones";
+        }
+        // Las tareas personales del instalador el jefe solo las puede VER, no modificar.
+        if (!t.isAsignadaPorAdmin()) {
+            model.addAttribute("tarea", t);
+            return "instalaciones/detalle";
         }
         if (!model.containsAttribute("form")) {
             model.addAttribute("form", FormularioTarea.desde(t));
