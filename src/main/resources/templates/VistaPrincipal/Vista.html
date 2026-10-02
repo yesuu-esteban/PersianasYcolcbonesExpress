@@ -218,15 +218,20 @@
         }
 
 
-        /* Aviso cuando no hay sesión iniciada */
+        /* Sin sesión: un solo recuadro centrado con el botón de iniciar sesión */
+        .portal-main--centrado { display: flex; align-items: center; justify-content: center; }
         .sin-sesion {
-            max-width: 520px; margin: 20px auto 0; text-align: center;
-            background: var(--carbon-card); border: 1px solid var(--border-color); border-radius: 10px;
-            padding: 40px 28px;
+            width: 100%; max-width: 440px; text-align: center;
+            background: var(--carbon-card); border: 1px solid var(--border-color); border-radius: 12px;
+            padding: 44px 32px; box-shadow: 0 15px 40px rgba(0, 0, 0, 0.35);
         }
-        .sin-sesion h2 { font-size: 1.4rem; font-weight: 600; margin-bottom: 10px; }
-        .sin-sesion p { color: var(--cream-muted); font-size: 0.95rem; line-height: 1.5; margin-bottom: 24px; }
-        .sin-sesion .portal-login-btn { display: inline-block; padding: 12px 32px; font-size: 0.95rem; }
+        .sin-sesion .etiqueta {
+            display: block; font-size: 0.72rem; font-weight: 600; letter-spacing: 0.15em;
+            text-transform: uppercase; color: var(--brass); margin-bottom: 12px;
+        }
+        .sin-sesion h2 { font-size: 1.5rem; font-weight: 600; margin-bottom: 10px; letter-spacing: -0.01em; }
+        .sin-sesion p { color: var(--cream-muted); font-size: 0.95rem; line-height: 1.5; margin-bottom: 28px; }
+        .sin-sesion .portal-login-btn { display: block; width: 100%; padding: 13px; font-size: 0.95rem; text-align: center; }
 
         /* Footer */
         .portal-footer {
@@ -271,8 +276,8 @@
             .module-category { margin-bottom: 6px; font-size: 0.68rem; }
             .module-card h2 { font-size: 1.25rem; margin-bottom: 6px; }
             .module-card p { font-size: 0.86rem; margin-bottom: 12px; }
-            .sin-sesion { padding: 28px 18px; margin-top: 8px; }
-            .sin-sesion h2 { font-size: 1.15rem; }
+            .sin-sesion { padding: 32px 22px; }
+            .sin-sesion h2 { font-size: 1.25rem; }
         }
     </style>
 </head>
@@ -290,25 +295,24 @@
                 <a class="portal-logout" th:href="@{/mi-cuenta}">Mi cuenta</a>
                 <a class="portal-logout" th:href="@{/logout}">Cerrar sesión</a>
             </div>
-            <a class="portal-login-btn" sec:authorize="!isAuthenticated()" th:href="@{/login}">Iniciar sesión</a>
         </div>
     </header>
 
     <!-- Contenido Principal Estilo Portal -->
-    <main class="portal-main">
+    <main class="portal-main" th:classappend="${#authorization.expression('!isAuthenticated()')} ? 'portal-main--centrado'">
 
-        <section class="portal-hero">
+        <section class="portal-hero" sec:authorize="isAuthenticated()">
             <div class="hero-text">
                 <h1>Panel de Control General</h1>
-                <p sec:authorize="isAuthenticated()">Estos son los módulos a los que tienes acceso. Selecciona a cuál quieres entrar.</p>
-                <p sec:authorize="!isAuthenticated()">Portal interno de Persianas Express.</p>
+                <p>Estos son los módulos a los que tienes acceso. Selecciona a cuál quieres entrar.</p>
             </div>
         </section>
 
         <!-- Sin sesión: no se muestra ningún módulo, solo la invitación a iniciar sesión -->
         <div class="sin-sesion" sec:authorize="!isAuthenticated()">
-            <h2>Inicia sesión para continuar</h2>
-            <p>Entra con tu usuario y contraseña para ver los módulos que tienes habilitados.</p>
+            <span class="etiqueta">Portal interno</span>
+            <h2>Bienvenido</h2>
+            <p>Inicia sesión con tu usuario y contraseña para ver los módulos que tienes habilitados.</p>
             <a class="portal-login-btn" th:href="@{/login}">Iniciar sesión</a>
         </div>
 
