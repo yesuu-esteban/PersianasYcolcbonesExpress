@@ -148,7 +148,7 @@
         /* Cuadrícula de Módulos (Grid) */
         .module-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
             gap: 30px;
         }
 
@@ -247,25 +247,37 @@
         /* Responsivo para celulares */
         @media (max-width: 768px) {
             .portal-header {
-                padding: 20px;
+                padding: 16px;
                 flex-direction: column;
-                gap: 15px;
+                gap: 12px;
                 text-align: center;
             }
-            .header-right {
+            .header-right, .header-right-authenticated {
                 flex-direction: column;
                 gap: 10px;
+                width: 100%;
             }
-            .header-right-authenticated {
-                flex-direction: column;
-                gap: 10px;
-            }
+            .header-right-authenticated { display: grid; grid-template-columns: 1fr 1fr; }
+            .header-right-authenticated .user-welcome { grid-column: 1 / -1; }
+            .portal-logout, .portal-login-btn { text-align: center; padding: 10px; }
             .portal-main {
-                padding: 30px 20px;
+                padding: 22px 14px;
             }
+            .portal-hero { margin-bottom: 22px; padding-bottom: 18px; }
             .portal-hero h1 {
-                font-size: 1.8rem;
+                font-size: 1.45rem;
             }
+            .portal-hero p { font-size: 0.92rem; }
+            .module-grid { gap: 12px; }
+            .module-card {
+                min-height: 0;
+                padding: 20px 18px;
+            }
+            .module-card:hover { transform: none; }
+            .module-category { margin-bottom: 6px; font-size: 0.68rem; }
+            .module-card h2 { font-size: 1.25rem; margin-bottom: 6px; }
+            .module-card p { font-size: 0.86rem; margin-bottom: 12px; }
+            .module-card--locked { display: none; }   /* en celular no se muestran los módulos sin acceso */
         }
     </style>
 </head>

@@ -32,6 +32,17 @@
         .btn-guardar { width: 100%; padding: 13px; font-weight: 700; border-radius: 12px; background: var(--oscuro); color: #fff; border: none; }
         .btn-guardar:hover { background: #000; color: #fff; }
         .btn-guardar:disabled { opacity: 0.4; }
+
+        /* ═══ Celular ═══ */
+        @media (max-width: 767.98px) {
+            .contenido { padding: 14px 12px 40px; }
+            h1 { font-size: 1.15rem; }
+            .caja { padding: 14px; }
+            .tipos { grid-template-columns: repeat(3, 1fr); gap: 6px; }
+            .tipos label { padding: 10px 2px; font-size: 0.8rem; }
+            .form-control, .form-select { font-size: 16px; }   /* evita el zoom automático del iPhone */
+            .row.g-3 > .col-7, .row.g-3 > .col-5 { flex: 0 0 100%; max-width: 100%; }
+        }
     </style>
 </head>
 <body>

@@ -27,7 +27,7 @@
         .form-select option { background: var(--bg-input); color: #fff; }
         .ayuda { font-size: 0.76rem; color: var(--texto-suave); margin-top: 4px; }
 
-        .tipos { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 8px; }
+        .tipos { display: grid; grid-template-columns: repeat(auto-fit, minmax(92px, 1fr)); gap: 8px; }
         .tipos input { position: absolute; opacity: 0; pointer-events: none; }
         .tipos label {
             display: block; text-align: center; padding: 10px 6px; border-radius: 10px; cursor: pointer;
@@ -53,7 +53,7 @@
         .alert-warning a { color: #fff; }
 
         /* Ficha del pedido */
-        .ficha { border-left: 4px solid var(--bodega); }
+        .ficha { background: rgba(0,0,0,0.22); border-radius: 10px; padding: 14px; border-left: 4px solid var(--bodega); }
         .ficha .etiqueta-bodega { display: inline-block; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.5px; color: #03171c; background: var(--bodega); border-radius: 20px; padding: 2px 10px; margin-bottom: 8px; }
         .ficha h2 { font-size: 1.1rem; font-weight: 700; margin-bottom: 12px; }
         .ficha dl { display: grid; grid-template-columns: 100px 1fr; gap: 6px 10px; margin: 0 0 12px; font-size: 0.86rem; }
@@ -66,7 +66,23 @@
         .origen { display: inline-block; font-size: 0.75rem; font-weight: 600; padding: 3px 10px; border-radius: 20px; background: rgba(255,255,255,0.1); }
         .reporte { background: rgba(46,204,113,0.12); border: 1px solid rgba(46,204,113,0.5); border-radius: 12px; padding: 14px; font-size: 0.86rem; }
 
-        @media (max-width: 576px) { body { padding: 12px; } .caja { padding: 16px; } }
+        .info-tarea { position: sticky; top: 16px; }
+
+        /* ═══ Celular ═══ */
+        @media (max-width: 767.98px) {
+            body { padding: 10px; }
+            h1 { font-size: 1.15rem; margin: 8px 0 12px; }
+            .caja { padding: 14px; border-radius: 12px; }
+            .tipos { grid-template-columns: repeat(3, 1fr); gap: 6px; }
+            .tipos label { padding: 10px 2px; font-size: 0.78rem; }
+            .bloque-bodega, .bloque-instaladores { padding: 12px; }
+            .ficha { padding: 12px; }
+            .ficha h2 { font-size: 1rem; }
+            .ficha dl { grid-template-columns: 82px 1fr; font-size: 0.82rem; }
+            .form-control, .form-select { font-size: 16px; }       /* evita el zoom automático del iPhone */
+            .btn { padding: 0.65rem; }
+            .info-tarea { position: static; }
+        }
     </style>
 </head>
 <body>
@@ -80,8 +96,8 @@
         <a href="/usuarios/nuevo">Usuarios → Nuevo usuario</a>.
     </div>
 
-    <div class="row g-4">
-        <div class="col-lg-7">
+    <div class="row g-4 justify-content-center">
+        <div th:class="${tarea != null} ? 'col-lg-7' : 'col-lg-8 col-xl-7'">
             <form method="post" th:action="@{${accionFormulario}}" th:object="${form}" class="caja" id="formTarea">
 
                 <div class="mb-3">
@@ -133,6 +149,27 @@
                                     th:data-productos="${#strings.listJoin(p.detalles.![producto + (material != null and material != '' ? ' · ' + material : '') + ' ×' + cantidad], '|')}"></option>
                         </select>
                         <div class="ayuda">Solo salen los pedidos de almacén en estado "En Bodega" que todavía no tienen instalador. Al terminar la instalación, el pedido pasa a "Instalado".</div>
+
+                        <!-- Ficha con TODA la información del pedido elegido -->
+                    <div class="ficha mt-3" id="fichaPedido" hidden>
+                        <span class="etiqueta-bodega">EN BODEGA · LISTO PARA INSTALAR</span>
+                        <h2 id="fTitulo"></h2>
+                        <dl>
+                            <dt>Cliente</dt><dd id="fCliente"></dd>
+                            <dt>Cédula</dt><dd id="fCedula"></dd>
+                            <dt>Teléfono</dt><dd id="fTelefono"></dd>
+                            <dt>Dirección</dt><dd id="fDireccion"></dd>
+                            <dt>Entrega</dt><dd id="fEntrega"></dd>
+                            <dt>Vendedor</dt><dd id="fVendedor"></dd>
+                            <dt>Descripción</dt><dd id="fDescripcion"></dd>
+                        </dl>
+                        <h3>Productos a instalar</h3>
+                        <ul id="fProductos"></ul>
+                    </div>
+                    <div class="ficha mt-3" id="fichaVacia" hidden>
+                        <span class="etiqueta-bodega">EN BODEGA</span>
+                        <p class="ficha-vacia mb-0">Elige un pedido de la lista para ver todos sus datos: cliente, dirección, teléfono y productos.</p>
+                    </div>
                     </div>
                 </div>
 
@@ -224,29 +261,9 @@
             </form>
         </div>
 
-        <!-- ═══ Ficha con TODA la información del pedido en bodega ═══ -->
-        <div class="col-lg-5">
-            <div class="caja ficha mb-3" id="fichaPedido" hidden>
-                <span class="etiqueta-bodega">EN BODEGA · LISTO PARA INSTALAR</span>
-                <h2 id="fTitulo"></h2>
-                <dl>
-                    <dt>Cliente</dt><dd id="fCliente"></dd>
-                    <dt>Cédula</dt><dd id="fCedula"></dd>
-                    <dt>Teléfono</dt><dd id="fTelefono"></dd>
-                    <dt>Dirección</dt><dd id="fDireccion"></dd>
-                    <dt>Entrega</dt><dd id="fEntrega"></dd>
-                    <dt>Vendedor</dt><dd id="fVendedor"></dd>
-                    <dt>Descripción</dt><dd id="fDescripcion"></dd>
-                </dl>
-                <h3>Productos a instalar</h3>
-                <ul id="fProductos"></ul>
-            </div>
-            <div class="caja ficha mb-3" id="fichaVacia" hidden>
-                <span class="etiqueta-bodega">EN BODEGA</span>
-                <p class="ficha-vacia mb-0">Elige un pedido de la lista para ver todos sus datos: cliente, dirección, teléfono y productos.</p>
-            </div>
-
-            <div th:if="${tarea != null}" class="caja">
+        <!-- ═══ Información de la tarea (solo al editar) ═══ -->
+        <div class="col-lg-5" th:if="${tarea != null}">
+            <div class="caja info-tarea">
                 <span class="origen" th:text="${tarea.origenEtiqueta}"></span>
                 <p class="mt-2 mb-0" style="font-size:0.84rem;color:var(--texto-suave);">
                     Creada por <strong th:text="${tarea.creadoPor}"></strong>.

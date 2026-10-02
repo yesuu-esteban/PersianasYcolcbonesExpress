@@ -46,6 +46,18 @@
         .terminada { background: #f0fbf3; border: 1px solid #b2e3c0; border-radius: 12px; padding: 16px; margin-bottom: 14px; }
         .terminada.hecha { background: #f1f3f5; border-color: #dee2e6; }
         .propias { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .propias .btn { padding: 0.7rem; }
+
+        /* ═══ Celular ═══ */
+        @media (max-width: 767.98px) {
+            .contenido { padding: 14px 12px 40px; }
+            .cabecera h1 { font-size: 1.25rem; }
+            .bloque { padding: 14px; }
+            .contacto { grid-template-columns: 1fr 1fr; }
+            .contacto a:last-child:nth-child(odd) { grid-column: 1 / -1; }
+            .contacto a { padding: 12px 6px; font-size: 0.86rem; }
+            .form-control { font-size: 16px; }   /* evita el zoom automático del iPhone */
+        }
     </style>
 </head>
 <body>

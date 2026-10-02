@@ -69,9 +69,46 @@
         .evento-hecho { opacity: 0.55; }
         .evento-vencido .fc-event-title::before, .evento-vencido .fc-list-event-title a::before { content: "⚠ "; }
         .evento-en-curso { box-shadow: 0 0 0 2px #fab005; }
-        .leyenda { display: flex; flex-wrap: wrap; gap: 14px; font-size: 0.78rem; color: #6b7280; margin-bottom: 10px; }
+        .leyenda { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 0.78rem; color: #6b7280; margin-bottom: 10px; }
+        details.leyenda-wrap summary { cursor: pointer; font-weight: 600; font-size: 0.82rem; color: #495057; list-style: none; margin-bottom: 6px; }
+        details.leyenda-wrap summary::-webkit-details-marker { display: none; }
+        details.leyenda-wrap summary::before { content: "▸ "; }
+        details.leyenda-wrap[open] summary::before { content: "▾ "; }
         .leyenda span::before { content: ""; display: inline-block; width: 11px; height: 11px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; background: var(--c); }
         .aviso-carga { display: none; }
+
+        /* ═══ Calendario en celular ═══ */
+        @media (max-width: 767.98px) {
+            .fc .fc-header-toolbar { display: grid; grid-template-columns: auto 1fr; gap: 8px; margin-bottom: 10px !important; }
+            .fc .fc-header-toolbar .fc-toolbar-chunk:nth-child(2) { grid-column: 1 / -1; grid-row: 1; text-align: center; }
+            .fc .fc-header-toolbar .fc-toolbar-chunk:nth-child(3) { justify-self: end; }
+            .fc .fc-toolbar-title { font-size: 1rem !important; }
+            .fc .fc-button { padding: 0.45rem 0.7rem; font-size: 0.82rem; }
+            .fc .fc-list-event-title, .fc .fc-list-event-time { font-size: 0.86rem; white-space: normal; }
+            .fc .fc-list-event td { padding: 10px 8px; }
+            .fc .fc-daygrid-event { font-size: 0.7rem; }
+            .fc .fc-col-header-cell-cushion { font-size: 0.74rem; padding: 4px 2px; }
+        }
+
+        /* ═══ Celular ═══ */
+        @media (max-width: 767.98px) {
+            .topbar { padding: 10px 14px; }
+            .topbar nav { display: flex; gap: 14px; }
+            .topbar nav a { margin-left: 0; font-size: 0.8rem; }
+            .contenido { padding: 14px 12px 40px; }
+            .saludo { font-size: 1.15rem; }
+            .resumen { font-size: 0.82rem; margin-bottom: 12px; }
+
+            /* Botones "+": fila deslizable en vez de una cuadrícula de 2 filas */
+            .agregar { display: flex; overflow-x: auto; gap: 8px; padding-bottom: 4px; margin: 0 -12px 6px; padding-left: 12px; padding-right: 12px; -webkit-overflow-scrolling: touch; }
+            .agregar a { flex: 0 0 auto; padding: 10px 14px; font-size: 0.84rem; }
+
+            .seccion-titulo { margin: 18px 0 8px; }
+            .tarea { grid-template-columns: 72px 1fr; gap: 10px; padding: 12px; }
+            .tarea .hora { font-size: 0.9rem; }
+            .tarea .titulo { font-size: 0.95rem; }
+            .caja-calendario { padding: 8px; }
+        }
     </style>
 </head>
 <body>
@@ -81,7 +118,7 @@
     <nav>
         <a href="/portal">Portal</a>
         <a href="/mi-cuenta">Mi cuenta</a>
-        <a href="/logout">Cerrar sesión</a>
+        <a href="/logout">Salir</a>
     </nav>
 </header>
 
@@ -134,6 +171,8 @@
     <div id="avisoCarga" class="alert alert-danger aviso-carga">
         No se pudo cargar la agenda. Recarga la página; si sigue fallando, cierra sesión y vuelve a entrar.
     </div>
+    <details class="leyenda-wrap" id="leyenda" open>
+    <summary>Colores</summary>
     <div class="leyenda">
         <span style="--c:#2f9e44">Instalación instalada</span>
         <span style="--c:#e03131">Instalación vencida</span>
@@ -144,6 +183,7 @@
         <span style="--c:#a61e4d">Otro</span>
         <span>✓ = completado</span>
     </div>
+    </details>
     <div class="caja-calendario">
         <div id="calendario"></div>
     </div>
@@ -167,14 +207,16 @@
 
     document.addEventListener('DOMContentLoaded', () => {
         const esMovil = window.innerWidth < 768;
+        if (esMovil) document.getElementById('leyenda').removeAttribute('open');
         const calendario = new FullCalendar.Calendar(document.getElementById('calendario'), {
             locale: 'es',
             timeZone: 'local',
             firstDay: 1,
             initialView: esMovil ? 'listWeek' : 'timeGridWeek',
             headerToolbar: esMovil
-                ? { left: 'prev,next', center: 'title', right: 'listWeek,dayGridMonth' }
+                ? { left: 'prev,next today', center: 'title', right: 'listWeek,timeGridTresDias,dayGridMonth' }
                 : { left: 'prev,next today', center: 'title', right: 'timeGridWeek,dayGridMonth,listWeek' },
+            views: { timeGridTresDias: { type: 'timeGrid', duration: { days: 3 }, buttonText: '3 días' } },
             buttonText: { today: 'Hoy', month: 'Mes', week: 'Semana', day: 'Día', list: 'Lista' },
             noEventsContent: 'No tienes tareas en estas fechas',
             height: 'auto',
