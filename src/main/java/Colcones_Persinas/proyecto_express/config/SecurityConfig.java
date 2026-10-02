@@ -31,7 +31,8 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 // El portal es público: cualquiera lo ve, pero las tarjetas
                 // aparecen bloqueadas hasta iniciar sesión (lo decide sec:authorize en Vista.html).
-                .requestMatchers("/css/**", "/js/**", "/images/**", "/login", "/login-jwt", "/", "/portal").permitAll()
+                // "/logout" también es público: así se puede cerrar sesión aunque el token ya haya vencido.
+                .requestMatchers("/css/**", "/js/**", "/images/**", "/login", "/login-jwt", "/logout", "/", "/portal").permitAll()
 
                 // Gestión de pedidos de almacén (antes "tienda" — los roles internos
                 // TIENDA/TIENDA_ADMIN se conservan igual en la base de datos).
@@ -61,6 +62,11 @@ public class SecurityConfig {
                 .anyRequest().authenticated()
             )
             .formLogin(login -> login.disable())
+            // ── IMPORTANTE: se desactiva el "cerrar sesión" que trae Spring Security por defecto. ──
+            // Ese logout atrapaba la ruta /logout ANTES de llegar a LoginController y NO borraba
+            // la cookie "authToken" ni el token del navegador, así que la sesión seguía viva.
+            // Ahora /logout lo atiende LoginController.logout(), que sí borra ambos.
+            .logout(logout -> logout.disable())
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
             .exceptionHandling(ex -> ex.authenticationEntryPoint((request, response, e) ->
                 response.sendRedirect("/login")

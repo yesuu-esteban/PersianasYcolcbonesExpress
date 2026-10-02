@@ -1,14 +1,17 @@
 package Colcones_Persinas.proyecto_express.controlador;
 
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.http.CacheControl;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -31,8 +34,17 @@ public class LoginController {
     @GetMapping("/login")
     public String mostrarLogin(
             @RequestParam(required = false) String error,
+            @RequestParam(required = false) String salio,
             Model model) {
-        model.addAttribute("error", error != null ? "Usuario o contraseña incorrectos." : null);
+        if ("inactivo".equals(error)) {
+            model.addAttribute("error", "Tu cuenta está desactivada. Habla con el administrador.");
+        } else if (error != null) {
+            model.addAttribute("error", "Usuario o contraseña incorrectos.");
+        }
+        // ── NUEVO: confirmación de que la sesión se cerró ──
+        if (salio != null) {
+            model.addAttribute("mensaje", "Cerraste sesión correctamente.");
+        }
         return "login";
     }
 
@@ -51,10 +63,8 @@ public class LoginController {
             String destino = "/portal";
 
             // Con server.forward-headers-strategy=framework en application.properties,
-            // request.isSecure() ahora refleja correctamente si el cliente original
-            // usó HTTPS, aunque Railway termine el TLS antes de reenviar la petición
-            // internamente por HTTP. Sin esa propiedad, isSecure() podía devolver
-            // false de forma inconsistente detrás del proxy.
+            // request.isSecure() refleja correctamente si el cliente original usó HTTPS,
+            // aunque Railway termine el TLS antes de reenviar la petición por HTTP.
             boolean esHttps = request.isSecure();
 
             ResponseCookie cookie = ResponseCookie.from("authToken", token)
@@ -65,15 +75,9 @@ public class LoginController {
                 .sameSite("Lax")
                 .build();
 
-            // ── FIX: usamos localStorage en vez de sessionStorage.
-            // sessionStorage se borra al cerrar la pestaña Y NO se comparte entre
-            // pestañas nuevas (cada pestaña tiene su propio sessionStorage aislado).
-            // Eso hacía que, al abrir una pestaña nueva o refrescar en ciertos
-            // escenarios, el token "desapareciera" del lado del cliente y
-            // token-nav.js ya no tuviera nada que adjuntar a los links, dejando
-            // la autenticación dependiendo 100% de la cookie (que si fallaba,
-            // mandaba directo a /login). localStorage persiste entre pestañas y
-            // recargas hasta que se borre explícitamente (lo hacemos en /logout).
+            // El token también se guarda en localStorage para que token-nav.js lo
+            // agregue a los enlaces. localStorage persiste entre pestañas y recargas
+            // hasta que se borre explícitamente (lo hacemos en /logout).
             String destinoConToken = destino + "?token=" + token;
 
             String html = """
@@ -83,7 +87,7 @@ public class LoginController {
                 <body>
                 <script>
                     localStorage.setItem('authToken', '%s');
-                    window.location.href = '%s';
+                    window.location.replace('%s');
                 </script>
                 </body>
                 </html>
@@ -91,8 +95,13 @@ public class LoginController {
 
             return ResponseEntity.ok()
                 .header(HttpHeaders.SET_COOKIE, cookie.toString())
+                .cacheControl(CacheControl.noStore())
                 .body(html);
 
+        } catch (DisabledException e) {
+            return ResponseEntity.status(302)
+                .header("Location", "/login?error=inactivo")
+                .build();
         } catch (BadCredentialsException e) {
             return ResponseEntity.status(302)
                 .header("Location", "/login?error=1")
@@ -100,8 +109,18 @@ public class LoginController {
         }
     }
 
+    /**
+     * Cierra la sesión DE VERDAD, en los dos lados:
+     *  1. Servidor/navegador: borra la cookie "authToken" (maxAge 0).
+     *  2. Navegador: borra el token de localStorage y sessionStorage, para que
+     *     token-nav.js ya no lo agregue a los enlaces.
+     *
+     * Antes este método nunca se ejecutaba: el logout por defecto de Spring
+     * Security atrapaba /logout primero. Ahora está desactivado en SecurityConfig.
+     */
     @GetMapping("/logout")
     public ResponseEntity<String> logout(HttpServletRequest request) {
+        SecurityContextHolder.clearContext();
         boolean esHttps = request.isSecure();
 
         ResponseCookie cookieBorrada = ResponseCookie.from("authToken", "")
@@ -112,18 +131,17 @@ public class LoginController {
             .sameSite("Lax")
             .build();
 
-        // Como el token también vive en localStorage (client-side), un simple
-        // redirect 302 no lo borra ahí. Devolvemos una página intermedia que
-        // limpia localStorage antes de mandar al login, para que "Cerrar sesión"
-        // sí cierre sesión de verdad en ambos lados.
+        // window.location.replace: no deja la página de "cerrando sesión" en el
+        // historial, así el botón "atrás" no vuelve a una página con la sesión vieja.
         String html = """
             <!DOCTYPE html>
             <html>
             <head><meta charset="UTF-8"></head>
             <body>
             <script>
-                localStorage.removeItem('authToken');
-                window.location.href = '/login';
+                try { localStorage.removeItem('authToken'); } catch (e) {}
+                try { sessionStorage.removeItem('authToken'); } catch (e) {}
+                window.location.replace('/login?salio=1');
             </script>
             </body>
             </html>
@@ -131,6 +149,7 @@ public class LoginController {
 
         return ResponseEntity.ok()
             .header(HttpHeaders.SET_COOKIE, cookieBorrada.toString())
+            .cacheControl(CacheControl.noStore())
             .contentType(MediaType.TEXT_HTML)
             .body(html);
     }
