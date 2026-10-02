@@ -217,22 +217,16 @@
             color: var(--brass);
         }
 
-        /* Estado bloqueado (sin sesión o sin el rol requerido) */
-        .module-card--locked {
-            cursor: default;
-            opacity: 0.45;
-            pointer-events: none;
-        }
 
-        .module-card--locked:hover {
-            transform: none;
-            border-color: var(--border-color);
-            box-shadow: none;
+        /* Aviso cuando no hay sesión iniciada */
+        .sin-sesion {
+            max-width: 520px; margin: 20px auto 0; text-align: center;
+            background: var(--carbon-card); border: 1px solid var(--border-color); border-radius: 10px;
+            padding: 40px 28px;
         }
-
-        .module-action--locked {
-            color: var(--cream-muted);
-        }
+        .sin-sesion h2 { font-size: 1.4rem; font-weight: 600; margin-bottom: 10px; }
+        .sin-sesion p { color: var(--cream-muted); font-size: 0.95rem; line-height: 1.5; margin-bottom: 24px; }
+        .sin-sesion .portal-login-btn { display: inline-block; padding: 12px 32px; font-size: 0.95rem; }
 
         /* Footer */
         .portal-footer {
@@ -277,7 +271,8 @@
             .module-category { margin-bottom: 6px; font-size: 0.68rem; }
             .module-card h2 { font-size: 1.25rem; margin-bottom: 6px; }
             .module-card p { font-size: 0.86rem; margin-bottom: 12px; }
-            .module-card--locked { display: none; }   /* en celular no se muestran los módulos sin acceso */
+            .sin-sesion { padding: 28px 18px; margin-top: 8px; }
+            .sin-sesion h2 { font-size: 1.15rem; }
         }
     </style>
 </head>
@@ -305,11 +300,20 @@
         <section class="portal-hero">
             <div class="hero-text">
                 <h1>Panel de Control General</h1>
-                <p>Selecciona el módulo operativo al que deseas ingresar para gestionar inventarios, producción, almacén o facturación.</p>
+                <p sec:authorize="isAuthenticated()">Estos son los módulos a los que tienes acceso. Selecciona a cuál quieres entrar.</p>
+                <p sec:authorize="!isAuthenticated()">Portal interno de Persianas Express.</p>
             </div>
         </section>
 
-        <div class="module-grid">
+        <!-- Sin sesión: no se muestra ningún módulo, solo la invitación a iniciar sesión -->
+        <div class="sin-sesion" sec:authorize="!isAuthenticated()">
+            <h2>Inicia sesión para continuar</h2>
+            <p>Entra con tu usuario y contraseña para ver los módulos que tienes habilitados.</p>
+            <a class="portal-login-btn" th:href="@{/login}">Iniciar sesión</a>
+        </div>
+
+        <!-- Con sesión: SOLO aparecen los módulos que el usuario tiene habilitados -->
+        <div class="module-grid" sec:authorize="isAuthenticated()">
 
             <!-- ALMACÉN (antes "Tienda"): activo para vendedor, tienda_admin y admin -->
             <a class="module-card" th:href="@{/almacen/listado}" sec:authorize="hasAnyRole('TIENDA','TIENDA_ADMIN','ADMIN')">
@@ -320,14 +324,6 @@
                     <span class="module-action">Acceder al módulo &rarr;</span>
                 </div>
             </a>
-            <div class="module-card module-card--locked" sec:authorize="!hasAnyRole('TIENDA','TIENDA_ADMIN','ADMIN')">
-                <div class="module-content">
-                    <span class="module-category">Módulo Comercial</span>
-                    <h2>Almacén</h2>
-                    <p>Gestión de pedidos de almacén, atención y puntos de venta.</p>
-                    <span class="module-action module-action--locked">Sin acceso</span>
-                </div>
-            </div>
 
             <!-- ── NUEVO: INSTALACIONES (el jefe asigna pedidos en bodega y tareas) ── -->
             <a class="module-card" th:href="@{/instalaciones}" sec:authorize="hasAnyRole('TIENDA_ADMIN','ADMIN')">
@@ -347,14 +343,6 @@
                     <span class="module-action">Ver mi agenda &rarr;</span>
                 </div>
             </a>
-            <div class="module-card module-card--locked" sec:authorize="!hasAnyRole('TIENDA_ADMIN','ADMIN','INSTALADOR')">
-                <div class="module-content">
-                    <span class="module-category">Módulo de Instalaciones</span>
-                    <h2>Instalaciones</h2>
-                    <p>Asignación de instalaciones y agenda de los instaladores.</p>
-                    <span class="module-action module-action--locked">Sin acceso</span>
-                </div>
-            </div>
 
             <!-- FÁBRICA: activa para jefe (fabrica) y admin -->
             <a class="module-card" th:href="@{/taller/pedidos}" sec:authorize="hasAnyRole('FABRICA','ADMIN')">
@@ -365,14 +353,6 @@
                     <span class="module-action">Acceder al módulo &rarr;</span>
                 </div>
             </a>
-            <div class="module-card module-card--locked" sec:authorize="!hasAnyRole('FABRICA','ADMIN')">
-                <div class="module-content">
-                    <span class="module-category">Módulo de Operaciones</span>
-                    <h2>Fábrica</h2>
-                    <p>Control de insumos, rollos de tela, retazos y piezas de producción.</p>
-                    <span class="module-action module-action--locked">Sin acceso</span>
-                </div>
-            </div>
 
             <!-- RECIBOS DE ALMACÉN -->
             <a class="module-card" th:href="@{/recibos/almacen}" sec:authorize="hasAnyRole('TIENDA','TIENDA_ADMIN','ADMIN')">
@@ -383,14 +363,6 @@
                     <span class="module-action">Acceder al módulo &rarr;</span>
                 </div>
             </a>
-            <div class="module-card module-card--locked" sec:authorize="!hasAnyRole('TIENDA','TIENDA_ADMIN','ADMIN')">
-                <div class="module-content">
-                    <span class="module-category">Módulo de Caja</span>
-                    <h2>Recibos Almacén</h2>
-                    <p>Genera y consulta los recibos de caja generados desde el punto de venta.</p>
-                    <span class="module-action module-action--locked">Sin acceso</span>
-                </div>
-            </div>
 
             <!-- RECIBOS DE FÁBRICA -->
             <a class="module-card" th:href="@{/recibos/fabrica}" sec:authorize="hasAnyRole('FABRICA','ADMIN')">
@@ -401,14 +373,6 @@
                     <span class="module-action">Acceder al módulo &rarr;</span>
                 </div>
             </a>
-            <div class="module-card module-card--locked" sec:authorize="!hasAnyRole('FABRICA','ADMIN')">
-                <div class="module-content">
-                    <span class="module-category">Módulo de Caja</span>
-                    <h2>Recibos Fábrica</h2>
-                    <p>Genera y consulta los recibos de caja generados desde el taller de fábrica.</p>
-                    <span class="module-action module-action--locked">Sin acceso</span>
-                </div>
-            </div>
 
         </div>
     </main>
