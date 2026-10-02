@@ -1,32 +1,148 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <title>Iniciar sesión</title>
+    <!-- Sin esta línea el celular muestra la página como si fuera de PC, diminuta -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Iniciar sesión - Persianas Express</title>
+    <link rel="icon" type="image/png" href="/images/favicon.png">
+    <link rel="apple-touch-icon" href="/images/logo.png">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
     <style>
-        body { background:#1a0f2e; color:#fff; display:flex; align-items:center; justify-content:center; height:100vh; font-family: sans-serif; }
-        .card-login { background:#2a1b42; padding:30px; border-radius:14px; width:320px; }
-        .form-control { background:#1e1330; border:1px solid rgba(255,255,255,0.15); color:#fff; }
-        .alert-success { background: rgba(46,204,113,0.15); border:1px solid #2ecc71; color:#7ff0a8; }
+        :root {
+            --bg-card: #2a1b42; --bg-input: #1e1330; --accent: #ec1561;
+            --gold: #ffc107; --texto: #f4f0fb; --texto-suave: #cbb8e0;
+        }
+        * { font-family: 'Poppins', system-ui, sans-serif; box-sizing: border-box; }
+        html, body { height: 100%; }
+        body {
+            margin: 0; color: var(--texto);
+            background: linear-gradient(160deg, #1a0f2e 0%, #241536 100%);
+            display: flex; align-items: center; justify-content: center;
+            min-height: 100vh; min-height: 100dvh;   /* dvh: no se corta con la barra del navegador del celular */
+            padding: 20px 16px;
+        }
+
+        .contenedor { width: 100%; max-width: 400px; }
+
+        .marca { display: flex; flex-direction: column; align-items: center; text-align: center; margin-bottom: 20px; }
+        .marca .logo {
+            width: 112px; height: 112px; border-radius: 50%; display: block; margin-bottom: 12px;
+            box-shadow: 0 6px 24px rgba(0,0,0,0.45), 0 0 0 4px rgba(255,255,255,0.06);
+        }
+        .marca .texto { font-weight: 800; font-size: 1.1rem; line-height: 1.1; letter-spacing: 0.5px; }
+        .marca .texto small { display: block; font-weight: 600; font-size: 0.62rem; color: var(--gold); letter-spacing: 1.5px; margin-top: 4px; }
+
+        .card-login {
+            background: var(--bg-card); border: 1px solid rgba(236,21,97,0.3); border-radius: 16px;
+            padding: 28px 26px; box-shadow: 0 10px 40px rgba(0,0,0,0.35);
+        }
+        .card-login h1 { font-size: 1.25rem; font-weight: 700; margin: 0 0 4px; }
+        .card-login .sub { color: var(--texto-suave); font-size: 0.85rem; margin-bottom: 20px; }
+
+        .form-label { font-size: 0.85rem; font-weight: 600; color: var(--texto); margin-bottom: 6px; }
+        .form-control {
+            background: var(--bg-input); border: 1px solid rgba(255,255,255,0.15); color: #fff;
+            font-size: 16px;            /* 16px: evita que el iPhone haga zoom al tocar el campo */
+            padding: 12px 14px; border-radius: 10px;
+        }
+        .form-control:focus { background: var(--bg-input); color: #fff; border-color: var(--accent); box-shadow: 0 0 0 0.2rem rgba(236,21,97,0.25); }
+        .form-control::placeholder { color: #8f84a8; }
+        /* Que el autocompletado del navegador no ponga el campo en blanco/amarillo */
+        .form-control:-webkit-autofill {
+            -webkit-text-fill-color: #fff; -webkit-box-shadow: 0 0 0 1000px var(--bg-input) inset; transition: background-color 9999s;
+        }
+
+        .campo-clave { position: relative; }
+        .campo-clave .form-control { padding-right: 76px; }
+        .btn-ver {
+            position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+            background: transparent; border: none; color: var(--texto-suave); font-size: 0.8rem; font-weight: 600;
+            padding: 8px 10px; border-radius: 8px; cursor: pointer;
+        }
+        .btn-ver:hover { color: #fff; background: rgba(255,255,255,0.06); }
+        .btn-ver:focus-visible { outline: 2px solid var(--gold); }
+
+        .btn-entrar {
+            width: 100%; padding: 13px; font-size: 1rem; font-weight: 700; border: none; border-radius: 10px; color: #fff;
+            background: linear-gradient(135deg, var(--accent), #b81050); box-shadow: 0 4px 14px rgba(236,21,97,0.35);
+            margin-top: 6px;
+        }
+        .btn-entrar:hover { filter: brightness(1.1); }
+        .btn-entrar:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+        .btn-entrar:disabled { opacity: 0.7; }
+
+        .alert { font-size: 0.86rem; border-radius: 10px; padding: 10px 12px; }
+        .alert-success { background: rgba(46,204,113,0.15); border: 1px solid #2ecc71; color: #7ff0a8; }
+        .alert-danger  { background: rgba(231,76,60,0.15); border: 1px solid #e74c3c; color: #ff9a90; }
+
+        .volver { display: block; text-align: center; margin-top: 18px; color: var(--texto-suave); font-size: 0.85rem; text-decoration: none; }
+        .volver:hover { color: #fff; }
+
+        @media (max-width: 420px) {
+            body { padding: 16px 12px; align-items: flex-start; padding-top: 8vh; }
+            .card-login { padding: 22px 18px; }
+            .marca { margin-bottom: 16px; }
+            .marca .logo { width: 92px; height: 92px; }
+        }
     </style>
 </head>
 <body>
-    <div class="card-login">
-        <h4 class="mb-3">Iniciar sesión</h4>
-        <div th:if="${mensaje}" class="alert alert-success" th:text="${mensaje}"></div>
-        <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
-        <form th:action="@{/login-jwt}" method="post">
-            <div class="mb-3">
-                <label class="form-label">Usuario</label>
-                <input type="text" name="username" class="form-control" required>
-            </div>
-            <div class="mb-3">
-                <label class="form-label">Contraseña</label>
-                <input type="password" name="password" class="form-control" required>
-            </div>
-            <button type="submit" class="btn btn-primary w-100">Iniciar sesión</button>
-        </form>
-    </div>
+    <main class="contenedor">
+        <div class="marca">
+            <img src="/images/logo.png" alt="Persianas y Colchones Express" class="logo" width="112" height="112">
+            <div class="texto">PERSIANAS EXPRESS<small>PORTAL INTERNO</small></div>
+        </div>
+
+        <div class="card-login">
+            <h1>Iniciar sesión</h1>
+            <p class="sub">Entra con tu usuario y contraseña.</p>
+
+            <div th:if="${mensaje}" class="alert alert-success" th:text="${mensaje}"></div>
+            <div th:if="${error}" class="alert alert-danger" role="alert" th:text="${error}"></div>
+
+            <form th:action="@{/login-jwt}" method="post" id="formLogin">
+                <div class="mb-3">
+                    <label class="form-label" for="username">Usuario</label>
+                    <!-- autocapitalize="none": el celular no pone la primera letra en mayúscula -->
+                    <input type="text" id="username" name="username" class="form-control" required
+                           autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false"
+                           placeholder="Tu usuario" autofocus>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label" for="password">Contraseña</label>
+                    <div class="campo-clave">
+                        <input type="password" id="password" name="password" class="form-control" required
+                               autocomplete="current-password" placeholder="Tu contraseña">
+                        <button type="button" class="btn-ver" id="btnVer" aria-label="Mostrar contraseña">Ver</button>
+                    </div>
+                </div>
+                <button type="submit" class="btn-entrar" id="btnEntrar">Entrar</button>
+            </form>
+        </div>
+
+        <a href="/portal" class="volver">← Volver al portal</a>
+    </main>
+
+    <script>
+        // Mostrar / ocultar contraseña (útil en el celular para revisar lo que se escribió)
+        const campoClave = document.getElementById('password');
+        const btnVer = document.getElementById('btnVer');
+        btnVer.addEventListener('click', () => {
+            const oculta = campoClave.type === 'password';
+            campoClave.type = oculta ? 'text' : 'password';
+            btnVer.textContent = oculta ? 'Ocultar' : 'Ver';
+            btnVer.setAttribute('aria-label', oculta ? 'Ocultar contraseña' : 'Mostrar contraseña');
+            campoClave.focus();
+        });
+
+        // Evitar doble envío si tocan "Entrar" dos veces mientras carga
+        document.getElementById('formLogin').addEventListener('submit', () => {
+            const btn = document.getElementById('btnEntrar');
+            btn.disabled = true;
+            btn.textContent = 'Entrando...';
+        });
+    </script>
 </body>
 </html>
