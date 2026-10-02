@@ -17,9 +17,10 @@ import org.springframework.stereotype.Component;
  * línea "crearSiNoExiste(...)" más abajo con sus datos, y en el próximo
  * arranque de la app se creará solo si no existía ya.
  *
- * asegurarRol(...)      → cambia SOLO el rol de un usuario que ya existe.
- * renombrarUsuario(...) → cambia el usuario (para iniciar sesión) y el nombre visible
- *                         de un usuario que ya existe. Conserva su contraseña y su rol.
+ * asegurarRol(...)           → cambia SOLO el rol de un usuario que ya existe.
+ * renombrarUsuario(...)      → cambia el usuario (para iniciar sesión) y el nombre visible
+ *                              de un usuario que ya existe. Conserva su contraseña y su rol.
+ * marcarTambienInstalador(...) → el usuario conserva su rol y además aparece como instalador.
  */
 @Component
 public class UsuarioInicializador implements CommandLineRunner {
@@ -41,7 +42,7 @@ public class UsuarioInicializador implements CommandLineRunner {
         crearSiNoExiste("admin", "123456", "ADMIN", "Administrador General");
 
         // ── Usuarios nuevos ──
-        crearSiNoExiste("Mono", "123456", "ADMIN", "Mono - Jefe General");
+        crearSiNoExiste("Mono", "123456", "ADMIN", "Mono");
         crearSiNoExiste("jefe2", "123456", "FABRICA", "Jefe de Fábrica 2");
         crearSiNoExiste("tiendaadmin2", "123456", "TIENDA_ADMIN", "Administrador de Tienda 2");
         crearSiNoExiste("admin2", "123456", "ADMIN", "Administrador General 2");
@@ -49,6 +50,9 @@ public class UsuarioInicializador implements CommandLineRunner {
         // ── Fabian y Mono son jefes superiores → acceso a TODOS los módulos ──
         asegurarRol("Fabian", "ADMIN");
         asegurarRol("Mono", "ADMIN");
+
+        // ── Mono además instala: sale en la lista de instaladores y tiene "Mi agenda" ──
+        marcarTambienInstalador("Mono");
 
         // ── Instaladores ──
         // 1) Los que ya estaban creados como instalador1 / instalador2 se renombran.
@@ -83,6 +87,20 @@ public class UsuarioInicializador implements CommandLineRunner {
             if (!rol.equals(usuario.getRol())) {
                 usuario.setRol(rol);
                 usuarioRepository.save(usuario);
+            }
+        });
+    }
+
+    /**
+     * El usuario conserva su rol principal (ej: ADMIN) y además queda como instalador:
+     * aparece en la lista de instaladores y puede entrar a "Mi agenda".
+     */
+    private void marcarTambienInstalador(String username) {
+        usuarioRepository.findByUsernameIgnoreCase(username).ifPresent(usuario -> {
+            if (!usuario.isTambienInstalador()) {
+                usuario.setTambienInstalador(true);
+                usuarioRepository.save(usuario);
+                System.out.println("[UsuarioInicializador] \"" + usuario.getUsername() + "\" ahora también es instalador.");
             }
         });
     }

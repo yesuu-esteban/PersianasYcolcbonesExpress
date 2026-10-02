@@ -34,7 +34,7 @@ public class Usuario {
     private String nombreCompleto = "";
 
     /**
-     * Un solo rol por usuario: "TIENDA", "TIENDA_ADMIN", "FABRICA" o "ADMIN"
+     * Un solo rol por usuario: "TIENDA", "TIENDA_ADMIN", "FABRICA", "INSTALADOR" o "ADMIN"
      * (sin el prefijo ROLE_, Spring Security se lo agrega automáticamente).
      */
     @Column(nullable = false)
@@ -43,4 +43,21 @@ public class Usuario {
     /** Si es false, el usuario no puede iniciar sesión aunque la contraseña sea correcta. */
     @Column(nullable = false)
     private boolean activo = true;
+
+    /**
+     * ── NUEVO ──
+     * Para jefes que además salen a instalar (ej: Mono es ADMIN y también instala).
+     * Si es true, el usuario conserva su rol principal y ADEMÁS:
+     *  - aparece en la lista de instaladores del módulo Instalaciones,
+     *  - recibe el permiso de instalador (ve "Mi agenda" en /mi-calendario).
+     */
+    @Builder.Default
+    @Column(name = "tambien_instalador", nullable = false, columnDefinition = "BOOLEAN DEFAULT false")
+    private boolean tambienInstalador = false;
+
+    /** true si el rol es INSTALADOR o si está marcado como "también instalador". */
+    @Transient
+    public boolean isPuedeInstalar() {
+        return "INSTALADOR".equals(rol) || tambienInstalador;
+    }
 }
