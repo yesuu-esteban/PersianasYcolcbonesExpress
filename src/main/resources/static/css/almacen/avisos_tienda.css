@@ -1,0 +1,37 @@
+/* Aviso de pedidos nuevos de la tienda virtual.
+   Pantallas: templates/almacen/listado.html y templates/inicio/portal.html */
+
+/* ── Cuadro de aviso arriba del listado de Almacén ── */
+.aviso-tienda {
+    background: rgba(255, 193, 7, 0.12); border: 1px solid #ffc107; border-left-width: 5px;
+    border-radius: 12px; padding: 14px 18px; margin-bottom: 20px;
+}
+.aviso-tienda[hidden] { display: none; }
+.aviso-tienda-cabeza { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; }
+.aviso-tienda-cabeza strong { font-size: 1.02rem; font-weight: 700; color: #ffd75e; }
+.aviso-tienda-cabeza span { font-size: 0.8rem; color: #e6dcf5; }
+.aviso-tienda ul { list-style: none; margin: 10px 0 0; padding: 0; }
+.aviso-tienda li {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px;
+    padding: 8px 0; border-top: 1px solid rgba(255, 193, 7, 0.25); font-size: 0.88rem;
+}
+.aviso-tienda li .quien { font-weight: 600; min-width: 0; overflow-wrap: anywhere; }
+.aviso-tienda li .dato { color: #e6dcf5; white-space: nowrap; }
+.aviso-tienda li .btn { margin-left: auto; }
+.aviso-tienda li.mas { color: #e6dcf5; }
+
+/* ── Fila del pedido nuevo dentro de la tabla ── */
+table.table tbody tr.fila-tienda-nueva { background-color: rgba(255, 193, 7, 0.10); border-left: 5px solid #ffc107; }
+.badge-nuevo { background: #ffc107; color: #3a2c00; font-weight: 700; margin-left: 6px; white-space: nowrap; }
+
+/* ── Aviso dentro de la tarjeta "Almacén" del portal ── */
+.module-aviso {
+    display: inline-block; margin: 0 0 14px; padding: 5px 12px; border-radius: 999px;
+    background: #C5A059; color: #121110; font-size: 0.8rem; font-weight: 600; line-height: 1.3;
+}
+.module-aviso[hidden] { display: none; }
+
+@media (max-width: 576px) {
+    .aviso-tienda { padding: 12px 14px; }
+    .aviso-tienda li .btn { margin-left: 0; width: 100%; }
+}

@@ -8,6 +8,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
     <link rel="stylesheet" href="/css/inicio/portal.css">
+    <link rel="stylesheet" href="/css/almacen/avisos_tienda.css">
 </head>
 <body>
 
@@ -52,6 +53,8 @@
                 <div class="module-content">
                     <span class="module-category">Módulo Comercial</span>
                     <h2>Almacén</h2>
+                    <!-- Aviso de pedidos nuevos de la tienda virtual (lo llena /js/almacen/avisos_tienda.js) -->
+                    <span class="module-aviso" data-pedidos-tienda-nuevos hidden></span>
                     <p>Gestión de pedidos de almacén, atención y puntos de venta.</p>
                     <span class="module-action">Acceder al módulo &rarr;</span>
                 </div>
@@ -123,6 +126,7 @@
         <p>&copy; 2026 Persianas Express. Todos los derechos reservados.</p>
     </footer>
 
+    <script src="/js/almacen/avisos_tienda.js"></script>
     <script src="/js/token-nav.js"></script>
 </body>
 </html>
