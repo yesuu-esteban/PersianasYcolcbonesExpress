@@ -29,6 +29,7 @@
                     <h1>Pago aprobado</h1>
                     <p>Gracias, <span th:text="${orden.primerNombre}"></span>. Tu pedido <span class="referencia" th:text="${orden.referencia}"></span> quedó registrado.</p>
                     <p>Te llamaremos al <strong th:text="${orden.telefono}"></strong> para coordinar la entrega y la instalación. El comprobante de pago te llega al correo.</p>
+                    <p>Guarda el número de tu pedido: con él puedes ver en qué va cuando quieras.</p>
                 </div>
             </div>
 
@@ -65,6 +66,8 @@
         </th:block>
 
         <div class="acciones">
+            <a class="btn btn-rojo" th:if="${orden != null and orden.estado == 'APROBADA'}"
+               th:href="@{/tienda/rastrear/{numero}(numero=${orden.referencia})}">Rastrear mi pedido</a>
             <a class="btn btn-rojo" href="/tienda/checkout"
                th:if="${orden != null and (orden.estado == 'RECHAZADA' or orden.estado == 'ANULADA')}">Intentar de nuevo</a>
             <a class="btn btn-borde" href="/tienda">Volver a la tienda</a>

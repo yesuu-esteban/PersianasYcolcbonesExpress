@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:replace="~{tienda/fragmentos :: estilos}"></th:block>
+    <title>Rastrea tu pedido | P.C Express</title>
+    <meta name="robots" content="noindex">
+    <link rel="stylesheet" href="/css/tienda/rastreo.css">
+</head>
+<body>
+<header th:replace="~{tienda/fragmentos :: encabezado('rastreo')}"></header>
+
+<main class="contenedor">
+    <div class="rastreo">
+        <h1>Rastrea tu pedido</h1>
+        <p class="entrada">Escribe el número de tu pedido y mira en qué va.</p>
+
+        <form class="buscador" method="get" action="/tienda/rastrear">
+            <label for="numero">Número de pedido</label>
+            <div class="campo">
+                <input type="text" id="numero" name="numero" required maxlength="40" autocomplete="off"
+                       autocapitalize="characters" spellcheck="false" placeholder="PCX261007163512-K7Q2M"
+                       th:value="${numero}">
+                <button type="submit" class="btn btn-rojo">Consultar</button>
+            </div>
+            <p class="ayuda">Es el código que empieza por PCX. Lo ves en pantalla al terminar de pagar. Si no lo tienes, escríbenos por WhatsApp y te lo damos.</p>
+        </form>
+
+        <!-- ═══ Número que no existe ═══ -->
+        <div class="aviso aviso-error" th:if="${buscado and orden == null}">
+            No encontramos un pedido con el número <strong th:text="${numero}"></strong>. Revisa que esté bien escrito. Si ya pagaste, escríbenos y lo revisamos.
+        </div>
+
+        <th:block th:if="${orden != null}">
+
+            <!-- ═══ El pago todavía no se confirma ═══ -->
+            <div class="aviso aviso-info" th:if="${orden.estado == 'PENDIENTE'}">
+                Todavía no nos confirman el pago del pedido <strong th:text="${orden.referencia}"></strong>.
+                Si ya pagaste, espera unos minutos y vuelve a consultar. Si no alcanzaste a pagar, puedes hacer el pedido de nuevo desde tu carrito.
+            </div>
+
+            <!-- ═══ El pago no se completó ═══ -->
+            <div class="aviso aviso-error" th:if="${orden.estado == 'RECHAZADA' or orden.estado == 'ANULADA' or orden.estado == 'ERROR'}">
+                El pago del pedido <strong th:text="${orden.referencia}"></strong> no se completó, así que no quedó en proceso.
+                Si crees que es un error, escríbenos con este número y lo revisamos.
+            </div>
+
+            <!-- ═══ Pedido pagado: avance ═══ -->
+            <section class="seguimiento" th:if="${orden.estado == 'APROBADA'}">
+                <p class="numero">Pedido <strong th:text="${orden.referencia}">PCX000000000000-XXXXX</strong></p>
+
+                <h2 th:if="${paso == 1}">Recibimos tu pago</h2>
+                <h2 th:if="${paso == 2}">Tu pedido está en preparación</h2>
+                <h2 th:if="${paso == 3}">Tu pedido está listo</h2>
+                <h2 th:if="${paso == 4}">Tu pedido fue entregado</h2>
+
+                <p class="saludo" th:if="${paso == 1}">Hola, <span th:text="${orden.primerNombre}">cliente</span>. Tu pedido quedó confirmado y pronto empezamos a prepararlo.</p>
+                <p class="saludo" th:if="${paso == 2}">Hola, <span th:text="${orden.primerNombre}">cliente</span>. Estamos fabricando o alistando lo que pediste.</p>
+                <p class="saludo" th:if="${paso == 3}">Hola, <span th:text="${orden.primerNombre}">cliente</span>. Te llamaremos para acordar el día de la entrega o la instalación.</p>
+                <p class="saludo" th:if="${paso == 4}">Hola, <span th:text="${orden.primerNombre}">cliente</span>. Gracias por tu compra.</p>
+
+                <ol class="pasos">
+                    <li th:classappend="${paso == 1} ? 'hecho actual' : 'hecho'"
+                        th:attr="aria-current=${paso == 1} ? 'step' : null">
+                        <span class="punto" aria-hidden="true"></span>
+                        <div>
+                            <strong>Pago recibido</strong>
+                            <span th:text="${orden.fechaPagoFormateada}">01/01/2026 10:05 a. m.</span>
+                        </div>
+                    </li>
+                    <li th:classappend="${paso gt 2} ? 'hecho' : (${paso == 2} ? 'hecho actual' : 'falta')"
+                        th:attr="aria-current=${paso == 2} ? 'step' : null">
+                        <span class="punto" aria-hidden="true"></span>
+                        <div>
+                            <strong>En preparación</strong>
+                            <span>Fabricamos o alistamos tu pedido.</span>
+                        </div>
+                    </li>
+                    <li th:classappend="${paso gt 3} ? 'hecho' : (${paso == 3} ? 'hecho actual' : 'falta')"
+                        th:attr="aria-current=${paso == 3} ? 'step' : null">
+                        <span class="punto" aria-hidden="true"></span>
+                        <div>
+                            <strong>Listo para entregar o instalar</strong>
+                            <span>Te llamamos para acordar el día.</span>
+                        </div>
+                    </li>
+                    <li th:classappend="${paso == 4} ? 'hecho actual' : 'falta'"
+                        th:attr="aria-current=${paso == 4} ? 'step' : null">
+                        <span class="punto" aria-hidden="true"></span>
+                        <div>
+                            <strong>Entregado</strong>
+                            <span>Tu pedido ya está contigo.</span>
+                        </div>
+                    </li>
+                </ol>
+
+                <div class="pedido">
+                    <h3>Lo que pediste</h3>
+                    <ul>
+                        <li th:each="it : ${orden.items}">
+                            <strong th:text="${it.productoNombre} + ' × ' + ${it.cantidad}">Producto × 1</strong>
+                            <span th:if="${it.detalle != ''}" th:text="${it.detalle}">Tela, color, medidas</span>
+                        </li>
+                    </ul>
+                </div>
+            </section>
+        </th:block>
+
+        <div class="acciones" th:if="${buscado}">
+            <a class="btn btn-whatsapp" target="_blank" rel="noopener"
+               th:href="'https://wa.me/' + ${whatsapp} + '?text=' + ${#uris.escapeQueryParam('Hola, quiero saber de mi pedido ' + numero)}">Preguntar por WhatsApp</a>
+            <a class="btn btn-borde" href="/tienda">Volver a la tienda</a>
+        </div>
+    </div>
+</main>
+
+<th:block th:replace="~{tienda/fragmentos :: pie}"></th:block>
+<th:block th:replace="~{tienda/fragmentos :: scripts}"></th:block>
+</body>
+</html>

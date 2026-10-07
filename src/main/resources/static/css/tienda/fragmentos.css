@@ -99,10 +99,16 @@ img { max-width: 100%; display: block; }
         repeating-linear-gradient(180deg, #F7F6F4 0 22px, #DCD8D3 22px 24px);
 }
 
-@media (max-width: 860px) {
+/* El menú baja a una segunda fila cuando ya no cabe al lado del logo y el carrito */
+@media (max-width: 1040px) {
     .encabezado .fila { flex-wrap: wrap; gap: 10px 14px; padding-top: 10px; padding-bottom: 10px; min-height: 0; }
     .menu { order: 3; width: 100%; margin: 0; overflow-x: auto; gap: 20px; padding-bottom: 2px; }
     .btn-carrito { margin-left: auto; }
+    /* En pantallas angostas "Rastrear pedido" va de segundo, para que se vea sin deslizar el menú */
+    .menu a:first-child { order: -2; }
+    .menu .enlace-rastreo { order: -1; }
+}
+@media (max-width: 860px) {
     .marca img { width: 40px; height: 40px; }
     .marca span { font-size: 1.15rem; }
     .pie .columnas { grid-template-columns: 1fr; gap: 28px; }

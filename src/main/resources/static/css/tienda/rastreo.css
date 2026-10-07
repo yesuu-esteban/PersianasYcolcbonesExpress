@@ -1,0 +1,74 @@
+/* Pantalla: templates/tienda/rastreo.html */
+
+.rastreo { max-width: 680px; margin: 40px auto 0; }
+.rastreo h1 { font-size: clamp(2.2rem, 6vw, 3.2rem); font-style: italic; text-transform: uppercase; }
+.entrada { margin-top: 8px; color: var(--gris); }
+
+/* ── Buscador ── */
+.buscador { margin-top: 24px; }
+.buscador label { display: block; font-weight: 600; color: var(--tinta); margin-bottom: 6px; }
+.buscador .campo { display: flex; gap: 10px; }
+.buscador input {
+    flex: 1 1 auto; min-width: 0; font: 500 1.05rem/1.2 'Barlow', sans-serif; color: var(--tinta);
+    padding: 13px 14px; border: 2px solid var(--linea); border-radius: var(--radio); background: #fff;
+    text-transform: uppercase; letter-spacing: .3px;
+}
+.buscador input::placeholder { color: #A8A29D; text-transform: none; letter-spacing: 0; }
+.buscador input:focus { outline: none; border-color: var(--tinta); }
+.buscador .ayuda { margin-top: 8px; font-size: .88rem; color: var(--gris); }
+
+.rastreo > .aviso { margin-top: 24px; }
+.rastreo .aviso strong { overflow-wrap: anywhere; }
+
+/* ── Avance del pedido ── */
+.seguimiento { margin-top: 28px; padding: 28px; border-radius: var(--radio); background: var(--tela); }
+.seguimiento .numero { font-size: .9rem; color: var(--gris); }
+.seguimiento .numero strong { color: var(--tinta); overflow-wrap: anywhere; }
+.seguimiento h2 { margin-top: 6px; font-size: clamp(1.8rem, 5vw, 2.4rem); font-style: italic; text-transform: uppercase; }
+.seguimiento .saludo { margin-top: 8px; }
+
+.pasos { list-style: none; margin: 26px 0 0; padding: 0; }
+.pasos li { position: relative; display: flex; gap: 16px; padding-bottom: 24px; }
+.pasos li:last-child { padding-bottom: 0; }
+/* línea que une un paso con el siguiente */
+.pasos li::before {
+    content: ''; position: absolute; left: 13px; top: 28px; bottom: 0; width: 2px; background: #C9C4BE;
+}
+.pasos li:last-child::before { display: none; }
+.pasos li.hecho:not(.actual)::before { background: var(--verde); }
+
+.pasos .punto {
+    position: relative; flex-shrink: 0; width: 28px; height: 28px; border-radius: 50%;
+    border: 2px solid #C9C4BE; background: #fff;
+}
+.pasos .hecho .punto { border-color: var(--verde); background: var(--verde); }
+/* chulo de "hecho" */
+.pasos .hecho .punto::after {
+    content: ''; position: absolute; left: 8px; top: 4px; width: 7px; height: 12px;
+    border: solid #fff; border-width: 0 3px 3px 0; transform: rotate(45deg);
+}
+.pasos .actual .punto { box-shadow: 0 0 0 5px rgba(31, 138, 76, .2); }
+
+.pasos li > div { padding-top: 1px; min-width: 0; }
+.pasos strong { display: block; color: var(--tinta); font-weight: 600; }
+.pasos li > div > span { display: block; font-size: .9rem; color: var(--gris); }
+.pasos .actual strong { font-weight: 700; }
+.pasos .falta strong { color: var(--gris); font-weight: 500; }
+
+/* ── Lo que pidió ── */
+.pedido { margin-top: 26px; padding-top: 20px; border-top: 1px solid #D6D1CB; }
+.pedido h3 { font-size: 1.3rem; margin-bottom: 6px; }
+.pedido ul { list-style: none; margin: 0; padding: 0; }
+.pedido li { padding: 8px 0; border-bottom: 1px solid #D6D1CB; }
+.pedido li:last-child { border-bottom: 0; padding-bottom: 0; }
+.pedido li strong { display: block; color: var(--tinta); }
+.pedido li span { display: block; font-size: .9rem; color: var(--gris); }
+
+.acciones { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 28px; }
+
+@media (max-width: 600px) {
+    .rastreo { margin-top: 28px; }
+    .buscador .campo { flex-direction: column; }
+    .seguimiento { padding: 22px 18px; }
+    .acciones .btn { flex: 1 1 100%; }
+}
