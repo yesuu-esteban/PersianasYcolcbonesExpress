@@ -26,37 +26,137 @@
     </div>
 
     <h1>Compras en línea</h1>
-    <p style="color:var(--texto-suave);font-size:.86rem;">Cuando un pago se aprueba, el pedido se crea solo en el listado de Almacén con el vendedor "Tienda virtual" y el abono completo.</p>
+    <p class="explicacion">Cuando un pago se aprueba, el pedido se crea solo en el listado de Almacén con el vendedor "Tienda virtual" y el abono completo.</p>
 
-    <div class="caja">
-        <div th:if="${#lists.isEmpty(ordenes)}" class="text-center py-4" style="color:var(--texto-suave)">Todavía no hay compras en línea.</div>
-        <div class="orden" th:each="o : ${ordenes}">
-            <div class="fila1">
-                <span>
-                    <span class="ref" th:text="${o.referencia}"></span>
-                    <span class="badge ms-1"
-                          th:classappend="${o.estado == 'APROBADA'} ? 'badge-ok' : (${o.estado == 'PENDIENTE'} ? 'badge-pend' : 'badge-mal')"
-                          th:text="${o.estadoEtiqueta}"></span>
-                </span>
-                <span class="total" th:text="'$' + ${#numbers.formatInteger(o.total, 1, 'POINT')}"></span>
-            </div>
-            <div class="datos">
-                <span th:text="${o.fechaCreacionFormateada}"></span> ·
-                <span th:text="${o.nombreCliente}"></span> ·
-                <a th:href="'tel:' + ${o.telefono}" th:text="${o.telefono}" style="color:inherit"></a> ·
-                <span th:text="${o.ciudad} + ', ' + ${o.direccion}"></span>
-                <span th:if="${o.metodoPago != null}" th:text="' · ' + ${o.metodoPago}"></span>
-            </div>
-            <ul>
-                <li th:each="it : ${o.items}" th:text="${it.productoNombre} + ' × ' + ${it.cantidad} + ': ' + ${it.detalle}"></li>
-            </ul>
-            <div class="almacen" th:if="${o.pedidoTiendaId != null}">
-                Pedido de Almacén #<span th:text="${o.pedidoTiendaId}"></span> ·
-                <a th:href="@{/almacen/imprimir/{id}(id=${o.pedidoTiendaId})}" target="_blank" rel="noopener">Ver pedido</a>
-            </div>
-            <div class="almacen" th:if="${o.notas != null and o.notas != ''}" th:text="'Notas: ' + ${o.notas}"></div>
-        </div>
+    <div th:if="${mensaje}" class="alert alert-success" th:text="${mensaje}"></div>
+    <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
+
+    <!-- ═══ Filtro: al entrar solo se ven las compras pagadas ═══ -->
+    <nav class="filtros" aria-label="Qué compras ver">
+        <a th:href="@{/tienda-admin/ordenes(ver='pagadas')}" th:classappend="${ver == 'pagadas'} ? 'activo'">
+            Pagadas <span class="num" th:text="${conteoPagadas}">0</span>
+        </a>
+        <a th:href="@{/tienda-admin/ordenes(ver='pendientes')}" th:classappend="${ver == 'pendientes'} ? 'activo'">
+            Esperando pago <span class="num" th:text="${conteoPendientes}">0</span>
+        </a>
+        <a th:href="@{/tienda-admin/ordenes(ver='fallidas')}" th:classappend="${ver == 'fallidas'} ? 'activo'">
+            No completadas <span class="num" th:text="${conteoFallidas}">0</span>
+        </a>
+        <a th:href="@{/tienda-admin/ordenes(ver='todas')}" th:classappend="${ver == 'todas'} ? 'activo'">
+            Todas <span class="num" th:text="${conteoTodas}">0</span>
+        </a>
+    </nav>
+
+    <p class="nota-filtro" th:if="${ver == 'pendientes'}">
+        Estas compras se crearon cuando el cliente le dio "Ir a pagar", pero el pago todavía no se confirma. La mayoría son intentos que no se terminaron.
+    </p>
+
+    <!-- ═══ Sin compras en este filtro ═══ -->
+    <div class="caja vacio" th:if="${#lists.isEmpty(ordenes)}">
+        <span th:if="${ver == 'pagadas'}">Todavía no hay compras pagadas.</span>
+        <span th:if="${ver == 'pendientes'}">No hay compras esperando pago.</span>
+        <span th:if="${ver == 'fallidas'}">No hay compras rechazadas, anuladas ni con error.</span>
+        <span th:if="${ver == 'todas'}">Todavía no hay compras en línea.</span>
     </div>
+
+    <!-- ═══ Una tarjeta por compra ═══ -->
+    <article class="orden" th:each="o : ${ordenes}"
+             th:classappend="${o.estado == 'APROBADA'} ? 'es-pagada' : (${o.estado == 'PENDIENTE'} ? 'es-pendiente' : 'es-fallida')">
+
+        <header class="orden-cabeza">
+            <div class="identificacion">
+                <span class="ref" th:text="${o.referencia}">PCX000000000000-XXXXX</span>
+                <span class="badge"
+                      th:classappend="${o.estado == 'APROBADA'} ? 'badge-ok' : (${o.estado == 'PENDIENTE'} ? 'badge-pend' : 'badge-mal')"
+                      th:text="${o.estadoEtiqueta}">Pagada</span>
+                <span class="fecha" th:text="${o.fechaCreacionFormateada}">01/01/2026 10:00 a. m.</span>
+            </div>
+            <span class="total" th:text="'$' + ${#numbers.formatInteger(o.total, 1, 'POINT')}">$0</span>
+        </header>
+
+        <div class="orden-cuerpo">
+            <dl class="cliente">
+                <div>
+                    <dt>Cliente</dt>
+                    <dd th:text="${o.nombreCliente}">Nombre del cliente</dd>
+                </div>
+                <div>
+                    <dt>Celular</dt>
+                    <dd><a th:href="'tel:' + ${o.telefono}" th:text="${o.telefono}">3000000000</a></dd>
+                </div>
+                <div th:if="${o.cedula != null and o.cedula != ''}">
+                    <dt>Cédula</dt>
+                    <dd th:text="${o.cedula}">000</dd>
+                </div>
+                <div class="ancho" th:if="${o.email != null and o.email != ''}">
+                    <dt>Correo</dt>
+                    <dd th:text="${o.email}">correo@ejemplo.com</dd>
+                </div>
+                <div class="ancho">
+                    <dt>Entrega</dt>
+                    <dd th:text="${o.direccion} + ', ' + ${o.ciudad}">Dirección, ciudad</dd>
+                </div>
+                <div th:if="${o.metodoPago != null and o.metodoPago != ''}">
+                    <dt>Medio de pago</dt>
+                    <dd th:text="${o.metodoPago}">CARD</dd>
+                </div>
+                <div th:if="${o.fechaPago != null}">
+                    <dt>Pagada el</dt>
+                    <dd th:text="${o.fechaPagoFormateada}">01/01/2026 10:05 a. m.</dd>
+                </div>
+            </dl>
+
+            <div class="productos">
+                <h2>Productos</h2>
+                <ul>
+                    <li th:each="it : ${o.items}">
+                        <span class="que">
+                            <strong th:text="${it.productoNombre} + ' × ' + ${it.cantidad}">Producto × 1</strong>
+                            <span class="detalle" th:if="${it.detalle != ''}" th:text="${it.detalle}">Tela, color, medidas</span>
+                        </span>
+                        <span class="precio" th:text="'$' + ${#numbers.formatInteger(it.subtotal, 1, 'POINT')}">$0</span>
+                    </li>
+                </ul>
+            </div>
+
+            <p class="notas" th:if="${o.notas != null and o.notas != ''}">
+                <strong>Notas:</strong> <span th:text="${o.notas}"></span>
+            </p>
+        </div>
+
+        <footer class="orden-acciones">
+            <span class="almacen" th:if="${o.pedidoTiendaId != null}">
+                Pedido de Almacén #<span th:text="${o.pedidoTiendaId}">0</span>
+            </span>
+            <span class="botones">
+                <a th:if="${o.pedidoTiendaId != null}" th:href="@{/almacen/imprimir/{id}(id=${o.pedidoTiendaId})}"
+                   target="_blank" rel="noopener" class="btn btn-sm btn-outline-secondary">Ver pedido de Almacén</a>
+                <a th:href="@{/tienda-admin/orden/{id}/editar(id=${o.id}, ver=${ver}, pagina=${paginaActual})}"
+                   class="btn btn-sm btn-outline-secondary">Editar datos</a>
+                <form th:action="@{/tienda-admin/orden/{id}/eliminar(id=${o.id})}" method="post" class="d-inline"
+                      onsubmit="return confirm(this.dataset.aviso);"
+                      th:data-aviso="${o.estado == 'APROBADA'} ? 'Esta compra ya está PAGADA. Se borra solo de esta lista: el pedido de Almacén y el pago en Wompi no se tocan. ¿Eliminarla?' : (${o.estado == 'PENDIENTE'} ? 'Esta compra está esperando pago. Si el cliente todavía está pagando, el pago quedaría sin pedido. ¿Eliminarla?' : '¿Eliminar esta compra de la lista?')">
+                    <input type="hidden" name="ver" th:value="${ver}">
+                    <input type="hidden" name="pagina" th:value="${paginaActual}">
+                    <button type="submit" class="btn btn-sm btn-outline-danger">Eliminar</button>
+                </form>
+            </span>
+        </footer>
+    </article>
+
+    <!-- ═══ Páginas (10 compras por página) ═══ -->
+    <nav class="paginacion" aria-label="Páginas" th:if="${totalPaginas > 1}">
+        <a class="btn btn-sm btn-outline-secondary" th:if="${paginaActual > 0}"
+           th:href="@{/tienda-admin/ordenes(ver=${ver}, pagina=${paginaActual - 1})}">← Anterior</a>
+        <a th:each="i : ${#numbers.sequence(0, totalPaginas - 1)}"
+           th:href="@{/tienda-admin/ordenes(ver=${ver}, pagina=${i})}"
+           class="btn btn-sm" th:classappend="${i == paginaActual} ? 'btn-primary' : 'btn-outline-secondary'"
+           th:text="${i + 1}">1</a>
+        <a class="btn btn-sm btn-outline-secondary" th:if="${paginaActual < totalPaginas - 1}"
+           th:href="@{/tienda-admin/ordenes(ver=${ver}, pagina=${paginaActual + 1})}">Siguiente →</a>
+    </nav>
+    <p class="contador" th:if="${not #lists.isEmpty(ordenes)}"
+       th:text="'Página ' + ${paginaActual + 1} + ' de ' + ${totalPaginas} + ' · ' + ${totalFiltradas} + ' compra(s)'">Página 1 de 1</p>
 </div>
 </body>
 </html>

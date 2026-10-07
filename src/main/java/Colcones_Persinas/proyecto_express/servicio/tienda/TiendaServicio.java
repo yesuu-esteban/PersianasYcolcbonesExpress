@@ -26,6 +26,7 @@ import java.util.Locale;
  *  - Cotiza el carrito (siempre en el servidor).
  *  - Crea la orden antes de mandar al cliente a pagar.
  *  - Aplica el resultado de Wompi y, si el pago se aprueba, crea el pedido en Almacén.
+ *  - Permite corregir los datos del cliente de una compra desde la administración.
  */
 @Service
 public class TiendaServicio {
@@ -113,7 +114,9 @@ public class TiendaServicio {
         List<String> partes = new ArrayList<>();
         if (tela != null) partes.add(tela.getNombre());
         if (it.color() != null && !it.color().isBlank()) partes.add("color " + it.color().trim());
-        if (p.isPorMetro() && it.anchoCm() != null && it.altoCm() != null) partes.add(it.anchoCm() + " × " + it.altoCm() + " cm");
+        if (p.isPorMetro() && it.anchoCm() != null && it.altoCm() != null) {
+            partes.add(ItemOrdenTienda.enMetros(it.anchoCm()) + " × " + ItemOrdenTienda.enMetros(it.altoCm()) + " m");
+        }
         if (p.isPorMetro() && p.isConMando() && it.lado() != null && !it.lado().isBlank()) partes.add("mando a la " + it.lado().toLowerCase());
         return String.join(", ", partes);
     }
@@ -261,6 +264,59 @@ public class TiendaServicio {
 
         pedidoTiendaRepository.save(pedido);
         orden.setPedidoTiendaId(pedido.getId());
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // ADMINISTRACIÓN DE COMPRAS
+    // ═══════════════════════════════════════════════════════════════
+
+    /**
+     * Corrige los datos de contacto y entrega de una compra (pantalla "Compras en línea").
+     * No toca los productos, el total ni el estado: esos vienen del pago.
+     *
+     * Si la compra ya tiene su pedido en Almacén, los datos que cambiaron se copian
+     * también allá, para no tener que editar en dos partes.
+     *
+     * @return true si además se actualizó el pedido de Almacén.
+     */
+    @Transactional
+    public boolean editarDatosCliente(int ordenId, DatosCliente d) {
+        validarCliente(d);
+        OrdenTienda orden = ordenRepository.findById(ordenId)
+                .orElseThrow(() -> new IllegalArgumentException("Esa compra ya no existe."));
+
+        boolean cambioNombre    = !limpio(d.nombre()).equals(limpio(orden.getNombreCliente()));
+        boolean cambioCedula    = !limpio(d.cedula()).equals(limpio(orden.getCedula()));
+        boolean cambioTelefono  = !limpio(d.telefono()).equals(limpio(orden.getTelefono()));
+        boolean cambioDireccion = !limpio(d.direccion()).equals(limpio(orden.getDireccion()))
+                || !limpio(d.ciudad()).equals(limpio(orden.getCiudad()));
+
+        String notas = limpio(d.notas());
+        if (notas.length() > 1000) notas = notas.substring(0, 1000);
+
+        orden.setNombreCliente(limpio(d.nombre()));
+        orden.setCedula(limpio(d.cedula()));
+        orden.setEmail(limpio(d.email()));
+        orden.setTelefono(limpio(d.telefono()));
+        orden.setDireccion(limpio(d.direccion()));
+        orden.setCiudad(limpio(d.ciudad()));
+        orden.setNotas(notas);
+        ordenRepository.save(orden);
+
+        boolean hayCambiosParaAlmacen = cambioNombre || cambioCedula || cambioTelefono || cambioDireccion;
+        if (orden.getPedidoTiendaId() == null || !hayCambiosParaAlmacen) return false;
+
+        PedidoTienda pedido = pedidoTiendaRepository.findById(orden.getPedidoTiendaId()).orElse(null);
+        if (pedido == null) return false;   // el pedido ya fue borrado en Almacén
+
+        if (cambioNombre)   pedido.setNombreCliente(orden.getNombreCliente());
+        if (cambioCedula)   pedido.setCedula(orden.getCedula());
+        if (cambioTelefono) pedido.setTelefono(orden.getTelefono());
+        if (cambioDireccion) {
+            pedido.setDireccion(orden.getDireccion() + (vacio(orden.getCiudad()) ? "" : ", " + orden.getCiudad()));
+        }
+        pedidoTiendaRepository.save(pedido);
+        return true;
     }
 
     // ═══════════════════════════════════════════════════════════════

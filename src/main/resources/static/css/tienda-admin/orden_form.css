@@ -1,0 +1,14 @@
+/* Pantalla: templates/tienda-admin/orden_form.html */
+
+.seccion { margin-bottom: 18px; }
+.seccion h2 { font-size: 1rem; font-weight: 700; margin-bottom: 12px; color: var(--texto); }
+
+.resumen { margin-bottom: 18px; }
+.resumen-cabeza { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px 16px; margin-bottom: 10px; }
+.resumen .ref { font-weight: 700; overflow-wrap: anywhere; }
+.resumen .total { font-weight: 800; font-size: 1.2rem; white-space: nowrap; }
+.resumen ul { list-style: none; margin: 0 0 10px; padding: 0; font-size: .88rem; }
+.resumen li { padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.07); }
+.resumen li:last-child { border-bottom: 0; }
+.resumen li strong { display: block; font-weight: 600; }
+.resumen li span { color: var(--texto-suave); font-size: .82rem; }

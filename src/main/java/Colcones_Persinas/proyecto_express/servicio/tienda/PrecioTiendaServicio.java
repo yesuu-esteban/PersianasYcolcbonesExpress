@@ -1,5 +1,6 @@
 package Colcones_Persinas.proyecto_express.servicio.tienda;
 
+import Colcones_Persinas.proyecto_express.modelo.tienda.ItemOrdenTienda;
 import Colcones_Persinas.proyecto_express.modelo.tienda.ProductoTienda;
 import Colcones_Persinas.proyecto_express.modelo.tienda.TelaTienda;
 import org.springframework.stereotype.Service;
@@ -13,10 +14,13 @@ import java.math.RoundingMode;
  * precio que mande el navegador).
  *
  * Regla (la misma que usa fábrica en Pedido.getPrecioVenta):
- *  1. Corte de alto = alto + 20 cm.
+ *  1. Corte de alto = alto + 0,20 m.
  *  2. Se usa el rollo más angosto que alcance para ese corte: 1,83 → 2,50 → 3,00 m
  *     (saltando los rollos que esa tela no tenga).
  *  3. Precio = ancho × alto (m², con un mínimo cobrable) × precio por m² de ese rollo.
+ *
+ * Las medidas llegan y se guardan en centímetros, pero al cliente siempre se le
+ * habla en metros (así se mide en el negocio).
  */
 @Service
 public class PrecioTiendaServicio {
@@ -50,14 +54,16 @@ public class PrecioTiendaServicio {
         if (tela == null || !tela.isActiva() || tela.getProducto() == null || tela.getProducto().getId() != p.getId()) {
             return Cotizacion.error("Elige una tela.");
         }
-        if (anchoCm == null || altoCm == null) return Cotizacion.error("Escribe el ancho y el alto en centímetros.");
+        if (anchoCm == null || altoCm == null) return Cotizacion.error("Escribe el ancho y el alto en metros.");
         if (anchoCm < p.getAnchoMinCm() || anchoCm > p.getAnchoMaxCm()) {
-            return Cotizacion.error("El ancho debe estar entre " + p.getAnchoMinCm() + " y " + p.getAnchoMaxCm()
-                    + " cm. Para otras medidas, escríbenos y te cotizamos.");
+            return Cotizacion.error("El ancho debe estar entre " + ItemOrdenTienda.enMetros(p.getAnchoMinCm())
+                    + " y " + ItemOrdenTienda.enMetros(p.getAnchoMaxCm())
+                    + " m. Para otras medidas, escríbenos y te cotizamos.");
         }
         if (altoCm < p.getAltoMinCm() || altoCm > p.getAltoMaxCm()) {
-            return Cotizacion.error("El alto debe estar entre " + p.getAltoMinCm() + " y " + p.getAltoMaxCm()
-                    + " cm. Para otras medidas, escríbenos y te cotizamos.");
+            return Cotizacion.error("El alto debe estar entre " + ItemOrdenTienda.enMetros(p.getAltoMinCm())
+                    + " y " + ItemOrdenTienda.enMetros(p.getAltoMaxCm())
+                    + " m. Para otras medidas, escríbenos y te cotizamos.");
         }
 
         double ancho = anchoCm / 100.0;
