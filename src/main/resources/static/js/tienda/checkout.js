@@ -4,7 +4,8 @@
     const items = Carrito.leer();
     if (items.length === 0) { window.location.replace('/tienda/carrito'); return; }
 
-    const btnPagar = document.getElementById('btnPagar');
+    // Puede haber uno o dos botones de pago: Wompi y Addi
+    const botonesPagar = document.querySelectorAll('.btn-pagar');
     let todoOk = false;
 
     fetch('/tienda/api/carrito', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(items) })
@@ -18,7 +19,7 @@
                     <span>${l.ok ? pesos(l.subtotal) : ''}</span>
                 </div>`).join('');
             document.getElementById('total').textContent = pesos(d.total);
-            if (!todoOk) btnPagar.disabled = true;
+            if (!todoOk) botonesPagar.forEach(b => { b.disabled = true; });
             const resumen = d.lineas.map(l => `- ${l.producto}: ${l.detalle}, cantidad ${l.cantidad}${l.ok ? ', ' + pesos(l.subtotal) : ''}`).join('\n');
             document.getElementById('btnAsesor').href = enlaceWhatsapp('Hola, quiero hacer este pedido:\n' + resumen + '\nTotal: ' + pesos(d.total));
         })
@@ -33,7 +34,10 @@
             return;
         }
         document.getElementById('campoCarrito').value = JSON.stringify(Carrito.leer());
-        btnPagar.disabled = true;
-        btnPagar.textContent = 'Abriendo el pago…';
+        // El botón que se oprimió dice con qué se paga: "wompi" o "addi"
+        const oprimido = e.submitter && e.submitter.classList.contains('btn-pagar') ? e.submitter : botonesPagar[0];
+        document.getElementById('campoMedio').value = oprimido && oprimido.value === 'addi' ? 'addi' : 'wompi';
+        botonesPagar.forEach(b => { b.disabled = true; });
+        if (oprimido) oprimido.textContent = oprimido.value === 'addi' ? 'Abriendo Addi…' : 'Abriendo el pago…';
     });
 })();

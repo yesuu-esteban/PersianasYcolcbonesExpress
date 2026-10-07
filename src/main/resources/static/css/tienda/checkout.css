@@ -18,6 +18,10 @@ textarea { resize: vertical; min-height: 80px; }
 .autorizo input { width: 20px; height: 20px; margin-top: 2px; accent-color: var(--rojo); flex-shrink: 0; }
 .btn-pagar { width: 100%; padding: 16px; font-size: 1.1rem; margin-top: 18px; }
 .seguro { font-size: .88rem; color: var(--gris); margin-top: 10px; text-align: center; }
+/* "o" entre los dos medios de pago */
+.separador-pago { display: flex; align-items: center; gap: 12px; margin-top: 18px; color: var(--gris); font-size: .9rem; }
+.separador-pago::before, .separador-pago::after { content: ''; flex: 1; height: 1px; background: var(--linea); }
+.separador-pago + .btn-pagar { margin-top: 14px; }
 
 .resumen { position: sticky; top: 92px; background: var(--tela); border-radius: var(--radio); padding: 24px; }
 .resumen h2 { font-size: 1.5rem; margin-bottom: 12px; }

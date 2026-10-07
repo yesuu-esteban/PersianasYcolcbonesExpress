@@ -38,8 +38,9 @@
                 <div class="icono" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg></div>
                 <div>
                     <h1>Confirmando tu pago</h1>
-                    <p>Estamos esperando la confirmación de Wompi para el pedido <span class="referencia" th:text="${orden.referencia}"></span>. Algunos pagos, como PSE, pueden tardar unos minutos.</p>
-                    <p th:if="${transaccionId != null}">Esta página se actualiza sola.</p>
+                    <p th:if="${orden.metodoPago != 'ADDI'}">Estamos esperando la confirmación de Wompi para el pedido <span class="referencia" th:text="${orden.referencia}"></span>. Algunos pagos, como PSE, pueden tardar unos minutos.</p>
+                    <p th:if="${orden.metodoPago == 'ADDI'}">Estamos esperando la respuesta de Addi para el pedido <span class="referencia" th:text="${orden.referencia}"></span>. Si no terminaste la solicitud en Addi, puedes volver a intentarlo desde tu carrito.</p>
+                    <p th:if="${transaccionId != null or orden.metodoPago == 'ADDI'}">Esta página se actualiza sola.</p>
                 </div>
             </div>
 
@@ -48,8 +49,10 @@
                 <div class="icono" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M7 7l10 10M17 7L7 17"/></svg></div>
                 <div>
                     <h1>El pago no se completó</h1>
-                    <p th:if="${orden.estado == 'RECHAZADA'}">El banco o la entidad rechazó el pago. No se hizo ningún cobro.</p>
-                    <p th:if="${orden.estado == 'ANULADA'}">El pago fue anulado. No se hizo ningún cobro.</p>
+                    <p th:if="${orden.estado == 'RECHAZADA' and orden.metodoPago != 'ADDI'}">El banco o la entidad rechazó el pago. No se hizo ningún cobro.</p>
+                    <p th:if="${orden.estado == 'RECHAZADA' and orden.metodoPago == 'ADDI'}">Addi no aprobó la solicitud. No se hizo ningún cobro.</p>
+                    <p th:if="${orden.estado == 'ANULADA' and orden.metodoPago != 'ADDI'}">El pago fue anulado. No se hizo ningún cobro.</p>
+                    <p th:if="${orden.estado == 'ANULADA' and orden.metodoPago == 'ADDI'}">No se terminó la solicitud en Addi. No se hizo ningún cobro.</p>
                     <p th:if="${orden.estado == 'ERROR'}">Hubo un problema con el pago. Escríbenos con la referencia <span class="referencia" th:text="${orden.referencia}"></span> y lo revisamos.</p>
                     <p>Tu carrito sigue guardado: puedes intentarlo de nuevo con otro medio de pago.</p>
                 </div>
@@ -81,7 +84,7 @@
 <th:block th:replace="~{tienda/fragmentos :: scripts}"></th:block>
 <script th:inline="javascript">
     const estado = /*[[${orden != null ? orden.estado : ''}]]*/ '';
-    const hayTransaccion = /*[[${transaccionId != null}]]*/ false;
+    const hayTransaccion = /*[[${transaccionId != null or (orden != null and orden.metodoPago == 'ADDI')}]]*/ false;
 </script>
 <script src="/js/tienda/resultado.js"></script>
 </body>

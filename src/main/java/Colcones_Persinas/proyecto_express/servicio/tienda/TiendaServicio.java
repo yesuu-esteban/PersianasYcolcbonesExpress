@@ -25,13 +25,15 @@ import java.util.Locale;
  * Lógica de compra de la tienda virtual:
  *  - Cotiza el carrito (siempre en el servidor).
  *  - Crea la orden antes de mandar al cliente a pagar.
- *  - Aplica el resultado de Wompi y, si el pago se aprueba, crea el pedido en Almacén.
+ *  - Aplica el resultado de Wompi o de Addi y, si el pago se aprueba, crea el pedido en Almacén.
  *  - Permite corregir los datos del cliente de una compra desde la administración.
  */
 @Service
 public class TiendaServicio {
 
     public static final String VENDEDOR_TIENDA = "Tienda virtual";
+    /** Así queda marcada la compra cuando el cliente eligió pagar a cuotas con Addi. */
+    public static final String MEDIO_ADDI = "ADDI";
     private static final int MAX_LINEAS = 30;
 
     private final ProductoTiendaRepository productoRepository;
@@ -192,8 +194,8 @@ public class TiendaServicio {
     // ═══════════════════════════════════════════════════════════════
 
     /**
-     * Aplica el estado que reporta Wompi. Es seguro llamarlo varias veces con el mismo
-     * pago: el pedido de Almacén se crea una sola vez.
+     * Aplica el estado que reporta Wompi (o Addi, ya pasado a los mismos nombres de Wompi).
+     * Es seguro llamarlo varias veces con el mismo pago: el pedido de Almacén se crea una sola vez.
      */
     @Transactional
     public OrdenTienda aplicarPago(String referencia, String transaccionId, String estadoWompi,
@@ -210,7 +212,8 @@ public class TiendaServicio {
                 if (centavos != orden.getTotalEnCentavos()) {
                     orden.setEstado(OrdenTienda.ERROR);
                     orden.setNotas(limpio(orden.getNotas()) + " [El monto pagado (" + centavos / 100
-                            + ") no coincide con el total de la orden. Revisar en Wompi.]");
+                            + ") no coincide con el total de la orden. Revisar en "
+                            + (MEDIO_ADDI.equals(orden.getMetodoPago()) ? "Addi" : "Wompi") + ".]");
                 } else {
                     orden.setEstado(OrdenTienda.APROBADA);
                     orden.setFechaPago(LocalDateTime.now(OrdenTienda.ZONA_COLOMBIA));
@@ -238,7 +241,9 @@ public class TiendaServicio {
         pedido.setVendedor(VENDEDOR_TIENDA);
         pedido.setFabrica("");
         pedido.setEstado("Pendiente");
-        pedido.setMetodoPago("Wompi" + (vacio(orden.getMetodoPago()) ? "" : " - " + orden.getMetodoPago()));
+        pedido.setMetodoPago(MEDIO_ADDI.equals(orden.getMetodoPago())
+                ? "Addi"
+                : "Wompi" + (vacio(orden.getMetodoPago()) ? "" : " - " + orden.getMetodoPago()));
 
         StringBuilder desc = new StringBuilder("Compra en la tienda virtual. Referencia ")
                 .append(orden.getReferencia()).append(". Correo: ").append(orden.getEmail()).append('.');

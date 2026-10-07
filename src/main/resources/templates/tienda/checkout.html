@@ -21,6 +21,8 @@
     <div class="pago">
         <form method="post" action="/tienda/checkout" id="formPago" novalidate>
             <input type="hidden" name="carrito" id="campoCarrito">
+            <!-- Medio de pago elegido: lo llena checkout.js según el botón que se oprima -->
+            <input type="hidden" name="medio" id="campoMedio" value="wompi">
 
             <fieldset>
                 <legend>Tus datos</legend>
@@ -67,8 +69,19 @@
                 <span>Autorizo a Persianas y Colchones Express a usar mis datos para procesar y entregar este pedido y para contactarme sobre él.</span>
             </label>
 
-            <button type="submit" class="btn btn-rojo btn-pagar" id="btnPagar" th:disabled="${!pagosActivos}">Ir a pagar</button>
-            <p class="seguro">Vas a pagar en la plataforma segura de Wompi, de Bancolombia. Puedes usar PSE, Nequi, tarjeta o botón Bancolombia.</p>
+            <!-- Wompi: se muestra siempre que esté activo (o cuando no hay ningún medio, para que se vea apagado) -->
+            <th:block th:if="${wompiActivo or !addiActivo}">
+                <button type="submit" value="wompi" class="btn btn-rojo btn-pagar" th:disabled="${!wompiActivo}"
+                        th:text="${addiActivo} ? 'Pagar con PSE, Nequi o tarjeta' : 'Ir a pagar'">Ir a pagar</button>
+                <p class="seguro">Vas a pagar en la plataforma segura de Wompi, de Bancolombia. Puedes usar PSE, Nequi, tarjeta o botón Bancolombia.</p>
+            </th:block>
+
+            <!-- Addi: solo aparece cuando están puestas sus llaves -->
+            <th:block th:if="${addiActivo}">
+                <p class="separador-pago" th:if="${wompiActivo}"><span>o</span></p>
+                <button type="submit" value="addi" class="btn btn-borde btn-pagar">Pagar a cuotas con Addi</button>
+                <p class="seguro">Vas a la página de Addi para solicitar el pago a cuotas. Si te lo aprueban, tu pedido queda confirmado.</p>
+            </th:block>
         </form>
 
         <aside class="resumen">

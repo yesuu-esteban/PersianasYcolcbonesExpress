@@ -9,6 +9,7 @@ import Colcones_Persinas.proyecto_express.repository.tienda.ImagenTiendaReposito
 import Colcones_Persinas.proyecto_express.repository.tienda.OrdenTiendaRepository;
 import Colcones_Persinas.proyecto_express.repository.tienda.ProductoTiendaRepository;
 import Colcones_Persinas.proyecto_express.repository.tienda.TelaTiendaRepository;
+import Colcones_Persinas.proyecto_express.servicio.tienda.AddiServicio;
 import Colcones_Persinas.proyecto_express.servicio.tienda.PrecioTiendaServicio;
 import Colcones_Persinas.proyecto_express.servicio.tienda.TiendaServicio;
 import Colcones_Persinas.proyecto_express.servicio.tienda.WompiServicio;
@@ -29,8 +30,8 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * Tienda virtual PÚBLICA (no requiere iniciar sesión): catálogo, cotizador por medidas,
- * carrito, pago con Wompi y página de resultado. El aviso automático de Wompi
- * (webhook) también llega aquí: POST /tienda/wompi/eventos.
+ * carrito, pago con Wompi o a cuotas con Addi, y página de resultado. Los avisos
+ * automáticos también llegan aquí: POST /tienda/wompi/eventos y POST /tienda/addi/aviso.
  */
 @Controller
 @RequestMapping("/tienda")
@@ -43,6 +44,7 @@ public class TiendaControlador {
     private final TiendaServicio tiendaServicio;
     private final PrecioTiendaServicio precioServicio;
     private final WompiServicio wompi;
+    private final AddiServicio addi;
     private final ObjectMapper objectMapper;
 
     /** Número de WhatsApp para asesoría (con 57 adelante, sin espacios). */
@@ -55,7 +57,7 @@ public class TiendaControlador {
     public TiendaControlador(ProductoTiendaRepository productoRepository, TelaTiendaRepository telaRepository,
                              ImagenTiendaRepository imagenRepository, OrdenTiendaRepository ordenRepository,
                              TiendaServicio tiendaServicio, PrecioTiendaServicio precioServicio,
-                             WompiServicio wompi, ObjectMapper objectMapper) {
+                             WompiServicio wompi, AddiServicio addi, ObjectMapper objectMapper) {
         this.productoRepository = productoRepository;
         this.telaRepository = telaRepository;
         this.imagenRepository = imagenRepository;
@@ -63,6 +65,7 @@ public class TiendaControlador {
         this.tiendaServicio = tiendaServicio;
         this.precioServicio = precioServicio;
         this.wompi = wompi;
+        this.addi = addi;
         this.objectMapper = objectMapper;
     }
 
@@ -103,16 +106,29 @@ public class TiendaControlador {
 
     @GetMapping("/checkout")
     public String checkout(Model model) {
-        model.addAttribute("pagosActivos", wompi.isConfigurado());
+        ponerMediosDePago(model);
         return "tienda/checkout";
     }
 
+    /** Le dice a la página de pago qué botones mostrar: Wompi, Addi o los dos. */
+    private void ponerMediosDePago(Model model) {
+        model.addAttribute("wompiActivo", wompi.isConfigurado());
+        model.addAttribute("addiActivo", addi.isConfigurado());
+        model.addAttribute("pagosActivos", wompi.isConfigurado() || addi.isConfigurado());
+    }
+
+    /** El cliente elige el medio con el botón que oprime: "wompi" (por defecto) o "addi". */
     @PostMapping("/checkout")
     public String pagar(@RequestParam Map<String, String> datos, Model model) {
-        model.addAttribute("pagosActivos", wompi.isConfigurado());
+        ponerMediosDePago(model);
         model.addAttribute("datos", datos);
+        boolean conAddi = "addi".equals(datos.get("medio"));
 
-        if (!wompi.isConfigurado()) {
+        if (conAddi && !addi.isConfigurado()) {
+            model.addAttribute("error", "El pago con Addi no está disponible en este momento. Elige otro medio de pago.");
+            return "tienda/checkout";
+        }
+        if (!conAddi && !wompi.isConfigurado()) {
             model.addAttribute("error", "Los pagos en línea todavía no están activos. Envíanos tu pedido por WhatsApp y te ayudamos a completarlo.");
             return "tienda/checkout";
         }
@@ -130,23 +146,38 @@ public class TiendaControlador {
             return "tienda/checkout";
         }
 
+        OrdenTienda orden;
         try {
-            OrdenTienda orden = tiendaServicio.crearOrden(new TiendaServicio.DatosCliente(
+            orden = tiendaServicio.crearOrden(new TiendaServicio.DatosCliente(
                     datos.get("nombre"), datos.get("cedula"), datos.get("email"), datos.get("telefono"),
                     datos.get("direccion"), datos.get("ciudad"), datos.get("notas")), items);
-
-            String urlRegreso = ServletUriComponentsBuilder.fromCurrentContextPath()
-                    .path("/tienda/pedido/{ref}").buildAndExpand(orden.getReferencia()).toUriString();
-            return "redirect:" + wompi.urlCheckout(orden, urlRegreso);
         } catch (IllegalArgumentException e) {
+            model.addAttribute("error", e.getMessage());
+            return "tienda/checkout";
+        }
+
+        String urlRegreso = ServletUriComponentsBuilder.fromCurrentContextPath()
+                .path("/tienda/pedido/{ref}").buildAndExpand(orden.getReferencia()).toUriString();
+        if (!conAddi) return "redirect:" + wompi.urlCheckout(orden, urlRegreso);
+
+        // ── Addi ──
+        orden.setMetodoPago(TiendaServicio.MEDIO_ADDI);
+        ordenRepository.save(orden);
+        try {
+            String base = ServletUriComponentsBuilder.fromCurrentContextPath().build().toUriString();
+            return "redirect:" + addi.crearSolicitud(orden, base + "/tienda/addi/aviso", urlRegreso, base + "/tienda/logo.png");
+        } catch (AddiServicio.AddiException e) {
+            // No se alcanzó a enviar a Addi: no se deja una compra "esperando pago" que nadie va a pagar
+            ordenRepository.delete(orden);
             model.addAttribute("error", e.getMessage());
             return "tienda/checkout";
         }
     }
 
     /**
-     * Página a la que Wompi devuelve al cliente después de pagar. Wompi agrega ?id=<transacción>.
-     * Si la orden sigue pendiente, se consulta el resultado directamente a Wompi.
+     * Página a la que Wompi o Addi devuelven al cliente al terminar. Wompi agrega ?id=<transacción>:
+     * si la orden sigue pendiente, se consulta el resultado directamente a Wompi.
+     * Con Addi no hay nada que consultar: el resultado llega por su aviso (/tienda/addi/aviso).
      */
     @GetMapping("/pedido/{referencia}")
     public String resultado(@PathVariable String referencia,
@@ -258,6 +289,45 @@ public class TiendaControlador {
             return ResponseEntity.ok("ok");
         } catch (Exception e) {
             System.err.println("[Wompi] Error procesando evento: " + e.getMessage());
+            return ResponseEntity.internalServerError().body("error");
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // AVISO AUTOMÁTICO DE ADDI
+    // ═══════════════════════════════════════════════════════════════
+
+    /**
+     * Addi llama aquí cuando decide una solicitud (aprobada, rechazada, abandonada).
+     * Esta dirección no se configura en ningún panel: la tienda se la envía a Addi con cada compra.
+     * El aviso trae un usuario y una clave que solo Addi conoce; si no coinciden, se rechaza.
+     * Addi espera que se le conteste con el mismo contenido que envió.
+     */
+    @PostMapping("/addi/aviso")
+    @ResponseBody
+    public ResponseEntity<String> avisoAddi(@RequestBody(required = false) String cuerpo,
+                                            @RequestHeader(value = "Authorization", required = false) String autorizacion) {
+        if (!addi.avisoAutorizado(autorizacion)) {
+            System.err.println("[Addi] Aviso rechazado: no trae el usuario y la clave de Addi.");
+            return ResponseEntity.status(401).header("WWW-Authenticate", "Basic realm=\"addi\"").build();
+        }
+        try {
+            String contenido = cuerpo == null ? "" : cuerpo;
+            JsonNode aviso = objectMapper.readTree(contenido.isBlank() ? "{}" : contenido);
+            String referencia = aviso.path("orderId").asText("");
+            OrdenTienda orden = ordenRepository.findByReferencia(referencia).orElse(null);
+
+            if (orden == null || !TiendaServicio.MEDIO_ADDI.equals(orden.getMetodoPago())) {
+                System.err.println("[Addi] Aviso de una compra que no es de Addi o no existe: " + referencia);
+            } else {
+                tiendaServicio.aplicarPago(referencia, aviso.path("applicationId").asText(null),
+                        AddiServicio.estadoComoWompi(aviso.path("status").asText("")),
+                        AddiServicio.centavos(aviso.path("approvedAmount"), orden.getTotalEnCentavos()),
+                        TiendaServicio.MEDIO_ADDI);
+            }
+            return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(contenido);
+        } catch (Exception e) {
+            System.err.println("[Addi] Error procesando el aviso: " + e.getMessage());
             return ResponseEntity.internalServerError().body("error");
         }
     }
