@@ -1,0 +1,11 @@
+/* Pantalla: templates/tienda-admin/ordenes.html */
+
+.orden { padding: 14px 0; border-bottom: 1px solid rgba(255,255,255,0.08); }
+.orden:last-child { border-bottom: 0; }
+.orden .fila1 { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; align-items: baseline; }
+.orden .ref { font-weight: 700; }
+.orden .total { font-weight: 700; font-size: 1.05rem; }
+.orden .datos { font-size: .82rem; color: var(--texto-suave); margin-top: 4px; }
+.orden ul { margin: 8px 0 0; padding-left: 18px; font-size: .84rem; }
+.orden .almacen { font-size: .8rem; margin-top: 6px; }
+.orden .almacen a { color: var(--accent-light); }

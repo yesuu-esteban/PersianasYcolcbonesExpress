@@ -106,6 +106,16 @@
                 </div>
             </a>
 
+            <!-- TIENDA VIRTUAL: productos, precios, fotos y compras pagadas en línea -->
+            <a class="module-card" th:href="@{/tienda-admin}" sec:authorize="hasAnyRole('TIENDA_ADMIN','ADMIN')">
+                <div class="module-content">
+                    <span class="module-category">Módulo de Ventas en Línea</span>
+                    <h2>Tienda virtual</h2>
+                    <p>Administra los productos, telas, precios por rollo y fotos de la tienda, y revisa las compras pagadas en línea.</p>
+                    <span class="module-action">Acceder al módulo &rarr;</span>
+                </div>
+            </a>
+
         </div>
     </main>
 

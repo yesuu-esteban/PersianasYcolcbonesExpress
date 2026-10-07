@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/tienda-admin/comun.css">
+
+    <title th:text="${producto.id == 0} ? 'Nuevo producto' : 'Editar producto'">Producto</title>
+    <link rel="stylesheet" href="/css/tienda-admin/producto_form.css">
+</head>
+<body>
+<div class="container-fluid" style="max-width:1000px;">
+    <div class="marca-header">
+        <div class="logo">
+            <img src="/tienda/logo.png" alt="">
+            <div class="titulo">PERSIANAS EXPRESS<small>TIENDA VIRTUAL</small></div>
+        </div>
+        <div class="acciones-header">
+            <a href="/portal" class="btn btn-outline-secondary">← Portal</a>
+            <a href="/tienda-admin" class="btn btn-outline-secondary">Productos</a>
+            <a href="/tienda-admin/ordenes" class="btn btn-outline-secondary">Compras en línea</a>
+            <a href="/tienda" target="_blank" rel="noopener" class="btn btn-primary">Ver tienda</a>
+        </div>
+    </div>
+
+    <h1 th:text="${producto.id == 0} ? 'Nuevo producto' : 'Editar ' + ${producto.nombre}">Producto</h1>
+    <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
+
+    <form method="post" action="/tienda-admin/producto/guardar" enctype="multipart/form-data">
+        <input type="hidden" name="id" th:value="${producto.id == 0} ? '' : ${producto.id}">
+
+        <!-- ═══ Datos básicos ═══ -->
+        <div class="caja seccion">
+            <h2>Datos del producto</h2>
+            <div class="row g-3">
+                <div class="col-md-8">
+                    <label class="form-label" for="nombre">Nombre</label>
+                    <input type="text" class="form-control" id="nombre" name="nombre" th:value="${producto.nombre}" required maxlength="120" placeholder="Ej: Blackout enrollable">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label" for="categoria">Categoría</label>
+                    <select class="form-select" id="categoria" name="categoria">
+                        <option th:each="c : ${categorias}" th:value="${c.key}" th:text="${c.value}" th:selected="${c.key == producto.categoria}"></option>
+                    </select>
+                </div>
+                <div class="col-12">
+                    <label class="form-label" for="descripcionCorta">Descripción corta <span class="fw-normal" style="color:var(--texto-suave)">(sale en el catálogo)</span></label>
+                    <input type="text" class="form-control" id="descripcionCorta" name="descripcionCorta" th:value="${producto.descripcionCorta}" maxlength="300" placeholder="Ej: Bloquea la luz por completo. Ideal para habitaciones.">
+                </div>
+                <div class="col-12">
+                    <label class="form-label" for="descripcion">Descripción completa</label>
+                    <textarea class="form-control" id="descripcion" name="descripcion" rows="4" th:text="${producto.descripcion}"></textarea>
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══ Foto ═══ -->
+        <div class="caja seccion">
+            <h2>Foto</h2>
+            <div class="d-flex flex-wrap gap-3 align-items-start">
+                <div class="foto-actual" id="vistaFoto">
+                    <img th:if="${producto.imagenId != null}" th:src="@{/tienda/img/{id}(id=${producto.imagenId})}" alt="">
+                </div>
+                <div style="flex:1;min-width:220px;">
+                    <input type="file" class="form-control" name="imagen" id="imagen" accept="image/jpeg,image/png,image/webp">
+                    <div class="ayuda">JPG, PNG o WEBP de máximo 5 MB. Se ve mejor horizontal (4:3), por ejemplo 1200 × 900 px.</div>
+                    <div class="form-check mt-2" th:if="${producto.imagenId != null}">
+                        <input class="form-check-input" type="checkbox" name="quitarImagen" value="true" id="quitarImagen">
+                        <label class="form-check-label" for="quitarImagen" style="font-size:.86rem;">Quitar la foto actual</label>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══ Precio ═══ -->
+        <div class="caja seccion">
+            <h2>Cómo se cobra</h2>
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <select class="form-select" name="tipoPrecio" id="tipoPrecio">
+                        <option value="M2" th:selected="${producto.porMetro}">Por metro cuadrado, según la tela y el rollo</option>
+                        <option value="UNIDAD" th:selected="${!producto.porMetro}">Precio fijo por unidad</option>
+                    </select>
+                </div>
+                <div class="col-md-6" data-solo="UNIDAD">
+                    <div class="input-group">
+                        <span class="input-group-text">$</span>
+                        <input type="text" class="form-control" name="precioUnidad" inputmode="numeric" placeholder="Precio por unidad"
+                               th:value="${producto.precioUnidad != null} ? ${#numbers.formatInteger(producto.precioUnidad, 1, 'POINT')} : ''">
+                    </div>
+                </div>
+            </div>
+
+            <div data-solo="M2" class="mt-3">
+                <div class="row g-3">
+                    <div class="col-6 col-md-3">
+                        <label class="form-label" for="anchoMinM">Ancho mínimo (m)</label>
+                        <input type="text" class="form-control" id="anchoMinM" inputmode="decimal" autocomplete="off" placeholder="0,30" data-medida-m="anchoMinCm">
+                        <input type="hidden" name="anchoMinCm" th:value="${producto.anchoMinCm}">
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <label class="form-label" for="anchoMaxM">Ancho máximo (m)</label>
+                        <input type="text" class="form-control" id="anchoMaxM" inputmode="decimal" autocomplete="off" placeholder="3,00" data-medida-m="anchoMaxCm">
+                        <input type="hidden" name="anchoMaxCm" th:value="${producto.anchoMaxCm}">
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <label class="form-label" for="altoMinM">Alto mínimo (m)</label>
+                        <input type="text" class="form-control" id="altoMinM" inputmode="decimal" autocomplete="off" placeholder="0,30" data-medida-m="altoMinCm">
+                        <input type="hidden" name="altoMinCm" th:value="${producto.altoMinCm}">
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <label class="form-label" for="altoMaxM">Alto máximo (m)</label>
+                        <input type="text" class="form-control" id="altoMaxM" inputmode="decimal" autocomplete="off" placeholder="2,80" data-medida-m="altoMaxCm">
+                        <input type="hidden" name="altoMaxCm" th:value="${producto.altoMaxCm}">
+                    </div>
+                    <div class="col-12 ayuda" id="avisoMedidas" hidden style="color:#ff9a90;">Escribe las cuatro medidas en metros, por ejemplo 0,30 o 3,00. La mínima debe ser menor que la máxima.</div>
+                    <div class="col-6 col-md-3">
+                        <label class="form-label">Mínimo que se cobra (m²)</label>
+                        <input type="text" class="form-control" name="m2Minimo" inputmode="decimal" th:value="${producto.m2Minimo}">
+                    </div>
+                    <div class="col-6 col-md-4 d-flex align-items-end">
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="checkbox" name="conMando" value="true" id="conMando" th:checked="${producto.conMando}">
+                            <label class="form-check-label" for="conMando" style="font-size:.86rem;">El cliente elige el lado del mando</label>
+                        </div>
+                    </div>
+                </div>
+                <div class="ayuda mt-2">
+                    Las medidas van en metros. El precio se calcula así: alto + 0,20 m decide el rollo (1,83 → 2,50 → 3,00 m, el primero que alcance y tenga precio).
+                    Luego ancho × alto × precio por m² de ese rollo. Si la medida no cabe en ningún rollo con precio, se le pide al cliente que escriba por WhatsApp.
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══ Telas ═══ -->
+        <div class="caja seccion" data-solo="M2">
+            <h2>Telas y precio por m² según el rollo</h2>
+            <div class="ayuda mb-3">Deja vacío el precio de un rollo si esa tela no viene en ese ancho. Los colores van separados por coma.</div>
+            <div id="telas">
+                <div class="tela-fila" th:each="t : ${producto.telas}">
+                    <input type="hidden" name="telaId" th:value="${t.id == 0} ? '' : ${t.id}">
+                    <div class="row g-2">
+                        <div class="col-md-5">
+                            <label class="form-label">Nombre de la tela</label>
+                            <input type="text" class="form-control" name="telaNombre" th:value="${t.nombre}" placeholder="Ej: Blackout liso">
+                        </div>
+                        <div class="col-md-7">
+                            <label class="form-label">Colores</label>
+                            <input type="text" class="form-control" name="telaColores" th:value="${t.colores}" placeholder="Ej: Blanco, Gris, Fawn, Vainilla">
+                        </div>
+                        <div class="col-4 col-md-3 precio-rollo">
+                            <label class="form-label">Rollo 1,83 m</label>
+                            <div class="input-group"><span class="input-group-text">$</span>
+                                <input type="text" class="form-control" name="telaP183" inputmode="numeric"
+                                       th:value="${t.precioRollo183 != null} ? ${#numbers.formatInteger(t.precioRollo183, 1, 'POINT')} : ''"></div>
+                        </div>
+                        <div class="col-4 col-md-3 precio-rollo">
+                            <label class="form-label">Rollo 2,50 m</label>
+                            <div class="input-group"><span class="input-group-text">$</span>
+                                <input type="text" class="form-control" name="telaP250" inputmode="numeric"
+                                       th:value="${t.precioRollo250 != null} ? ${#numbers.formatInteger(t.precioRollo250, 1, 'POINT')} : ''"></div>
+                        </div>
+                        <div class="col-4 col-md-3 precio-rollo">
+                            <label class="form-label">Rollo 3,00 m</label>
+                            <div class="input-group"><span class="input-group-text">$</span>
+                                <input type="text" class="form-control" name="telaP300" inputmode="numeric"
+                                       th:value="${t.precioRollo300 != null} ? ${#numbers.formatInteger(t.precioRollo300, 1, 'POINT')} : ''"></div>
+                        </div>
+                        <div class="col-8 col-md-2">
+                            <label class="form-label">Estado</label>
+                            <select class="form-select" name="telaActiva">
+                                <option value="true" th:selected="${t.activa}">Activa</option>
+                                <option value="false" th:selected="${!t.activa}">Oculta</option>
+                            </select>
+                        </div>
+                        <div class="col-4 col-md-1 d-flex align-items-end">
+                            <button type="button" class="btn btn-outline-danger w-100" data-quitar-tela title="Quitar tela">✕</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <button type="button" class="btn btn-outline-secondary btn-sm" id="agregarTela">+ Agregar tela</button>
+        </div>
+
+        <!-- ═══ Visibilidad ═══ -->
+        <div class="caja seccion">
+            <h2>Visibilidad</h2>
+            <div class="row g-3 align-items-end">
+                <div class="col-md-4">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="activo" value="true" id="activo" th:checked="${producto.activo}">
+                        <label class="form-check-label" for="activo">Se ve en la tienda</label>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="destacado" value="true" id="destacado" th:checked="${producto.destacado}">
+                        <label class="form-check-label" for="destacado">Destacado (sale primero con la etiqueta "Más pedido")</label>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label" for="orden">Orden en el catálogo</label>
+                    <input type="number" class="form-control" id="orden" name="orden" th:value="${producto.orden}">
+                    <div class="ayuda">Los números más bajos salen primero.</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="d-flex gap-2 flex-wrap mb-4">
+            <button type="submit" class="btn btn-primary px-4">Guardar producto</button>
+            <a href="/tienda-admin" class="btn btn-outline-secondary">Cancelar</a>
+        </div>
+    </form>
+</div>
+
+<template id="plantillaTela">
+    <div class="tela-fila">
+        <input type="hidden" name="telaId" value="">
+        <div class="row g-2">
+            <div class="col-md-5"><label class="form-label">Nombre de la tela</label><input type="text" class="form-control" name="telaNombre" placeholder="Ej: Screen 5%"></div>
+            <div class="col-md-7"><label class="form-label">Colores</label><input type="text" class="form-control" name="telaColores" placeholder="Ej: Blanco, Gris"></div>
+            <div class="col-4 col-md-3 precio-rollo"><label class="form-label">Rollo 1,83 m</label><div class="input-group"><span class="input-group-text">$</span><input type="text" class="form-control" name="telaP183" inputmode="numeric"></div></div>
+            <div class="col-4 col-md-3 precio-rollo"><label class="form-label">Rollo 2,50 m</label><div class="input-group"><span class="input-group-text">$</span><input type="text" class="form-control" name="telaP250" inputmode="numeric"></div></div>
+            <div class="col-4 col-md-3 precio-rollo"><label class="form-label">Rollo 3,00 m</label><div class="input-group"><span class="input-group-text">$</span><input type="text" class="form-control" name="telaP300" inputmode="numeric"></div></div>
+            <div class="col-8 col-md-2"><label class="form-label">Estado</label><select class="form-select" name="telaActiva"><option value="true">Activa</option><option value="false">Oculta</option></select></div>
+            <div class="col-4 col-md-1 d-flex align-items-end"><button type="button" class="btn btn-outline-danger w-100" data-quitar-tela title="Quitar tela">✕</button></div>
+        </div>
+    </div>
+</template>
+
+<script src="/js/tienda-admin/producto_form.js"></script>
+</body>
+</html>

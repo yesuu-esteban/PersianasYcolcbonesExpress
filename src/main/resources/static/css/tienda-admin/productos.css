@@ -1,0 +1,16 @@
+/* Pantalla: templates/tienda-admin/productos.html */
+
+.estado-pagos { display: flex; flex-wrap: wrap; gap: 10px 22px; align-items: center; }
+.producto { display: grid; grid-template-columns: 72px 1fr auto; gap: 16px; align-items: center; padding: 14px 0; border-bottom: 1px solid rgba(255,255,255,0.08); }
+.producto:last-child { border-bottom: 0; }
+.producto .mini { width: 72px; height: 54px; border-radius: 8px; overflow: hidden; background: repeating-linear-gradient(180deg, #3a2858 0 8px, #2a1b42 8px 10px); }
+.producto .mini img { width: 100%; height: 100%; object-fit: cover; }
+.producto .nombre { font-weight: 600; }
+.producto .datos { font-size: .8rem; color: var(--texto-suave); margin-top: 2px; }
+.producto .botones { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.producto.inactivo { opacity: .55; }
+@media (max-width: 767.98px) {
+    .producto { grid-template-columns: 56px 1fr; }
+    .producto .mini { width: 56px; height: 44px; }
+    .producto .botones { grid-column: 1 / -1; justify-content: flex-start; }
+}
