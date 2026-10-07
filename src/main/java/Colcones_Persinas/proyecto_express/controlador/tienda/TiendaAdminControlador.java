@@ -9,6 +9,7 @@ import Colcones_Persinas.proyecto_express.repository.tienda.OrdenTiendaRepositor
 import Colcones_Persinas.proyecto_express.repository.tienda.ProductoTiendaRepository;
 import Colcones_Persinas.proyecto_express.servicio.tienda.TiendaServicio;
 import Colcones_Persinas.proyecto_express.servicio.tienda.WompiServicio;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -21,15 +22,19 @@ import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.math.BigDecimal;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.text.Normalizer;
 import java.util.*;
 
 /**
  * Administración de la tienda virtual (TIENDA_ADMIN y ADMIN): productos, telas con
  * sus precios por rollo, fotos y las compras hechas en línea (verlas por páginas,
- * corregir los datos del cliente y eliminarlas).
+ * corregir los datos del cliente, eliminarlas y enviarle al cliente por WhatsApp
+ * su número de pedido con el enlace para rastrearlo).
  */
 @Controller
 @RequestMapping("/tienda-admin")
@@ -48,6 +53,13 @@ public class TiendaAdminControlador {
     private final OrdenTiendaRepository ordenRepository;
     private final WompiServicio wompi;
     private final TiendaServicio tiendaServicio;
+
+    /**
+     * Dominio propio de la tienda (variable APP_DOMINIO_TIENDA), si ya se configuró.
+     * Se usa para armar el enlace de rastreo que se le envía al cliente.
+     */
+    @Value("${app.dominio-tienda:}")
+    private String dominioTienda;
 
     public TiendaAdminControlador(ProductoTiendaRepository productoRepository, ImagenTiendaRepository imagenRepository,
                                   OrdenTiendaRepository ordenRepository, WompiServicio wompi,
@@ -260,7 +272,57 @@ public class TiendaAdminControlador {
         model.addAttribute("conteoPendientes", ordenRepository.countByEstado(OrdenTienda.PENDIENTE));
         model.addAttribute("conteoFallidas", ordenRepository.countByEstadoIn(ESTADOS_NO_COMPLETADAS));
         model.addAttribute("conteoTodas", ordenRepository.count());
+
+        // Enlace de WhatsApp de cada compra pagada (se busca por la referencia de la compra)
+        String urlRastreo = urlBaseTienda() + "/tienda/rastrear/";
+        Map<String, String> enlacesWhatsapp = new HashMap<>();
+        for (OrdenTienda o : resultado.getContent()) {
+            String enlace = enlaceWhatsappRastreo(o, urlRastreo);
+            if (enlace != null) enlacesWhatsapp.put(o.getReferencia(), enlace);
+        }
+        model.addAttribute("enlacesWhatsapp", enlacesWhatsapp);
         return "tienda-admin/ordenes";
+    }
+
+    /**
+     * Enlace que abre WhatsApp en el chat del cliente con el mensaje ya escrito:
+     * su número de pedido y la dirección para rastrearlo.
+     * Devuelve null si la compra no está pagada o el celular no sirve para WhatsApp.
+     */
+    static String enlaceWhatsappRastreo(OrdenTienda o, String urlRastreo) {
+        if (!OrdenTienda.APROBADA.equals(o.getEstado())) return null;
+        String celular = celularParaWhatsapp(o.getTelefono());
+        if (celular == null) return null;
+
+        String nombre = o.getPrimerNombre();
+        String mensaje = "Hola" + (nombre == null || nombre.isBlank() ? "" : ", " + nombre) + ". "
+                + "Recibimos el pago de tu pedido en P.C Express.\n"
+                + "Tu número de pedido es *" + o.getReferencia() + "*.\n"
+                + "Puedes ver en qué va aquí:\n"
+                + urlRastreo + o.getReferencia();
+        return "https://wa.me/" + celular + "?text="
+                + URLEncoder.encode(mensaje, StandardCharsets.UTF_8).replace("+", "%20");
+    }
+
+    /**
+     * Deja el celular como lo pide WhatsApp: solo números y con el 57 de Colombia adelante.
+     * "312 304 3450" → "573123043450". Devuelve null si no parece un celular.
+     */
+    static String celularParaWhatsapp(String telefono) {
+        if (telefono == null) return null;
+        String n = telefono.replaceAll("\\D", "");
+        if (n.length() == 10 && n.startsWith("3")) return "57" + n;                 // celular colombiano
+        if (n.length() == 12 && n.startsWith("573")) return n;                       // ya trae el 57
+        if (telefono.trim().startsWith("+") && n.length() >= 10 && n.length() <= 15) return n;   // de otro país
+        return null;
+    }
+
+    /** Dirección pública de la tienda: el dominio propio si existe; si no, la misma por la que se entró. */
+    private String urlBaseTienda() {
+        if (dominioTienda != null && !dominioTienda.isBlank()) {
+            return "https://" + dominioTienda.split(",")[0].trim();
+        }
+        return ServletUriComponentsBuilder.fromCurrentContextPath().build().toUriString();
     }
 
     private Page<OrdenTienda> buscarCompras(String filtro, int pagina) {

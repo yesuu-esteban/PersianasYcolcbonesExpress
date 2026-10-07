@@ -129,6 +129,8 @@
                 Pedido de Almacén #<span th:text="${o.pedidoTiendaId}">0</span>
             </span>
             <span class="botones">
+                <a th:if="${enlacesWhatsapp.get(o.referencia) != null}" th:href="${enlacesWhatsapp.get(o.referencia)}"
+                   target="_blank" rel="noopener" class="btn btn-sm btn-success">Enviar rastreo por WhatsApp</a>
                 <a th:if="${o.pedidoTiendaId != null}" th:href="@{/almacen/imprimir/{id}(id=${o.pedidoTiendaId})}"
                    target="_blank" rel="noopener" class="btn btn-sm btn-outline-secondary">Ver pedido de Almacén</a>
                 <a th:href="@{/tienda-admin/orden/{id}/editar(id=${o.id}, ver=${ver}, pagina=${paginaActual})}"
