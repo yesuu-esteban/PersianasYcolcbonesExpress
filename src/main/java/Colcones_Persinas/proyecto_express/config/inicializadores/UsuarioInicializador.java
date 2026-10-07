@@ -64,6 +64,8 @@ public class UsuarioInicializador implements CommandLineRunner {
         crearSiNoExiste("arbey", "123456", "INSTALADOR", "Arbey");
         crearSiNoExiste("fabianlopez", "123456", "INSTALADOR", "Fabián López");
         crearSiNoExiste("juanpablo", "123456", "INSTALADOR", "Juan Pablo");
+        crearSiNoExiste("brayan", "123456", "INSTALADOR", "Brayan");
+
     }
 
     private void crearSiNoExiste(String username, String password, String rol, String nombreCompleto) {
