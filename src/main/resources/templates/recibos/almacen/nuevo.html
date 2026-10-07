@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nuevo Recibo de Tienda</title>
+    <link rel="stylesheet" href="/css/recibos/formulario_almacen.css">
+</head>
+<body>
+    <div class="container">
+        <div class="barra-superior">
+            <h3 style="margin:0;">🧾 Nuevo Recibo de Almacén</h3>
+            <a href="/recibos/almacen">← Ver listado</a>
+        </div>
+
+        <p style="font-size:13px; color:#555; margin-top:-8px; margin-bottom:16px;">
+            <span class="badge-origen">ALMACEN</span>
+        </p>
+
+        <div th:if="${error}" class="alerta alerta-error" th:text="${error}"></div>
+
+        <form th:action="@{/recibos/almacen/guardar}" method="post" id="formRecibo">
+            <fieldset>
+                <legend>Datos del Cliente</legend>
+                <label for="cliente">Cliente:</label>
+                <input type="text" id="cliente" name="cliente" required>
+                <label for="direccion">Dirección:</label>
+                <input type="text" id="direccion" name="direccion">
+                <label for="cedula">Cédula:</label>
+                <input type="text" id="cedula" name="cedula">
+                <label for="telefono">Teléfono:</label>
+                <input type="tel" id="telefono" name="telefono">
+            </fieldset>
+
+            <fieldset>
+                <legend>Productos</legend>
+                <div id="contenedorProductos">
+                    <div class="fila-producto-form">
+                        <input type="text" name="nombresProducto" class="col-nombre" placeholder="Nombre del producto" required>
+                        <input type="number" name="precios" class="col-precio" step="0.01" min="0.01" placeholder="Precio" required>
+                        <input type="number" name="cantidades" class="col-cant" min="1" value="1" placeholder="Cant.">
+                        <button type="button" class="btn-eliminar-producto" onclick="eliminarFila(this)">Quitar</button>
+                    </div>
+                </div>
+                <button type="button" class="btn-agregar-producto" onclick="agregarFila()">+ Añadir Producto</button>
+            </fieldset>
+
+            <div class="totales">
+                <p><strong>Total General: $<span id="lblTotalGeneral">0.00</span></strong></p>
+                <label for="descuento">Descuento:</label>
+                <input type="number" id="descuento" name="descuento" step="0.01" min="0" value="0">
+                <p class="descuento-aplicado" id="lineaDescuentoAplicado" style="display:none;">
+                    Descuento aplicado: -$<span id="lblDescuentoAplicado">0.00</span>
+                </p>
+                <p><strong>Total con descuento: $<span id="lblTotalConDescuento">0.00</span></strong></p>
+                <label for="abono">Abono:</label>
+                <input type="number" id="abono" name="abono" step="0.01" min="0" value="0">
+                <label for="saldo">Saldo pendiente:</label>
+                <input type="number" id="saldo" readonly>
+            </div>
+
+            <button type="submit" class="btn-generar">Generar Recibo</button>
+        </form>
+    </div>
+
+    <script src="/js/recibos/formulario.js"></script>
+    <script src="/js/token-nav.js"></script>
+</body>
+</html>

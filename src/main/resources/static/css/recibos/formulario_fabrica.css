@@ -1,0 +1,23 @@
+/* Pantallas: templates/recibos/fabrica/nuevo.html, templates/recibos/fabrica/editar.html */
+
+fieldset { border: 1px solid #ccc; padding: 10px; border-radius: 4px; margin-bottom: 16px; }
+legend { font-weight: bold; padding: 0 6px; font-size: 1rem; }
+.fila-producto-form { display: flex; gap: 8px; margin-bottom: 8px; align-items: center; }
+.fila-producto-form .col-nombre { flex: 2; }
+.fila-producto-form .col-precio { flex: 1; max-width: 110px; }
+.fila-producto-form .col-cant { flex: 1; max-width: 80px; }
+.btn-eliminar-producto { background-color: #dc3545; color: white; border: none; border-radius: 4px; padding: 6px 10px; cursor: pointer; font-size: 12px; flex-shrink: 0; }
+.btn-agregar-producto { border: 1px dashed #999; background: #fafafa; border-radius: 4px; padding: 6px 12px; cursor: pointer; font-size: 13px; margin-top: 4px; }
+.btn-agregar-producto:hover { background: #f0f0f0; }
+.totales { margin-top: 10px; padding-top: 10px; border-top: 1px solid #ddd; }
+.totales p { font-size: 15px; margin: 6px 0; }
+.totales p.descuento-aplicado { color: #b30000; font-size: 13px; }
+.btn-generar { width: 100%; background-color: #28a712; color: white; padding: 12px; font-size: 15px; font-weight: bold; border: none; border-radius: 4px; cursor: pointer; margin-top: 16px; }
+.btn-generar:hover { background-color: #1f8a0d; }
+/* ── Solo al editar un recibo ── */
+.btn-generar.btn-editar { background-color: #0d6efd; }
+.btn-generar.btn-editar:hover { background-color: #0b5ed7; }
+.aviso-firmado {
+    background: #fff3cd; border: 1px solid #ffc107; color: #7a5c00;
+    padding: 8px 12px; border-radius: 4px; font-size: 12px; margin-bottom: 14px;
+}

@@ -1,0 +1,8 @@
+/* Pantalla: templates/fabrica/reportes.html */
+
+.card-reporte {
+    background: #fff; border: 1px solid #dee2e6; border-radius: 8px;
+    padding: 20px 22px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,.08);
+}
+.card-reporte h5 { font-weight: 700; margin-bottom: 6px; }
+.card-reporte p.descripcion { color: #6c757d; font-size: 0.86rem; margin-bottom: 16px; }

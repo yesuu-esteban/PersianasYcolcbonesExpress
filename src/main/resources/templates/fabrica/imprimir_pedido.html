@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Orden de Fabricación</title>
+    <link rel="stylesheet" href="/css/fabrica/imprimir_pedido.css">
+</head>
+<body>
+
+    <!-- Encabezado -->
+    <div class="encabezado-reporte no-print-hide">
+        <span class="titulo">📄 Orden de Fabricación</span>
+        <div class="partes">
+            <span><strong>Distribuidor</strong><span th:text="${pedido.nombreDecorador}"></span></span>
+            <span><strong>Cliente final</strong><span th:text="${pedido.nombreClienteFinal}"></span></span>
+        </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════════ -->
+    <!-- VISTA: RIEL DE ONDA SERENA                                     -->
+    <!-- ══════════════════════════════════════════════════════════════ -->
+    <div class="grid-etiquetas" th:if="${pedido.isRielOndaSerena()}">
+
+        <!-- 1: Identificación -->
+        <div class="etiqueta">
+            <h3>📦 Identificación</h3>
+            <p><strong>Distribuidor:</strong> <span th:text="${pedido.nombreDecorador}"></span></p>
+            <p><strong>Cliente:</strong>      <span th:text="${pedido.nombreClienteFinal}"></span></p>
+            <p><strong>Descripción:</strong>  <span th:text="${pedido.descripcion}"></span></p>
+            <p><strong>Ancho:</strong>
+                <span th:text="${#numbers.formatDecimal(pedido.ancho,1,2)+' m'}"></span>
+                <span th:if="${pedido.altura != null and pedido.altura > 0}"
+                      th:text="' · Alto: ' + ${#numbers.formatDecimal(pedido.altura,1,2)} + ' m'"></span>
+            </p>
+            <p><strong>Sistema:</strong>
+                <span class="badge badge-riel">RIEL DE ONDA SERENA</span>
+            </p>
+            <p><strong>Config:</strong>
+                <span class="badge" th:classappend="${pedido.usaPolea}?'badge-con':'badge-sin'"
+                      th:text="${pedido.usaPolea} ? 'CON POLEA' : 'SIN POLEA'"></span>
+            </p>
+            <p><strong>Abre hacia:</strong> <span th:text="${pedido.ladoApertura}"></span></p>
+        </div>
+
+        <!-- 2: Corte de riel -->
+        <div class="etiqueta">
+            <h3>✂️ Corte de Riel</h3>
+
+            <div class="fila-origen-tela origen-riel">
+                <p>
+                    <strong>Riel:</strong>
+                    <span th:if="${materialRiel != null}"
+                          th:text="${#strings.contains(materialRiel.fuenteDescripcion,'(')} ? ${#strings.substringBefore(materialRiel.fuenteDescripcion,'(')} : ${materialRiel.fuenteDescripcion}"></span>
+                    <span class="badge-id-original"
+                          th:if="${materialRiel != null and #strings.contains(materialRiel.fuenteDescripcion,'(')}"
+                          th:text="'('+${#strings.substringAfter(materialRiel.fuenteDescripcion,'(')}"></span>
+                    <span th:if="${materialRiel == null}">Riel Onda Serena</span>
+                    · <span th:text="${#numbers.formatDecimal(pedido.corteRiel,1,3)+' m'}"></span>
+                </p>
+                <p>
+                    <strong>Roachina:</strong>
+                    <span th:if="${materialRielPines != null}"
+                          th:text="${#strings.contains(materialRielPines.fuenteDescripcion,'(')} ? ${#strings.substringBefore(materialRielPines.fuenteDescripcion,'(')} : ${materialRielPines.fuenteDescripcion}"></span>
+                    <span class="badge-id-original"
+                          th:if="${materialRielPines != null and #strings.contains(materialRielPines.fuenteDescripcion,'(')}"
+                          th:text="'('+${#strings.substringAfter(materialRielPines.fuenteDescripcion,'(')}"></span>
+                    <span th:if="${materialRielPines == null}">Roachina</span>
+                    · <span th:text="${#numbers.formatDecimal(pedido.corteRielPines,1,3)+' m'}"></span>
+                </p>
+                <p>
+                    <strong>Riata:</strong>
+                    <span th:if="${materialRiata != null}"
+                          th:text="${#strings.contains(materialRiata.fuenteDescripcion,'(')} ? ${#strings.substringBefore(materialRiata.fuenteDescripcion,'(')} : ${materialRiata.fuenteDescripcion}"></span>
+                    <span class="badge-id-original"
+                          th:if="${materialRiata != null and #strings.contains(materialRiata.fuenteDescripcion,'(')}"
+                          th:text="'('+${#strings.substringAfter(materialRiata.fuenteDescripcion,'(')}"></span>
+                    <span th:if="${materialRiata == null}">Riata</span>
+                    · <span th:text="${#numbers.formatDecimal(pedido.medidaRiata,1,3)+' m'}"></span>
+                </p>
+                <p th:if="${pedido.usaPolea}">
+                    <strong>Cuerda onda:</strong>
+                    <span th:if="${materialCuerdaOnda != null}"
+                          th:text="${#strings.contains(materialCuerdaOnda.fuenteDescripcion,'(')} ? ${#strings.substringBefore(materialCuerdaOnda.fuenteDescripcion,'(')} : ${materialCuerdaOnda.fuenteDescripcion}"></span>
+                    <span class="badge-id-original"
+                          th:if="${materialCuerdaOnda != null and #strings.contains(materialCuerdaOnda.fuenteDescripcion,'(')}"
+                          th:text="'('+${#strings.substringAfter(materialCuerdaOnda.fuenteDescripcion,'(')}"></span>
+                    <span th:if="${materialCuerdaOnda == null}">Cuerda Onda Serena</span>
+                    · <span th:text="${#numbers.formatDecimal(pedido.corteCuerdaOnda,1,3)+' m'}"></span>
+                </p>
+            </div>
+        </div>
+
+        <!-- 3: Accesorios -->
+        <div class="etiqueta">
+            <h3>🔩 Accesorios</h3>
+            <p th:if="${pedido.usaPolea}"><strong>Poleas:</strong> 2 und.</p>
+            <p th:if="${pedido.usaPolea}"><strong>Crusador:</strong> <span th:text="${pedido.cantidadTerminalPolea}"></span> und.</p>
+            <p th:unless="${pedido.usaPolea}"><strong>Tapas de riel:</strong> 2 und.</p>
+            <p th:unless="${pedido.usaPolea}"><strong>Bastón:</strong> <span th:text="${pedido.bastonElegido}"></span> (<span th:text="${pedido.cantidadBaston}"></span> und.)</p>
+            <p><strong>Soportes:</strong> <span th:text="${pedido.cantidadSoportesRiel}"></span> und. (según ancho)</p>
+
+            <div th:if="${extrasHistorial != null and not #lists.isEmpty(extrasHistorial)}"
+                 style="margin-top:4px; padding-top:4px; border-top:1px dashed #aaa;">
+                <p style="font-weight:700; font-size:0.66rem; margin-bottom:2px;">➕ Insumos adicionales:</p>
+                <p th:each="e : ${extrasHistorial}" style="margin-bottom:1px; font-size:0.64rem; display:flex; flex-wrap:wrap; column-gap:4px;">
+                    · <span th:text="${#strings.contains(e.fuenteDescripcion,'(')} ? ${#strings.substringBefore(e.fuenteDescripcion,'(')} : ${e.fuenteDescripcion}"></span>
+                    <span class="badge-id-original"
+                          th:if="${#strings.contains(e.fuenteDescripcion,'(')}"
+                          th:text="'('+${#strings.substringAfter(e.fuenteDescripcion,'(')}"></span>
+                      (<span th:text="${e.metrosUsados}"></span>)
+                </p>
+            </div>
+        </div>
+
+        <!-- 4: Despacho -->
+        <div class="etiqueta">
+            <h3>🏠 Despacho</h3>
+            <p><strong>Distribuidor:</strong> <span th:text="${pedido.nombreDecorador}"></span></p>
+            <p><strong>Cliente:</strong>     <span th:text="${pedido.nombreClienteFinal}"></span></p>
+            <p><strong>Descripción:</strong> <span th:text="${pedido.descripcion}"></span></p>
+            <p><strong>Ancho:</strong>
+                <span th:text="${#numbers.formatDecimal(pedido.ancho,1,2)+' m'}"></span>
+                <span th:if="${pedido.altura != null and pedido.altura > 0}"
+                      th:text="' · Alto: ' + ${#numbers.formatDecimal(pedido.altura,1,2)} + ' m'"></span>
+            </p>
+            <p><strong>Config:</strong>
+                <span th:text="${pedido.usaPolea} ? 'Con polea' : 'Sin polea (tapas + bastón)'"></span>
+            </p>
+            <p><strong>Abre hacia:</strong> <span th:text="${pedido.ladoApertura}"></span></p>
+            <p><strong>Soportes:</strong> <span th:text="${pedido.cantidadSoportesRiel}"></span> und. (según ancho)</p>
+        </div>
+
+    </div><!-- /grid-etiquetas RIEL -->
+
+    <!-- ══════════════════════════════════════════════════════════════ -->
+    <!-- VISTA: FABRICACIÓN NORMAL (ENROLLABLE / BLACKOUT)              -->
+    <!-- ══════════════════════════════════════════════════════════════ -->
+    <div class="grid-etiquetas" th:unless="${pedido.isRielOndaSerena()}">
+
+        <!-- 1: Identificación -->
+        <div class="etiqueta">
+            <h3>📦 Identificación</h3>
+            <p><strong>Distribuidor:</strong> <span th:text="${pedido.nombreDecorador}"></span></p>
+            <p><strong>Cliente:</strong>      <span th:text="${pedido.nombreClienteFinal}"></span></p>
+            <p><strong>Descripción:</strong>  <span th:text="${pedido.descripcion}"></span></p>
+            <p><strong>Medida final:</strong>
+                <span th:text="${#numbers.formatDecimal(pedido.ancho,1,2)+'m × '+#numbers.formatDecimal(pedido.altura,1,2)+'m'}"></span>
+            </p>
+            <p><strong>Sistema:</strong>
+                <span class="badge" th:classappend="${pedido.usaCabezal}?'badge-con':'badge-sin'"
+                      th:text="${pedido.tipoSistema}"></span>
+            </p>
+            <p><strong>Mando:</strong>   <span class="valor-mando" th:text="${pedido.ladoControl}"></span></p>
+            <p><strong>Cuerda:</strong>  <span th:text="${pedido.medidaCuerda}"></span></p>
+            <p><strong>Control:</strong> <span th:text="${pedido.tipoControl}"></span></p>
+
+            <div class="costo-fabrica-box">
+                💲 Precio de Venta: $<span th:text="${#numbers.formatDecimal(pedido.precioVenta, 1, 'POINT', 0, 'NONE')}"></span>
+            </div>
+            <div class="costo-fabrica-box" style="background:#fff3cd;border-left-color:#dc9b00;color:#5c4300;margin-top:4px;"
+                 th:if="${resultadoCostoFabricacion != null}">
+                🧮 Costo Fabricación (real): $<span th:text="${#numbers.formatDecimal(resultadoCostoFabricacion.total, 1, 'POINT', 0, 'NONE')}"></span>
+                <span th:unless="${resultadoCostoFabricacion.completo}" style="display:block;font-size:0.62rem;font-weight:400;">
+                    ⚠ Faltan precios: <span th:text="${#strings.listJoin(resultadoCostoFabricacion.itemsFaltantes, ', ')}"></span>
+                </span>
+            </div>
+        </div>
+
+        <!-- 2: Corte de tela -->
+        <div class="etiqueta">
+            <h3>✂️ Corte de Tela</h3>
+            <p><strong>Color:</strong> <span th:text="${pedido.colorTelaDeseado}"></span></p>
+            <p><strong>Medida corte:</strong>
+                <span th:text="${#numbers.formatDecimal(pedido.corteTelaAncho,1,3)+' m × '+#numbers.formatDecimal(pedido.corteTelaAlto,1,3)+' m'}"></span>
+            </p>
+
+            <div th:if="${materialTela != null}" class="fila-origen-tela"
+                 th:classappend="${esRetazo}?'origen-retazo':'origen-rollo'">
+                <p>
+                    <strong th:text="${esRetazo}?'Retazo:':'Rollo:'"></strong>
+                    <span th:text="${#strings.contains(materialTela.fuenteDescripcion,'(')} ? ${#strings.substringBefore(materialTela.fuenteDescripcion,'(')} : ${materialTela.fuenteDescripcion}"></span>
+                    <span class="badge-id-original"
+                          th:if="${#strings.contains(materialTela.fuenteDescripcion,'(')}"
+                          th:text="'('+${#strings.substringAfter(materialTela.fuenteDescripcion,'(')}"></span>
+                    <span class="badge-origen"
+                          th:classappend="${esRetazo}?'badge-retazo-origen':'badge-rollo-origen'"
+                          th:text="${esRetazo}?'✂ RETAZO':'🧵 ROLLO'"></span>
+                </p>
+                <p>
+                    <strong>Selección:</strong>
+                    <span class="badge-seleccion"
+                          th:classappend="${materialTela.seleccionManual}?'badge-seleccion-manual':'badge-seleccion-auto'"
+                          th:text="${materialTela.seleccionManual}?'👤 Manual':'🤖 Auto'"></span>
+                    <span th:if="${materialTela.metrosSobrantes != null}">
+                        · Sobrante: <strong th:text="${materialTela.metrosSobrantes}+' m'"></strong>
+                    </span>
+                </p>
+            </div>
+            <div th:if="${materialTela == null}" class="fila-origen-tela origen-rollo">
+                <p><strong>Rollo teórico:</strong> <span th:text="${pedido.rolloTela}"></span></p>
+            </div>
+        </div>
+
+        <!-- 3: Perfilería -->
+        <div class="etiqueta">
+            <h3>📐 Perfilería</h3>
+
+            <p>
+                <strong>Tubo:</strong>
+                <span th:if="${materialTubo != null}"
+                      th:text="${#strings.contains(materialTubo.fuenteDescripcion,'(')} ? ${#strings.substringBefore(materialTubo.fuenteDescripcion,'(')} : ${materialTubo.fuenteDescripcion}"></span>
+                <span class="badge-id-original"
+                      th:if="${materialTubo != null and #strings.contains(materialTubo.fuenteDescripcion,'(')}"
+                      th:text="'('+${#strings.substringAfter(materialTubo.fuenteDescripcion,'(')}"></span>
+                <span th:if="${materialTubo == null}" th:text="'Tubo '+${pedido.tuboRecomendado}"></span>
+                · <span th:text="${#numbers.formatDecimal(pedido.corteTuberia,1,3)+' m'}"></span>
+            </p>
+
+            <p>
+                <strong>Pesa:</strong>
+                <span th:if="${materialPesa != null}"
+                      th:text="${#strings.contains(materialPesa.fuenteDescripcion,'(')} ? ${#strings.substringBefore(materialPesa.fuenteDescripcion,'(')} : ${materialPesa.fuenteDescripcion}"></span>
+                <span class="badge-id-original"
+                      th:if="${materialPesa != null and #strings.contains(materialPesa.fuenteDescripcion,'(')}"
+                      th:text="'('+${#strings.substringAfter(materialPesa.fuenteDescripcion,'(')}"></span>
+                <span th:if="${materialPesa == null}">Pesa</span>
+                · <span th:text="${#numbers.formatDecimal(pedido.corteTuberia,1,3)+' m'}"></span>
+            </p>
+
+            <p th:if="${pedido.isUsaPaqueteControlR24()}">
+                <strong>Paquete R24:</strong> incluye control, terminal, acoples y soportes (1 und.)
+            </p>
+            <p th:unless="${pedido.isUsaPaqueteControlR24()}"><strong>Terminal:</strong> 1 und.</p>
+            <p th:if="${!pedido.isUsaPaqueteControlR24() and pedido.cantidadAcoples > 0}"><strong>Acoples:</strong> 2 und.</p>
+
+            <div class="fila-cabezal" th:if="${pedido.usaCabezal}">
+                <strong>Cabezal:</strong>
+                <span th:if="${materialCabezal != null}"
+                      th:text="${#strings.contains(materialCabezal.fuenteDescripcion,'(')} ? ${#strings.substringBefore(materialCabezal.fuenteDescripcion,'(')} : ${materialCabezal.fuenteDescripcion}"></span>
+                <span class="badge-id-original"
+                      th:if="${materialCabezal != null and #strings.contains(materialCabezal.fuenteDescripcion,'(')}"
+                      th:text="'('+${#strings.substringAfter(materialCabezal.fuenteDescripcion,'(')}"></span>
+                <span th:if="${materialCabezal == null}">Cabezal</span>
+                · <span th:text="${#numbers.formatDecimal(pedido.medidaCabezal,1,3)+' m'}"></span>
+            </div>
+
+            <p style="margin-top:5px;"><strong>Tapa Perfil:</strong> 2 und.</p>
+            <p th:unless="${pedido.isUsaPaqueteControlR24()}"><strong>Soportes:</strong> 2 und.</p>
+
+            <div class="fila-cabezal" th:if="${pedido.usaCabezal}">
+                <strong>Tapa Cabezal:</strong> 2 und.
+            </div>
+
+            <p style="margin-top:5px;">
+                <strong>Tornillos:</strong>
+                <span th:text="${pedido.usaCabezal}?'8 und.':'2 und.'"></span>
+            </p>
+            <div class="fila-cabezal" th:if="${pedido.usaCabezal}">
+                <strong>T. Perforantes:</strong> 4 und.
+            </div>
+        </div>
+
+        <!-- 4: Cliente (etiqueta para despacho) -->
+        <div class="etiqueta">
+            <h3>🏠 Despacho</h3>
+            <p><strong>Distribuidor:</strong> <span th:text="${pedido.nombreDecorador}"></span></p>
+            <p><strong>Cliente:</strong>     <span th:text="${pedido.nombreClienteFinal}"></span></p>
+            <p><strong>Descripción:</strong> <span th:text="${pedido.descripcion}"></span></p>
+            <p><strong>Medida final:</strong>
+                <span th:text="${#numbers.formatDecimal(pedido.ancho,1,2)+'m × '+#numbers.formatDecimal(pedido.altura,1,2)+'m'}"></span>
+            </p>
+            <p><strong>Color:</strong> <span th:text="${pedido.colorTelaDeseado}"></span></p>
+            <p><strong>Mando:</strong>  <span class="valor-mando" th:text="${pedido.ladoControl}"></span></p>
+            <p><strong>Cuerda:</strong> <span th:text="${pedido.medidaCuerda}"></span></p>
+            <p><strong>Control:</strong><span th:text="${pedido.tipoControl}"></span></p>
+
+            <div th:if="${extrasHistorial != null and not #lists.isEmpty(extrasHistorial)}"
+                 style="margin-top:4px; padding-top:4px; border-top:1px dashed #aaa;">
+                <p style="font-weight:700; font-size:0.66rem; margin-bottom:2px;">➕ Insumos adicionales:</p>
+                <p th:each="e : ${extrasHistorial}" style="margin-bottom:1px; font-size:0.64rem; display:flex; flex-wrap:wrap; column-gap:4px;">
+                    · <span th:text="${#strings.contains(e.fuenteDescripcion,'(')} ? ${#strings.substringBefore(e.fuenteDescripcion,'(')} : ${e.fuenteDescripcion}"></span>
+                    <span class="badge-id-original"
+                          th:if="${#strings.contains(e.fuenteDescripcion,'(')}"
+                          th:text="'('+${#strings.substringAfter(e.fuenteDescripcion,'(')}"></span>
+                      (<span th:text="${e.metrosUsados}"></span>)
+                </p>
+            </div>
+        </div>
+
+    </div><!-- /grid-etiquetas FABRICACIÓN -->
+
+    <!-- Desglose del costo de fabricación real, ítem por ítem -->
+    <div class="etiqueta etiqueta-full"
+         th:if="${resultadoCostoFabricacion != null and not #lists.isEmpty(resultadoCostoFabricacion.lineas)}">
+        <h3>🧮 Desglose de Costo de Fabricación</h3>
+        <table class="desglose-tabla">
+            <thead>
+                <tr><th>Ítem</th><th>Fórmula</th><th>Valor</th></tr>
+            </thead>
+            <tbody>
+                <tr th:each="l : ${resultadoCostoFabricacion.lineas}">
+                    <td th:text="${l.nombre}"></td>
+                    <td th:text="${l.formula}"></td>
+                    <td th:text="${l.disponible} ? ('$' + ${#numbers.formatDecimal(l.valor, 1, 'POINT', 0, 'NONE')}) : 'Sin precio definido'"></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Registro de material utilizado -->
+    <div class="etiqueta etiqueta-full">
+        <h3>📋 Registro de material utilizado</h3>
+        <div style="display:flex;gap:4px 14px;margin-bottom:4px;font-size:0.64rem;background:#f8f9fa;border-radius:4px;padding:3px 7px;flex-wrap:wrap;">
+            <span style="min-width:0;"><strong>Dist.:</strong> <span th:text="${pedido.nombreDecorador}"></span></span>
+            <span style="min-width:0;"><strong>Cliente:</strong> <span th:text="${pedido.nombreClienteFinal}"></span></span>
+            <span style="min-width:0;"><strong>Desc.:</strong> <span th:text="${pedido.descripcion}"></span></span>
+        </div>
+
+        <p class="sin-material" th:if="${historialMaterial == null or #lists.isEmpty(historialMaterial)}">
+            Sin registros de material.
+        </p>
+
+        <table class="tabla-material" th:if="${historialMaterial != null and not #lists.isEmpty(historialMaterial)}">
+            <thead>
+                <tr>
+                    <th>Tipo</th>
+                    <th>Fuente / Pieza usada</th>
+                    <th># y medida original</th>
+                    <th>Cant.</th>
+                    <th>Und.</th>
+                    <th>Sobrante</th>
+                    <th>Selección</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:each="m : ${historialMaterial}"
+                    th:classappend="${m.tipoMaterial=='RETAZO'}?'fila-tela-retazo':(${m.tipoMaterial=='TELA'}?'fila-tela-rollo':(${m.tipoMaterial=='EXTRA'}?'fila-extra':(${m.tipoMaterial=='TERMINAL' or m.tipoMaterial=='ACOPLE' or m.tipoMaterial=='CONECTOR' or m.tipoMaterial=='TOPE_CONTROL'}?'fila-incluida':'')))">
+                    <td>
+                        <span th:text="${nombresAmigables != null and nombresAmigables.get(m.tipoMaterial) != null} ? ${nombresAmigables.get(m.tipoMaterial)} : ${m.tipoMaterial}"></span>
+                        <span class="nota-incluido"
+                              th:if="${m.tipoMaterial=='TERMINAL' or m.tipoMaterial=='ACOPLE' or m.tipoMaterial=='CONECTOR' or m.tipoMaterial=='TOPE_CONTROL'}">
+                            ya incluido en el precio de Mecanismo
+                        </span>
+                    </td>
+                    <td th:text="${#strings.contains(m.fuenteDescripcion,'(')} ? ${#strings.substringBefore(m.fuenteDescripcion,'(')} : ${m.fuenteDescripcion}"></td>
+                    <td>
+                        <span class="badge-id-original"
+                              th:if="${#strings.contains(m.fuenteDescripcion,'(')}"
+                              th:text="'('+${#strings.substringAfter(m.fuenteDescripcion,'(')}"></span>
+                        <span th:unless="${#strings.contains(m.fuenteDescripcion,'(')}">—</span>
+                    </td>
+                    <td th:text="${m.metrosUsados}"></td>
+                    <td th:text="${m.piezaInsumoId != null ? 'm' : (m.metrosCuadrados != null ? 'm²' : 'und.')}"></td>
+                    <td th:text="${m.metrosSobrantes}"></td>
+                    <td>
+                        <span class="badge-seleccion"
+                              th:classappend="${m.seleccionManual}?'badge-seleccion-manual':'badge-seleccion-auto'"
+                              th:text="${m.seleccionManual}?'Manual':'Auto'"></span>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="no-print" style="margin-top:8px; display:flex; gap:8px;">
+        <button onclick="window.history.length > 1 ? window.history.back() : (window.location.href='/taller/pedidos')"
+                style="padding:6px 18px;font-size:0.85rem;cursor:pointer;border:1px solid #6c757d;border-radius:4px;background:#fff;color:#333;">
+            ← Volver
+        </button>
+        <button onclick="window.print()"
+                style="padding:6px 18px;font-size:0.85rem;cursor:pointer;border:1px solid #333;border-radius:4px;background:#212529;color:#fff;">
+            🖨️ Imprimir
+        </button>
+    </div>
+    <script src="/js/token-nav.js"></script>
+</body>
+</html>

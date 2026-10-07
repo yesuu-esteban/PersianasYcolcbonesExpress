@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+
+<div th:replace="~{fragments/sidebar :: layout(contenido=~{::seccion-contenido}, activo='inventario-fabrica', titulo='🔧 Crear Insumos Nuevos')}">
+
+<div th:fragment="seccion-contenido">
+    <link rel="stylesheet" href="/css/fabrica/nuevo_insumo.css">
+
+    <p class="text-muted">Usa esto solo si llegó un material que no es Tubo, Cuerda, Pesa o Control (esos ya existen en el sistema). Puedes registrar varios insumos distintos a la vez.</p>
+
+    <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
+
+    <form th:action="@{/inventario/insumo/nuevo}" method="post" class="bg-white p-4 shadow-sm border rounded">
+
+        <div class="row mb-1 px-1">
+            <div class="col-md-3"><small class="fw-bold text-muted">Nombre del insumo</small></div>
+            <div class="col-md-2 text-center"><small class="fw-bold text-muted">¿Se mide?</small></div>
+            <div class="col-md-2"><small class="fw-bold text-muted">Medida (m) / Unidades</small></div>
+            <div class="col-md-1"><small class="fw-bold text-muted">Cant. piezas</small></div>
+            <div class="col-md-3"><small class="fw-bold text-muted">Descripción</small></div>
+            <div class="col-md-1"></div>
+        </div>
+
+        <div id="contenedor-insumos">
+            <div class="row mb-2 align-items-center fila-insumo" data-indice="0">
+                <div class="col-md-3">
+                    <input type="text" name="nombres" class="form-control" placeholder="Ej: Tubo R24" required>
+                </div>
+                <div class="col-md-2 col-medida">
+                    <div class="form-check">
+                        <input class="form-check-input campo-tiene-medida" type="checkbox" name="tieneMedida[0]" value="true" id="medida0">
+                        <label class="form-check-label small" for="medida0">Por longitud</label>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <input type="number" step="0.001" name="largoInicial[0]" class="form-control campo-largo campo-extra" placeholder="Largo en m">
+                    <input type="number" name="unidadesIniciales[0]" class="form-control campo-unidades" placeholder="Unidades" value="0">
+                </div>
+                <div class="col-md-1">
+                    <input type="number" name="cantidadPiezas[0]" class="form-control campo-piezas campo-extra" placeholder="Piezas" value="1" min="1">
+                </div>
+                <div class="col-md-3">
+                    <input type="text" name="descripciones" class="form-control" placeholder="Notas (opcional)">
+                </div>
+                <div class="col-md-1"></div>
+            </div>
+        </div>
+
+        <button type="button" class="btn btn-info btn-sm mt-2" onclick="agregarFila()">+ Agregar otro insumo</button>
+
+        <div class="mt-4">
+            <button type="submit" class="btn btn-success w-100">Crear insumos</button>
+            <a href="/inventario" class="btn btn-secondary w-100 mt-2">Cancelar</a>
+        </div>
+    </form>
+
+    <script src="/js/fabrica/nuevo_insumo.js"></script>
+</div>
+
+</div>
+
+</body>
+</html>

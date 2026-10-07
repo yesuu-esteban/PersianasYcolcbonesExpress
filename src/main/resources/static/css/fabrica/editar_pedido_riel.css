@@ -1,0 +1,35 @@
+/* Pantalla: templates/fabrica/editar_pedido_riel.html */
+
+.previsualizacion {
+    background-color: #f8f9fa;
+    border: 1px dashed #adb5bd;
+    border-radius: 4px;
+    padding: 10px 14px;
+    font-size: 0.80rem;
+    margin-top: 8px;
+}
+.previsualizacion.ok { border-color: #198754; background-color: #f0fbf4; }
+.previsualizacion.falta { border-color: #dc3545; background-color: #fdf2f3; color: #842029; }
+.previsualizacion .cargando { color: #888; }
+.seccion-manual {
+    background: #fffbea;
+    border: 1px solid #ffe082;
+    border-radius: 5px;
+    padding: 10px 14px;
+    margin-top: 10px;
+}
+.seccion-extras {
+    background: #fffbea;
+    border: 1px solid #ffe082;
+    border-radius: 6px;
+    padding: 14px 16px;
+    margin: 18px 0;
+}
+.fila-extra select, .fila-extra input { font-size: 0.85rem; }
+.info-stock-insumo {
+    font-size: 0.76rem;
+    padding-top: 3px;
+    color: #6c757d;
+}
+.info-stock-insumo.ok { color: #0a5c30; }
+.info-stock-insumo.sin-stock { color: #b02a37; font-weight: 600; }

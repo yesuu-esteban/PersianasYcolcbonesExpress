@@ -1,0 +1,46 @@
+/* Pantalla: templates/fabrica/pedidos.html */
+
+body { font-size: 0.86rem; }
+.nav-pills .nav-link { color: #343a40; background-color: #e9ecef; margin-right: 6px; }
+.nav-pills .nav-link.active { background-color: #343a40; color: #fff; }
+.nav-pills .nav-link .badge { font-weight: 700; }
+
+.filtros-bar {
+    background: #fff; border: 1px solid #dee2e6; border-radius: 8px;
+    padding: 14px 18px; margin-bottom: 14px;
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px 14px;
+    align-items: end;
+}
+.filtros-bar label { font-size: 0.74rem; font-weight: 700; color: #495057; display: block; margin-bottom: 3px; text-transform: uppercase; letter-spacing: 0.3px; }
+.filtros-bar .fila-botones { display: flex; gap: 8px; align-items: end; grid-column: 1 / -1; }
+.contador-resultados { font-size: 0.8rem; color: #6c757d; margin-left: auto; align-self: center; }
+.aviso-orden { font-size: 0.76rem; color: #495057; grid-column: 1 / -1; margin-top: -4px; }
+
+.tabla-excel-wrap { border: 1px solid #c8ccd1; border-radius: 6px; overflow: hidden; background: #fff; }
+table.tabla-excel { width: 100%; border-collapse: collapse; margin-bottom: 0; font-size: 0.82rem; }
+table.tabla-excel thead th {
+    position: sticky; top: 0; z-index: 2;
+    background: #343a40; color: #fff; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.3px;
+    padding: 8px 10px; border-right: 1px solid #4b5158; white-space: nowrap;
+}
+table.tabla-excel tbody td {
+    padding: 6px 10px; border-right: 1px solid #eceff1; border-bottom: 1px solid #eceff1; vertical-align: middle;
+}
+table.tabla-excel tbody tr.fila-datos:nth-child(4n+1) { background: #fafbfc; }
+table.tabla-excel tbody tr.fila-datos:hover { background: #eef6ff; }
+table.tabla-excel tbody tr.fila-detalle { display: none; background: #f4f7fb; }
+table.tabla-excel tbody tr.fila-detalle.abierta { display: table-row; }
+table.tabla-excel tbody tr.fila-detalle td { border-right: none; padding: 10px 16px; }
+
+.btn-toggle-detalle {
+    background: none; border: 1px solid #adb5bd; border-radius: 4px; width: 24px; height: 24px;
+    line-height: 1; font-size: 0.8rem; color: #495057; cursor: pointer;
+}
+.btn-toggle-detalle.abierto { background: #343a40; color: #fff; border-color: #343a40; }
+
+.ficha-box { background: #fff; border-left: 4px solid #343a40; padding: 10px 14px; font-size: 0.82rem; display: inline-block; min-width: 260px; }
+.badge-sistema { font-size: 0.72rem; }
+.tela-real { color: #0a5c30; font-style: italic; }
+.celda-truncada { max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.paginacion-wrap { display: flex; justify-content: center; align-items: center; gap: 6px; margin-top: 18px; flex-wrap: wrap; }

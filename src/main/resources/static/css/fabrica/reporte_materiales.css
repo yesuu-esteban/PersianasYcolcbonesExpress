@@ -1,0 +1,13 @@
+/* Pantalla: templates/fabrica/reporte_materiales.html */
+
+body { font-family: Arial, sans-serif; padding: 20px; }
+table { border-collapse: collapse; width: 100%; margin-bottom: 24px; }
+th, td { border: 1px solid #ccc; padding: 8px 12px; text-align: left; }
+th { background: #f0f0f0; }
+h2 { margin-top: 32px; }
+.filtros { margin-bottom: 24px; display: flex; gap: 16px; align-items: flex-end; flex-wrap: wrap; }
+.filtros label { display: flex; flex-direction: column; gap: 4px; font-size: 14px; }
+.filtros input { padding: 6px; border: 1px solid #ccc; border-radius: 4px; }
+.filtros button { padding: 7px 18px; background: #333; color: white; border: none; border-radius: 4px; cursor: pointer; }
+.sin-datos { color: #888; font-style: italic; }
+details summary { cursor: pointer; color: #1a6aab; font-weight: bold; margin: 8px 0 4px; }

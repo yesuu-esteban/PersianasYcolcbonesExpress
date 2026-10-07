@@ -1,0 +1,109 @@
+/* Pantalla: templates/tienda/producto.html */
+
+.ficha {
+    display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0 48px; align-items: start; padding-bottom: 24px;
+    grid-template-areas: "foto config" "info config";
+    grid-template-rows: auto 1fr;
+}
+.area-foto { grid-area: foto; }
+.area-info { grid-area: info; }
+.configurador { grid-area: config; }
+
+/* ── Columna izquierda: foto + descripción ── */
+.foto-principal { aspect-ratio: 4 / 3; border-radius: var(--radio); overflow: hidden; background-color: var(--tela); }
+.foto-principal img { width: 100%; height: 100%; object-fit: cover; }
+.descripcion { margin-top: 28px; }
+.descripcion h2 { font-size: 1.5rem; margin-bottom: 8px; }
+.descripcion p { white-space: pre-line; color: var(--texto); max-width: 62ch; }
+.como-medir { margin-top: 24px; padding: 20px; background: var(--tela); border-radius: var(--radio); }
+.como-medir h2 { font-size: 1.3rem; margin-bottom: 8px; }
+.como-medir ul { margin: 0; padding-left: 20px; color: var(--texto); display: grid; gap: 4px; }
+
+/* ── Columna derecha: configurador ── */
+.configurador { position: sticky; top: 92px; }
+.categoria { color: var(--gris); font-size: .95rem; }
+.configurador h1 { font-size: clamp(2.2rem, 4vw, 3.2rem); font-style: italic; text-transform: uppercase; margin-top: 2px; }
+.configurador .corta { color: var(--gris); margin-top: 8px; font-size: 1.05rem; }
+.paso { margin-top: 26px; border: 0; padding: 0; }
+.paso legend, .paso > .titulo { font: 700 1.25rem 'Barlow Condensed', sans-serif; color: var(--tinta); margin-bottom: 10px; padding: 0; }
+
+/* Telas */
+.telas { display: grid; gap: 8px; }
+.tela { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px; border: 1.5px solid var(--linea); border-radius: var(--radio); cursor: pointer; }
+.tela:hover { border-color: var(--gris); }
+.tela input { position: absolute; opacity: 0; pointer-events: none; }
+.tela:has(input:checked) { border-color: var(--rojo); box-shadow: inset 0 0 0 1px var(--rojo); }
+.tela:has(input:focus-visible) { outline: 3px solid var(--rojo); outline-offset: 2px; }
+.tela .nombre { font-weight: 600; color: var(--tinta); }
+.tela .desde { font-size: .9rem; color: var(--gris); white-space: nowrap; }
+
+/* Colores */
+.colores { display: flex; flex-wrap: wrap; gap: 10px; }
+.color { display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer; width: 64px; text-align: center; }
+.color input { position: absolute; opacity: 0; pointer-events: none; }
+.color .muestra { width: 40px; height: 40px; border-radius: 50%; border: 1px solid rgba(0,0,0,.18); box-shadow: 0 0 0 3px #fff; }
+.color:has(input:checked) .muestra { box-shadow: 0 0 0 3px #fff, 0 0 0 5px var(--rojo); }
+.color:has(input:focus-visible) .muestra { outline: 3px solid var(--rojo); outline-offset: 4px; }
+.color .etiqueta { font-size: .8rem; color: var(--texto); line-height: 1.2; }
+
+/* Medidas */
+.medidas { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; }
+.campo label { display: block; font-weight: 600; font-size: .95rem; color: var(--tinta); margin-bottom: 6px; }
+.entrada { display: flex; align-items: center; border: 1.5px solid var(--linea); border-radius: var(--radio); background: #fff; }
+.entrada:focus-within { border-color: var(--tinta); }
+.entrada input { flex: 1; min-width: 0; border: 0; background: transparent; font: 600 1.15rem 'Barlow', sans-serif; padding: 12px 14px; color: var(--tinta); }
+.entrada input:focus { outline: none; }
+.entrada span { padding-right: 14px; color: var(--gris); font-weight: 600; }
+.ayuda { font-size: .88rem; color: var(--gris); margin-top: 8px; }
+
+/* Lado del mando */
+.opciones { display: flex; gap: 8px; }
+.opcion { flex: 1; text-align: center; padding: 11px; border: 1.5px solid var(--linea); border-radius: var(--radio); cursor: pointer; font-weight: 600; }
+.opcion input { position: absolute; opacity: 0; pointer-events: none; }
+.opcion:has(input:checked) { border-color: var(--rojo); box-shadow: inset 0 0 0 1px var(--rojo); color: var(--tinta); }
+.opcion:has(input:focus-visible) { outline: 3px solid var(--rojo); outline-offset: 2px; }
+
+/* Cantidad */
+.cantidad { display: inline-flex; align-items: center; border: 1.5px solid var(--linea); border-radius: var(--radio); }
+.cantidad button { width: 44px; height: 44px; border: 0; background: transparent; font-size: 1.3rem; cursor: pointer; color: var(--tinta); }
+.cantidad button:hover { background: var(--tela); }
+.cantidad input { width: 52px; text-align: center; border: 0; font: 600 1.1rem 'Barlow', sans-serif; -moz-appearance: textfield; }
+.cantidad input::-webkit-inner-spin-button { -webkit-appearance: none; }
+
+/* ── Vista previa: la persiana dibujada a escala, con cotas ── */
+.previa { margin-top: 26px; display: grid; grid-template-columns: 200px 1fr; gap: 22px; align-items: center; padding: 20px; border: 1.5px solid var(--linea); border-radius: var(--radio); }
+.lienzo { position: relative; width: 200px; height: 200px; display: flex; align-items: center; justify-content: center; }
+.persiana {
+    position: relative; width: 120px; height: 150px; border-top: 8px solid var(--tinta);
+    background: repeating-linear-gradient(180deg, var(--color-tela, #EDEBE8) 0 11px, rgba(0,0,0,.10) 11px 12px);
+    transition: width .25s, height .25s;
+}
+.persiana.fantasma { opacity: .35; }
+.persiana .mando { position: absolute; top: 0; width: 2px; height: 70%; background: var(--tinta); }
+.persiana .mando::after { content: ""; position: absolute; left: 50%; bottom: -5px; width: 8px; height: 8px; background: var(--rojo); border-radius: 50%; transform: translateX(-50%); }
+.persiana .mando.derecha { right: 6px; }
+.persiana .mando.izquierda { left: 6px; }
+.cota { position: absolute; font: 600 .78rem 'Barlow', sans-serif; color: var(--rojo); white-space: nowrap; }
+.cota-ancho { left: 0; right: 0; top: -26px; text-align: center; border-bottom: 1.5px solid var(--rojo); padding-bottom: 2px; }
+.cota-alto { top: 0; bottom: 0; left: calc(100% + 10px); display: flex; align-items: center; border-left: 1.5px solid var(--rojo); padding-left: 6px; }
+
+.precio-caja .precio-grande { font: italic 800 2.6rem/1 'Barlow Condensed', sans-serif; color: var(--tinta); }
+.precio-caja .desglose { color: var(--gris); font-size: .92rem; margin-top: 6px; }
+.precio-caja .indicacion { color: var(--gris); }
+.precio-caja .problema { color: #8F1013; font-size: .95rem; }
+.precio-caja .problema a { color: var(--verde); font-weight: 700; }
+
+.acciones { display: grid; gap: 10px; margin-top: 18px; }
+.acciones .btn { width: 100%; padding: 15px; font-size: 1.05rem; }
+
+@media (max-width: 900px) {
+    /* En celular: foto, luego el cotizador y al final la información */
+    .ficha { grid-template-columns: minmax(0, 1fr); grid-template-areas: "foto" "config" "info"; grid-template-rows: auto; gap: 24px; }
+    .configurador { position: static; }
+}
+@media (max-width: 600px) {
+    .previa { grid-template-columns: minmax(0, 1fr); justify-items: center; text-align: center; padding: 18px 14px; }
+    .lienzo { width: 220px; height: 180px; }
+    .configurador h1 { font-size: 2rem; }
+    .entrada input { font-size: 16px; }
+}

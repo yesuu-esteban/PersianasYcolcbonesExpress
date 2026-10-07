@@ -1,0 +1,5 @@
+/* Pantalla: templates/fabrica/cargar_insumo.html */
+
+.fila-pieza-agotada { background-color: #f8d7da !important; }
+.badge-tipo-medida { background-color: #0dcaf0; color: #000; }
+.input-corregir { max-width: 110px; }

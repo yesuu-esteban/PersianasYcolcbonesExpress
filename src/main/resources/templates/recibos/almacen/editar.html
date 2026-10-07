@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Editar Recibo de Almacén</title>
+    <link rel="stylesheet" href="/css/recibos/formulario_almacen.css">
+</head>
+<body>
+    <div class="container">
+        <div class="barra-superior">
+            <h3 style="margin:0;">✏️ Editar Recibo #<span th:text="${recibo.numeroFormateado}"></span></h3>
+            <a th:href="@{/recibos/imprimir/{id}(id=${recibo.id})}">← Cancelar y ver recibo</a>
+        </div>
+
+        <p style="font-size:13px; color:#555; margin-top:-8px; margin-bottom:16px;">
+            <span class="badge-origen">ALMACEN</span>
+        </p>
+
+        <div th:if="${error}" class="alerta alerta-error" th:text="${error}"></div>
+
+        <div class="aviso-firmado" th:if="${recibo.isFirmado()}">
+            ⚠️ Este recibo ya tiene una firma registrada. Si cambias los productos o el total,
+            la firma seguirá guardada tal cual, pero no corresponderá a los nuevos valores —
+            considera pedirle al cliente que vuelva a firmar después de editar.
+        </div>
+
+        <form th:action="@{/recibos/almacen/editar/{id}(id=${recibo.id})}" method="post" id="formRecibo">
+            <fieldset>
+                <legend>Datos del Cliente</legend>
+                <label for="cliente">Cliente:</label>
+                <input type="text" id="cliente" name="cliente" th:value="${recibo.cliente}" required>
+                <label for="direccion">Dirección:</label>
+                <input type="text" id="direccion" name="direccion" th:value="${recibo.direccion}">
+                <label for="cedula">Cédula:</label>
+                <input type="text" id="cedula" name="cedula" th:value="${recibo.cedula}">
+                <label for="telefono">Teléfono:</label>
+                <input type="tel" id="telefono" name="telefono" th:value="${recibo.telefono}">
+            </fieldset>
+
+            <fieldset>
+                <legend>Productos</legend>
+                <div id="contenedorProductos">
+                    <div class="fila-producto-form" th:each="it : ${recibo.items}">
+                        <input type="text" name="nombresProducto" class="col-nombre" placeholder="Nombre del producto" th:value="${it.nombre}" required>
+                        <input type="number" name="precios" class="col-precio" step="0.01" min="0.01" placeholder="Precio" th:value="${it.precio}" required>
+                        <input type="number" name="cantidades" class="col-cant" min="1" th:value="${it.cantidad}" placeholder="Cant.">
+                        <button type="button" class="btn-eliminar-producto" onclick="eliminarFila(this)">Quitar</button>
+                    </div>
+                </div>
+                <button type="button" class="btn-agregar-producto" onclick="agregarFila()">+ Añadir Producto</button>
+            </fieldset>
+
+            <div class="totales">
+                <p><strong>Total General: $<span id="lblTotalGeneral">0.00</span></strong></p>
+                <label for="descuento">Descuento:</label>
+                <input type="number" id="descuento" name="descuento" step="0.01" min="0" th:value="${recibo.descuento}">
+                <p class="descuento-aplicado" id="lineaDescuentoAplicado" style="display:none;">
+                    Descuento aplicado: -$<span id="lblDescuentoAplicado">0.00</span>
+                </p>
+                <p><strong>Total con descuento: $<span id="lblTotalConDescuento">0.00</span></strong></p>
+                <label for="abono">Abono:</label>
+                <input type="number" id="abono" name="abono" step="0.01" min="0" th:value="${recibo.abono}">
+                <label for="saldo">Saldo pendiente:</label>
+                <input type="number" id="saldo" readonly>
+            </div>
+
+            <button type="submit" class="btn-generar btn-editar">💾 Guardar Cambios</button>
+        </form>
+    </div>
+
+    <script src="/js/recibos/formulario.js"></script>
+    <script src="/js/token-nav.js"></script>
+</body>
+</html>

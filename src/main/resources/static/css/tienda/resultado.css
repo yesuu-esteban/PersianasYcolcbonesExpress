@@ -1,0 +1,25 @@
+/* Pantalla: templates/tienda/resultado.html */
+
+.resultado { max-width: 680px; margin: 40px auto 0; }
+.estado { display: flex; gap: 18px; align-items: flex-start; padding: 28px; border-radius: var(--radio); }
+.estado .icono { width: 56px; height: 56px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: #fff; }
+.estado .icono svg { width: 30px; height: 30px; }
+.estado h1 { font-size: clamp(2rem, 5vw, 2.8rem); font-style: italic; text-transform: uppercase; }
+.estado p { margin-top: 8px; }
+.aprobado { background: #E9F6EE; } .aprobado .icono { background: var(--verde); }
+.pendiente { background: var(--tela); } .pendiente .icono { background: var(--gris); }
+.fallido { background: #FDECEC; } .fallido .icono { background: var(--rojo); }
+.referencia { font-weight: 700; color: var(--tinta); }
+.detalle { margin-top: 28px; }
+.detalle h2 { font-size: 1.5rem; margin-bottom: 10px; }
+.detalle .item { display: flex; justify-content: space-between; gap: 14px; padding: 12px 0; border-bottom: 1px solid var(--linea); }
+.detalle .item strong { color: var(--tinta); display: block; }
+.detalle .item small { color: var(--gris); }
+.detalle .item span:last-child { font-weight: 700; white-space: nowrap; color: var(--tinta); }
+.detalle .total { display: flex; justify-content: space-between; padding-top: 14px; font-weight: 700; color: var(--tinta); }
+.detalle .total span:last-child { font: italic 800 1.8rem/1 'Barlow Condensed', sans-serif; }
+.acciones { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 28px; }
+@media (max-width: 600px) {
+    .estado { flex-direction: column; padding: 22px; }
+    .acciones .btn { flex: 1 1 100%; }
+}

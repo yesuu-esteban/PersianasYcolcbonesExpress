@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:replace="~{tienda/fragmentos :: estilos}"></th:block>
+    <title>Persianas y cortinas a la medida | P.C Express</title>
+    <meta name="description" content="Cotiza persianas, cortinas y toldos a la medida en línea. Escribe tus medidas, elige tela y color, y paga con PSE, Nequi o tarjeta.">
+    <link rel="stylesheet" href="/css/tienda/catalogo.css">
+</head>
+<body>
+<header th:replace="~{tienda/fragmentos :: encabezado(${categoriaSel != null ? categoriaSel : 'todos'})}"></header>
+
+<main>
+    <section class="portada">
+        <div class="contenedor">
+            <div>
+                <h1>Persianas a la medida de tu ventana</h1>
+                <div class="velocidad" aria-hidden="true"><i></i><i></i><i></i></div>
+                <p class="bajada">Escribe el ancho y el alto, elige la tela y el color, y conoce el precio al instante. Pagas en línea o, si prefieres, te asesoramos por WhatsApp.</p>
+                <div class="acciones">
+                    <a class="btn btn-rojo" href="#catalogo">Ver productos</a>
+                    <a class="btn btn-borde" target="_blank" rel="noopener"
+                       th:href="'https://wa.me/' + ${whatsapp} + '?text=' + ${#uris.escapeQueryParam('Hola, quiero asesoría para unas persianas.')}">Hablar con un asesor</a>
+                </div>
+            </div>
+            <div class="ventana" aria-hidden="true">
+                <div class="marco"><div class="lamas"></div><div class="cordon"></div></div>
+            </div>
+        </div>
+    </section>
+
+    <section class="pasos" aria-labelledby="titulo-pasos">
+        <div class="contenedor">
+            <h2 id="titulo-pasos" hidden>Cómo comprar</h2>
+            <ol>
+                <li><h2>Mide tu ventana</h2><p>Toma el ancho y el alto del espacio donde va la persiana, en metros.</p></li>
+                <li><h2>Elige tela y color</h2><p>El precio se calcula solo según la tela y tus medidas.</p></li>
+                <li><h2>Paga y listo</h2><p>Pagas en línea y te llamamos para coordinar la entrega y la instalación.</p></li>
+            </ol>
+        </div>
+    </section>
+
+    <section class="catalogo" id="catalogo">
+        <div class="contenedor">
+            <div class="cabecera">
+                <h2 th:text="${categoriaSel != null} ? ${categorias.get(categoriaSel)} : 'Productos'">Productos</h2>
+                <nav class="filtros" aria-label="Filtrar por categoría">
+                    <a href="/tienda#catalogo" th:attr="aria-current=${categoriaSel == null} ? 'page' : null">Todos</a>
+                    <a th:each="c : ${categorias}" th:href="@{/tienda(categoria=${c.key})} + '#catalogo'"
+                       th:text="${c.value}" th:attr="aria-current=${categoriaSel == c.key} ? 'page' : null">Persianas</a>
+                </nav>
+            </div>
+
+            <div th:if="${#lists.isEmpty(productos)}" class="vacio">
+                No hay productos en esta categoría por ahora. <a href="/tienda#catalogo">Ver todos los productos</a>
+            </div>
+
+            <div class="rejilla">
+                <a class="producto" th:each="p : ${productos}" th:href="@{/tienda/producto/{s}(s=${p.slug})}">
+                    <div class="foto" th:classappend="${p.imagenId == null} ? 'sin-foto'">
+                        <img th:if="${p.imagenId != null}" th:src="@{/tienda/img/{id}(id=${p.imagenId})}" th:alt="${p.nombre}" loading="lazy">
+                        <span class="destacado" th:if="${p.destacado}">Más pedido</span>
+                    </div>
+                    <span class="categoria" th:text="${p.categoriaEtiqueta}">Persianas</span>
+                    <h3 th:text="${p.nombre}">Blackout enrollable</h3>
+                    <p class="corta" th:text="${p.descripcionCorta}"></p>
+                    <p class="desde" th:if="${p.precioDesde != null}">
+                        Desde <strong th:text="'$' + ${#numbers.formatInteger(p.precioDesde, 1, 'POINT')}">$51.200</strong>
+                        <span th:text="${p.porMetro} ? 'el m²' : 'c/u'">el m²</span>
+                    </p>
+                </a>
+            </div>
+
+            <div class="franja">
+                <div class="pago">
+                    <h2>Paga como prefieras</h2>
+                    <p>Los pagos se hacen en la plataforma segura de Wompi, de Bancolombia, y llegan directo a nuestra cuenta.</p>
+                    <div class="metodos">
+                        <span>PSE</span><span>Nequi</span><span>Tarjeta débito</span><span>Tarjeta crédito</span><span>Botón Bancolombia</span>
+                    </div>
+                </div>
+                <div class="asesor">
+                    <h2>¿Medidas especiales?</h2>
+                    <p>Si tu ventana es muy grande, tiene una forma especial o no sabes qué tela elegir, un asesor te ayuda sin costo.</p>
+                    <a class="btn btn-whatsapp" target="_blank" rel="noopener"
+                       th:href="'https://wa.me/' + ${whatsapp} + '?text=' + ${#uris.escapeQueryParam('Hola, necesito asesoría con unas medidas especiales.')}">Escribir por WhatsApp</a>
+                </div>
+            </div>
+        </div>
+    </section>
+</main>
+
+<th:block th:replace="~{tienda/fragmentos :: pie}"></th:block>
+<th:block th:replace="~{tienda/fragmentos :: scripts}"></th:block>
+</body>
+</html>

@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:replace="~{tienda/fragmentos :: estilos}"></th:block>
+    <title>Tu carrito | P.C Express</title>
+    <meta name="robots" content="noindex">
+    <link rel="stylesheet" href="/css/tienda/carrito.css">
+</head>
+<body>
+<header th:replace="~{tienda/fragmentos :: encabezado('carrito')}"></header>
+
+<main class="contenedor">
+    <h1>Tu carrito</h1>
+    <p class="cargando" id="cargando">Cargando tu carrito…</p>
+
+    <div class="vacio" id="vacio" hidden>
+        <h2>Tu carrito está vacío</h2>
+        <p>Elige un producto, escribe tus medidas y agrégalo aquí.</p>
+        <a class="btn btn-rojo" href="/tienda#catalogo">Ver productos</a>
+    </div>
+
+    <div class="carrito" id="contenido" hidden>
+        <div class="lineas" id="lineas"></div>
+        <aside class="resumen">
+            <h2>Resumen</h2>
+            <div class="fila"><span>Productos</span><span id="cantidadTotal">0</span></div>
+            <div class="fila total"><span>Total</span><span id="total">$0</span></div>
+            <p class="nota">Después del pago te llamamos para coordinar la entrega y la instalación.</p>
+            <p class="aviso aviso-error" id="avisoProblemas" hidden>Revisa los productos marcados en rojo antes de pagar.</p>
+            <a class="btn btn-rojo" href="/tienda/checkout" id="btnPagar">Continuar con el pago</a>
+            <a class="btn btn-whatsapp" id="btnAsesor" target="_blank" rel="noopener" href="#">Enviar pedido por WhatsApp</a>
+            <a class="btn btn-borde" href="/tienda#catalogo">Seguir comprando</a>
+        </aside>
+    </div>
+</main>
+
+<th:block th:replace="~{tienda/fragmentos :: pie}"></th:block>
+<th:block th:replace="~{tienda/fragmentos :: scripts}"></th:block>
+<script src="/js/tienda/carrito.js"></script>
+</body>
+</html>

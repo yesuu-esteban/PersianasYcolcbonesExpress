@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${tarea.tipoEtiqueta} + ' - Persianas Express'">Tarea</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/css/instalaciones/mi_detalle.css">
+</head>
+<body>
+
+<header class="topbar"><a href="/mi-calendario">← Mi agenda</a></header>
+
+<main class="contenido">
+    <div th:if="${mensaje}" class="alert alert-success" th:text="${mensaje}"></div>
+    <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
+
+    <div class="cabecera" th:style="'--c:' + ${tarea.color}">
+        <div class="tipo" th:text="${tarea.tipoEtiqueta}"></div>
+        <h1 th:text="${tarea.tituloMostrado}"></h1>
+        <div class="cuando" th:text="${tarea.fechaLarga} + ', ' + ${tarea.horaRango}"></div>
+        <span class="chip chip-estado" th:text="${tarea.estadoEtiqueta}"></span>
+        <span class="chip chip-gris" th:text="${tarea.asignadaPorAdmin} ? 'Asignada por el jefe' : 'Personal'"></span>
+        <span class="chip chip-gris" th:if="${companero != null}" th:text="'Con ' + ${companero}"></span>
+    </div>
+
+    <div class="aviso-jefe" th:if="${tarea.asignadaPorAdmin and tarea.instalacion}">
+        🔒 Esta instalación te la asignó el jefe. No la puedes editar ni eliminar.
+        Se pone en <strong>verde</strong> cuando el almacén marque el pedido como "Instalado" o "Terminado".
+    </div>
+    <div class="aviso-jefe" th:if="${tarea.asignadaPorAdmin and !tarea.instalacion}">
+        🔒 Este trabajo te lo asignó el jefe. No lo puedes editar ni eliminar, pero
+        <strong>sí puedes marcarlo como completado</strong> cuando lo termines.
+    </div>
+
+    <div class="notas" th:if="${tarea.notas != null and tarea.notas != ''}">
+        <strong th:text="${tarea.asignadaPorAdmin} ? 'Indicaciones del jefe' : 'Notas'">Notas</strong>
+        <span th:text="${tarea.notas}"></span>
+    </div>
+
+    <section class="bloque" th:if="${(tarea.cliente != null and tarea.cliente != '') or (tarea.direccion != null and tarea.direccion != '')}">
+        <h2 th:text="${tarea.tipo == 'OTRO'} ? 'Lugar' : 'Dónde y con quién'">Dónde</h2>
+        <div class="dato-grande" th:if="${tarea.cliente != null and tarea.cliente != '' and tarea.tipo != 'OTRO'}" th:text="${tarea.cliente}"></div>
+        <div th:if="${tarea.direccion != null and tarea.direccion != ''}" th:text="${tarea.direccion}"></div>
+        <div class="text-muted mt-1" th:if="${tarea.telefono != null and tarea.telefono != ''}" th:text="'Tel. ' + ${tarea.telefono}"></div>
+
+        <div class="contacto">
+            <a class="btn-mapa no-token" target="_blank" rel="noopener"
+               th:if="${tarea.direccion != null and tarea.direccion != ''}"
+               th:href="@{https://www.google.com/maps/search/(api=1,query=${tarea.direccion})}">Abrir en Maps</a>
+            <a class="btn-llamar no-token"
+               th:if="${tarea.telefono != null and tarea.telefono != ''}"
+               th:href="'tel:' + ${tarea.telefono}">Llamar</a>
+            <a class="btn-whatsapp no-token" target="_blank" rel="noopener"
+               th:if="${whatsapp != null}"
+               th:href="@{https://wa.me/{n}(n=${whatsapp},text=${mensajeWhatsapp})}">Avisar por WhatsApp</a>
+        </div>
+    </section>
+
+    <section class="bloque" th:if="${tarea.pedidoTienda != null}">
+        <h2 th:text="'Qué se instala (pedido #' + ${tarea.pedidoTienda.id} + ')'">Qué se instala</h2>
+        <table class="productos">
+            <thead><tr><th>Producto</th><th>Material</th><th class="text-end">Cant.</th></tr></thead>
+            <tbody>
+                <tr th:each="d : ${tarea.pedidoTienda.detalles}">
+                    <td th:text="${d.producto}"></td>
+                    <td th:text="${d.material != null and d.material != ''} ? ${d.material} : '—'"></td>
+                    <td class="cant" th:text="${d.cantidad}"></td>
+                </tr>
+                <tr th:if="${#lists.isEmpty(tarea.pedidoTienda.detalles)}">
+                    <td colspan="3" class="text-muted">El pedido no tiene productos registrados.</td>
+                </tr>
+            </tbody>
+        </table>
+        <p class="mt-3 mb-0 text-muted" style="font-size:0.88rem;"
+           th:if="${tarea.pedidoTienda.descripcion != null and tarea.pedidoTienda.descripcion != ''}"
+           th:text="${tarea.pedidoTienda.descripcion}"></p>
+    </section>
+
+    <div th:if="${tarea.terminada}" class="terminada" th:classappend="${!tarea.instalacion} ? 'hecha'">
+        <strong th:text="'✓ ' + ${tarea.estadoEtiqueta}"></strong>
+        <div th:if="${tarea.fechaCompletada != null}" th:text="'Registrada el ' + ${tarea.fechaCompletadaFormateada}"></div>
+        <div class="mt-2" th:if="${tarea.observacionesInstalador != null and tarea.observacionesInstalador != ''}"
+             th:text="${tarea.observacionesInstalador}"></div>
+    </div>
+
+    <!-- Avance del trabajo: tareas personales y trabajos del jefe que NO son instalaciones -->
+    <form th:if="${puedeCompletar and tarea.estado == 'PROGRAMADA'}" method="post" class="mb-3"
+          th:action="@{/mi-calendario/{id}/iniciar(id=${tarea.id})}">
+        <button type="submit" class="btn-accion btn-empezar">Empezar</button>
+    </form>
+
+    <form th:if="${puedeCompletar and tarea.activa}" method="post" class="bloque"
+          th:action="@{/mi-calendario/{id}/completar(id=${tarea.id})}"
+          onsubmit="return confirm('¿Confirmas que este trabajo quedó completado?');">
+        <h2>Al terminar</h2>
+        <label for="observaciones" class="form-label" style="font-size:0.88rem;">Observaciones <span class="text-muted">(opcional)</span></label>
+        <textarea id="observaciones" name="observaciones" rows="3" class="form-control mb-3"
+                  placeholder="Ej: faltó un soporte, el cliente pidió ajustar la altura"></textarea>
+        <button type="submit" class="btn-accion btn-terminar"
+                th:text="${tarea.instalacion} ? 'Marcar como instalada' : 'Marcar como completado'">Marcar como completado</button>
+    </form>
+
+    <!-- Solo para tareas que este instalador agregó -->
+    <div th:if="${puedeModificar}" class="propias">
+        <a th:href="@{/mi-calendario/{id}/editar(id=${tarea.id})}" class="btn btn-outline-dark">Editar</a>
+        <form method="post" th:action="@{/mi-calendario/{id}/eliminar(id=${tarea.id})}"
+              onsubmit="return confirm('¿Eliminar esta tarea de tu agenda?');">
+            <button type="submit" class="btn btn-outline-danger w-100">Eliminar</button>
+        </form>
+    </div>
+</main>
+
+<script src="/js/token-nav.js"></script>
+</body>
+</html>

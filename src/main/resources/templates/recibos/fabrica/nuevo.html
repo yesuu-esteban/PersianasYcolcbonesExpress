@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+
+<div th:replace="~{fragments/sidebar :: layout(contenido=~{::seccion-contenido}, activo='recibos-fabrica', titulo='🧾 Nuevo Recibo de Fábrica')}">
+
+<div th:fragment="seccion-contenido">
+    <link rel="stylesheet" href="/css/recibos/formulario_fabrica.css">
+
+    <div class="row justify-content-center">
+        <div class="col-md-7">
+            <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
+
+            <form th:action="@{/recibos/fabrica/guardar}" method="post" id="formRecibo" class="bg-white p-4 shadow-sm border rounded">
+                <fieldset>
+                    <legend>Datos del Cliente</legend>
+                    <label for="cliente" class="form-label mt-2">Cliente:</label>
+                    <input type="text" id="cliente" name="cliente" class="form-control" required>
+                    <label for="direccion" class="form-label mt-2">Dirección:</label>
+                    <input type="text" id="direccion" name="direccion" class="form-control">
+                    <label for="cedula" class="form-label mt-2">Cédula:</label>
+                    <input type="text" id="cedula" name="cedula" class="form-control">
+                    <label for="telefono" class="form-label mt-2">Teléfono:</label>
+                    <input type="tel" id="telefono" name="telefono" class="form-control">
+                </fieldset>
+
+                <fieldset>
+                    <legend>Productos</legend>
+                    <div id="contenedorProductos">
+                        <div class="fila-producto-form">
+                            <input type="text" name="nombresProducto" class="form-control col-nombre" placeholder="Nombre del producto" required>
+                            <input type="number" name="precios" class="form-control col-precio" step="0.01" min="0.01" placeholder="Precio" required>
+                            <input type="number" name="cantidades" class="form-control col-cant" min="1" value="1" placeholder="Cant.">
+                            <button type="button" class="btn-eliminar-producto" onclick="eliminarFila(this)">Quitar</button>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-agregar-producto" onclick="agregarFila()">+ Añadir Producto</button>
+                </fieldset>
+
+                <div class="totales">
+                    <p><strong>Total General: $<span id="lblTotalGeneral">0.00</span></strong></p>
+                    <label for="descuento" class="form-label">Descuento:</label>
+                    <input type="number" id="descuento" name="descuento" class="form-control" step="0.01" min="0" value="0">
+                    <p class="descuento-aplicado" id="lineaDescuentoAplicado" style="display:none;">
+                        Descuento aplicado: -$<span id="lblDescuentoAplicado">0.00</span>
+                    </p>
+                    <p><strong>Total con descuento: $<span id="lblTotalConDescuento">0.00</span></strong></p>
+                    <label for="abono" class="form-label">Abono:</label>
+                    <input type="number" id="abono" name="abono" class="form-control" step="0.01" min="0" value="0">
+                    <label for="saldo" class="form-label">Saldo pendiente:</label>
+                    <input type="number" id="saldo" class="form-control" readonly>
+                </div>
+
+                <button type="submit" class="btn-generar">Generar Recibo</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="/js/recibos/formulario.js"></script>
+</div>
+
+</div>
+
+</body>
+</html>

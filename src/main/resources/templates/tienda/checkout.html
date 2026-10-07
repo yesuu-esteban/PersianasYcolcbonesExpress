@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:replace="~{tienda/fragmentos :: estilos}"></th:block>
+    <title>Datos de entrega y pago | P.C Express</title>
+    <meta name="robots" content="noindex">
+    <link rel="stylesheet" href="/css/tienda/checkout.css">
+</head>
+<body>
+<header th:replace="~{tienda/fragmentos :: encabezado('carrito')}"></header>
+
+<main class="contenedor">
+    <nav class="miga" aria-label="Ruta"><a href="/tienda/carrito">Carrito</a> / Datos y pago</nav>
+    <h1>Datos de entrega</h1>
+
+    <div class="aviso aviso-error" th:if="${error}" th:text="${error}" style="margin-bottom:20px;"></div>
+    <div class="aviso aviso-info" th:unless="${pagosActivos}" style="margin-bottom:20px;">
+        Los pagos en línea se activarán muy pronto. Mientras tanto, envíanos tu pedido por WhatsApp y te ayudamos a completarlo.
+    </div>
+
+    <div class="pago">
+        <form method="post" action="/tienda/checkout" id="formPago" novalidate>
+            <input type="hidden" name="carrito" id="campoCarrito">
+
+            <fieldset>
+                <legend>Tus datos</legend>
+                <div class="campos">
+                    <div class="campo ancho">
+                        <label for="nombre">Nombre completo</label>
+                        <input type="text" id="nombre" name="nombre" autocomplete="name" required th:value="${datos?.get('nombre')}">
+                    </div>
+                    <div class="campo">
+                        <label for="cedula">Cédula</label>
+                        <input type="text" id="cedula" name="cedula" inputmode="numeric" required th:value="${datos?.get('cedula')}">
+                    </div>
+                    <div class="campo">
+                        <label for="telefono">Celular</label>
+                        <input type="tel" id="telefono" name="telefono" autocomplete="tel" inputmode="tel" required th:value="${datos?.get('telefono')}">
+                    </div>
+                    <div class="campo ancho">
+                        <label for="email">Correo</label>
+                        <input type="email" id="email" name="email" autocomplete="email" required th:value="${datos?.get('email')}">
+                    </div>
+                </div>
+            </fieldset>
+
+            <fieldset>
+                <legend>Dónde entregamos e instalamos</legend>
+                <div class="campos">
+                    <div class="campo">
+                        <label for="ciudad">Ciudad</label>
+                        <input type="text" id="ciudad" name="ciudad" autocomplete="address-level2" required th:value="${datos?.get('ciudad')}">
+                    </div>
+                    <div class="campo">
+                        <label for="direccion">Dirección</label>
+                        <input type="text" id="direccion" name="direccion" autocomplete="street-address" required th:value="${datos?.get('direccion')}">
+                    </div>
+                    <div class="campo ancho">
+                        <label for="notas">Indicaciones <span style="font-weight:400;color:var(--gris)">(opcional)</span></label>
+                        <textarea id="notas" name="notas" placeholder="Barrio, apartamento, horario en que te podemos visitar…" th:text="${datos?.get('notas')}"></textarea>
+                    </div>
+                </div>
+            </fieldset>
+
+            <label class="autorizo">
+                <input type="checkbox" name="autorizo" required>
+                <span>Autorizo a Persianas y Colchones Express a usar mis datos para procesar y entregar este pedido y para contactarme sobre él.</span>
+            </label>
+
+            <button type="submit" class="btn btn-rojo btn-pagar" id="btnPagar" th:disabled="${!pagosActivos}">Ir a pagar</button>
+            <p class="seguro">Vas a pagar en la plataforma segura de Wompi, de Bancolombia. Puedes usar PSE, Nequi, tarjeta o botón Bancolombia.</p>
+        </form>
+
+        <aside class="resumen">
+            <h2>Tu pedido</h2>
+            <div id="items"><p style="color:var(--gris)">Cargando…</p></div>
+            <div class="total"><span>Total</span><span id="total">$0</span></div>
+            <p style="margin-top:10px;"><a href="/tienda/carrito">Editar carrito</a></p>
+            <a class="btn btn-whatsapp" id="btnAsesor" target="_blank" rel="noopener" href="#" style="width:100%;margin-top:14px;">Enviar pedido por WhatsApp</a>
+        </aside>
+    </div>
+</main>
+
+<th:block th:replace="~{tienda/fragmentos :: pie}"></th:block>
+<th:block th:replace="~{tienda/fragmentos :: scripts}"></th:block>
+<script th:inline="javascript">
+    const pagosActivos = /*[[${pagosActivos}]]*/ false;
+</script>
+<script src="/js/tienda/checkout.js"></script>
+</body>
+</html>

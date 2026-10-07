@@ -1,0 +1,5 @@
+/* Pantalla: templates/fabrica/nuevo_insumo.html */
+
+.col-medida { display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.campo-extra { display: none; }
+.campo-extra.activo { display: flex; }

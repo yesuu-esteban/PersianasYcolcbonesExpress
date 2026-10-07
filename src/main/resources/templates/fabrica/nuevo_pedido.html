@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+
+<div th:replace="~{fragments/sidebar :: layout(contenido=~{::seccion-contenido}, activo='pedidos-fabrica', titulo='➕ Registrar Pedido')}">
+
+<div th:fragment="seccion-contenido">
+    <link rel="stylesheet" href="/css/fabrica/nuevo_pedido.css">
+
+    <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
+    <div th:if="${mensaje}" class="alert alert-success" th:text="${mensaje}"></div>
+
+    <ul class="nav nav-tabs mb-3">
+        <li class="nav-item">
+            <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tabFabricacion" type="button">🧵 Fabricación</button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabVentaDirecta" type="button">💵 Venta Directa</button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabRielOnda" type="button">🪟 Riel de Onda Serena</button>
+        </li>
+    </ul>
+
+    <div class="tab-content">
+    <div class="tab-pane fade show active" id="tabFabricacion">
+    <form th:action="@{/taller/guardar-lista}" method="post" class="bg-white p-4 shadow-sm border rounded">
+
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <label class="form-label fw-bold">Nombre del Distribuidor</label>
+                <input type="text" name="nombreDecorador" class="form-control" required>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label fw-bold">Nombre del Cliente Final</label>
+                <input type="text" name="nombreClienteFinal" class="form-control" required>
+            </div>
+        </div>
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <label class="form-label fw-bold">Fecha de inicio del pedido <small class="text-muted">(opcional)</small></label>
+                <input type="datetime-local" name="fechaInicio" class="form-control">
+                <small class="text-muted" style="font-size:0.76rem;">Déjalo vacío para usar la fecha y hora actuales.</small>
+            </div>
+        </div>
+        <hr>
+
+        <div id="contenedor-productos">
+            <div class="fila-producto" data-indice="0">
+                <div class="row align-items-end g-2 mb-1">
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold mb-1" style="font-size:0.82rem">Descripción</label>
+                        <input type="text" name="descripciones" class="form-control form-control-sm campo-desc" placeholder="Descripción" required>
+                    </div>
+                    <div class="col-md-1">
+                        <label class="form-label fw-bold mb-1" style="font-size:0.82rem">Cant.</label>
+                        <input type="number" name="cantidades" class="form-control form-control-sm campo-cantidad" value="1" min="1" required>
+                    </div>
+                    <div class="col-md-1">
+                        <label class="form-label fw-bold mb-1" style="font-size:0.82rem">Ancho</label>
+                        <input type="number" step="0.001" name="anchos" class="form-control form-control-sm campo-ancho" placeholder="m" required>
+                    </div>
+                    <div class="col-md-1">
+                        <label class="form-label fw-bold mb-1" style="font-size:0.82rem">Alto</label>
+                        <input type="number" step="0.001" name="alturas" class="form-control form-control-sm campo-alto" placeholder="m" required>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label fw-bold mb-1" style="font-size:0.82rem">Color</label>
+                        <select name="colores" class="form-select form-select-sm campo-color">
+                            <option th:each="c : ${listaColores}" th:value="${c}" th:text="${c}"></option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label fw-bold mb-1" style="font-size:0.82rem">Mando</label>
+                        <select name="mandos" class="form-select form-select-sm">
+                            <option value="Mando Derecho">Mando Derecho</option>
+                            <option value="Mando Izquierdo">Mando Izquierdo</option>
+                        </select>
+                    </div>
+                    <div class="col-md-1 text-center">
+                        <label class="form-label fw-bold mb-1 d-block" style="font-size:0.82rem">Cabezal</label>
+                        <input type="checkbox" name="cabezales[0]" value="true" class="form-check-input fs-5 campo-cabezal">
+                    </div>
+                    <div class="col-md-1"></div>
+                </div>
+
+                <div class="flags-row ms-1">
+                    <label>
+                        <input type="checkbox" name="usaPitilloPesa[0]" value="true" class="form-check-input campo-pitillo" checked>
+                        🪡 Pitillo
+                    </label>
+                    <label>
+                        <input type="checkbox" name="usaConectorTope[0]" value="true" class="form-check-input campo-conector" checked>
+                        🔗 Conector / Tope
+                    </label>
+                    <button type="button" class="toggle-manual" onclick="toggleManual(this)">⚙ Selección manual de material</button>
+                </div>
+
+                <div class="previsualizacion mt-2">
+                    <span class="cargando">Completa ancho, alto y color para ver el material necesario.</span>
+                </div>
+
+                <div class="seccion-manual" style="display:none;">
+                    <div class="fw-bold mb-2" style="font-size:0.82rem">⚙ Selección manual <small class="text-muted">(deja "Automático" para que el sistema elija)</small></div>
+                    <div class="row g-2">
+                        <div class="col-md-6 col-lg-4">
+                            <label class="form-label">🧵 Tela (rollo o retazo)</label>
+                            <select name="retazoManual[0]" class="form-select form-select-sm select-retazo">
+                                <option value="auto">⚡ Automático (retazo si hay, si no rollo)</option>
+                            </select>
+                            <select name="rolloManual[0]" class="form-select form-select-sm select-rollo mt-1">
+                                <option value="auto">⚡ Automático (rollo)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 col-lg-4">
+                            <label class="form-label">📏 Tipo de tubo</label>
+                            <select name="tipoTuboManual[0]" class="form-select form-select-sm select-tipo-tubo">
+                                <option value="auto">⚡ Automático (según medida)</option>
+                                <option value="R8">Tubo R8</option>
+                                <option value="R16">Tubo R16</option>
+                                <option value="R24">Tubo R24</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 col-lg-4">
+                            <label class="form-label">🔩 Pieza de tubo</label>
+                            <select name="tuboManual[0]" class="form-select form-select-sm select-tubo">
+                                <option value="auto">⚡ Automático</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 col-lg-4 campo-cabezal-manual" style="display:none;">
+                            <label class="form-label">🪟 Pieza de cabezal</label>
+                            <select name="cabezalManual[0]" class="form-select form-select-sm select-cabezal">
+                                <option value="auto">⚡ Automático</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 col-lg-4">
+                            <label class="form-label">⚖ Pieza de pesa</label>
+                            <select name="pesaManual[0]" class="form-select form-select-sm select-pesa">
+                                <option value="auto">⚡ Automático</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 col-lg-4">
+                            <label class="form-label">🧶 Pieza de cuerda</label>
+                            <select name="cuerdaManual[0]" class="form-select form-select-sm select-cuerda">
+                                <option value="auto">⚡ Automático</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 col-lg-4 campo-pitillo-manual">
+                            <label class="form-label">🪡 Pieza de pitillo</label>
+                            <select name="pitilloManual[0]" class="form-select form-select-sm select-pitillo">
+                                <option value="auto">⚡ Automático</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <button type="button" class="btn btn-info btn-sm mt-1" onclick="agregarFila()">+ Agregar otro producto</button>
+
+        <hr class="mt-4">
+
+        <div class="seccion-extras">
+            <p class="fw-bold mb-2">➕ Insumos adicionales (opcional)</p>
+            <p class="text-muted mb-2" style="font-size:0.82rem;">
+                Para cualquier material extra que se agregue a esta orden y que no entra en el cálculo automático
+                de cada producto. Se descuenta del inventario igual que el resto del material.
+            </p>
+            <div id="contenedorExtras"></div>
+            <button type="button" class="btn btn-sm btn-outline-dark mt-1" onclick="agregarFilaExtra()">+ Agregar insumo extra</button>
+        </div>
+
+        <div class="mt-4">
+            <button type="submit" class="btn btn-success w-100">Guardar todos los pedidos</button>
+            <a href="/taller/pedidos" class="btn btn-secondary w-100 mt-2">Cancelar</a>
+        </div>
+    </form>
+    </div>
+
+    <div class="tab-pane fade" id="tabVentaDirecta">
+        <form th:action="@{/taller/guardar-venta-directa}" method="post" class="bg-white p-4 shadow-sm border rounded">
+            <div class="row g-3 mb-3">
+                <div class="col-md-6">
+                    <label class="form-label fw-bold">Cliente</label>
+                    <input type="text" name="nombreClienteFinal" class="form-control" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-bold">Descripción (opcional)</label>
+                    <input type="text" name="descripcion" class="form-control" placeholder="Ej: venta mostrador">
+                </div>
+            </div>
+
+            <div class="seccion-extras mb-3">
+                <p class="fw-bold mb-2">🧵 Tela vendida por metros</p>
+                <div id="contenedorTelaVenta"></div>
+                <button type="button" class="btn btn-sm btn-outline-dark" onclick="agregarFilaTelaVenta()">+ Agregar tela</button>
+            </div>
+
+            <div class="seccion-extras mb-3">
+                <p class="fw-bold mb-2">🔧 Insumos vendidos</p>
+                <div id="contenedorInsumoVenta"></div>
+                <button type="button" class="btn btn-sm btn-outline-dark" onclick="agregarFilaInsumoVenta()">+ Agregar insumo</button>
+            </div>
+
+            <div class="mt-4">
+                <button type="submit" class="btn btn-success w-100">💾 Registrar Venta Directa</button>
+                <a href="/taller/pedidos" class="btn btn-secondary w-100 mt-2">Cancelar</a>
+            </div>
+        </form>
+    </div>
+
+    <div class="tab-pane fade" id="tabRielOnda">
+        <form th:action="@{/taller/guardar-riel-onda}" method="post" class="bg-white p-4 shadow-sm border rounded">
+
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <label class="form-label fw-bold">Nombre del Distribuidor</label>
+                    <input type="text" name="nombreDecorador" class="form-control" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-bold">Nombre del Cliente Final</label>
+                    <input type="text" name="nombreClienteFinal" class="form-control" required>
+                </div>
+            </div>
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <label class="form-label fw-bold">Fecha de inicio del pedido <small class="text-muted">(opcional)</small></label>
+                    <input type="datetime-local" name="fechaInicio" class="form-control">
+                    <small class="text-muted" style="font-size:0.76rem;">Déjalo vacío para usar la fecha y hora actuales.</small>
+                </div>
+            </div>
+            <hr>
+
+            <div id="contenedor-rieles">
+                <div class="fila-riel" data-indice="0">
+                    <div class="row align-items-end g-2 mb-1">
+                        <div class="col-md-3">
+                            <label class="form-label fw-bold mb-1" style="font-size:0.82rem">Descripción</label>
+                            <input type="text" name="descripciones" class="form-control form-control-sm" placeholder="Ej: riel sala principal">
+                        </div>
+                        <div class="col-md-1">
+                            <label class="form-label fw-bold mb-1" style="font-size:0.82rem">Cant.</label>
+                            <input type="number" name="cantidades" class="form-control form-control-sm campo-cantidad-riel" value="1" min="1" required>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label fw-bold mb-1" style="font-size:0.82rem">Ancho (m)</label>
+                            <input type="number" step="0.001" name="anchos" class="form-control form-control-sm campo-ancho-riel" required>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label fw-bold mb-1" style="font-size:0.82rem">Alto (m)</label>
+                            <input type="number" step="0.001" name="alturas" class="form-control form-control-sm campo-alto-riel" placeholder="opcional">
+                        </div>
+                        <div class="col-md-3 text-center">
+                            <label class="form-label fw-bold mb-1 d-block" style="font-size:0.82rem">Lleva polea</label>
+                            <input type="checkbox" name="usaPolea[0]" value="true" class="form-check-input fs-5 campo-usa-polea-riel">
+                        </div>
+                        <div class="col-md-1"></div>
+                    </div>
+
+                    <div class="row g-2 mt-2">
+                        <div class="col-md-6 campo-baston-riel" style="display:none;">
+                            <label class="form-label">Bastón</label>
+                            <select name="bastonElegido[0]" class="form-select form-select-sm">
+                                <option value="Bastón 0.80">Bastón 0.80</option>
+                                <option value="Bastón 1.20">Bastón 1.20</option>
+                                <option value="Bastón 1.50">Bastón 1.50</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Abre hacia</label>
+                            <select name="ladoApertura[0]" class="form-select form-select-sm campo-lado-apertura-riel">
+                                <option value="Izquierda">Izquierda</option>
+                                <option value="Derecha">Derecha</option>
+                                <option value="Hacia los extremos">Hacia los extremos</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="previsualizacion-riel previsualizacion mt-2">
+                        <span class="cargando">Completa el ancho para ver el corte estimado.</span>
+                    </div>
+                </div>
+            </div>
+
+            <button type="button" class="btn btn-info btn-sm mt-1" onclick="agregarFilaRiel()">+ Agregar otro riel</button>
+
+            <hr class="mt-4">
+
+            <div class="seccion-extras">
+                <p class="fw-bold mb-2">➕ Insumos adicionales (opcional)</p>
+                <p class="text-muted mb-2" style="font-size:0.82rem;">
+                    Los accesorios obligatorios (poleas/crusador, o tapas/bastón, riata, soportes según corresponda)
+                    ya se calculan y descuentan automáticamente para cada riel. Usa esto solo para material extra
+                    fuera de lo normal, aplicado una sola vez a toda la orden.
+                </p>
+                <div id="contenedorExtrasRiel"></div>
+                <button type="button" class="btn btn-sm btn-outline-dark mt-1" onclick="agregarFilaExtraRiel()">+ Agregar insumo</button>
+            </div>
+
+            <div class="mt-4">
+                <button type="submit" class="btn btn-success w-100">💾 Guardar Riel(es) de Onda Serena</button>
+                <a href="/taller/pedidos" class="btn btn-secondary w-100 mt-2">Cancelar</a>
+            </div>
+        </form>
+    </div>
+    </div>
+
+<script th:inline="javascript">
+    const listaColores        = /*[[${listaColores}]]*/        [];
+    const rollosDisponibles   = /*[[${rollosDisponibles}]]*/   [];
+    const piezasDisponibles   = /*[[${piezasDisponibles}]]*/   [];
+    const retazosDisponibles  = /*[[${retazosDisponibles}]]*/  [];
+    const catalogoInsumos     = /*[[${catalogoInsumos}]]*/     [];
+</script>
+
+<script src="/js/fabrica/nuevo_pedido.js"></script>
+</div>
+
+</div>
+
+</body>
+</html>

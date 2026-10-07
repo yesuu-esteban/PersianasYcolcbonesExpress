@@ -6,84 +6,7 @@
     <title th:text="${tarea == null} ? 'Nueva tarea' : 'Editar tarea'">Tarea</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --bg-card: #2a1b42; --bg-input: #1e1330; --accent: #ec1561; --accent-light: #ff4d94;
-            --gold: #ffc107; --texto: #f4f0fb; --texto-suave: #cbb8e0; --bodega: #0dcaf0;
-        }
-        * { font-family: 'Poppins', sans-serif; }
-        body { background: linear-gradient(160deg, #1a0f2e 0%, #241536 100%); color: #fff; padding: 24px; min-height: 100vh; }
-        [hidden] { display: none !important; }
-        .contenedor { max-width: 1100px; margin: 0 auto; }
-        .volver { color: var(--texto-suave); text-decoration: none; font-size: 0.88rem; }
-        .volver:hover { color: #fff; }
-        h1 { font-weight: 700; font-size: 1.35rem; margin: 10px 0 18px; }
-
-        .caja { background: var(--bg-card); border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; padding: 22px; box-shadow: 0 4px 22px rgba(0,0,0,0.3); }
-        .form-label { color: var(--texto); font-size: 0.86rem; font-weight: 600; }
-        .form-control, .form-select { background: var(--bg-input); border: 1px solid rgba(255,255,255,0.15); color: #fff; }
-        .form-control:focus, .form-select:focus { background: var(--bg-input); color: #fff; border-color: var(--accent); box-shadow: 0 0 0 0.2rem rgba(236,21,97,0.25); }
-        .form-control::placeholder { color: #8f84a8; }
-        .form-select option { background: var(--bg-input); color: #fff; }
-        .ayuda { font-size: 0.76rem; color: var(--texto-suave); margin-top: 4px; }
-
-        .tipos { display: grid; grid-template-columns: repeat(auto-fit, minmax(92px, 1fr)); gap: 8px; }
-        .tipos input { position: absolute; opacity: 0; pointer-events: none; }
-        .tipos label {
-            display: block; text-align: center; padding: 10px 6px; border-radius: 10px; cursor: pointer;
-            background: var(--bg-input); border: 2px solid rgba(255,255,255,0.12); font-weight: 600; font-size: 0.86rem;
-        }
-        .tipos input:checked + label { border-color: var(--c); background: var(--c); }
-        .tipos input:focus-visible + label { outline: 2px solid var(--gold); outline-offset: 2px; }
-
-        /* Bloque de pedido en bodega */
-        .bloque-bodega { background: rgba(13,202,240,0.08); border: 1px solid rgba(13,202,240,0.45); border-radius: 12px; padding: 14px; }
-        .bloque-bodega .form-label { color: #9eeaf9; }
-        .sin-pedidos { background: rgba(255,193,7,0.12); border: 1px solid var(--gold); color: #ffe08a; border-radius: 10px; padding: 12px; font-size: 0.86rem; }
-        .sin-pedidos a { color: #fff; }
-
-        .bloque-instaladores { background: var(--bg-input); border-radius: 12px; padding: 14px; }
-
-        .btn-primary { background: linear-gradient(135deg, var(--accent), #b81050) !important; border: none !important; font-weight: 600; }
-        .btn-primary:disabled { opacity: 0.45; }
-        .btn-outline-danger { color: #ff8a80; border-color: #e74c3c; }
-        .btn-outline-danger:hover { background: #e74c3c; color: #fff; }
-        .alert-danger { background: rgba(231,76,60,0.15); border: 1px solid #e74c3c; color: #ff9a90; }
-        .alert-warning { background: rgba(255,193,7,0.12); border: 1px solid var(--gold); color: #ffe08a; }
-        .alert-warning a { color: #fff; }
-
-        /* Ficha del pedido */
-        .ficha { background: rgba(0,0,0,0.22); border-radius: 10px; padding: 14px; border-left: 4px solid var(--bodega); }
-        .ficha .etiqueta-bodega { display: inline-block; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.5px; color: #03171c; background: var(--bodega); border-radius: 20px; padding: 2px 10px; margin-bottom: 8px; }
-        .ficha h2 { font-size: 1.1rem; font-weight: 700; margin-bottom: 12px; }
-        .ficha dl { display: grid; grid-template-columns: 100px 1fr; gap: 6px 10px; margin: 0 0 12px; font-size: 0.86rem; }
-        .ficha dt { color: var(--texto-suave); font-weight: 600; }
-        .ficha dd { margin: 0; word-break: break-word; }
-        .ficha h3 { font-size: 0.86rem; font-weight: 700; color: var(--texto-suave); margin: 4px 0 6px; }
-        .ficha ul { list-style: none; padding: 0; margin: 0; font-size: 0.86rem; }
-        .ficha li { padding: 6px 0; border-top: 1px solid rgba(255,255,255,0.08); }
-        .ficha-vacia { color: var(--texto-suave); font-size: 0.86rem; }
-        .origen { display: inline-block; font-size: 0.75rem; font-weight: 600; padding: 3px 10px; border-radius: 20px; background: rgba(255,255,255,0.1); }
-        .reporte { background: rgba(46,204,113,0.12); border: 1px solid rgba(46,204,113,0.5); border-radius: 12px; padding: 14px; font-size: 0.86rem; }
-
-        .info-tarea { position: sticky; top: 16px; }
-
-        /* ═══ Celular ═══ */
-        @media (max-width: 767.98px) {
-            body { padding: 10px; }
-            h1 { font-size: 1.15rem; margin: 8px 0 12px; }
-            .caja { padding: 14px; border-radius: 12px; }
-            .tipos { grid-template-columns: repeat(3, 1fr); gap: 6px; }
-            .tipos label { padding: 10px 2px; font-size: 0.78rem; }
-            .bloque-bodega, .bloque-instaladores { padding: 12px; }
-            .ficha { padding: 12px; }
-            .ficha h2 { font-size: 1rem; }
-            .ficha dl { grid-template-columns: 82px 1fr; font-size: 0.82rem; }
-            .form-control, .form-select { font-size: 16px; }       /* evita el zoom automático del iPhone */
-            .btn { padding: 0.65rem; }
-            .info-tarea { position: static; }
-        }
-    </style>
+    <link rel="stylesheet" href="/css/instalaciones/formulario.css">
 </head>
 <body>
 <div class="contenedor">
@@ -240,7 +163,7 @@
                     <label class="form-label" for="estado">Estado <span class="fw-normal" style="color:var(--texto-suave)">(en instalaciones, Terminada = verde)</span></label>
                     <select id="estado" th:field="*{estado}" class="form-select">
                         <option th:each="e : ${estados}" th:value="${e}"
-                                th:text="${T(Colcones_Persinas.proyecto_express.modelo.TareaCalendario).etiquetaEstado(e)}"></option>
+                                th:text="${T(Colcones_Persinas.proyecto_express.modelo.instalaciones.TareaCalendario).etiquetaEstado(e)}"></option>
                     </select>
                 </div>
 
@@ -282,92 +205,7 @@
     </div>
 </div>
 
-<script>
-    (function () {
-        const selPedido = document.getElementById('pedidoTiendaId');   // null si no hay pedidos en bodega
-        const selInst1 = document.getElementById('instaladorId');
-        const selInst2 = document.getElementById('instalador2Id');
-        const btnGuardar = document.getElementById('btnGuardar');
-        const ficha = document.getElementById('fichaPedido');
-        const fichaVacia = document.getElementById('fichaVacia');
-        const lblTitulo = document.getElementById('lblTitulo');
-        const lblDireccion = document.getElementById('lblDireccion');
-        const inputTitulo = document.getElementById('titulo');
-
-        function tipoActual() {
-            const r = document.querySelector('input[name="tipo"]:checked');
-            return r ? r.value : 'INSTALACION';
-        }
-
-        function texto(id, valor) {
-            document.getElementById(id).textContent = (valor && valor.trim()) ? valor : '—';
-        }
-
-        function pintarFicha(op) {
-            texto('fTitulo', '#' + op.value + ' · ' + (op.dataset.cliente || ''));
-            texto('fCliente', op.dataset.cliente);
-            texto('fCedula', op.dataset.cedula);
-            texto('fTelefono', op.dataset.telefono);
-            texto('fDireccion', op.dataset.direccion);
-            texto('fEntrega', op.dataset.entrega);
-            texto('fVendedor', op.dataset.vendedor);
-            texto('fDescripcion', op.dataset.descripcion);
-
-            const lista = document.getElementById('fProductos');
-            lista.innerHTML = '';
-            const productos = (op.dataset.productos || '').split('|').filter(x => x.trim());
-            if (productos.length === 0) {
-                const li = document.createElement('li');
-                li.textContent = 'Sin productos registrados.';
-                lista.appendChild(li);
-            } else {
-                productos.forEach(p => {
-                    const li = document.createElement('li');
-                    li.textContent = p;
-                    lista.appendChild(li);
-                });
-            }
-        }
-
-        function actualizar() {
-            const tipo = tipoActual();
-            const esInstalacion = tipo === 'INSTALACION';
-
-            document.querySelectorAll('[data-tipos]').forEach(el => {
-                el.hidden = !el.dataset.tipos.split(' ').includes(tipo);
-            });
-
-            const esOtro = tipo === 'OTRO';
-            lblTitulo.textContent = esOtro ? '¿De qué se trata?' : 'Asunto (opcional)';
-            inputTitulo.placeholder = esOtro ? 'Ej: recoger material en la fábrica' : 'Ej: revisar motor de la persiana de la sala';
-            lblDireccion.textContent = esOtro ? 'Lugar (opcional)' : 'Dirección';
-
-            // Instalación: el pedido es obligatorio; sin pedidos en bodega no se puede guardar.
-            if (selPedido) selPedido.required = esInstalacion;
-            btnGuardar.disabled = esInstalacion && !selPedido;
-
-            const op = selPedido ? selPedido.options[selPedido.selectedIndex] : null;
-            const conPedido = esInstalacion && op && op.value !== '';
-            ficha.hidden = !conPedido;
-            fichaVacia.hidden = !(esInstalacion && selPedido && !conPedido);
-            if (conPedido) pintarFicha(op);
-        }
-
-        // No dejar elegir la misma persona como primer y segundo instalador.
-        function sincronizarInstaladores() {
-            Array.from(selInst2.options).forEach(o => {
-                o.disabled = o.value !== '' && o.value === selInst1.value;
-            });
-            if (selInst2.value !== '' && selInst2.value === selInst1.value) selInst2.value = '';
-        }
-
-        document.querySelectorAll('input[name="tipo"]').forEach(r => r.addEventListener('change', actualizar));
-        if (selPedido) selPedido.addEventListener('change', actualizar);
-        selInst1.addEventListener('change', sincronizarInstaladores);
-        actualizar();
-        sincronizarInstaladores();
-    })();
-</script>
+<script src="/js/instalaciones/formulario.js"></script>
 <script src="/js/token-nav.js"></script>
 </body>
 </html>

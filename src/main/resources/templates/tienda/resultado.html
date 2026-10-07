@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:replace="~{tienda/fragmentos :: estilos}"></th:block>
+    <title>Estado de tu pedido | P.C Express</title>
+    <meta name="robots" content="noindex">
+    <link rel="stylesheet" href="/css/tienda/resultado.css">
+</head>
+<body>
+<header th:replace="~{tienda/fragmentos :: encabezado('')}"></header>
+
+<main class="contenedor">
+    <div class="resultado">
+
+        <!-- Referencia que no existe -->
+        <div class="estado fallido" th:if="${orden == null}">
+            <div class="icono" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 7v6M12 17h.01"/></svg></div>
+            <div>
+                <h1>Pedido no encontrado</h1>
+                <p>No encontramos un pedido con la referencia <span class="referencia" th:text="${referencia}"></span>. Si ya pagaste, escríbenos y lo revisamos.</p>
+            </div>
+        </div>
+
+        <th:block th:if="${orden != null}">
+            <!-- Aprobado -->
+            <div class="estado aprobado" th:if="${orden.estado == 'APROBADA'}" id="estadoAprobado">
+                <div class="icono" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>
+                <div>
+                    <h1>Pago aprobado</h1>
+                    <p>Gracias, <span th:text="${orden.primerNombre}"></span>. Tu pedido <span class="referencia" th:text="${orden.referencia}"></span> quedó registrado.</p>
+                    <p>Te llamaremos al <strong th:text="${orden.telefono}"></strong> para coordinar la entrega y la instalación. El comprobante de pago te llega al correo.</p>
+                </div>
+            </div>
+
+            <!-- Pendiente -->
+            <div class="estado pendiente" th:if="${orden.estado == 'PENDIENTE'}" id="estadoPendiente">
+                <div class="icono" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg></div>
+                <div>
+                    <h1>Confirmando tu pago</h1>
+                    <p>Estamos esperando la confirmación de Wompi para el pedido <span class="referencia" th:text="${orden.referencia}"></span>. Algunos pagos, como PSE, pueden tardar unos minutos.</p>
+                    <p th:if="${transaccionId != null}">Esta página se actualiza sola.</p>
+                </div>
+            </div>
+
+            <!-- Rechazado, anulado o con error -->
+            <div class="estado fallido" th:if="${orden.estado == 'RECHAZADA' or orden.estado == 'ANULADA' or orden.estado == 'ERROR'}">
+                <div class="icono" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M7 7l10 10M17 7L7 17"/></svg></div>
+                <div>
+                    <h1>El pago no se completó</h1>
+                    <p th:if="${orden.estado == 'RECHAZADA'}">El banco o la entidad rechazó el pago. No se hizo ningún cobro.</p>
+                    <p th:if="${orden.estado == 'ANULADA'}">El pago fue anulado. No se hizo ningún cobro.</p>
+                    <p th:if="${orden.estado == 'ERROR'}">Hubo un problema con el pago. Escríbenos con la referencia <span class="referencia" th:text="${orden.referencia}"></span> y lo revisamos.</p>
+                    <p>Tu carrito sigue guardado: puedes intentarlo de nuevo con otro medio de pago.</p>
+                </div>
+            </div>
+
+            <section class="detalle">
+                <h2>Resumen</h2>
+                <div class="item" th:each="it : ${orden.items}">
+                    <span><strong th:text="${it.productoNombre} + ' × ' + ${it.cantidad}"></strong><small th:text="${it.detalle}"></small></span>
+                    <span th:text="'$' + ${#numbers.formatInteger(it.subtotal, 1, 'POINT')}"></span>
+                </div>
+                <div class="total"><span>Total</span><span th:text="'$' + ${#numbers.formatInteger(orden.total, 1, 'POINT')}"></span></div>
+            </section>
+        </th:block>
+
+        <div class="acciones">
+            <a class="btn btn-rojo" href="/tienda/checkout"
+               th:if="${orden != null and (orden.estado == 'RECHAZADA' or orden.estado == 'ANULADA')}">Intentar de nuevo</a>
+            <a class="btn btn-borde" href="/tienda">Volver a la tienda</a>
+            <a class="btn btn-whatsapp" target="_blank" rel="noopener"
+               th:href="'https://wa.me/' + ${whatsapp} + '?text=' + ${#uris.escapeQueryParam('Hola, tengo una consulta sobre mi pedido ' + (orden != null ? orden.referencia : referencia))}">Escribir por WhatsApp</a>
+        </div>
+    </div>
+</main>
+
+<th:block th:replace="~{tienda/fragmentos :: pie}"></th:block>
+<th:block th:replace="~{tienda/fragmentos :: scripts}"></th:block>
+<script th:inline="javascript">
+    const estado = /*[[${orden != null ? orden.estado : ''}]]*/ '';
+    const hayTransaccion = /*[[${transaccionId != null}]]*/ false;
+</script>
+<script src="/js/tienda/resultado.js"></script>
+</body>
+</html>

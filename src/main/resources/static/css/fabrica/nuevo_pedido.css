@@ -1,0 +1,59 @@
+/* Pantalla: templates/fabrica/nuevo_pedido.html */
+
+.previsualizacion {
+    background-color: #f8f9fa;
+    border: 1px dashed #adb5bd;
+    border-radius: 4px;
+    padding: 10px 14px;
+    font-size: 0.80rem;
+    margin-top: 8px;
+}
+.previsualizacion.ok    { border-color: #198754; background-color: #f0fbf4; }
+.previsualizacion.falta { border-color: #dc3545; background-color: #fdf2f3; color: #842029; }
+.previsualizacion .cargando { color: #888; }
+.fila-producto, .fila-riel {
+    background: #fff;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    padding: 12px 10px 6px;
+    margin-bottom: 12px;
+}
+.seccion-manual {
+    background: #fffbea;
+    border: 1px solid #ffe082;
+    border-radius: 5px;
+    padding: 8px 12px;
+    margin-top: 8px;
+    font-size: 0.82rem;
+}
+.seccion-manual .form-label { font-size: 0.78rem; margin-bottom: 2px; }
+.seccion-manual select { font-size: 0.80rem; }
+.toggle-manual {
+    font-size: 0.78rem;
+    cursor: pointer;
+    color: #856404;
+    text-decoration: underline;
+    background: none;
+    border: none;
+    padding: 0;
+}
+.flags-row { display: flex; gap: 18px; align-items: center; flex-wrap: wrap; margin: 6px 0 4px; }
+.flags-row label { font-size: 0.82rem; display: flex; align-items: center; gap: 5px; cursor: pointer; }
+.seccion-extras {
+    background: #fffbea;
+    border: 1px solid #ffe082;
+    border-radius: 6px;
+    padding: 14px 16px;
+    margin-bottom: 18px;
+}
+.fila-extra select, .fila-extra input { font-size: 0.85rem; }
+.fila-tela-venta select, .fila-tela-venta input { font-size: 0.85rem; }
+.info-stock-insumo {
+    font-size: 0.76rem;
+    padding-top: 3px;
+    color: #6c757d;
+}
+.info-stock-insumo.ok { color: #0a5c30; }
+.info-stock-insumo.sin-stock { color: #b02a37; font-weight: 600; }
+.nav-tabs .nav-link { font-weight: 600; }
+.nav-tabs .nav-link.active { border-bottom-color: #fff; }

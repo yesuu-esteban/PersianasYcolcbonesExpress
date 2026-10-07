@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:replace="~{tienda/fragmentos :: estilos}"></th:block>
+    <title th:text="${producto.nombre} + ' a la medida | P.C Express'">Producto | P.C Express</title>
+    <meta name="description" th:content="${producto.descripcionCorta}">
+    <link rel="stylesheet" href="/css/tienda/producto.css">
+</head>
+<body>
+<header th:replace="~{tienda/fragmentos :: encabezado(${producto.categoria})}"></header>
+
+<main class="contenedor">
+    <nav class="miga" aria-label="Ruta">
+        <a href="/tienda">Tienda</a> /
+        <a th:href="@{/tienda(categoria=${producto.categoria})} + '#catalogo'" th:text="${producto.categoriaEtiqueta}">Persianas</a> /
+        <span th:text="${producto.nombre}">Producto</span>
+    </nav>
+
+    <div class="ficha">
+        <!-- ═══ Foto ═══ -->
+        <div class="area-foto">
+            <div class="foto-principal" th:classappend="${producto.imagenId == null} ? 'sin-foto'">
+                <img th:if="${producto.imagenId != null}" th:src="@{/tienda/img/{id}(id=${producto.imagenId})}" th:alt="${producto.nombre}">
+            </div>
+        </div>
+
+        <!-- ═══ Descripción y cómo medir ═══ -->
+        <div class="area-info">
+            <div class="descripcion" th:if="${producto.descripcion != null and producto.descripcion != ''}">
+                <h2>Sobre este producto</h2>
+                <p th:text="${producto.descripcion}"></p>
+            </div>
+            <div class="como-medir" th:if="${producto.porMetro}">
+                <h2>Cómo medir</h2>
+                <ul>
+                    <li>Usa un metro de acero y escribe las medidas en metros. Por ejemplo, 1 metro con 20 centímetros se escribe 1,20.</li>
+                    <li>Ancho: de un lado al otro del espacio donde va la persiana.</li>
+                    <li>Alto: desde donde se instala hasta donde quieres que llegue.</li>
+                    <li>Si tienes dudas, escríbenos: te ayudamos a medir.</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- ═══ Configurador ═══ -->
+        <form class="configurador" id="configurador" novalidate
+              th:attr="data-producto-id=${producto.id}, data-por-metro=${producto.porMetro}, data-con-mando=${producto.conMando},
+                       data-nombre=${producto.nombre}, data-slug=${producto.slug},
+                       data-ancho-min=${producto.anchoMinCm}, data-ancho-max=${producto.anchoMaxCm},
+                       data-alto-min=${producto.altoMinCm}, data-alto-max=${producto.altoMaxCm}, data-m2-minimo=${producto.m2Minimo}">
+            <span class="categoria" th:text="${producto.categoriaEtiqueta}">Persianas</span>
+            <h1 th:text="${producto.nombre}">Blackout enrollable</h1>
+            <p class="corta" th:text="${producto.descripcionCorta}"></p>
+
+            <th:block th:if="${producto.porMetro}">
+                <fieldset class="paso">
+                    <legend>Tela</legend>
+                    <div class="telas">
+                        <label class="tela" th:each="t, it : ${producto.telasActivas}">
+                            <input type="radio" name="tela" th:value="${t.id}" th:checked="${it.first}"
+                                   th:attr="data-colores=${t.colores}, data-nombre=${t.nombre}">
+                            <span class="nombre" th:text="${t.nombre}">Blackout liso</span>
+                            <span class="desde" th:if="${t.precioMinimo != null}"
+                                  th:text="'desde $' + ${#numbers.formatInteger(t.precioMinimo, 1, 'POINT')} + ' el m²'">desde $51.200 el m²</span>
+                        </label>
+                    </div>
+                </fieldset>
+
+                <fieldset class="paso" id="pasoColor">
+                    <legend>Color</legend>
+                    <div class="colores" id="colores"></div>
+                </fieldset>
+
+                <fieldset class="paso">
+                    <legend>Medidas del espacio (en metros)</legend>
+                    <div class="medidas">
+                        <div class="campo">
+                            <label for="ancho">Ancho</label>
+                            <div class="entrada">
+                                <input type="text" id="ancho" inputmode="decimal" autocomplete="off" placeholder="1,20" aria-describedby="ayudaMedidas">
+                                <span>m</span>
+                            </div>
+                        </div>
+                        <div class="campo">
+                            <label for="alto">Alto</label>
+                            <div class="entrada">
+                                <input type="text" id="alto" inputmode="decimal" autocomplete="off" placeholder="1,50" aria-describedby="ayudaMedidas">
+                                <span>m</span>
+                            </div>
+                        </div>
+                    </div>
+                    <p class="ayuda" id="ayudaMedidas">Escribe las medidas en metros.</p>
+                </fieldset>
+
+                <fieldset class="paso" th:if="${producto.conMando}">
+                    <legend>Lado del mando</legend>
+                    <div class="opciones">
+                        <label class="opcion"><input type="radio" name="lado" value="Izquierda"> Izquierda</label>
+                        <label class="opcion"><input type="radio" name="lado" value="Derecha" checked> Derecha</label>
+                    </div>
+                </fieldset>
+            </th:block>
+
+            <fieldset class="paso">
+                <legend>Cantidad</legend>
+                <div class="cantidad">
+                    <button type="button" id="menos" aria-label="Quitar una">−</button>
+                    <input type="number" id="cantidad" value="1" min="1" max="50" inputmode="numeric" aria-label="Cantidad">
+                    <button type="button" id="mas" aria-label="Agregar una">+</button>
+                </div>
+            </fieldset>
+
+            <div class="previa">
+                <div class="lienzo" th:if="${producto.porMetro}" aria-hidden="true">
+                    <div class="persiana fantasma" id="persiana">
+                        <span class="cota cota-ancho" id="cotaAncho">ancho</span>
+                        <span class="cota cota-alto" id="cotaAlto">alto</span>
+                        <span class="mando derecha" id="mando" th:if="${producto.conMando}"></span>
+                    </div>
+                </div>
+                <div class="precio-caja" id="precioCaja" aria-live="polite">
+                    <p class="indicacion" th:if="${producto.porMetro}">Escribe el ancho y el alto para ver el precio.</p>
+                </div>
+            </div>
+
+            <div class="acciones">
+                <button type="submit" class="btn btn-rojo" id="btnAgregar" disabled>Agregar al carrito</button>
+                <a class="btn btn-whatsapp" id="btnAsesor" target="_blank" rel="noopener" href="#">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20.5l1.4-5A8 8 0 1 1 21 12z"/></svg>
+                    Cotizar con un asesor
+                </a>
+            </div>
+        </form>
+    </div>
+</main>
+
+<th:block th:replace="~{tienda/fragmentos :: pie}"></th:block>
+<th:block th:replace="~{tienda/fragmentos :: scripts}"></th:block>
+
+<script src="/js/tienda/producto.js"></script>
+</body>
+</html>

@@ -1,0 +1,38 @@
+/* Pantalla: templates/tienda/checkout.html */
+
+h1 { font-size: clamp(2.2rem, 5vw, 3.2rem); font-style: italic; text-transform: uppercase; margin: 8px 0 24px; }
+.pago { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 40px; align-items: start; }
+fieldset { border: 0; padding: 0; margin: 0 0 28px; }
+legend { font: 700 1.45rem 'Barlow Condensed', sans-serif; color: var(--tinta); margin-bottom: 14px; padding: 0; }
+.campos { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; }
+.campo { display: grid; gap: 6px; }
+.campo.ancho { grid-column: 1 / -1; }
+label { font-weight: 600; font-size: .95rem; color: var(--tinta); }
+input[type="text"], input[type="email"], input[type="tel"], textarea {
+    width: 100%; font: 500 16px 'Barlow', sans-serif; color: var(--tinta);
+    padding: 12px 14px; border: 1.5px solid var(--linea); border-radius: var(--radio); background: #fff;
+}
+input:focus, textarea:focus { outline: none; border-color: var(--tinta); }
+textarea { resize: vertical; min-height: 80px; }
+.autorizo { display: flex; gap: 10px; align-items: flex-start; font-weight: 500; font-size: .92rem; color: var(--texto); }
+.autorizo input { width: 20px; height: 20px; margin-top: 2px; accent-color: var(--rojo); flex-shrink: 0; }
+.btn-pagar { width: 100%; padding: 16px; font-size: 1.1rem; margin-top: 18px; }
+.seguro { font-size: .88rem; color: var(--gris); margin-top: 10px; text-align: center; }
+
+.resumen { position: sticky; top: 92px; background: var(--tela); border-radius: var(--radio); padding: 24px; }
+.resumen h2 { font-size: 1.5rem; margin-bottom: 12px; }
+.resumen .item { padding: 10px 0; border-bottom: 1px solid var(--linea); display: flex; justify-content: space-between; gap: 12px; }
+.resumen .item strong { display: block; color: var(--tinta); }
+.resumen .item small { color: var(--gris); }
+.resumen .item span:last-child { font-weight: 700; color: var(--tinta); white-space: nowrap; }
+.resumen .total { display: flex; justify-content: space-between; align-items: baseline; padding-top: 14px; font-weight: 700; color: var(--tinta); }
+.resumen .total span:last-child { font: italic 800 1.9rem/1 'Barlow Condensed', sans-serif; }
+.resumen a { font-size: .92rem; }
+
+@media (max-width: 900px) {
+    .pago { grid-template-columns: minmax(0, 1fr); }
+    .resumen { position: static; order: -1; }
+}
+@media (max-width: 600px) {
+    .campos { grid-template-columns: minmax(0, 1fr); }
+}

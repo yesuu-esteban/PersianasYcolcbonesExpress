@@ -1,0 +1,97 @@
+/* Pantalla: templates/tienda/catalogo.html */
+
+/* ── Portada ── */
+.portada { padding: 56px 0 64px; border-bottom: 1px solid var(--linea); overflow: hidden; }
+.portada .contenedor { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, .85fr); gap: 48px; align-items: center; }
+.portada h1 {
+    font-style: italic; font-weight: 800; text-transform: uppercase;
+    font-size: clamp(2.7rem, 6.2vw, 5.4rem); line-height: .92; letter-spacing: -.01em;
+    max-width: 12ch;
+}
+/* Líneas de velocidad, como las del "EXPRESS" del logo */
+.velocidad { display: grid; gap: 7px; width: 132px; margin: 26px 0 22px; }
+.velocidad i { display: block; height: 6px; background: var(--rojo); border-radius: 0 3px 3px 0; justify-self: end; }
+.velocidad i:nth-child(1) { width: 100%; }
+.velocidad i:nth-child(2) { width: 78%; }
+.velocidad i:nth-child(3) { width: 56%; }
+.portada .bajada { font-size: 1.15rem; max-width: 46ch; color: var(--texto); }
+.portada .acciones { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 28px; }
+
+/* Persiana de la portada: las lamas rojas del logo */
+.ventana { position: relative; aspect-ratio: 4 / 5; max-width: 380px; justify-self: end; width: 100%; }
+.ventana .marco { position: absolute; inset: 0; border: 10px solid var(--tinta); border-radius: 4px; background: #F4F3F1; overflow: hidden; }
+.ventana .lamas {
+    position: absolute; left: 0; right: 0; top: 0; height: 64%;
+    background: repeating-linear-gradient(180deg, var(--rojo) 0 26px, #fff 26px 34px);
+    box-shadow: 0 6px 0 var(--tinta);
+    transform-origin: top;
+}
+.ventana .cordon { position: absolute; right: 18%; top: 0; width: 3px; height: 82%; background: var(--tinta); transform-origin: top; }
+.ventana .cordon::after { content: ""; position: absolute; left: 50%; bottom: -8px; width: 14px; height: 14px; border-radius: 50%; background: var(--rojo); border: 3px solid var(--tinta); transform: translateX(-50%); }
+/* La persiana "baja" una sola vez al cargar. Sin animación, se ve igual (ya abajo). */
+@media (prefers-reduced-motion: no-preference) {
+    .ventana .lamas, .ventana .cordon { animation: bajar 1s cubic-bezier(.2,.8,.2,1) .15s backwards; }
+}
+@keyframes bajar { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+
+/* ── Pasos ── */
+.pasos { padding: 48px 0; }
+.pasos ol { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 32px; counter-reset: paso; }
+.pasos li { counter-increment: paso; display: grid; grid-template-columns: auto 1fr; gap: 4px 16px; align-items: start; }
+.pasos li::before { content: counter(paso); grid-row: span 2; font: italic 800 3.2rem/0.9 'Barlow Condensed', sans-serif; color: var(--rojo); }
+.pasos h2 { font-size: 1.45rem; }
+.pasos p { color: var(--gris); font-size: .98rem; }
+
+/* ── Catálogo ── */
+.catalogo { padding-top: 24px; scroll-margin-top: 90px; }
+.catalogo .cabecera { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 16px; margin-bottom: 22px; }
+.catalogo h2 { font-size: clamp(2rem, 4vw, 2.8rem); font-style: italic; text-transform: uppercase; }
+.filtros { display: flex; gap: 8px; flex-wrap: wrap; }
+.filtros a {
+    text-decoration: none; font-weight: 600; font-size: .95rem; padding: 8px 16px; border-radius: 999px;
+    border: 1.5px solid var(--linea); color: var(--texto);
+}
+.filtros a:hover { border-color: var(--tinta); }
+.filtros a[aria-current="page"] { background: var(--tinta); border-color: var(--tinta); color: #fff; }
+
+.rejilla { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 28px 22px; }
+.producto { text-decoration: none; color: inherit; display: flex; flex-direction: column; }
+.producto .foto { aspect-ratio: 4 / 3; border-radius: var(--radio); overflow: hidden; background-color: var(--tela); position: relative; }
+.producto .foto img { width: 100%; height: 100%; object-fit: cover; transition: transform .35s; }
+.producto:hover .foto img { transform: scale(1.03); }
+.producto .destacado { position: absolute; left: 10px; top: 10px; background: var(--rojo); color: #fff; font-weight: 700; font-size: .8rem; padding: 4px 10px; border-radius: 999px; }
+.producto .categoria { font-size: .88rem; color: var(--gris); margin-top: 14px; }
+.producto h3 { font-size: 1.55rem; margin-top: 2px; }
+.producto:hover h3 { text-decoration: underline; text-decoration-color: var(--rojo); text-decoration-thickness: 2px; text-underline-offset: 4px; }
+.producto .corta { color: var(--gris); font-size: .97rem; margin-top: 4px; }
+.producto .desde { margin-top: 10px; font-size: .95rem; color: var(--texto); }
+.producto .desde strong { font: 700 1.35rem 'Barlow Condensed', sans-serif; color: var(--tinta); }
+.vacio { padding: 40px; text-align: center; background: var(--tela); border-radius: var(--radio); }
+
+/* ── Pago y asesoría ── */
+.franja { margin-top: 64px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; }
+.franja > div { padding: 28px; border-radius: var(--radio); }
+.franja .pago { background: var(--tela); }
+.franja .asesor { background: var(--tinta); color: #E9E5E1; }
+.franja .asesor h2 { color: #fff; }
+.franja h2 { font-size: 1.7rem; margin-bottom: 8px; }
+.franja p { margin-bottom: 16px; }
+.metodos { display: flex; flex-wrap: wrap; gap: 8px; }
+.metodos span { background: #fff; border: 1px solid var(--linea); border-radius: 4px; padding: 6px 12px; font-weight: 600; font-size: .9rem; }
+
+@media (max-width: 860px) {
+    .portada { padding: 32px 0 40px; }
+    .portada .contenedor { grid-template-columns: minmax(0, 1fr); gap: 28px; }
+    .ventana { max-width: 260px; justify-self: start; aspect-ratio: 5 / 4; }
+    .pasos ol { grid-template-columns: 1fr; gap: 20px; }
+    .franja { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 600px) {
+    .ventana { display: none; }
+    .portada .acciones .btn { flex: 1 1 100%; }
+    .rejilla { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px 12px; }
+    .producto h3 { font-size: 1.2rem; }
+    .producto .corta { display: none; }
+    .producto .desde strong { font-size: 1.1rem; }
+    .franja > div { padding: 22px; }
+}
