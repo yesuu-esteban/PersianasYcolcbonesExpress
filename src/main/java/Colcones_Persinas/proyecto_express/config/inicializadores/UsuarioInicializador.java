@@ -22,6 +22,9 @@ import org.springframework.stereotype.Component;
  * renombrarUsuario(...)      → cambia el usuario (para iniciar sesión) y el nombre visible
  *                              de un usuario que ya existe. Conserva su contraseña y su rol.
  * marcarTambienInstalador(...) → el usuario conserva su rol y además aparece como instalador.
+ * restablecerContrasena(...) → le pone una contraseña nueva a un usuario que la olvidó.
+ *                              OJO: se aplica en CADA arranque mientras la línea exista;
+ *                              después de usarla una vez, hay que borrar la línea.
  */
 @Component
 public class UsuarioInicializador implements CommandLineRunner {
@@ -39,7 +42,7 @@ public class UsuarioInicializador implements CommandLineRunner {
         // ── Usuarios originales (se respetan tal cual, no se tocan) ──
         crearSiNoExiste("jefe", "123456", "FABRICA", "Jefe de Fábrica");
         crearSiNoExiste("Fabian", "123456", "ADMIN", "Fabian - Jefe General");
-        crearSiNoExiste("Tienda", "express", "TIENDA_ADMIN", "Administrador de Tienda");
+        crearSiNoExiste("Tienda", "123456", "TIENDA_ADMIN", "Administrador de Tienda");
         crearSiNoExiste("admin", "123456", "ADMIN", "Administrador General");
 
         // ── Usuarios nuevos ──
@@ -47,6 +50,11 @@ public class UsuarioInicializador implements CommandLineRunner {
         crearSiNoExiste("jefe2", "123456", "FABRICA", "Jefe de Fábrica 2");
         crearSiNoExiste("tiendaadmin2", "123456", "TIENDA_ADMIN", "Administrador de Tienda 2");
         crearSiNoExiste("admin2", "123456", "ADMIN", "Administrador General 2");
+
+        // ── Contraseña olvidada: el administrador de tienda queda con "123456" ──
+        // BORRAR ESTA LÍNEA apenas se haya aplicado una vez (si se deja, en cada arranque
+        // vuelve a poner "123456" y la persona no podría tener otra contraseña).
+        restablecerContrasena("Tienda", "123456");
 
         // ── Fabian y Mono son jefes superiores → acceso a TODOS los módulos ──
         asegurarRol("Fabian", "ADMIN");
@@ -106,6 +114,26 @@ public class UsuarioInicializador implements CommandLineRunner {
                 System.out.println("[UsuarioInicializador] \"" + usuario.getUsername() + "\" ahora también es instalador.");
             }
         });
+    }
+
+    /**
+     * Le pone una contraseña nueva a un usuario que ya existe (para cuando la olvidó),
+     * sin importar cuál tenía. No toca el rol, el nombre ni nada más.
+     * Si ya tiene justo esa contraseña, no hace nada. Si el usuario no existe, avisa en el registro.
+     */
+    private void restablecerContrasena(String username, String contrasenaNueva) {
+        Usuario usuario = usuarioRepository.findByUsernameIgnoreCase(username).orElse(null);
+        if (usuario == null) {
+            System.out.println("[UsuarioInicializador] No existe el usuario \"" + username + "\": no se cambió ninguna contraseña.");
+            return;
+        }
+        if (usuario.getPassword() != null && passwordEncoder.matches(contrasenaNueva, usuario.getPassword())) {
+            return; // ya tiene esa contraseña
+        }
+        usuario.setPassword(passwordEncoder.encode(contrasenaNueva));
+        usuarioRepository.save(usuario);
+        System.out.println("[UsuarioInicializador] Se restableció la contraseña de \"" + usuario.getUsername()
+                + "\". Borra la línea restablecerContrasena(...) para que no se vuelva a aplicar.");
     }
 
     /**
