@@ -115,6 +115,26 @@
             <p class="nota">Saldos de hoy de toda la empresa: no cambian con el mes ni con el área. Si una cuenta no cuadra, revisa su saldo inicial en <a href="/contabilidad/cuentas" class="link-light">Cuentas</a>.</p>
         </section>
     </div>
+
+    <!-- ═══ Pedidos de Almacén del mes ═══ -->
+    <section class="caja" th:if="${ventas != null}">
+        <h2>Ventas de Almacén en <span th:text="${mesTexto}">Octubre 2026</span></h2>
+        <p class="vacio" th:if="${ventas.cantidad == 0}">No se hicieron pedidos en Almacén este mes.</p>
+        <th:block th:unless="${ventas.cantidad == 0}">
+            <div class="chips mt-0">
+                <div class="chip"><span>Pedidos</span><strong th:text="${ventas.cantidad}">0</strong></div>
+                <div class="chip"><span>Vendido</span><strong><span th:replace="~{contabilidad/fragmentos :: plata(${ventas.vendido})}"></span></strong></div>
+                <div class="chip"><span>Costo fábrica</span><strong><span th:replace="~{contabilidad/fragmentos :: plata(${ventas.costoFabrica})}"></span></strong></div>
+                <div class="chip"><span>Utilidad estimada</span><strong><span th:replace="~{contabilidad/fragmentos :: plata(${ventas.utilidad})}"></span></strong></div>
+                <div class="chip"><span>Abonado</span><strong><span th:replace="~{contabilidad/fragmentos :: plata(${ventas.abonado})}"></span></strong></div>
+                <div class="chip"><span>Falta cobrar</span><strong><span th:replace="~{contabilidad/fragmentos :: plata(${ventas.saldo})}"></span></strong></div>
+            </div>
+            <p class="atrasado mb-2" th:if="${ventas.pedidosSinAnotar > 0}"
+               th:text="${ventas.pedidosSinAnotar} + ' pedido(s) tienen abonos que no están en contabilidad.'">2 pedido(s) tienen abonos que no están en contabilidad.</p>
+        </th:block>
+        <a class="btn btn-outline-secondary" th:href="@{/contabilidad/ventas(mes=${mes})}">Ver los pedidos del mes →</a>
+        <p class="nota">Esto cuenta lo que se vendió (por fecha del pedido), aunque no se haya cobrado todo. El resultado de arriba cuenta solo la plata que entró y salió de las cuentas.</p>
+    </section>
 </main>
 
 <script src="/js/token-nav.js"></script>

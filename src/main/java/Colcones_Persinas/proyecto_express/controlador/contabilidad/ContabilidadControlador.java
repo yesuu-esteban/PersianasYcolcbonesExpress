@@ -5,6 +5,12 @@ import Colcones_Persinas.proyecto_express.modelo.contabilidad.*;
 import Colcones_Persinas.proyecto_express.repository.almacen.PedidoTiendaPorCobrarRepository;
 import Colcones_Persinas.proyecto_express.repository.contabilidad.*;
 import Colcones_Persinas.proyecto_express.servicio.contabilidad.ContabilidadServicio;
+import Colcones_Persinas.proyecto_express.servicio.contabilidad.VentasAlmacenServicio;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -25,17 +31,21 @@ import java.util.*;
  * Solo para administradores (ADMIN) y el administrador de Almacén (TIENDA_ADMIN).
  *
  *   /contabilidad              resumen: saldos de las cuentas y resultado del mes
+ *   /contabilidad/ventas       pedidos de Almacén del mes (vendido, costo, utilidad, abonos)
  *   /contabilidad/movimientos  ingresos, egresos y traslados (registrar, editar, eliminar)
  *   /contabilidad/por-cobrar   pedidos de Almacén con saldo pendiente
  *   /contabilidad/por-pagar    deudas por pagar
  *   /contabilidad/cuentas      bancos, billeteras y cajas, con su saldo inicial
  *   /contabilidad/categorias   plan de cuentas (categorías y subcategorías)
+ *
+ * Si algo falla, se muestra una página con el error (contabilidad/error) en vez de mandar al login.
  */
 @Controller
 @RequestMapping("/contabilidad")
 @PreAuthorize("hasAnyRole('ADMIN','TIENDA_ADMIN')")
 public class ContabilidadControlador {
 
+    private static final Logger log = LoggerFactory.getLogger(ContabilidadControlador.class);
     private static final int POR_PAGINA = 20;
     private static final String[] MESES = {"Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio",
             "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"};
@@ -47,13 +57,15 @@ public class ContabilidadControlador {
     private final MovimientoContableRepository movimientoRepository;
     private final CuentaPorPagarRepository porPagarRepository;
     private final PedidoTiendaPorCobrarRepository porCobrarRepository;
+    private final VentasAlmacenServicio ventasServicio;
 
     public ContabilidadControlador(ContabilidadServicio servicio, CuentaContableRepository cuentaRepository,
                                    CategoriaContableRepository categoriaRepository,
                                    SubcategoriaContableRepository subcategoriaRepository,
                                    MovimientoContableRepository movimientoRepository,
                                    CuentaPorPagarRepository porPagarRepository,
-                                   PedidoTiendaPorCobrarRepository porCobrarRepository) {
+                                   PedidoTiendaPorCobrarRepository porCobrarRepository,
+                                   VentasAlmacenServicio ventasServicio) {
         this.servicio = servicio;
         this.cuentaRepository = cuentaRepository;
         this.categoriaRepository = categoriaRepository;
@@ -61,6 +73,7 @@ public class ContabilidadControlador {
         this.movimientoRepository = movimientoRepository;
         this.porPagarRepository = porPagarRepository;
         this.porCobrarRepository = porCobrarRepository;
+        this.ventasServicio = ventasServicio;
     }
 
     /** Una cuenta con su saldo actual, para las tablas. */
@@ -104,8 +117,39 @@ public class ContabilidadControlador {
         model.addAttribute("porPagar", porPagar);
         model.addAttribute("posicionNeta", totalCuentas.add(porCobrar).subtract(porPagar));
         model.addAttribute("resultado", servicio.resultado(periodo.atDay(1), periodo.atEndOfMonth(), filtroArea));
+        // Los pedidos de Almacén del mes (no aplica cuando se mira solo Fábrica)
+        boolean conVentas = filtroArea == null || MovimientoContable.ALMACEN.equals(filtroArea);
+        model.addAttribute("ventas", conVentas ? ventasServicio.ventas(periodo.atDay(1), periodo.atEndOfMonth()) : null);
         ponerPeriodo(model, periodo, filtroArea);
         return "contabilidad/resumen";
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // VENTAS (pedidos de Almacén del mes)
+    // ═══════════════════════════════════════════════════════════════
+
+    @GetMapping("/ventas")
+    public String ventas(@RequestParam(required = false) String mes, Model model) {
+        YearMonth periodo = leerMes(mes);
+        model.addAttribute("ventas", ventasServicio.ventas(periodo.atDay(1), periodo.atEndOfMonth()));
+        model.addAttribute("todasLasCuentas", cuentaRepository.findAllByOrderByOrdenAscNombreAsc());
+        model.addAttribute("hoy", ContabilidadServicio.hoy().toString());
+        ponerPeriodo(model, periodo, MovimientoContable.ALMACEN);
+        return "contabilidad/ventas";
+    }
+
+    /** Anota en contabilidad los abonos de un pedido que todavía no estaban (pedidos de antes de la contabilidad). */
+    @PostMapping("/ventas/{id}/anotar")
+    public String anotarAbonoPedido(@PathVariable int id, @RequestParam Map<String, String> f, RedirectAttributes ra) {
+        try {
+            MovimientoContable m = ventasServicio.anotarAbonosFaltantes(id, entero(f.get("cuentaId")), fecha(f.get("fecha")), usuarioActual());
+            ra.addFlashAttribute("mensaje", "Pedido #" + id + ": se anotó un ingreso de $" + miles(m.getValor())
+                    + " en " + m.getCuenta().getNombre() + " con fecha " + m.getFechaFormateada() + ".");
+        } catch (IllegalArgumentException e) {
+            ra.addFlashAttribute("error", e.getMessage());
+        }
+        ra.addAttribute("mes", leerMes(f.get("mes")).toString());
+        return "redirect:/contabilidad/ventas";
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -460,6 +504,30 @@ public class ContabilidadControlador {
             ra.addFlashAttribute("mensaje", s.getNombre() + (s.isActiva() ? " vuelve a aparecer." : " ya no aparece para registrar (su historial se conserva)."));
         });
         return "redirect:/contabilidad/categorias";
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // SI ALGO FALLA
+    // ═══════════════════════════════════════════════════════════════
+
+    /**
+     * Cualquier error en estas pantallas muestra una página con el detalle (y queda en el log),
+     * en vez de mandar al login. Los permisos (AccessDeniedException) siguen su camino normal.
+     */
+    @ExceptionHandler(Exception.class)
+    public String errorInesperado(Exception ex, HttpServletRequest request, HttpServletResponse response, Model model) throws Exception {
+        if (ex instanceof AccessDeniedException) throw ex;
+        log.error("[Contabilidad] Error en {}", request.getRequestURI(), ex);
+        String detalle = ex.getClass().getSimpleName() + (ex.getMessage() != null ? ": " + ex.getMessage() : "");
+        Throwable causa = ex.getCause();
+        while (causa != null && causa.getCause() != null && causa.getCause() != causa) causa = causa.getCause();
+        if (causa != null && causa != ex) {
+            detalle += " | Causa: " + causa.getClass().getSimpleName() + (causa.getMessage() != null ? ": " + causa.getMessage() : "");
+        }
+        response.setStatus(500);
+        model.addAttribute("ruta", request.getRequestURI());
+        model.addAttribute("detalle", detalle.length() > 900 ? detalle.substring(0, 900) + "…" : detalle);
+        return "contabilidad/error";
     }
 
     // ═══════════════════════════════════════════════════════════════

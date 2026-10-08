@@ -25,6 +25,7 @@
     <nav class="menu-conta" aria-label="Secciones de contabilidad">
         <a href="/portal" class="btn btn-outline-secondary">← Portal</a>
         <a href="/contabilidad" class="btn btn-outline-secondary" th:classappend="${activo == 'resumen'} ? 'activo'">Resumen</a>
+        <a href="/contabilidad/ventas" class="btn btn-outline-secondary" th:classappend="${activo == 'ventas'} ? 'activo'">Ventas</a>
         <a href="/contabilidad/movimientos" class="btn btn-outline-secondary" th:classappend="${activo == 'movimientos'} ? 'activo'">Movimientos</a>
         <a href="/contabilidad/por-cobrar" class="btn btn-outline-secondary" th:classappend="${activo == 'cobrar'} ? 'activo'">Por cobrar</a>
         <a href="/contabilidad/por-pagar" class="btn btn-outline-secondary" th:classappend="${activo == 'pagar'} ? 'activo'">Por pagar</a>

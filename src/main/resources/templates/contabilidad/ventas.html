@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:replace="~{contabilidad/fragmentos :: estilos}"></th:block>
+    <title>Contabilidad - Ventas de Almacén</title>
+</head>
+<body>
+<header th:replace="~{contabilidad/fragmentos :: encabezado('ventas')}"></header>
+
+<main>
+    <h1>Ventas de Almacén · <span th:text="${mesTexto}">Octubre 2026</span></h1>
+    <p class="ayuda">Los pedidos que se hicieron en Almacén en el mes (por fecha del pedido): lo que se vendió, lo que costó en fábrica,
+        la utilidad, lo abonado y lo que falta cobrar. Cada abono que se registra en Almacén se anota solo en Movimientos.</p>
+    <div th:if="${mensaje}" class="alert alert-success" th:text="${mensaje}"></div>
+    <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
+
+    <!-- ═══ Mes ═══ -->
+    <form class="periodo" method="get" action="/contabilidad/ventas">
+        <a class="btn btn-outline-secondary flecha" th:href="@{/contabilidad/ventas(mes=${mesAnterior})}" title="Mes anterior">‹</a>
+        <span class="mes-texto" th:text="${mesTexto}">Octubre 2026</span>
+        <a class="btn btn-outline-secondary flecha" th:href="@{/contabilidad/ventas(mes=${mesSiguiente})}" th:unless="${esMesActual}" title="Mes siguiente">›</a>
+        <div class="campo">
+            <label class="form-label" for="mes">Mes</label>
+            <input type="month" class="form-control" id="mes" name="mes" th:value="${mes}">
+        </div>
+        <button type="submit" class="btn btn-outline-secondary">Ver</button>
+    </form>
+
+    <!-- ═══ Totales ═══ -->
+    <div class="chips">
+        <div class="chip"><span>Pedidos</span><strong th:text="${ventas.cantidad}">0</strong></div>
+        <div class="chip"><span>Vendido</span><strong><span th:replace="~{contabilidad/fragmentos :: plata(${ventas.vendido})}"></span></strong></div>
+        <div class="chip"><span>Costo fábrica</span><strong><span th:replace="~{contabilidad/fragmentos :: plata(${ventas.costoFabrica})}"></span></strong></div>
+        <div class="chip"><span>Utilidad estimada</span><strong><span th:replace="~{contabilidad/fragmentos :: plata(${ventas.utilidad})}"></span></strong></div>
+        <div class="chip"><span>Abonado</span><strong><span th:replace="~{contabilidad/fragmentos :: plata(${ventas.abonado})}"></span></strong></div>
+        <div class="chip"><span>Falta cobrar</span><strong><span th:replace="~{contabilidad/fragmentos :: plata(${ventas.saldo})}"></span></strong></div>
+        <div class="chip"><span>Abonos que entraron este mes</span><strong class="txt-ingreso"><span th:replace="~{contabilidad/fragmentos :: plata(${ventas.abonosDelMes})}"></span></strong></div>
+    </div>
+
+    <div class="alert alert-info" th:if="${ventas.pedidosSinAnotar > 0}">
+        <strong th:text="${ventas.pedidosSinAnotar} + ' pedido(s)'">2 pedido(s)</strong> tienen abonos que todavía no están en contabilidad
+        (<span th:replace="~{contabilidad/fragmentos :: plata(${ventas.faltaAnotar})}"></span>). Suele pasar con pedidos hechos antes de empezar la contabilidad.
+        Puedes anotarlos con el botón <strong>Anotar</strong> de cada pedido, eligiendo a qué cuenta entró la plata y qué día.
+        <br><strong>Ojo:</strong> si el saldo inicial que pusiste en Cuentas ya incluye esa plata, no lo anotes, porque quedaría contada dos veces.
+    </div>
+
+    <!-- ═══ Lista ═══ -->
+    <div class="caja vacio" th:if="${ventas.cantidad == 0}">No se hicieron pedidos en Almacén este mes.</div>
+
+    <div class="tabla-wrap" th:unless="${ventas.cantidad == 0}">
+        <table class="table table-hover align-middle">
+            <thead>
+                <tr>
+                    <th>Pedido</th>
+                    <th>Cliente</th>
+                    <th>Vendedor</th>
+                    <th>Estado</th>
+                    <th class="num">Precio</th>
+                    <th class="num">Costo fábrica</th>
+                    <th class="num">Utilidad</th>
+                    <th class="num">Abonado</th>
+                    <th class="num">Saldo</th>
+                    <th>En contabilidad</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:each="f : ${ventas.filas}">
+                    <td class="detalle-mov text-nowrap">
+                        <span th:text="'#' + ${f.id}">#1287</span>
+                        <small th:text="${f.fecha}">05/10/2026</small>
+                    </td>
+                    <td class="detalle-mov">
+                        <span th:text="${f.cliente}">Cliente</span>
+                        <small th:if="${f.cedula != ''}" th:text="'C.C. ' + ${f.cedula}">C.C. 000</small>
+                    </td>
+                    <td th:text="${f.vendedor}">Vendedor</td>
+                    <td class="detalle-mov">
+                        <span th:text="${f.estado}">Pendiente</span>
+                        <small th:text="${f.estadoPago}">Pago pendiente</small>
+                    </td>
+                    <td class="num"><span th:replace="~{contabilidad/fragmentos :: plata(${f.precio})}"></span></td>
+                    <td class="num"><span th:replace="~{contabilidad/fragmentos :: plata(${f.costoFabrica})}"></span></td>
+                    <td class="num fw-bold"><span th:replace="~{contabilidad/fragmentos :: plata(${f.utilidad})}"></span></td>
+                    <td class="num"><span th:replace="~{contabilidad/fragmentos :: plata(${f.abonado})}"></span></td>
+                    <td class="num"><span th:replace="~{contabilidad/fragmentos :: plata(${f.saldo})}"></span></td>
+                    <td class="text-nowrap">
+                        <span class="atrasado" th:if="${f.faltaAnotar}">Faltan <span th:replace="~{contabilidad/fragmentos :: plata(${f.falta})}"></span></span>
+                        <span class="txt-ingreso" th:if="${!f.faltaAnotar and f.abonado.signum() > 0}">✓ Anotado</span>
+                        <span class="ayuda" th:if="${!f.faltaAnotar and f.abonado.signum() <= 0}">Sin abonos</span>
+                    </td>
+                    <td style="min-width:200px">
+                        <a class="btn btn-sm btn-outline-secondary text-nowrap"
+                           th:href="@{/almacen/listado(nombre=${f.cliente})}">Ver en Almacén</a>
+                        <details class="pagar" th:if="${f.faltaAnotar}">
+                            <summary class="btn btn-sm btn-outline-success mt-1">Anotar</summary>
+                            <form class="mt-2 d-grid gap-2" method="post" th:action="@{/contabilidad/ventas/{id}/anotar(id=${f.id})}">
+                                <input type="hidden" name="mes" th:value="${mes}">
+                                <select class="form-select form-select-sm" name="cuentaId" required aria-label="A qué cuenta entró la plata">
+                                    <option value="">¿A qué cuenta entró?</option>
+                                    <option th:each="c : ${todasLasCuentas}" th:if="${c.activa}" th:value="${c.id}" th:text="${c.nombre}">NEQUI</option>
+                                </select>
+                                <input type="date" class="form-control form-control-sm" name="fecha" required
+                                       th:value="${f.fechaIso != '' ? f.fechaIso : hoy}" th:max="${hoy}" aria-label="Qué día entró la plata">
+                                <button type="submit" class="btn btn-sm btn-primary"
+                                        th:text="'Anotar $' + ${#numbers.formatInteger(f.falta, 1, 'POINT')}">Anotar $0</button>
+                            </form>
+                        </details>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    <p class="nota">Aquí se cuenta lo que se vendió aunque no se haya cobrado todo. El Resumen cuenta solo la plata que entró y salió de las cuentas,
+        por eso los dos números pueden ser distintos. La utilidad es la estimada de cada pedido (precio al cliente menos precio de fábrica).</p>
+</main>
+
+<script src="/js/token-nav.js"></script>
+</body>
+</html>

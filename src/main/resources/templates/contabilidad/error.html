@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:replace="~{contabilidad/fragmentos :: estilos}"></th:block>
+    <title>Contabilidad - Algo salió mal</title>
+</head>
+<body>
+<header th:replace="~{contabilidad/fragmentos :: encabezado('')}"></header>
+
+<main>
+    <section class="caja" style="max-width:760px;">
+        <h1>Algo salió mal</h1>
+        <p>No se pudo abrir esta pantalla. No se perdió nada de lo que ya estaba guardado.</p>
+        <div class="alert alert-danger" style="overflow-wrap:anywhere;">
+            <strong th:text="${ruta}">/contabilidad/movimientos</strong><br>
+            <span th:text="${detalle}">Detalle del error</span>
+        </div>
+        <p class="ayuda">Toma una foto de este mensaje para revisarlo. El detalle completo también queda en la terminal donde corre el sistema.</p>
+        <div class="d-flex flex-wrap gap-2 mt-3">
+            <a class="btn btn-primary" href="/contabilidad">Ir al Resumen</a>
+            <a class="btn btn-outline-secondary" href="/portal">Ir al Portal</a>
+        </div>
+    </section>
+</main>
+
+<script src="/js/token-nav.js"></script>
+</body>
+</html>
