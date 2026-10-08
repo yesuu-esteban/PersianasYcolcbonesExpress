@@ -16,10 +16,8 @@ import java.util.List;
  */
 public interface MovimientoAbonosRepository extends Repository<MovimientoContable, Integer> {
 
-    /** [pedidoTiendaId, suma] de lo que ya está anotado en contabilidad para cada pedido. */
-    @Query("select m.pedidoTiendaId, sum(m.valor) from MovimientoContable m "
-            + "where m.tipo = 'INGRESO' and m.pedidoTiendaId in :ids group by m.pedidoTiendaId")
-    List<Object[]> anotadoPorPedido(@Param("ids") Collection<Integer> ids);
+    /** Los ingresos (abonos) anotados de varios pedidos, del más viejo al más nuevo. */
+    List<MovimientoContable> findByTipoAndPedidoTiendaIdInOrderByFechaAscIdAsc(String tipo, Collection<Integer> pedidoIds);
 
     /** Lo que ya está anotado en contabilidad para un pedido (null si nada). */
     @Query("select sum(m.valor) from MovimientoContable m where m.tipo = 'INGRESO' and m.pedidoTiendaId = :id")

@@ -10,7 +10,8 @@
 <main>
     <h1>Ventas de Almacén · <span th:text="${mesTexto}">Octubre 2026</span></h1>
     <p class="ayuda">Los pedidos que se hicieron en Almacén en el mes (por fecha del pedido): lo que se vendió, lo que costó en fábrica,
-        la utilidad, lo abonado y lo que falta cobrar. Cada abono que se registra en Almacén se anota solo en Movimientos.</p>
+        la utilidad, lo abonado y lo que falta cobrar. Cada abono que se registra en Almacén se anota solo en Movimientos.
+        En "En contabilidad" ves a qué cuenta entró cada abono; si quedó en la cuenta equivocada, usa <strong>Cambiar cuenta</strong>.</p>
     <div th:if="${mensaje}" class="alert alert-success" th:text="${mensaje}"></div>
     <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
 
@@ -41,6 +42,7 @@
         <strong th:text="${ventas.pedidosSinAnotar} + ' pedido(s)'">2 pedido(s)</strong> tienen abonos que todavía no están en contabilidad
         (<span th:replace="~{contabilidad/fragmentos :: plata(${ventas.faltaAnotar})}"></span>). Suele pasar con pedidos hechos antes de empezar la contabilidad.
         Puedes anotarlos con el botón <strong>Anotar</strong> de cada pedido, eligiendo a qué cuenta entró la plata y qué día.
+        Si un abono quedó en la cuenta equivocada, corrígelo con <strong>Cambiar cuenta</strong>.
         <br><strong>Ojo:</strong> si el saldo inicial que pusiste en Cuentas ya incluye esa plata, no lo anotes, porque quedaría contada dos veces.
     </div>
 
@@ -84,14 +86,33 @@
                     <td class="num fw-bold"><span th:replace="~{contabilidad/fragmentos :: plata(${f.utilidad})}"></span></td>
                     <td class="num"><span th:replace="~{contabilidad/fragmentos :: plata(${f.abonado})}"></span></td>
                     <td class="num"><span th:replace="~{contabilidad/fragmentos :: plata(${f.saldo})}"></span></td>
-                    <td class="text-nowrap">
+                    <td class="detalle-mov text-nowrap">
                         <span class="atrasado" th:if="${f.faltaAnotar}">Faltan <span th:replace="~{contabilidad/fragmentos :: plata(${f.falta})}"></span></span>
                         <span class="txt-ingreso" th:if="${!f.faltaAnotar and f.abonado.signum() > 0}">✓ Anotado</span>
-                        <span class="ayuda" th:if="${!f.faltaAnotar and f.abonado.signum() <= 0}">Sin abonos</span>
+                        <span class="ayuda" th:if="${!f.faltaAnotar and f.abonado.signum() <= 0 and #lists.isEmpty(f.abonos)}">Sin abonos</span>
+                        <!-- A qué cuenta entró cada abono ya anotado -->
+                        <small th:each="a : ${f.abonos}"
+                               th:text="${a.cuenta} + ' · $' + ${#numbers.formatInteger(a.valor, 1, 'POINT')}">NEQUI · $200.000</small>
                     </td>
                     <td style="min-width:200px">
                         <a class="btn btn-sm btn-outline-secondary text-nowrap"
                            th:href="@{/almacen/listado(nombre=${f.cliente})}">Ver en Almacén</a>
+                        <!-- Corregir la cuenta a la que entró un abono (si se eligió mal) -->
+                        <details class="pagar" th:if="${!#lists.isEmpty(f.abonos)}">
+                            <summary class="btn btn-sm btn-outline-info mt-1">Cambiar cuenta</summary>
+                            <form class="mt-2 d-grid gap-1" method="post" th:each="a : ${f.abonos}"
+                                  th:action="@{/contabilidad/ventas/abono/{mid}/cuenta(mid=${a.movimientoId})}">
+                                <input type="hidden" name="mes" th:value="${mes}">
+                                <span class="ayuda" th:text="'Abono del ' + ${a.fecha} + ' por $' + ${#numbers.formatInteger(a.valor, 1, 'POINT')}">Abono del 08/10/2026 por $200.000</span>
+                                <div class="d-flex gap-1">
+                                    <select class="form-select form-select-sm" name="cuentaId" required aria-label="Cuenta a la que entró">
+                                        <option th:each="c : ${todasLasCuentas}" th:if="${c.activa or c.id == a.cuentaId}"
+                                                th:value="${c.id}" th:text="${c.nombre}" th:selected="${c.id == a.cuentaId}">NEQUI</option>
+                                    </select>
+                                    <button type="submit" class="btn btn-sm btn-primary">Guardar</button>
+                                </div>
+                            </form>
+                        </details>
                         <details class="pagar" th:if="${f.faltaAnotar}">
                             <summary class="btn btn-sm btn-outline-success mt-1">Anotar</summary>
                             <form class="mt-2 d-grid gap-2" method="post" th:action="@{/contabilidad/ventas/{id}/anotar(id=${f.id})}">

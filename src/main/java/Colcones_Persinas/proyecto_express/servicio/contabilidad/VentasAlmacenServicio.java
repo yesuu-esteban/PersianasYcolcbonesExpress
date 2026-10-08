@@ -1,8 +1,10 @@
 package Colcones_Persinas.proyecto_express.servicio.contabilidad;
 
 import Colcones_Persinas.proyecto_express.modelo.almacen.PedidoTienda;
+import Colcones_Persinas.proyecto_express.modelo.contabilidad.CuentaContable;
 import Colcones_Persinas.proyecto_express.modelo.contabilidad.MovimientoContable;
 import Colcones_Persinas.proyecto_express.repository.almacen.PedidoTiendaVentasRepository;
+import Colcones_Persinas.proyecto_express.repository.contabilidad.CuentaContableRepository;
 import Colcones_Persinas.proyecto_express.repository.contabilidad.MovimientoAbonosRepository;
 import Colcones_Persinas.proyecto_express.repository.contabilidad.MovimientoContableRepository;
 import org.springframework.stereotype.Service;
@@ -21,6 +23,7 @@ import java.util.Map;
  *  - Qué se vendió en un mes, cuánto costó en fábrica, la utilidad, lo abonado y lo que falta cobrar.
  *  - Qué abonos de esos pedidos todavía NO están anotados en contabilidad (por ejemplo, pedidos
  *    hechos antes de empezar la contabilidad), y anotarlos eligiendo la cuenta.
+ *  - A qué cuenta entró cada abono anotado, y cambiarla si se eligió mal.
  *
  * Los abonos NUEVOS que se registran en Almacén se anotan solos (ver PedidoTiendaControlador).
  */
@@ -32,16 +35,31 @@ public class VentasAlmacenServicio {
     private final PedidoTiendaVentasRepository pedidoRepository;
     private final MovimientoAbonosRepository abonosRepository;
     private final MovimientoContableRepository movimientoRepository;
+    private final CuentaContableRepository cuentaRepository;
     private final ContabilidadServicio contabilidadServicio;
 
     public VentasAlmacenServicio(PedidoTiendaVentasRepository pedidoRepository,
                                  MovimientoAbonosRepository abonosRepository,
                                  MovimientoContableRepository movimientoRepository,
+                                 CuentaContableRepository cuentaRepository,
                                  ContabilidadServicio contabilidadServicio) {
         this.pedidoRepository = pedidoRepository;
         this.abonosRepository = abonosRepository;
         this.movimientoRepository = movimientoRepository;
+        this.cuentaRepository = cuentaRepository;
         this.contabilidadServicio = contabilidadServicio;
+    }
+
+    /** Un abono de un pedido que ya está anotado en contabilidad (un ingreso en una cuenta). */
+    public static class AbonoAnotado {
+        private int movimientoId, cuentaId;
+        private String fecha = "", cuenta = "";
+        private BigDecimal valor = BigDecimal.ZERO;
+        public int getMovimientoId() { return movimientoId; }
+        public int getCuentaId() { return cuentaId; }
+        public String getFecha() { return fecha; }
+        public String getCuenta() { return cuenta; }
+        public BigDecimal getValor() { return valor; }
     }
 
     /** Un pedido de Almacén, ya con sus valores calculados (la pantalla no toca la base de datos). */
@@ -50,8 +68,11 @@ public class VentasAlmacenServicio {
         private String fecha = "", fechaIso = "", cliente = "", cedula = "", vendedor = "", estado = "", estadoPago = "";
         private BigDecimal precio = BigDecimal.ZERO, costoFabrica = BigDecimal.ZERO, utilidad = BigDecimal.ZERO,
                 abonado = BigDecimal.ZERO, saldo = BigDecimal.ZERO, enContabilidad = BigDecimal.ZERO, falta = BigDecimal.ZERO;
+        private final List<AbonoAnotado> abonos = new ArrayList<>();
 
         public int getId() { return id; }
+        /** Los abonos de este pedido que ya están en contabilidad, con su cuenta. */
+        public List<AbonoAnotado> getAbonos() { return abonos; }
         public String getFecha() { return fecha; }
         /** La fecha del pedido como "2026-10-05", para el campo de fecha al anotar un abono. */
         public String getFechaIso() { return fechaIso; }
@@ -101,12 +122,24 @@ public class VentasAlmacenServicio {
         List<PedidoTienda> pedidos = pedidoRepository.findByFechaPedidoBetweenOrderByFechaPedidoDescIdDesc(
                 desde.atStartOfDay(), hasta.atTime(23, 59, 59));
 
+        // Los abonos ya anotados de estos pedidos, agrupados por pedido
+        Map<Integer, List<AbonoAnotado>> abonosPorPedido = new HashMap<>();
         Map<Integer, BigDecimal> anotado = new HashMap<>();
         if (!pedidos.isEmpty()) {
             List<Integer> ids = new ArrayList<>();
             for (PedidoTienda p : pedidos) ids.add(p.getId());
-            for (Object[] fila : abonosRepository.anotadoPorPedido(ids)) {
-                anotado.put(((Number) fila[0]).intValue(), nz((BigDecimal) fila[1]));
+            for (MovimientoContable m : abonosRepository.findByTipoAndPedidoTiendaIdInOrderByFechaAscIdAsc(MovimientoContable.INGRESO, ids)) {
+                if (m.getPedidoTiendaId() == null) continue;
+                AbonoAnotado a = new AbonoAnotado();
+                a.movimientoId = m.getId();
+                a.fecha = m.getFecha() != null ? m.getFecha().format(FMT) : "";
+                a.valor = nz(m.getValor());
+                if (m.getCuenta() != null) {
+                    a.cuentaId = m.getCuenta().getId();
+                    a.cuenta = texto(m.getCuenta().getNombre());
+                }
+                abonosPorPedido.computeIfAbsent(m.getPedidoTiendaId(), k -> new ArrayList<>()).add(a);
+                anotado.merge(m.getPedidoTiendaId(), a.valor, BigDecimal::add);
             }
         }
 
@@ -128,6 +161,7 @@ public class VentasAlmacenServicio {
             f.abonado = nz(p.getAbono());
             f.saldo = nz(p.getSaldo());
             f.enContabilidad = anotado.getOrDefault(p.getId(), BigDecimal.ZERO);
+            f.abonos.addAll(abonosPorPedido.getOrDefault(p.getId(), List.of()));
             f.falta = f.abonado.subtract(f.enContabilidad).max(BigDecimal.ZERO);
             v.filas.add(f);
 
@@ -165,6 +199,23 @@ public class VentasAlmacenServicio {
         MovimientoContable m = contabilidadServicio.registrarAbonoAlmacen(p, falta, cuentaId, usuario);
         m.setFecha(fecha);
         m.setDescripcion("Abono pedido de Almacén #" + pedidoId + " (anotado desde Ventas)");
+        return movimientoRepository.save(m);
+    }
+
+    /**
+     * Cambia la cuenta a la que entró un abono ya anotado (por si se eligió mal: Nequi en vez de Bancolombia…).
+     * El valor y la fecha no cambian; para eso está el lápiz en Movimientos.
+     */
+    @Transactional
+    public MovimientoContable cambiarCuentaAbono(int movimientoId, Integer cuentaId) {
+        MovimientoContable m = movimientoRepository.findById(movimientoId)
+                .orElseThrow(() -> new IllegalArgumentException("Ese abono ya no está en contabilidad."));
+        if (m.getPedidoTiendaId() == null || !MovimientoContable.INGRESO.equals(m.getTipo())) {
+            throw new IllegalArgumentException("Ese movimiento no es un abono de un pedido de Almacén.");
+        }
+        CuentaContable cuenta = cuentaId == null ? null : cuentaRepository.findById(cuentaId).orElse(null);
+        if (cuenta == null) throw new IllegalArgumentException("Elige la cuenta a la que entró la plata.");
+        m.setCuenta(cuenta);
         return movimientoRepository.save(m);
     }
 

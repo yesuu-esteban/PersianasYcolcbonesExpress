@@ -9,11 +9,14 @@
 
 <main>
     <h1>Categorías</h1>
-    <p class="ayuda">Aquí se ordena en qué se gasta y de dónde entra la plata. Al lado de cada subcategoría ves <strong>cuánto se movió en el mes</strong>,
-        y con el botón <strong>+</strong> anotas un gasto o un ingreso en esa subcategoría (te lleva al formulario con la categoría ya elegida).
-        También puedes renombrar, agregar o desactivar. Desactivar oculta la categoría al registrar, pero no borra su historial.</p>
+    <p class="ayuda">En cada categoría hay un cuadro para <strong>anotar la plata</strong> que se gastó o que entró: eliges la subcategoría,
+        escribes el valor, la cuenta y guardas. Debajo ves lo que ya se anotó en el mes y cuánto lleva cada subcategoría.
+        Todo lo que anotes aquí también sale en Movimientos y en el Resumen.</p>
     <div th:if="${mensaje}" class="alert alert-success" th:text="${mensaje}"></div>
     <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
+    <div class="alert alert-info" th:if="${#lists.isEmpty(cuentasActivas)}">
+        Primero crea las cuentas (Bancolombia, Nequi, Caja…) en <a href="/contabilidad/cuentas" class="link-light">Cuentas</a> para poder anotar plata.
+    </div>
 
     <!-- ═══ Mes ═══ -->
     <form class="periodo" method="get" action="/contabilidad/categorias">
@@ -27,19 +30,9 @@
         <button type="submit" class="btn btn-outline-secondary">Ver</button>
     </form>
 
-    <section class="caja">
-        <h2>Nueva categoría</h2>
-        <form class="form-linea" method="post" action="/contabilidad/categorias/guardar">
-            <input type="text" class="form-control" name="nombre" maxlength="120" required placeholder="Nombre" aria-label="Nombre">
-            <select class="form-select" name="clase" aria-label="Cómo cuenta">
-                <option th:each="cl : ${clases}" th:value="${cl.key}" th:text="${cl.value}"
-                        th:selected="${cl.key == 'GASTO'}">Gasto</option>
-            </select>
-            <button type="submit" class="btn btn-primary">Agregar</button>
-        </form>
-    </section>
-
     <section class="caja categoria" th:each="fc : ${filas}" th:classappend="${!fc.categoria.activa} ? 'inactiva'">
+
+        <!-- ── Nombre de la categoría, total del mes ── -->
         <div class="categoria-cabeza">
             <form class="form-linea flex-grow-1" method="post" action="/contabilidad/categorias/guardar">
                 <input type="hidden" name="id" th:value="${fc.categoria.id}">
@@ -50,8 +43,8 @@
                 </select>
                 <button type="submit" class="btn btn-sm btn-outline-secondary">Guardar</button>
             </form>
-            <span class="text-nowrap fw-bold" th:classappend="${fc.categoria.deIngreso} ? 'txt-ingreso' : 'txt-egreso'"
-                  title="Total del mes en esta categoría">
+            <span class="text-nowrap fw-bold fs-5" th:classappend="${fc.categoria.deIngreso} ? 'txt-ingreso' : 'txt-egreso'"
+                  th:title="'Total de ' + ${mesTexto}">
                 <span th:replace="~{contabilidad/fragmentos :: plata(${fc.total})}"></span>
             </span>
             <form method="post" th:action="@{/contabilidad/categorias/{id}/activar(id=${fc.categoria.id})}">
@@ -60,20 +53,65 @@
             </form>
         </div>
 
-        <ul class="sub-lista" style="grid-template-columns: repeat(auto-fill, minmax(min(100%, 360px), 1fr));">
+        <!-- ── Cuadro para anotar plata en esta categoría ── -->
+        <form method="post" action="/contabilidad/movimiento/guardar" th:if="${fc.sePuedeAnotar and !#lists.isEmpty(cuentasActivas)}"
+              style="background: rgba(0,0,0,0.20); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 14px; margin-bottom: 14px;">
+            <input type="hidden" name="tipo" th:value="${fc.categoria.deIngreso} ? 'INGRESO' : 'EGRESO'">
+            <input type="hidden" name="volver" value="categorias">
+            <input type="hidden" name="mes" th:value="${mes}">
+            <div class="fw-bold mb-2" th:classappend="${fc.categoria.deIngreso} ? 'txt-ingreso' : 'txt-egreso'"
+                 th:text="${fc.categoria.deIngreso} ? '+ Anotar un ingreso' : '− Anotar un gasto'">− Anotar un gasto</div>
+            <div class="row g-2 align-items-end">
+                <div class="col-md-4 col-12">
+                    <label class="form-label">Subcategoría</label>
+                    <select class="form-select" name="subcategoriaId" required>
+                        <option value="">Elige…</option>
+                        <option th:each="fs : ${fc.subs}" th:if="${fs.sub.activa}" th:value="${fs.sub.id}" th:text="${fs.sub.nombre}">ARRIENDO</option>
+                    </select>
+                </div>
+                <div class="col-md-3 col-6">
+                    <label class="form-label">Valor (pesos)</label>
+                    <input type="text" class="form-control fw-bold" name="valor" inputmode="numeric" autocomplete="off" required placeholder="Ej: 150.000">
+                </div>
+                <div class="col-md-3 col-6">
+                    <label class="form-label" th:text="${fc.categoria.deIngreso} ? 'Entró a' : 'Salió de'">Salió de</label>
+                    <select class="form-select" name="cuentaId" required>
+                        <option value="">Elige…</option>
+                        <option th:each="o : ${cuentasActivas}" th:value="${o.id}" th:text="${o.nombre}">NEQUI</option>
+                    </select>
+                </div>
+                <div class="col-md-2 col-6">
+                    <label class="form-label">Fecha</label>
+                    <input type="date" class="form-control" name="fecha" required th:value="${fechaSugerida}" th:max="${hoy}">
+                </div>
+                <div class="col-md-2 col-6">
+                    <label class="form-label">Área</label>
+                    <select class="form-select" name="area">
+                        <option value="ALMACEN">Almacén</option>
+                        <option value="FABRICA">Fábrica</option>
+                    </select>
+                </div>
+                <div class="col-md-7 col-12">
+                    <label class="form-label" th:text="${fc.categoria.deIngreso} ? 'De quién / detalle (opcional)' : 'A quién se le pagó / detalle (opcional)'">Detalle</label>
+                    <input type="text" class="form-control" name="tercero" maxlength="150">
+                </div>
+                <div class="col-md-3 col-12 d-grid">
+                    <button type="submit" class="btn btn-primary" th:text="${fc.categoria.deIngreso} ? 'Guardar ingreso' : 'Guardar gasto'">Guardar gasto</button>
+                </div>
+            </div>
+        </form>
+
+        <!-- ── Subcategorías: nombre, cuánto lleva en el mes, desactivar ── -->
+        <ul class="sub-lista" style="grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr));">
             <li th:each="fs : ${fc.subs}" th:classappend="${!fs.sub.activa} ? 'inactiva'">
                 <form class="d-flex gap-1 flex-grow-1" style="min-width:0" method="post" action="/contabilidad/categorias/subcategoria/guardar">
                     <input type="hidden" name="id" th:value="${fs.sub.id}">
                     <input type="text" class="form-control" name="nombre" maxlength="120" required th:value="${fs.sub.nombre}" aria-label="Nombre de la subcategoría">
                     <button type="submit" class="btn btn-outline-secondary" title="Guardar nombre">✓</button>
                 </form>
-                <span class="ayuda text-nowrap text-end" style="min-width:76px" title="Movido en el mes">
+                <span class="ayuda text-nowrap text-end" style="min-width:76px" th:title="'Lleva en ' + ${mesTexto}">
                     <span th:replace="~{contabilidad/fragmentos :: plata(${fs.total})}"></span>
                 </span>
-                <a class="btn" th:if="${fs.sub.activa and fc.categoria.activa}"
-                   th:classappend="${fc.categoria.deIngreso} ? 'btn-outline-success' : 'btn-outline-danger'"
-                   th:href="@{/contabilidad/movimiento/nuevo(subcategoriaId=${fs.sub.id})}"
-                   th:title="${fc.categoria.deIngreso} ? 'Anotar un ingreso en ' + ${fs.sub.nombre} : 'Anotar un gasto en ' + ${fs.sub.nombre}">+</a>
                 <form method="post" th:action="@{/contabilidad/categorias/subcategoria/{id}/activar(id=${fs.sub.id})}">
                     <button type="submit" class="btn btn-outline-secondary" th:title="${fs.sub.activa} ? 'Desactivar' : 'Activar'"
                             th:text="${fs.sub.activa} ? '✕' : '↺'">✕</button>
@@ -81,12 +119,54 @@
             </li>
         </ul>
 
-        <form class="form-linea" method="post" action="/contabilidad/categorias/subcategoria/guardar">
+        <form class="form-linea mb-3" method="post" action="/contabilidad/categorias/subcategoria/guardar">
             <input type="hidden" name="categoriaId" th:value="${fc.categoria.id}">
             <input type="text" class="form-control form-control-sm" name="nombre" maxlength="120" required
                    th:placeholder="'Nueva subcategoría en ' + ${fc.categoria.nombre}" aria-label="Nueva subcategoría">
             <button type="submit" class="btn btn-sm btn-outline-secondary">+ Agregar</button>
         </form>
+
+        <!-- ── Lo que se anotó en el mes en esta categoría ── -->
+        <div th:if="${fc.cantidadMovimientos > 0}">
+            <div class="fw-bold mb-1" style="font-size:.9rem" th:text="'Anotado en ' + ${mesTexto}">Anotado en Octubre 2026</div>
+            <div class="tabla-wrap" style="box-shadow:none; background: rgba(0,0,0,0.15);">
+                <table class="table table-sm align-middle mb-0">
+                    <tbody>
+                        <tr th:each="f : ${fc.movimientos}">
+                            <td class="text-nowrap" th:text="${f.fecha}">05/10/2026</td>
+                            <td th:text="${f.subcategoria}">ARRIENDO</td>
+                            <td class="detalle-mov">
+                                <span th:text="${f.tercero}">Arrendador</span>
+                                <small th:text="${f.descripcion}"></small>
+                            </td>
+                            <td class="text-nowrap" th:text="${f.cuenta}">BANCOLOMBIA</td>
+                            <td class="num fw-bold text-nowrap" th:classappend="${f.claseValor}" th:text="${f.valorTexto}">−$300.000</td>
+                            <td class="text-nowrap">
+                                <a class="btn btn-sm btn-outline-secondary" th:href="@{/contabilidad/movimiento/{id}/editar(id=${f.id})}" title="Editar o eliminar">✏️</a>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <a class="ayuda" th:if="${fc.cantidadMovimientos > #lists.size(fc.movimientos)}"
+               th:href="@{/contabilidad/movimientos(mes=${mes}, area='TODAS', categoriaId=${fc.categoria.id})}"
+               th:text="'Ver los ' + ${fc.cantidadMovimientos} + ' movimientos en Movimientos →'">Ver todos →</a>
+        </div>
+        <p class="ayuda mb-0" th:if="${fc.cantidadMovimientos == 0}" th:text="'Nada anotado en ' + ${mesTexto} + '.'">Nada anotado.</p>
+    </section>
+
+    <!-- ═══ Nueva categoría ═══ -->
+    <section class="caja">
+        <h2>Nueva categoría</h2>
+        <form class="form-linea" method="post" action="/contabilidad/categorias/guardar">
+            <input type="text" class="form-control" name="nombre" maxlength="120" required placeholder="Nombre" aria-label="Nombre">
+            <select class="form-select" name="clase" aria-label="Cómo cuenta">
+                <option th:each="cl : ${clases}" th:value="${cl.key}" th:text="${cl.value}"
+                        th:selected="${cl.key == 'GASTO'}">Gasto</option>
+            </select>
+            <button type="submit" class="btn btn-primary">Agregar</button>
+        </form>
+        <p class="nota">Si cambias si una categoría es ingreso, costo, gasto o "no es gasto", también cambia cómo se cuentan sus movimientos anteriores.</p>
     </section>
 </main>
 

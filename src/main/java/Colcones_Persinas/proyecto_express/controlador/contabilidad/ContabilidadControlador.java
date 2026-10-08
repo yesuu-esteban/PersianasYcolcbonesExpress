@@ -135,15 +135,27 @@ public class ContabilidadControlador {
         public BigDecimal getTotal() { return total; }
     }
 
-    /** Una categoría con sus subcategorías y lo que se movió en el mes. */
+    /** Una categoría con sus subcategorías, lo que se movió en el mes y los movimientos de ese mes. */
     public static class FilaCategoria {
+        private static final int MAX_MOVIMIENTOS = 10;
         private final CategoriaContable categoria;
         private final List<FilaSubcategoria> subs = new ArrayList<>();
+        private final List<FilaMovimiento> movimientos = new ArrayList<>();
+        private int cantidadMovimientos;
         private BigDecimal total = BigDecimal.ZERO;
         FilaCategoria(CategoriaContable categoria) { this.categoria = categoria; }
         public CategoriaContable getCategoria() { return categoria; }
         public List<FilaSubcategoria> getSubs() { return subs; }
         public BigDecimal getTotal() { return total; }
+        /** Los últimos movimientos del mes en esta categoría (máximo 10). */
+        public List<FilaMovimiento> getMovimientos() { return movimientos; }
+        public int getCantidadMovimientos() { return cantidadMovimientos; }
+        /** ¿Se puede anotar aquí? (categoría activa y con al menos una subcategoría activa) */
+        public boolean isSePuedeAnotar() {
+            if (!categoria.isActiva()) return false;
+            for (FilaSubcategoria fs : subs) if (fs.getSub().isActiva()) return true;
+            return false;
+        }
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -197,6 +209,20 @@ public class ContabilidadControlador {
             MovimientoContable m = ventasServicio.anotarAbonosFaltantes(id, entero(f.get("cuentaId")), fecha(f.get("fecha")), usuarioActual());
             ra.addFlashAttribute("mensaje", "Pedido #" + id + ": se anotó un ingreso de $" + miles(m.getValor())
                     + " en " + m.getCuenta().getNombre() + " con fecha " + m.getFechaFormateada() + ".");
+        } catch (IllegalArgumentException e) {
+            ra.addFlashAttribute("error", e.getMessage());
+        }
+        ra.addAttribute("mes", leerMes(f.get("mes")).toString());
+        return "redirect:/contabilidad/ventas";
+    }
+
+    /** Cambia la cuenta a la que entró un abono ya anotado (si se eligió mal al registrarlo). */
+    @PostMapping("/ventas/abono/{movimientoId}/cuenta")
+    public String cambiarCuentaAbono(@PathVariable int movimientoId, @RequestParam Map<String, String> f, RedirectAttributes ra) {
+        try {
+            MovimientoContable m = ventasServicio.cambiarCuentaAbono(movimientoId, entero(f.get("cuentaId")));
+            ra.addFlashAttribute("mensaje", "Abono de $" + miles(m.getValor()) + " del pedido #" + m.getPedidoTiendaId()
+                    + ": ahora está en " + m.getCuenta().getNombre() + ".");
         } catch (IllegalArgumentException e) {
             ra.addFlashAttribute("error", e.getMessage());
         }
@@ -328,16 +354,25 @@ public class ContabilidadControlador {
     public String guardarMovimiento(@RequestParam Map<String, String> f, Model model, RedirectAttributes ra) {
         Integer id = entero(f.get("id"));
         LocalDate fecha = fecha(f.get("fecha"));
+        boolean desdeCategorias = "categorias".equals(f.get("volver"));
         try {
             MovimientoContable m = servicio.guardarMovimiento(new ContabilidadServicio.DatosMovimiento(
                     id, f.get("tipo"), fecha, f.get("area"), entero(f.get("cuentaId")), entero(f.get("cuentaDestinoId")),
                     entero(f.get("subcategoriaId")), ContabilidadServicio.pesos(f.get("valor")),
                     f.get("tercero"), f.get("descripcion")), usuarioActual());
-            ra.addFlashAttribute("mensaje", m.getTipoEtiqueta() + " de $" + miles(m.getValor()) + " guardado.");
+            ra.addFlashAttribute("mensaje", m.getTipoEtiqueta() + " de $" + miles(m.getValor()) + " guardado"
+                    + (m.getSubcategoria() != null ? " en " + m.getSubcategoria().getNombre() : "") + ".");
             ra.addAttribute("mes", YearMonth.from(m.getFecha()).toString());
+            if (desdeCategorias) return "redirect:/contabilidad/categorias";
             ra.addAttribute("area", m.getArea());
             return "redirect:/contabilidad/movimientos";
         } catch (IllegalArgumentException e) {
+            if (desdeCategorias) {
+                // Se vuelve a Categorías con el aviso; lo escrito se pierde, pero es solo una línea
+                ra.addFlashAttribute("error", e.getMessage());
+                ra.addAttribute("mes", leerMes(f.get("mes")).toString());
+                return "redirect:/contabilidad/categorias";
+            }
             // Se vuelve a mostrar el formulario con lo que se escribió
             MovimientoContable m = id != null ? movimientoRepository.findById(id).orElse(new MovimientoContable()) : new MovimientoContable();
             m.setTipo(f.getOrDefault("tipo", MovimientoContable.EGRESO));
@@ -526,9 +561,13 @@ public class ContabilidadControlador {
         YearMonth periodo = leerMes(mes);
         // Lo que se movió en el mes en cada subcategoría (Almacén y Fábrica)
         Map<Integer, BigDecimal> porSub = new HashMap<>();
+        Map<Integer, List<MovimientoContable>> porCategoria = new HashMap<>();
         for (MovimientoContable m : movimientoRepository.findByFechaBetweenOrderByFechaDescIdDesc(periodo.atDay(1), periodo.atEndOfMonth())) {
             if (m.getSubcategoria() == null || m.getValor() == null) continue;
             porSub.merge(m.getSubcategoria().getId(), m.getValor(), BigDecimal::add);
+            if (m.getSubcategoria().getCategoria() != null) {
+                porCategoria.computeIfAbsent(m.getSubcategoria().getCategoria().getId(), k -> new ArrayList<>()).add(m);
+            }
         }
         List<FilaCategoria> filas = new ArrayList<>();
         for (CategoriaContable c : categoriaRepository.findAllByOrderByOrdenAscNombreAsc()) {
@@ -538,9 +577,24 @@ public class ContabilidadControlador {
                 fc.subs.add(new FilaSubcategoria(s, t));
                 fc.total = fc.total.add(t);
             }
+            List<MovimientoContable> delMes = porCategoria.getOrDefault(c.getId(), List.of());
+            fc.cantidadMovimientos = delMes.size();
+            for (MovimientoContable m : delMes) {
+                if (fc.movimientos.size() >= FilaCategoria.MAX_MOVIMIENTOS) break;
+                fc.movimientos.add(filaMovimiento(m));
+            }
             filas.add(fc);
         }
+        List<Opcion> cuentasActivas = new ArrayList<>();
+        for (CuentaContable c : cuentaRepository.findAllByOrderByOrdenAscNombreAsc()) {
+            if (c.isActiva()) cuentasActivas.add(new Opcion(c.getId(), texto(c.getNombre()), false));
+        }
         model.addAttribute("filas", filas);
+        model.addAttribute("cuentasActivas", cuentasActivas);
+        LocalDate hoy = ContabilidadServicio.hoy();
+        // Fecha que sale por defecto en el cuadro: hoy si se mira el mes actual; si no, el último día de ese mes
+        model.addAttribute("fechaSugerida", periodo.atEndOfMonth().isBefore(hoy) ? periodo.atEndOfMonth().toString() : hoy.toString());
+        model.addAttribute("hoy", hoy.toString());
         ponerPeriodo(model, periodo, null);
         Map<String, String> clases = new LinkedHashMap<>();
         for (String clase : List.of(CategoriaContable.INGRESO, CategoriaContable.COSTO, CategoriaContable.GASTO, CategoriaContable.OTRO)) {
