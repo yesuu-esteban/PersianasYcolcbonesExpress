@@ -166,8 +166,8 @@ public class ContabilidadControlador {
                               Model model) {
         YearMonth periodo = leerMes(mes);
         String filtroArea = leerArea(area);
-        String filtroTipo = List.of(MovimientoContable.INGRESO, MovimientoContable.EGRESO, MovimientoContable.TRASLADO)
-                .contains(tipo) ? tipo : null;
+        String filtroTipo = esUno(tipo, MovimientoContable.INGRESO, MovimientoContable.EGRESO, MovimientoContable.TRASLADO)
+                ? tipo : null;
 
         List<MovimientoContable> filtrados = new ArrayList<>();
         BigDecimal ingresos = BigDecimal.ZERO, egresos = BigDecimal.ZERO, traslados = BigDecimal.ZERO;
@@ -208,7 +208,7 @@ public class ContabilidadControlador {
     @GetMapping("/movimiento/nuevo")
     public String nuevoMovimiento(@RequestParam(required = false) String tipo, Model model) {
         MovimientoContable m = new MovimientoContable();
-        m.setTipo(List.of(MovimientoContable.INGRESO, MovimientoContable.TRASLADO).contains(tipo) ? tipo : MovimientoContable.EGRESO);
+        m.setTipo(esUno(tipo, MovimientoContable.INGRESO, MovimientoContable.TRASLADO) ? tipo : MovimientoContable.EGRESO);
         m.setFecha(ContabilidadServicio.hoy());
         return formularioMovimiento(m, model);
     }
@@ -438,7 +438,7 @@ public class ContabilidadControlador {
         String clase = f.getOrDefault("clase", "");
         if (nombre.isEmpty() || nombre.length() > 120) {
             ra.addFlashAttribute("error", "Escribe el nombre de la categoría (máximo 120 letras).");
-        } else if (!List.of(CategoriaContable.INGRESO, CategoriaContable.COSTO, CategoriaContable.GASTO, CategoriaContable.OTRO).contains(clase)) {
+        } else if (!esUno(clase, CategoriaContable.INGRESO, CategoriaContable.COSTO, CategoriaContable.GASTO, CategoriaContable.OTRO)) {
             ra.addFlashAttribute("error", "Elige cómo cuenta la categoría en el resultado.");
         } else if (id == null ? categoriaRepository.existsByNombreIgnoreCase(nombre) : categoriaRepository.existsByNombreIgnoreCaseAndIdNot(nombre, id)) {
             ra.addFlashAttribute("error", "Ya existe una categoría llamada " + nombre + ".");
@@ -568,6 +568,17 @@ public class ContabilidadControlador {
     private static String leerArea(String area) {
         if ("TODAS".equals(area)) return null;
         return MovimientoContable.FABRICA.equals(area) ? MovimientoContable.FABRICA : MovimientoContable.ALMACEN;
+    }
+
+    /**
+     * ¿El valor es una de las opciones? Acepta null (devuelve false).
+     * (No se usa List.of(...).contains(valor) porque esa lista lanza NullPointerException si valor es null:
+     * eso era lo que rompía Movimientos cuando no se elegía un tipo.)
+     */
+    private static boolean esUno(String valor, String... opciones) {
+        if (valor == null) return false;
+        for (String o : opciones) if (o.equals(valor)) return true;
+        return false;
     }
 
     private CuentaContable buscarCuenta(String id) {
