@@ -11,7 +11,9 @@
     <h1>Categorías</h1>
     <p class="ayuda">En cada categoría hay un cuadro para <strong>anotar la plata</strong> que se gastó o que entró: eliges la subcategoría,
         escribes el valor, la cuenta y guardas. Debajo ves lo que ya se anotó en el mes y cuánto lleva cada subcategoría.
-        Todo lo que anotes aquí también sale en Movimientos y en el Resumen.</p>
+        Todo lo que anotes aquí también sale en Movimientos y en el Resumen.
+        <strong>✕ Desactivar</strong> oculta una categoría o subcategoría pero guarda su historial; <strong>🗑️ Eliminar</strong> la borra del todo
+        y solo se puede si no tiene nada anotado.</p>
     <div th:if="${mensaje}" class="alert alert-success" th:text="${mensaje}"></div>
     <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
     <div class="alert alert-info" th:if="${#lists.isEmpty(cuentasActivas)}">
@@ -48,8 +50,15 @@
                 <span th:replace="~{contabilidad/fragmentos :: plata(${fc.total})}"></span>
             </span>
             <form method="post" th:action="@{/contabilidad/categorias/{id}/activar(id=${fc.categoria.id})}">
-                <button type="submit" class="btn btn-sm" th:classappend="${fc.categoria.activa} ? 'btn-outline-danger' : 'btn-outline-success'"
-                        th:text="${fc.categoria.activa} ? 'Desactivar' : 'Activar'">Desactivar</button>
+                <button type="submit" class="btn btn-sm" th:classappend="${fc.categoria.activa} ? 'btn-outline-secondary' : 'btn-outline-success'"
+                        th:text="${fc.categoria.activa} ? 'Desactivar' : 'Activar'"
+                        title="Desactivar la oculta al anotar, pero guarda su historial">Desactivar</button>
+            </form>
+            <form method="post" th:unless="${fc.protegida}" th:action="@{/contabilidad/categorias/{id}/eliminar(id=${fc.categoria.id})}"
+                  th:attr="data-aviso='¿Eliminar la categoría ' + ${fc.categoria.nombre} + ' y todas sus subcategorías? Solo se puede si no tiene nada anotado.'"
+                  onsubmit="return confirm(this.getAttribute('data-aviso'));">
+                <input type="hidden" name="mes" th:value="${mes}">
+                <button type="submit" class="btn btn-sm btn-outline-danger" title="Eliminar la categoría">🗑️ Eliminar</button>
             </form>
         </div>
 
@@ -113,8 +122,14 @@
                     <span th:replace="~{contabilidad/fragmentos :: plata(${fs.total})}"></span>
                 </span>
                 <form method="post" th:action="@{/contabilidad/categorias/subcategoria/{id}/activar(id=${fs.sub.id})}">
-                    <button type="submit" class="btn btn-outline-secondary" th:title="${fs.sub.activa} ? 'Desactivar' : 'Activar'"
+                    <button type="submit" class="btn btn-outline-secondary" th:title="${fs.sub.activa} ? 'Desactivar (se oculta pero guarda su historial)' : 'Activar'"
                             th:text="${fs.sub.activa} ? '✕' : '↺'">✕</button>
+                </form>
+                <form method="post" th:unless="${fs.protegida}" th:action="@{/contabilidad/categorias/subcategoria/{id}/eliminar(id=${fs.sub.id})}"
+                      th:attr="data-aviso='¿Eliminar ' + ${fs.sub.nombre} + '? Solo se puede si no tiene nada anotado.'"
+                      onsubmit="return confirm(this.getAttribute('data-aviso'));">
+                    <input type="hidden" name="mes" th:value="${mes}">
+                    <button type="submit" class="btn btn-outline-danger" title="Eliminar">🗑️</button>
                 </form>
             </li>
         </ul>

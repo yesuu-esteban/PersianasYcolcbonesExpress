@@ -133,6 +133,8 @@ public class ContabilidadControlador {
         FilaSubcategoria(SubcategoriaContable sub, BigDecimal total) { this.sub = sub; this.total = total; }
         public SubcategoriaContable getSub() { return sub; }
         public BigDecimal getTotal() { return total; }
+        /** VENTA DE PRODUCTOS (donde caen los abonos de Almacén) no se puede eliminar. */
+        public boolean isProtegida() { return esSubcategoriaDeAbonos(sub); }
     }
 
     /** Una categoría con sus subcategorías, lo que se movió en el mes y los movimientos de ese mes. */
@@ -150,6 +152,11 @@ public class ContabilidadControlador {
         /** Los últimos movimientos del mes en esta categoría (máximo 10). */
         public List<FilaMovimiento> getMovimientos() { return movimientos; }
         public int getCantidadMovimientos() { return cantidadMovimientos; }
+        /** La categoría que tiene VENTA DE PRODUCTOS no se puede eliminar. */
+        public boolean isProtegida() {
+            for (FilaSubcategoria fs : subs) if (fs.isProtegida()) return true;
+            return false;
+        }
         /** ¿Se puede anotar aquí? (categoría activa y con al menos una subcategoría activa) */
         public boolean isSePuedeAnotar() {
             if (!categoria.isActiva()) return false;
@@ -639,6 +646,65 @@ public class ContabilidadControlador {
             ra.addFlashAttribute("mensaje", c.getNombre() + (c.isActiva() ? " vuelve a aparecer." : " ya no aparece para registrar (su historial se conserva)."));
         });
         return "redirect:/contabilidad/categorias";
+    }
+
+    /** Elimina una categoría con sus subcategorías, solo si nada está anotado en ella. */
+    @PostMapping("/categorias/{id}/eliminar")
+    @Transactional
+    public String eliminarCategoria(@PathVariable int id, @RequestParam(required = false) String mes, RedirectAttributes ra) {
+        CategoriaContable c = categoriaRepository.findById(id).orElse(null);
+        if (c == null) {
+            ra.addFlashAttribute("error", "Esa categoría ya no existe.");
+        } else {
+            long usados = subcategoriaRepository.contarMovimientosDeCategoria(c);
+            boolean tieneAbonos = c.getSubcategorias().stream().anyMatch(ContabilidadControlador::esSubcategoriaDeAbonos);
+            if (usados > 0) {
+                ra.addFlashAttribute("error", "No se puede eliminar " + c.getNombre() + ": tiene " + usados
+                        + " movimiento(s) anotados. Bórralos o cámbiales la categoría en Movimientos, o mejor desactívala (así se guarda el historial).");
+            } else if (tieneAbonos) {
+                ra.addFlashAttribute("error", "No se puede eliminar " + c.getNombre() + ": ahí está " + ContabilidadServicio.SUBCATEGORIA_ABONOS
+                        + ", donde se anotan solos los abonos de Almacén.");
+            } else {
+                int cuantas = c.getSubcategorias().size();
+                for (SubcategoriaContable s : new ArrayList<>(c.getSubcategorias())) subcategoriaRepository.delete(s);
+                c.getSubcategorias().clear();
+                categoriaRepository.delete(c);
+                ra.addFlashAttribute("mensaje", "Se eliminó la categoría " + c.getNombre()
+                        + (cuantas > 0 ? " con sus " + cuantas + " subcategoría(s)." : "."));
+            }
+        }
+        if (mes != null && !mes.isBlank()) ra.addAttribute("mes", leerMes(mes).toString());
+        return "redirect:/contabilidad/categorias";
+    }
+
+    /** Elimina una subcategoría, solo si nada está anotado en ella. */
+    @PostMapping("/categorias/subcategoria/{id}/eliminar")
+    @Transactional
+    public String eliminarSubcategoria(@PathVariable int id, @RequestParam(required = false) String mes, RedirectAttributes ra) {
+        SubcategoriaContable s = subcategoriaRepository.findById(id).orElse(null);
+        if (s == null) {
+            ra.addFlashAttribute("error", "Esa subcategoría ya no existe.");
+        } else {
+            long usados = subcategoriaRepository.contarMovimientos(s);
+            if (usados > 0) {
+                ra.addFlashAttribute("error", "No se puede eliminar " + s.getNombre() + ": tiene " + usados
+                        + " movimiento(s) anotados. Bórralos o cámbiales la categoría en Movimientos, o mejor desactívala (✕).");
+            } else if (esSubcategoriaDeAbonos(s)) {
+                ra.addFlashAttribute("error", "No se puede eliminar " + s.getNombre() + ": ahí se anotan solos los abonos de Almacén.");
+            } else {
+                if (s.getCategoria() != null) s.getCategoria().getSubcategorias().remove(s);
+                subcategoriaRepository.delete(s);
+                ra.addFlashAttribute("mensaje", "Se eliminó " + s.getNombre() + ".");
+            }
+        }
+        if (mes != null && !mes.isBlank()) ra.addAttribute("mes", leerMes(mes).toString());
+        return "redirect:/contabilidad/categorias";
+    }
+
+    /** "VENTA DE PRODUCTOS" de una categoría de ingresos: ahí caen los abonos de Almacén, no se elimina. */
+    private static boolean esSubcategoriaDeAbonos(SubcategoriaContable s) {
+        return s != null && s.getCategoria() != null && s.getCategoria().isDeIngreso()
+                && ContabilidadServicio.SUBCATEGORIA_ABONOS.equalsIgnoreCase(s.getNombre());
     }
 
     @PostMapping("/categorias/subcategoria/guardar")
