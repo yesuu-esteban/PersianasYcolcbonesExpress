@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:replace="~{contabilidad/fragmentos :: estilos}"></th:block>
+    <title>Contabilidad - Movimientos</title>
+</head>
+<body>
+<header th:replace="~{contabilidad/fragmentos :: encabezado('movimientos')}"></header>
+
+<main>
+    <h1>Movimientos de <span th:text="${mesTexto}">Octubre 2026</span></h1>
+    <div th:if="${mensaje}" class="alert alert-success" th:text="${mensaje}"></div>
+    <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
+
+    <div class="acciones-rapidas">
+        <a class="btn btn-outline-success" href="/contabilidad/movimiento/nuevo?tipo=INGRESO">+ Registrar ingreso</a>
+        <a class="btn btn-outline-danger" href="/contabilidad/movimiento/nuevo?tipo=EGRESO">− Registrar egreso</a>
+        <a class="btn btn-outline-info" href="/contabilidad/movimiento/nuevo?tipo=TRASLADO">⇄ Traslado entre cuentas</a>
+    </div>
+
+    <!-- ═══ Filtros ═══ -->
+    <form class="caja filtros" method="get" action="/contabilidad/movimientos">
+        <div>
+            <label class="form-label" for="mes">Mes</label>
+            <input type="month" class="form-control" id="mes" name="mes" th:value="${mes}">
+        </div>
+        <div>
+            <label class="form-label" for="area">Área</label>
+            <select class="form-select" id="area" name="area">
+                <option value="ALMACEN" th:selected="${area == 'ALMACEN'}">Almacén</option>
+                <option value="FABRICA" th:selected="${area == 'FABRICA'}">Fábrica</option>
+                <option value="TODAS" th:selected="${area == 'TODAS'}">Almacén y Fábrica</option>
+            </select>
+        </div>
+        <div>
+            <label class="form-label" for="tipo">Tipo</label>
+            <select class="form-select" id="tipo" name="tipo">
+                <option value="">Todos</option>
+                <option value="INGRESO" th:selected="${tipo == 'INGRESO'}">Ingresos</option>
+                <option value="EGRESO" th:selected="${tipo == 'EGRESO'}">Egresos</option>
+                <option value="TRASLADO" th:selected="${tipo == 'TRASLADO'}">Traslados</option>
+            </select>
+        </div>
+        <div>
+            <label class="form-label" for="cuentaId">Cuenta</label>
+            <select class="form-select" id="cuentaId" name="cuentaId">
+                <option value="">Todas</option>
+                <option th:each="o : ${opcionesCuenta}" th:value="${o.id}" th:text="${o.nombre}" th:selected="${o.seleccionada}">NEQUI</option>
+            </select>
+        </div>
+        <div>
+            <label class="form-label" for="categoriaId">Categoría</label>
+            <select class="form-select" id="categoriaId" name="categoriaId">
+                <option value="">Todas</option>
+                <option th:each="o : ${opcionesCategoria}" th:value="${o.id}" th:text="${o.nombre}" th:selected="${o.seleccionada}">ARRIENDO</option>
+            </select>
+        </div>
+        <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-outline-secondary flex-fill">Filtrar</button>
+            <a class="btn btn-outline-secondary" th:href="@{/contabilidad/movimientos(mes=${mes}, area=${area})}" title="Quitar filtros">✕</a>
+        </div>
+    </form>
+
+    <!-- ═══ Totales de lo filtrado ═══ -->
+    <div class="chips">
+        <div class="chip"><span>Ingresos</span><strong class="txt-ingreso"><span th:replace="~{contabilidad/fragmentos :: plata(${sumaIngresos})}"></span></strong></div>
+        <div class="chip"><span>Egresos</span><strong class="txt-egreso"><span th:replace="~{contabilidad/fragmentos :: plata(${sumaEgresos})}"></span></strong></div>
+        <div class="chip"><span>Traslados</span><strong class="txt-traslado"><span th:replace="~{contabilidad/fragmentos :: plata(${sumaTraslados})}"></span></strong></div>
+        <div class="chip"><span>Ingresos − egresos</span><strong><span th:replace="~{contabilidad/fragmentos :: plata(${sumaNeta})}"></span></strong></div>
+    </div>
+
+    <!-- ═══ Lista ═══ -->
+    <div class="caja vacio" th:if="${totalFiltrados == 0}">
+        No hay movimientos con estos filtros. Usa los botones de arriba para registrar un ingreso o un egreso.
+    </div>
+
+    <div class="tabla-wrap" th:if="${totalFiltrados > 0}">
+        <table class="table table-hover align-middle">
+            <thead>
+                <tr>
+                    <th>Fecha</th>
+                    <th>Tipo</th>
+                    <th>Categoría</th>
+                    <th>Cuenta</th>
+                    <th>Detalle</th>
+                    <th class="num">Valor</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:each="f : ${filas}">
+                    <td class="text-nowrap" th:text="${f.fecha}">05/10/2026</td>
+                    <td>
+                        <span class="tipo" th:classappend="'tipo-' + ${f.tipo}" th:text="${f.tipoEtiqueta}">Egreso</span>
+                        <small class="d-block ayuda" th:if="${area == 'TODAS'}" th:text="${f.areaEtiqueta}">Almacén</small>
+                    </td>
+                    <td class="detalle-mov">
+                        <span th:text="${f.subcategoria != '' ? f.subcategoria : '—'}">ARRIENDO</span>
+                        <small th:text="${f.categoria}">GASTOS ADMINISTRATIVOS</small>
+                    </td>
+                    <td class="text-nowrap">
+                        <span th:text="${f.cuenta}">BANCOLOMBIA</span>
+                        <span th:if="${f.cuentaDestino != ''}" th:text="' → ' + ${f.cuentaDestino}"> → CAJA</span>
+                    </td>
+                    <td class="detalle-mov">
+                        <span th:text="${f.tercero}">Arrendador</span>
+                        <small th:text="${f.descripcion}">Arriendo de octubre</small>
+                    </td>
+                    <td class="num fw-bold" th:classappend="${f.claseValor}" th:text="${f.valorTexto}">−$300.000</td>
+                    <td class="text-nowrap">
+                        <a class="btn btn-sm btn-outline-secondary" th:href="@{/contabilidad/movimiento/{id}/editar(id=${f.id})}" title="Editar">✏️</a>
+                        <form class="d-inline" method="post" th:action="@{/contabilidad/movimiento/{id}/eliminar(id=${f.id})}"
+                              th:attr="data-aviso=${f.aviso}" onsubmit="return confirm(this.getAttribute('data-aviso'));">
+                            <button type="submit" class="btn btn-sm btn-outline-danger" title="Eliminar">🗑️</button>
+                        </form>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- ═══ Páginas ═══ -->
+    <nav class="paginacion" aria-label="Páginas" th:if="${totalPaginas > 1}">
+        <a class="btn btn-sm btn-outline-secondary" th:if="${paginaActual > 0}"
+           th:href="@{/contabilidad/movimientos(mes=${mes}, area=${area}, tipo=${tipo}, cuentaId=${cuentaId}, categoriaId=${categoriaId}, pagina=${paginaActual - 1})}">← Anterior</a>
+        <a th:each="i : ${paginas}" class="btn btn-sm"
+           th:classappend="${i == paginaActual} ? 'btn-primary' : 'btn-outline-secondary'"
+           th:href="@{/contabilidad/movimientos(mes=${mes}, area=${area}, tipo=${tipo}, cuentaId=${cuentaId}, categoriaId=${categoriaId}, pagina=${i})}"
+           th:text="${i + 1}">1</a>
+        <a class="btn btn-sm btn-outline-secondary" th:if="${paginaActual < totalPaginas - 1}"
+           th:href="@{/contabilidad/movimientos(mes=${mes}, area=${area}, tipo=${tipo}, cuentaId=${cuentaId}, categoriaId=${categoriaId}, pagina=${paginaActual + 1})}">Siguiente →</a>
+    </nav>
+    <p class="contador" th:if="${totalFiltrados > 0}"
+       th:text="'Página ' + ${paginaActual + 1} + ' de ' + ${totalPaginas} + ' · ' + ${totalFiltrados} + ' movimiento(s)'">Página 1 de 1</p>
+</main>
+
+<script src="/js/token-nav.js"></script>
+</body>
+</html>

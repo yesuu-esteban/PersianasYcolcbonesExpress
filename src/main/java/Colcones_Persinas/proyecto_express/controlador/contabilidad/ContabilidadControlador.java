@@ -94,6 +94,58 @@ public class ContabilidadControlador {
         public long getDias() { return dias; }
     }
 
+    /** Un movimiento ya convertido en textos, para que la pantalla no tenga que calcular nada. */
+    public static class FilaMovimiento {
+        private int id;
+        private String fecha = "", tipo = "", tipoEtiqueta = "", areaEtiqueta = "", subcategoria = "", categoria = "",
+                cuenta = "", cuentaDestino = "", tercero = "", descripcion = "", valorTexto = "", claseValor = "", aviso = "";
+        public int getId() { return id; }
+        public String getFecha() { return fecha; }
+        public String getTipo() { return tipo; }
+        public String getTipoEtiqueta() { return tipoEtiqueta; }
+        public String getAreaEtiqueta() { return areaEtiqueta; }
+        public String getSubcategoria() { return subcategoria; }
+        public String getCategoria() { return categoria; }
+        public String getCuenta() { return cuenta; }
+        public String getCuentaDestino() { return cuentaDestino; }
+        public String getTercero() { return tercero; }
+        public String getDescripcion() { return descripcion; }
+        public String getValorTexto() { return valorTexto; }
+        public String getClaseValor() { return claseValor; }
+        public String getAviso() { return aviso; }
+    }
+
+    /** Una opción de una lista desplegable. */
+    public static class Opcion {
+        private final int id;
+        private final String nombre;
+        private final boolean seleccionada;
+        Opcion(int id, String nombre, boolean seleccionada) { this.id = id; this.nombre = nombre; this.seleccionada = seleccionada; }
+        public int getId() { return id; }
+        public String getNombre() { return nombre; }
+        public boolean isSeleccionada() { return seleccionada; }
+    }
+
+    /** Una subcategoría con lo que se movió en el mes. */
+    public static class FilaSubcategoria {
+        private final SubcategoriaContable sub;
+        private final BigDecimal total;
+        FilaSubcategoria(SubcategoriaContable sub, BigDecimal total) { this.sub = sub; this.total = total; }
+        public SubcategoriaContable getSub() { return sub; }
+        public BigDecimal getTotal() { return total; }
+    }
+
+    /** Una categoría con sus subcategorías y lo que se movió en el mes. */
+    public static class FilaCategoria {
+        private final CategoriaContable categoria;
+        private final List<FilaSubcategoria> subs = new ArrayList<>();
+        private BigDecimal total = BigDecimal.ZERO;
+        FilaCategoria(CategoriaContable categoria) { this.categoria = categoria; }
+        public CategoriaContable getCategoria() { return categoria; }
+        public List<FilaSubcategoria> getSubs() { return subs; }
+        public BigDecimal getTotal() { return total; }
+    }
+
     // ═══════════════════════════════════════════════════════════════
     // RESUMEN
     // ═══════════════════════════════════════════════════════════════
@@ -174,22 +226,40 @@ public class ContabilidadControlador {
         for (MovimientoContable m : movimientoRepository.findByFechaBetweenOrderByFechaDescIdDesc(periodo.atDay(1), periodo.atEndOfMonth())) {
             if (filtroArea != null && !filtroArea.equals(m.getArea())) continue;
             if (filtroTipo != null && !filtroTipo.equals(m.getTipo())) continue;
-            if (cuentaId != null && m.getCuenta().getId() != cuentaId
+            if (cuentaId != null && (m.getCuenta() == null || m.getCuenta().getId() != cuentaId)
                     && (m.getCuentaDestino() == null || m.getCuentaDestino().getId() != cuentaId)) continue;
             if (categoriaId != null && (m.getCategoria() == null || m.getCategoria().getId() != categoriaId)) continue;
             filtrados.add(m);
-            switch (m.getTipo()) {
-                case MovimientoContable.INGRESO -> ingresos = ingresos.add(m.getValor());
-                case MovimientoContable.EGRESO -> egresos = egresos.add(m.getValor());
-                default -> traslados = traslados.add(m.getValor());
-            }
+            BigDecimal valor = m.getValor() != null ? m.getValor() : BigDecimal.ZERO;
+            if (MovimientoContable.INGRESO.equals(m.getTipo())) ingresos = ingresos.add(valor);
+            else if (MovimientoContable.EGRESO.equals(m.getTipo())) egresos = egresos.add(valor);
+            else traslados = traslados.add(valor);
         }
 
         int totalPaginas = Math.max(1, (filtrados.size() + POR_PAGINA - 1) / POR_PAGINA);
         int actual = Math.max(0, Math.min(pagina, totalPaginas - 1));
         int desde = actual * POR_PAGINA;
 
-        model.addAttribute("movimientos", filtrados.subList(desde, Math.min(desde + POR_PAGINA, filtrados.size())));
+        List<FilaMovimiento> filas = new ArrayList<>();
+        for (MovimientoContable m : filtrados.subList(desde, Math.min(desde + POR_PAGINA, filtrados.size()))) {
+            filas.add(filaMovimiento(m));
+        }
+        List<Integer> paginas = new ArrayList<>();
+        for (int i = 0; i < totalPaginas; i++) paginas.add(i);
+        List<Opcion> opcionesCuenta = new ArrayList<>();
+        for (CuentaContable c : cuentaRepository.findAllByOrderByOrdenAscNombreAsc()) {
+            opcionesCuenta.add(new Opcion(c.getId(), texto(c.getNombre()), cuentaId != null && cuentaId == c.getId()));
+        }
+        List<Opcion> opcionesCategoria = new ArrayList<>();
+        for (CategoriaContable c : categoriaRepository.findAllByOrderByOrdenAscNombreAsc()) {
+            opcionesCategoria.add(new Opcion(c.getId(), texto(c.getNombre()), categoriaId != null && categoriaId == c.getId()));
+        }
+
+        model.addAttribute("filas", filas);
+        model.addAttribute("paginas", paginas);
+        model.addAttribute("opcionesCuenta", opcionesCuenta);
+        model.addAttribute("opcionesCategoria", opcionesCategoria);
+        model.addAttribute("sumaNeta", ingresos.subtract(egresos));
         model.addAttribute("totalFiltrados", filtrados.size());
         model.addAttribute("paginaActual", actual);
         model.addAttribute("totalPaginas", totalPaginas);
@@ -199,17 +269,48 @@ public class ContabilidadControlador {
         model.addAttribute("tipo", filtroTipo == null ? "" : filtroTipo);
         model.addAttribute("cuentaId", cuentaId);
         model.addAttribute("categoriaId", categoriaId);
-        model.addAttribute("todasLasCuentas", cuentaRepository.findAllByOrderByOrdenAscNombreAsc());
-        model.addAttribute("categorias", categoriaRepository.findAllByOrderByOrdenAscNombreAsc());
         ponerPeriodo(model, periodo, filtroArea);
         return "contabilidad/movimientos";
     }
 
+    /** Pasa un movimiento a textos (sin dejar nada en null). */
+    private static FilaMovimiento filaMovimiento(MovimientoContable m) {
+        FilaMovimiento f = new FilaMovimiento();
+        f.id = m.getId();
+        f.fecha = texto(m.getFechaFormateada());
+        f.tipo = texto(m.getTipo());
+        f.tipoEtiqueta = texto(m.getTipoEtiqueta());
+        f.areaEtiqueta = texto(m.getAreaEtiqueta());
+        if (m.getSubcategoria() != null) {
+            f.subcategoria = texto(m.getSubcategoria().getNombre());
+            if (m.getSubcategoria().getCategoria() != null) f.categoria = texto(m.getSubcategoria().getCategoria().getNombre());
+        }
+        f.cuenta = m.getCuenta() != null ? texto(m.getCuenta().getNombre()) : "";
+        f.cuentaDestino = m.getCuentaDestino() != null ? texto(m.getCuentaDestino().getNombre()) : "";
+        f.tercero = texto(m.getTercero());
+        f.descripcion = texto(m.getDescripcion());
+        String signo = MovimientoContable.EGRESO.equals(m.getTipo()) ? "−" : (MovimientoContable.INGRESO.equals(m.getTipo()) ? "+" : "");
+        f.valorTexto = signo + "$" + miles(m.getValor());
+        f.claseValor = "txt-" + f.tipo.toLowerCase(Locale.ROOT);
+        f.aviso = m.getPedidoTiendaId() != null
+                ? "Este ingreso salió de un abono de Almacén (pedido #" + m.getPedidoTiendaId() + "). Si lo eliminas, el abono del pedido NO se borra. ¿Eliminar el movimiento?"
+                : "¿Eliminar este movimiento?";
+        return f;
+    }
+
     @GetMapping("/movimiento/nuevo")
-    public String nuevoMovimiento(@RequestParam(required = false) String tipo, Model model) {
+    public String nuevoMovimiento(@RequestParam(required = false) String tipo,
+                                  @RequestParam(required = false) Integer subcategoriaId, Model model) {
         MovimientoContable m = new MovimientoContable();
         m.setTipo(esUno(tipo, MovimientoContable.INGRESO, MovimientoContable.TRASLADO) ? tipo : MovimientoContable.EGRESO);
         m.setFecha(ContabilidadServicio.hoy());
+        // Desde Categorías (botón +): la subcategoría ya viene elegida y el tipo sale de ella
+        if (subcategoriaId != null) {
+            subcategoriaRepository.findById(subcategoriaId).ifPresent(s -> {
+                m.setSubcategoria(s);
+                m.setTipo(s.getCategoria() != null && s.getCategoria().isDeIngreso() ? MovimientoContable.INGRESO : MovimientoContable.EGRESO);
+            });
+        }
         return formularioMovimiento(m, model);
     }
 
@@ -421,8 +522,26 @@ public class ContabilidadControlador {
     // ═══════════════════════════════════════════════════════════════
 
     @GetMapping("/categorias")
-    public String categorias(Model model) {
-        model.addAttribute("categorias", categoriaRepository.findAllByOrderByOrdenAscNombreAsc());
+    public String categorias(@RequestParam(required = false) String mes, Model model) {
+        YearMonth periodo = leerMes(mes);
+        // Lo que se movió en el mes en cada subcategoría (Almacén y Fábrica)
+        Map<Integer, BigDecimal> porSub = new HashMap<>();
+        for (MovimientoContable m : movimientoRepository.findByFechaBetweenOrderByFechaDescIdDesc(periodo.atDay(1), periodo.atEndOfMonth())) {
+            if (m.getSubcategoria() == null || m.getValor() == null) continue;
+            porSub.merge(m.getSubcategoria().getId(), m.getValor(), BigDecimal::add);
+        }
+        List<FilaCategoria> filas = new ArrayList<>();
+        for (CategoriaContable c : categoriaRepository.findAllByOrderByOrdenAscNombreAsc()) {
+            FilaCategoria fc = new FilaCategoria(c);
+            for (SubcategoriaContable s : c.getSubcategorias()) {
+                BigDecimal t = porSub.getOrDefault(s.getId(), BigDecimal.ZERO);
+                fc.subs.add(new FilaSubcategoria(s, t));
+                fc.total = fc.total.add(t);
+            }
+            filas.add(fc);
+        }
+        model.addAttribute("filas", filas);
+        ponerPeriodo(model, periodo, null);
         Map<String, String> clases = new LinkedHashMap<>();
         for (String clase : List.of(CategoriaContable.INGRESO, CategoriaContable.COSTO, CategoriaContable.GASTO, CategoriaContable.OTRO)) {
             clases.put(clase, CategoriaContable.etiquetaClase(clase));
@@ -569,6 +688,9 @@ public class ContabilidadControlador {
         if ("TODAS".equals(area)) return null;
         return MovimientoContable.FABRICA.equals(area) ? MovimientoContable.FABRICA : MovimientoContable.ALMACEN;
     }
+
+    /** null → "" (para que las pantallas nunca reciban null). */
+    private static String texto(String s) { return s == null ? "" : s; }
 
     /**
      * ¿El valor es una de las opciones? Acepta null (devuelve false).

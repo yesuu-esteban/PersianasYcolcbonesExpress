@@ -9,10 +9,23 @@
 
 <main>
     <h1>Categorías</h1>
-    <p class="ayuda">El plan de cuentas. Puedes renombrar, agregar o desactivar. Desactivar oculta la categoría al registrar, pero no borra su historial.
-        Si cambias si una categoría es ingreso, costo, gasto o "no es gasto", también cambia cómo se cuentan sus movimientos anteriores.</p>
+    <p class="ayuda">Aquí se ordena en qué se gasta y de dónde entra la plata. Al lado de cada subcategoría ves <strong>cuánto se movió en el mes</strong>,
+        y con el botón <strong>+</strong> anotas un gasto o un ingreso en esa subcategoría (te lleva al formulario con la categoría ya elegida).
+        También puedes renombrar, agregar o desactivar. Desactivar oculta la categoría al registrar, pero no borra su historial.</p>
     <div th:if="${mensaje}" class="alert alert-success" th:text="${mensaje}"></div>
     <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
+
+    <!-- ═══ Mes ═══ -->
+    <form class="periodo" method="get" action="/contabilidad/categorias">
+        <a class="btn btn-outline-secondary flecha" th:href="@{/contabilidad/categorias(mes=${mesAnterior})}" title="Mes anterior">‹</a>
+        <span class="mes-texto" th:text="${mesTexto}">Octubre 2026</span>
+        <a class="btn btn-outline-secondary flecha" th:href="@{/contabilidad/categorias(mes=${mesSiguiente})}" th:unless="${esMesActual}" title="Mes siguiente">›</a>
+        <div class="campo">
+            <label class="form-label" for="mes">Mes</label>
+            <input type="month" class="form-control" id="mes" name="mes" th:value="${mes}">
+        </div>
+        <button type="submit" class="btn btn-outline-secondary">Ver</button>
+    </form>
 
     <section class="caja">
         <h2>Nueva categoría</h2>
@@ -26,41 +39,52 @@
         </form>
     </section>
 
-    <section class="caja categoria" th:each="c : ${categorias}" th:classappend="${!c.activa} ? 'inactiva'">
+    <section class="caja categoria" th:each="fc : ${filas}" th:classappend="${!fc.categoria.activa} ? 'inactiva'">
         <div class="categoria-cabeza">
             <form class="form-linea flex-grow-1" method="post" action="/contabilidad/categorias/guardar">
-                <input type="hidden" name="id" th:value="${c.id}">
-                <input type="text" class="form-control fw-bold" name="nombre" maxlength="120" required th:value="${c.nombre}" aria-label="Nombre de la categoría">
+                <input type="hidden" name="id" th:value="${fc.categoria.id}">
+                <input type="text" class="form-control fw-bold" name="nombre" maxlength="120" required th:value="${fc.categoria.nombre}" aria-label="Nombre de la categoría">
                 <select class="form-select" name="clase" style="max-width:190px" aria-label="Cómo cuenta">
-                    <option th:each="cl : ${clases}" th:value="${cl.key}" th:selected="${cl.key == c.clase}"
+                    <option th:each="cl : ${clases}" th:value="${cl.key}" th:selected="${cl.key == fc.categoria.clase}"
                             th:text="${cl.value}">Gasto</option>
                 </select>
                 <button type="submit" class="btn btn-sm btn-outline-secondary">Guardar</button>
             </form>
-            <form method="post" th:action="@{/contabilidad/categorias/{id}/activar(id=${c.id})}">
-                <button type="submit" class="btn btn-sm" th:classappend="${c.activa} ? 'btn-outline-danger' : 'btn-outline-success'"
-                        th:text="${c.activa} ? 'Desactivar' : 'Activar'">Desactivar</button>
+            <span class="text-nowrap fw-bold" th:classappend="${fc.categoria.deIngreso} ? 'txt-ingreso' : 'txt-egreso'"
+                  title="Total del mes en esta categoría">
+                <span th:replace="~{contabilidad/fragmentos :: plata(${fc.total})}"></span>
+            </span>
+            <form method="post" th:action="@{/contabilidad/categorias/{id}/activar(id=${fc.categoria.id})}">
+                <button type="submit" class="btn btn-sm" th:classappend="${fc.categoria.activa} ? 'btn-outline-danger' : 'btn-outline-success'"
+                        th:text="${fc.categoria.activa} ? 'Desactivar' : 'Activar'">Desactivar</button>
             </form>
         </div>
 
-        <ul class="sub-lista">
-            <li th:each="s : ${c.subcategorias}" th:classappend="${!s.activa} ? 'inactiva'">
-                <form class="d-flex gap-1 flex-grow-1" method="post" action="/contabilidad/categorias/subcategoria/guardar">
-                    <input type="hidden" name="id" th:value="${s.id}">
-                    <input type="text" class="form-control" name="nombre" maxlength="120" required th:value="${s.nombre}" aria-label="Nombre de la subcategoría">
+        <ul class="sub-lista" style="grid-template-columns: repeat(auto-fill, minmax(min(100%, 360px), 1fr));">
+            <li th:each="fs : ${fc.subs}" th:classappend="${!fs.sub.activa} ? 'inactiva'">
+                <form class="d-flex gap-1 flex-grow-1" style="min-width:0" method="post" action="/contabilidad/categorias/subcategoria/guardar">
+                    <input type="hidden" name="id" th:value="${fs.sub.id}">
+                    <input type="text" class="form-control" name="nombre" maxlength="120" required th:value="${fs.sub.nombre}" aria-label="Nombre de la subcategoría">
                     <button type="submit" class="btn btn-outline-secondary" title="Guardar nombre">✓</button>
                 </form>
-                <form method="post" th:action="@{/contabilidad/categorias/subcategoria/{id}/activar(id=${s.id})}">
-                    <button type="submit" class="btn" th:classappend="${s.activa} ? 'btn-outline-danger' : 'btn-outline-success'"
-                            th:title="${s.activa} ? 'Desactivar' : 'Activar'" th:text="${s.activa} ? '✕' : '↺'">✕</button>
+                <span class="ayuda text-nowrap text-end" style="min-width:76px" title="Movido en el mes">
+                    <span th:replace="~{contabilidad/fragmentos :: plata(${fs.total})}"></span>
+                </span>
+                <a class="btn" th:if="${fs.sub.activa and fc.categoria.activa}"
+                   th:classappend="${fc.categoria.deIngreso} ? 'btn-outline-success' : 'btn-outline-danger'"
+                   th:href="@{/contabilidad/movimiento/nuevo(subcategoriaId=${fs.sub.id})}"
+                   th:title="${fc.categoria.deIngreso} ? 'Anotar un ingreso en ' + ${fs.sub.nombre} : 'Anotar un gasto en ' + ${fs.sub.nombre}">+</a>
+                <form method="post" th:action="@{/contabilidad/categorias/subcategoria/{id}/activar(id=${fs.sub.id})}">
+                    <button type="submit" class="btn btn-outline-secondary" th:title="${fs.sub.activa} ? 'Desactivar' : 'Activar'"
+                            th:text="${fs.sub.activa} ? '✕' : '↺'">✕</button>
                 </form>
             </li>
         </ul>
 
         <form class="form-linea" method="post" action="/contabilidad/categorias/subcategoria/guardar">
-            <input type="hidden" name="categoriaId" th:value="${c.id}">
+            <input type="hidden" name="categoriaId" th:value="${fc.categoria.id}">
             <input type="text" class="form-control form-control-sm" name="nombre" maxlength="120" required
-                   th:placeholder="'Nueva subcategoría en ' + ${c.nombre}" aria-label="Nueva subcategoría">
+                   th:placeholder="'Nueva subcategoría en ' + ${fc.categoria.nombre}" aria-label="Nueva subcategoría">
             <button type="submit" class="btn btn-sm btn-outline-secondary">+ Agregar</button>
         </form>
     </section>
