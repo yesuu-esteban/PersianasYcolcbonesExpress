@@ -109,6 +109,16 @@
                 </div>
             </a>
 
+            <!-- CONTABILIDAD: ingresos, egresos, saldos de las cuentas, por cobrar y por pagar -->
+            <a class="module-card" th:href="@{/contabilidad}" sec:authorize="hasAnyRole('TIENDA_ADMIN','ADMIN')">
+                <div class="module-content">
+                    <span class="module-category">Módulo Financiero</span>
+                    <h2>Contabilidad</h2>
+                    <p>Ingresos, gastos y saldos de las cuentas del almacén, con el resultado de cada mes, lo que se debe cobrar y lo que se debe pagar.</p>
+                    <span class="module-action">Acceder al módulo &rarr;</span>
+                </div>
+            </a>
+
             <!-- TIENDA VIRTUAL: productos, precios, fotos y compras pagadas en línea -->
             <a class="module-card" th:href="@{/tienda-admin}" sec:authorize="hasAnyRole('TIENDA_ADMIN','ADMIN')">
                 <div class="module-content">

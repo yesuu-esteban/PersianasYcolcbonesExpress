@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     FRAGMENTOS COMPARTIDOS DE CONTABILIDAD
+     · estilos    → dentro de <head>
+     · encabezado → marca y menú del módulo (activo = pantalla actual)
+     · plata(v)   → un valor en pesos: $1.500.000 (en rojo si es negativo)
+     ═══════════════════════════════════════════════════════════════ -->
+
+<th:block th:fragment="estilos">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/contabilidad/contabilidad.css">
+</th:block>
+
+<header class="marca-header" th:fragment="encabezado(activo)">
+    <div class="logo">
+        <div class="icono" aria-hidden="true">📒</div>
+        <div class="titulo">PERSIANAS EXPRESS<small>CONTABILIDAD</small></div>
+    </div>
+    <nav class="menu-conta" aria-label="Secciones de contabilidad">
+        <a href="/portal" class="btn btn-outline-secondary">← Portal</a>
+        <a href="/contabilidad" class="btn btn-outline-secondary" th:classappend="${activo == 'resumen'} ? 'activo'">Resumen</a>
+        <a href="/contabilidad/movimientos" class="btn btn-outline-secondary" th:classappend="${activo == 'movimientos'} ? 'activo'">Movimientos</a>
+        <a href="/contabilidad/por-cobrar" class="btn btn-outline-secondary" th:classappend="${activo == 'cobrar'} ? 'activo'">Por cobrar</a>
+        <a href="/contabilidad/por-pagar" class="btn btn-outline-secondary" th:classappend="${activo == 'pagar'} ? 'activo'">Por pagar</a>
+        <a href="/contabilidad/cuentas" class="btn btn-outline-secondary" th:classappend="${activo == 'cuentas'} ? 'activo'">Cuentas</a>
+        <a href="/contabilidad/categorias" class="btn btn-outline-secondary" th:classappend="${activo == 'categorias'} ? 'activo'">Categorías</a>
+    </nav>
+</header>
+
+<span th:fragment="plata(v)" class="plata" th:classappend="${v != null and v.signum() < 0} ? 'neg'"
+      th:text="${v == null} ? '$0' : (${v.signum() < 0} ? '-$' + ${#numbers.formatInteger(v.abs(), 1, 'POINT')} : '$' + ${#numbers.formatInteger(v, 1, 'POINT')})">$0</span>
+
+</body>
+</html>

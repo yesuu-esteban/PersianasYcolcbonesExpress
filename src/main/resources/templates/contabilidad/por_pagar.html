@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:replace="~{contabilidad/fragmentos :: estilos}"></th:block>
+    <title>Contabilidad - Por pagar</title>
+</head>
+<body>
+<header th:replace="~{contabilidad/fragmentos :: encabezado('pagar')}"></header>
+
+<main>
+    <h1>Cuentas por pagar</h1>
+    <p class="ayuda">Lo que se debe (a la fábrica, a proveedores, cuotas…). Al registrar el pago se crea solo el egreso en Movimientos.</p>
+    <div th:if="${mensaje}" class="alert alert-success" th:text="${mensaje}"></div>
+    <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
+
+    <section class="caja">
+        <h2>Anotar una deuda</h2>
+        <form class="row g-2 align-items-end" method="post" action="/contabilidad/por-pagar/guardar">
+            <div class="col-md-3">
+                <label class="form-label" for="acreedor">A quién se le debe</label>
+                <input type="text" class="form-control" id="acreedor" name="acreedor" maxlength="150" required>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label" for="concepto">Por qué</label>
+                <input type="text" class="form-control" id="concepto" name="concepto" maxlength="300">
+            </div>
+            <div class="col-md-2 col-6">
+                <label class="form-label" for="valor">Valor</label>
+                <input type="text" class="form-control" id="valor" name="valor" inputmode="numeric" required placeholder="0">
+            </div>
+            <div class="col-md-2 col-6">
+                <label class="form-label" for="vence">Se paga el <span class="ayuda">(opcional)</span></label>
+                <input type="date" class="form-control" id="vence" name="vence">
+            </div>
+            <div class="col-md-2 col-6">
+                <label class="form-label" for="areaNueva">Área</label>
+                <select class="form-select" id="areaNueva" name="area">
+                    <option value="ALMACEN">Almacén</option>
+                    <option value="FABRICA">Fábrica</option>
+                </select>
+            </div>
+            <div class="col-12">
+                <button type="submit" class="btn btn-primary px-4">Anotar deuda</button>
+            </div>
+        </form>
+    </section>
+
+    <div class="chips">
+        <div class="chip"><span>Total pendiente</span><strong><span th:replace="~{contabilidad/fragmentos :: plata(${totalPendiente})}"></span></strong></div>
+        <div class="chip"><span>Deudas pendientes</span><strong th:text="${#lists.size(pendientes)}">0</strong></div>
+    </div>
+
+    <div class="caja vacio" th:if="${#lists.isEmpty(pendientes)}">No hay deudas pendientes.</div>
+
+    <div class="tabla-wrap mb-3" th:unless="${#lists.isEmpty(pendientes)}">
+        <table class="table align-middle">
+            <thead>
+                <tr>
+                    <th>A quién</th>
+                    <th>Área</th>
+                    <th>Se paga el</th>
+                    <th class="num">Valor</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:each="d : ${pendientes}">
+                    <td class="detalle-mov">
+                        <span th:text="${d.acreedor}">Fábrica</span>
+                        <small th:text="${d.concepto}">Pedido de octubre</small>
+                    </td>
+                    <td th:text="${d.areaEtiqueta}">Almacén</td>
+                    <td class="text-nowrap" th:classappend="${d.vencida} ? 'atrasado'"
+                        th:text="${d.fechaVencimiento != null} ? ${d.fechaVencimientoFormateada} + (${d.vencida} ? ' (vencida)' : '') : '—'">30/10/2026</td>
+                    <td class="num fw-bold"><span th:replace="~{contabilidad/fragmentos :: plata(${d.valor})}"></span></td>
+                    <td style="min-width:220px">
+                        <details class="pagar">
+                            <summary class="btn btn-sm btn-outline-success">Registrar pago</summary>
+                            <form class="mt-2 d-grid gap-2" method="post" th:action="@{/contabilidad/por-pagar/{id}/pagar(id=${d.id})}">
+                                <select class="form-select form-select-sm" name="cuentaId" required aria-label="De qué cuenta salió">
+                                    <option value="">¿De qué cuenta salió?</option>
+                                    <option th:each="c : ${todasLasCuentas}" th:if="${c.activa}" th:value="${c.id}" th:text="${c.nombre}">BANCOLOMBIA</option>
+                                </select>
+                                <select class="form-select form-select-sm" name="subcategoriaId" required aria-label="Categoría del gasto">
+                                    <option value="">¿Qué categoría?</option>
+                                    <optgroup th:each="cat : ${categorias}" th:if="${!cat.deIngreso and cat.activa}" th:label="${cat.nombre}">
+                                        <option th:each="s : ${cat.subcategorias}" th:if="${s.activa}" th:value="${s.id}" th:text="${s.nombre}">COMPRA DE MERCANCÍA</option>
+                                    </optgroup>
+                                </select>
+                                <input type="date" class="form-control form-control-sm" name="fecha" th:value="${hoy}" required aria-label="Fecha del pago">
+                                <button type="submit" class="btn btn-sm btn-primary">Guardar pago</button>
+                            </form>
+                        </details>
+                        <form class="d-inline" method="post" th:action="@{/contabilidad/por-pagar/{id}/eliminar(id=${d.id})}"
+                              onsubmit="return confirm('¿Eliminar esta deuda? Úsalo solo si se anotó por error.');">
+                            <button type="submit" class="btn btn-sm btn-outline-danger mt-1" title="Eliminar">🗑️</button>
+                        </form>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <section class="caja" th:unless="${#lists.isEmpty(pagadas)}">
+        <h2>Pagadas recientemente</h2>
+        <table class="table align-middle mb-0">
+            <tbody>
+                <tr th:each="d : ${pagadas}">
+                    <td class="detalle-mov"><span th:text="${d.acreedor}">Fábrica</span><small th:text="${d.concepto}"></small></td>
+                    <td class="text-nowrap ayuda" th:text="'Pagada el ' + ${d.fechaPagoFormateada}">Pagada el 05/10/2026</td>
+                    <td class="num"><span th:replace="~{contabilidad/fragmentos :: plata(${d.valor})}"></span></td>
+                </tr>
+            </tbody>
+        </table>
+        <p class="nota">Para deshacer un pago, elimina su egreso en Movimientos: la deuda vuelve a quedar pendiente.</p>
+    </section>
+</main>
+
+<script src="/js/token-nav.js"></script>
+</body>
+</html>

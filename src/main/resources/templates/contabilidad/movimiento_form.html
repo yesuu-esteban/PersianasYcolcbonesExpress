@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:replace="~{contabilidad/fragmentos :: estilos}"></th:block>
+    <title>Contabilidad - Movimiento</title>
+</head>
+<body>
+<header th:replace="~{contabilidad/fragmentos :: encabezado('movimientos')}"></header>
+
+<main>
+    <h1 th:text="${mov.id == 0} ? 'Registrar movimiento' : 'Editar movimiento'">Registrar movimiento</h1>
+    <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
+    <div class="alert alert-info form-mov" th:if="${mov.pedidoTiendaId != null}">
+        Este ingreso se anotó solo desde un abono del pedido de Almacén #<span th:text="${mov.pedidoTiendaId}">0</span>.
+        Si lo cambias aquí, el pedido no cambia.
+    </div>
+
+    <form class="caja form-mov" method="post" action="/contabilidad/movimiento/guardar" id="formMovimiento">
+        <input type="hidden" name="id" th:value="${mov.id == 0} ? '' : ${mov.id}">
+
+        <!-- Tipo -->
+        <div class="selector-tipo" role="radiogroup" aria-label="Tipo de movimiento">
+            <input type="radio" name="tipo" id="tipoIngreso" value="INGRESO" th:checked="${mov.tipo == 'INGRESO'}">
+            <label for="tipoIngreso">+ Ingreso</label>
+            <input type="radio" name="tipo" id="tipoEgreso" value="EGRESO" th:checked="${mov.tipo == 'EGRESO'}">
+            <label for="tipoEgreso">− Egreso</label>
+            <input type="radio" name="tipo" id="tipoTraslado" value="TRASLADO" th:checked="${mov.tipo == 'TRASLADO'}">
+            <label for="tipoTraslado">⇄ Traslado</label>
+        </div>
+
+        <div class="row g-3">
+            <div class="col-sm-6">
+                <label class="form-label" for="valor">Valor (pesos)</label>
+                <input type="text" class="form-control campo-valor" id="valor" name="valor" inputmode="numeric"
+                       autocomplete="off" required placeholder="0" th:value="${valorEscrito}">
+            </div>
+            <div class="col-sm-3 col-6">
+                <label class="form-label" for="fecha">Fecha</label>
+                <input type="date" class="form-control" id="fecha" name="fecha" required th:value="${mov.fecha}">
+            </div>
+            <div class="col-sm-3 col-6">
+                <label class="form-label" for="area">Área</label>
+                <select class="form-select" id="area" name="area">
+                    <option value="ALMACEN" th:selected="${mov.area == 'ALMACEN'}">Almacén</option>
+                    <option value="FABRICA" th:selected="${mov.area == 'FABRICA'}">Fábrica</option>
+                </select>
+            </div>
+
+            <!-- Categoría (ingresos y egresos) -->
+            <div class="col-12" id="bloqueCategoria">
+                <label class="form-label" for="subcategoriaId">Categoría</label>
+                <select class="form-select" id="subcategoriaId" name="subcategoriaId">
+                    <option value="">Elige…</option>
+                    <optgroup th:each="cat : ${categorias}" th:label="${cat.nombre}"
+                              th:attr="data-ingreso=${cat.deIngreso}">
+                        <option th:each="s : ${cat.subcategorias}"
+                                th:if="${(s.activa and cat.activa) or (mov.subcategoria != null and mov.subcategoria.id == s.id)}"
+                                th:value="${s.id}" th:text="${s.nombre}"
+                                th:selected="${mov.subcategoria != null and mov.subcategoria.id == s.id}">ARRIENDO</option>
+                    </optgroup>
+                </select>
+            </div>
+
+            <!-- Cuenta -->
+            <div class="col-sm-6">
+                <label class="form-label" for="cuentaId" id="etiquetaCuenta">Cuenta</label>
+                <select class="form-select" id="cuentaId" name="cuentaId" required>
+                    <option value="">Elige…</option>
+                    <option th:each="c : ${todasLasCuentas}"
+                            th:if="${c.activa or (mov.cuenta != null and mov.cuenta.id == c.id)}"
+                            th:value="${c.id}" th:text="${c.nombre}"
+                            th:selected="${mov.cuenta != null and mov.cuenta.id == c.id}">NEQUI</option>
+                </select>
+            </div>
+            <!-- Cuenta destino (solo traslados) -->
+            <div class="col-sm-6" id="bloqueDestino">
+                <label class="form-label" for="cuentaDestinoId">Entra a</label>
+                <select class="form-select" id="cuentaDestinoId" name="cuentaDestinoId">
+                    <option value="">Elige…</option>
+                    <option th:each="c : ${todasLasCuentas}"
+                            th:if="${c.activa or (mov.cuentaDestino != null and mov.cuentaDestino.id == c.id)}"
+                            th:value="${c.id}" th:text="${c.nombre}"
+                            th:selected="${mov.cuentaDestino != null and mov.cuentaDestino.id == c.id}">CAJA</option>
+                </select>
+            </div>
+
+            <div class="col-sm-6">
+                <label class="form-label" for="tercero" id="etiquetaTercero">A quién / de quién</label>
+                <input type="text" class="form-control" id="tercero" name="tercero" maxlength="150" th:value="${mov.tercero}">
+            </div>
+            <div class="col-12">
+                <label class="form-label" for="descripcion">Descripción <span class="ayuda">(opcional)</span></label>
+                <textarea class="form-control" id="descripcion" name="descripcion" rows="2" maxlength="500"
+                          th:text="${mov.descripcion}"></textarea>
+            </div>
+        </div>
+
+        <div class="d-flex flex-wrap gap-2 mt-4">
+            <button type="submit" class="btn btn-primary px-4">Guardar</button>
+            <a class="btn btn-outline-secondary" href="/contabilidad/movimientos">Cancelar</a>
+        </div>
+    </form>
+
+    <form class="form-mov" method="post" th:if="${mov.id != 0}"
+          th:action="@{/contabilidad/movimiento/{id}/eliminar(id=${mov.id})}"
+          onsubmit="return confirm('¿Eliminar este movimiento? Esto no se puede deshacer.');">
+        <button type="submit" class="btn btn-sm btn-outline-danger">Eliminar este movimiento</button>
+    </form>
+</main>
+
+<script src="/js/contabilidad/movimiento_form.js"></script>
+<script src="/js/token-nav.js"></script>
+</body>
+</html>

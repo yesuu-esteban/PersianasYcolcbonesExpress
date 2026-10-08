@@ -1,0 +1,164 @@
+/* Pantallas: templates/contabilidad/*.html */
+
+:root {
+    --bg-card: #2a1b42; --bg-input: #1e1330; --accent: #ec1561; --accent-light: #ff4d94; --gold: #ffc107;
+    --texto: #f4f0fb; --texto-suave: #cbb8e0; --linea: rgba(255,255,255,0.09);
+    --verde: #51cf66; --rojo: #ff8a80; --azul: #74c0fc;
+}
+* { font-family: 'Poppins', sans-serif; }
+body { background: linear-gradient(160deg, #1a0f2e 0%, #241536 100%); color: #fff; padding: 24px; min-height: 100vh; }
+[hidden] { display: none !important; }
+main { max-width: 1280px; margin: 0 auto; }
+
+/* ── Encabezado ── */
+.marca-header {
+    display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;
+    background: var(--bg-card); border: 1px solid rgba(236,21,97,0.35); border-radius: 14px;
+    padding: 14px 22px; margin: 0 auto 20px; max-width: 1280px;
+}
+.marca-header .logo { display: flex; align-items: center; gap: 12px; }
+.marca-header .icono {
+    width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    font-size: 1.3rem; background: linear-gradient(135deg, var(--accent), #a5107f); flex-shrink: 0;
+}
+.marca-header .titulo { font-weight: 800; font-size: 1.05rem; line-height: 1.1; }
+.marca-header .titulo small { display: block; font-weight: 600; font-size: .62rem; color: var(--gold); letter-spacing: 1.2px; margin-top: 2px; }
+.menu-conta { display: flex; flex-wrap: wrap; gap: 6px; }
+.menu-conta .btn { font-size: .84rem; }
+.menu-conta .btn.activo { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+h1 { font-weight: 700; font-size: 1.35rem; margin: 0 0 14px; }
+h2 { font-weight: 700; font-size: 1.05rem; margin: 0 0 12px; }
+.caja { background: var(--bg-card); border: 1px solid var(--linea); border-radius: 14px; padding: 20px; box-shadow: 0 4px 22px rgba(0,0,0,0.3); margin-bottom: 18px; }
+.ayuda, .nota { font-size: .78rem; color: var(--texto-suave); }
+.nota { margin: 10px 0 0; }
+
+/* ── Botones y formularios (mismo estilo del resto del panel) ── */
+.btn-primary { background: linear-gradient(135deg, var(--accent), #b81050) !important; border: none !important; font-weight: 600; }
+.btn-outline-secondary { color: var(--texto); border-color: rgba(255,255,255,0.25); }
+.btn-outline-secondary:hover { background: rgba(255,255,255,0.1); color: #fff; }
+.btn-outline-danger { color: var(--rojo); border-color: rgba(255,138,128,0.5); }
+.btn-outline-danger:hover { background: #e74c3c; color: #fff; }
+.btn-outline-success { color: var(--verde); border-color: rgba(81,207,102,0.5); }
+.btn-outline-success:hover { background: #2f9e44; color: #fff; }
+.btn-outline-info { color: var(--azul); border-color: rgba(116,192,252,0.5); }
+.btn-outline-info:hover { background: #1971c2; color: #fff; }
+.alert-success { background: rgba(46,204,113,0.15); border: 1px solid #2ecc71; color: #7ff0a8; }
+.alert-danger  { background: rgba(231,76,60,0.15); border: 1px solid #e74c3c; color: #ff9a90; }
+.alert-info { background: rgba(13,202,240,0.10); border: 1px solid rgba(13,202,240,0.5); color: #9eeaf9; }
+.form-label { color: var(--texto); font-size: .84rem; font-weight: 600; margin-bottom: 4px; }
+.form-control, .form-select { background: var(--bg-input); border: 1px solid rgba(255,255,255,0.15); color: #fff; }
+.form-control:focus, .form-select:focus { background: var(--bg-input); color: #fff; border-color: var(--accent); box-shadow: 0 0 0 .2rem rgba(236,21,97,0.25); }
+.form-control::placeholder { color: #8f84a8; }
+.form-select option, .form-select optgroup { background: var(--bg-input); color: #fff; }
+input[type="month"], input[type="date"] { color-scheme: dark; }
+
+/* ── Valores en pesos ── */
+.plata { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.plata.neg { color: var(--rojo); }
+.txt-ingreso, table.table td.txt-ingreso { color: var(--verde); }
+.txt-egreso, table.table td.txt-egreso { color: var(--rojo); }
+.txt-traslado, table.table td.txt-traslado { color: var(--azul); }
+
+/* ── Selector de mes y área ── */
+.periodo { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px; margin-bottom: 18px; }
+.periodo .campo { display: flex; flex-direction: column; }
+.periodo .flecha { font-size: 1.1rem; line-height: 1; padding: 8px 12px; }
+.periodo .mes-texto { font-weight: 700; font-size: 1.05rem; align-self: center; margin: 0 4px; }
+
+/* ── Resumen ── */
+.resumen-grid { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 18px; align-items: start; }
+.acciones-rapidas { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
+.estado-resultado .fila {
+    display: flex; justify-content: space-between; gap: 12px; padding: 9px 0; border-top: 1px solid var(--linea);
+    font-weight: 600;
+}
+.estado-resultado .fila:first-of-type { border-top: 0; }
+.estado-resultado .fila.subtotal { font-weight: 800; border-top: 2px solid rgba(255,255,255,0.25); }
+.estado-resultado .fila.final { font-size: 1.12rem; color: var(--gold); }
+.estado-resultado details { padding-left: 14px; font-size: .88rem; }
+.estado-resultado summary {
+    display: flex; justify-content: space-between; gap: 12px; padding: 5px 0; cursor: pointer; color: var(--texto-suave);
+    list-style: none;
+}
+.estado-resultado summary::-webkit-details-marker { display: none; }
+.estado-resultado summary::before { content: '▸'; margin-right: 6px; transition: transform .15s; display: inline-block; }
+.estado-resultado details[open] summary::before { transform: rotate(90deg); }
+.estado-resultado summary > span:first-child { flex: 1; }
+.estado-resultado .linea { display: flex; justify-content: space-between; gap: 12px; padding: 3px 0 3px 22px; color: #a99bc4; font-size: .82rem; }
+.vacio { text-align: center; color: var(--texto-suave); padding: 22px 10px; }
+
+.consolidado td, .consolidado th { padding: 7px 4px; border-color: var(--linea); }
+.consolidado .total td { font-weight: 800; border-top: 2px solid rgba(255,255,255,0.25); }
+.consolidado .neta td { font-weight: 800; color: var(--gold); }
+
+/* ── Tablas ── */
+.tabla-wrap { background: var(--bg-card); border-radius: 14px; padding: 6px; box-shadow: 0 4px 22px rgba(0,0,0,0.3); overflow-x: auto; }
+table.table {
+    color: var(--texto); margin-bottom: 0; --bs-table-bg: transparent; --bs-table-color: var(--texto);
+    --bs-table-hover-bg: rgba(236,21,97,0.08); --bs-table-hover-color: #fff; --bs-table-border-color: var(--linea);
+}
+table.table thead th {
+    font-size: .72rem; text-transform: uppercase; letter-spacing: .4px; color: var(--texto-suave); font-weight: 700;
+    white-space: nowrap; border-bottom: 1px solid rgba(255,255,255,0.2);
+}
+table.table td { vertical-align: middle; font-size: .86rem; }
+.num { text-align: right; }
+.detalle-mov small { display: block; color: var(--texto-suave); font-size: .76rem; }
+.tipo { font-size: .72rem; font-weight: 700; padding: 3px 8px; border-radius: 999px; white-space: nowrap; }
+.tipo-INGRESO { background: rgba(81,207,102,0.16); color: var(--verde); }
+.tipo-EGRESO { background: rgba(255,138,128,0.16); color: var(--rojo); }
+.tipo-TRASLADO { background: rgba(116,192,252,0.16); color: var(--azul); }
+.inactiva { opacity: .55; }
+.badge-clase { font-size: .7rem; font-weight: 700; padding: 3px 8px; border-radius: 999px; background: rgba(255,255,255,0.12); }
+.atrasado, table.table td.atrasado { color: var(--gold); font-weight: 700; }
+
+/* ── Filtros y totales de movimientos ── */
+.filtros { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; align-items: end; }
+.chips { display: flex; flex-wrap: wrap; gap: 10px; margin: 14px 0; }
+.chip { background: var(--bg-card); border: 1px solid var(--linea); border-radius: 12px; padding: 10px 14px; min-width: 150px; }
+.chip > span { display: block; font-size: .72rem; color: var(--texto-suave); text-transform: uppercase; letter-spacing: .4px; }
+.chip strong { font-size: 1.08rem; }
+.paginacion { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin: 16px 0 6px; }
+.contador { text-align: center; color: var(--texto-suave); font-size: .8rem; }
+
+/* ── Formulario de movimiento ── */
+.form-mov { max-width: 760px; }
+.selector-tipo { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 18px; }
+.selector-tipo input { position: absolute; opacity: 0; pointer-events: none; }
+.selector-tipo label {
+    display: block; text-align: center; padding: 11px 8px; border-radius: 10px; cursor: pointer; font-weight: 700;
+    border: 1.5px solid rgba(255,255,255,0.18); color: var(--texto-suave);
+}
+.selector-tipo input:focus-visible + label { outline: 2px solid var(--accent); outline-offset: 2px; }
+.selector-tipo input[value="INGRESO"]:checked + label { border-color: var(--verde); color: var(--verde); background: rgba(81,207,102,0.1); }
+.selector-tipo input[value="EGRESO"]:checked + label { border-color: var(--rojo); color: var(--rojo); background: rgba(255,138,128,0.1); }
+.selector-tipo input[value="TRASLADO"]:checked + label { border-color: var(--azul); color: var(--azul); background: rgba(116,192,252,0.1); }
+.campo-valor { font-size: 1.25rem; font-weight: 700; }
+
+/* ── Cuentas, categorías y deudas ── */
+.form-linea { display: flex; flex-wrap: wrap; gap: 8px; align-items: end; }
+.form-linea .form-control, .form-linea .form-select { width: auto; flex: 1 1 160px; }
+.form-linea .btn { flex: 0 0 auto; }
+.categoria { margin-bottom: 14px; }
+.categoria-cabeza { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.sub-lista { list-style: none; margin: 0 0 10px; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 6px 14px; }
+.sub-lista li { display: flex; gap: 6px; align-items: center; }
+.sub-lista .form-control { padding: 4px 8px; font-size: .84rem; }
+.sub-lista .btn { padding: 3px 8px; font-size: .78rem; }
+details.pagar summary { cursor: pointer; display: inline-block; }
+details.pagar[open] { background: rgba(0,0,0,0.18); border-radius: 10px; padding: 10px; margin-top: 6px; }
+
+@media (max-width: 991.98px) {
+    .resumen-grid { grid-template-columns: minmax(0, 1fr); }
+    .filtros { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 575.98px) {
+    body { padding: 10px; }
+    .marca-header { padding: 12px 14px; }
+    .menu-conta { display: grid; grid-template-columns: 1fr 1fr; width: 100%; }
+    .caja { padding: 14px; }
+    .form-control, .form-select { font-size: 16px; }
+    .chip { flex: 1 1 calc(50% - 10px); min-width: 0; }
+    .periodo .campo { flex: 1 1 100%; }
+}

@@ -24,7 +24,9 @@ import java.util.stream.Collectors;
 import Colcones_Persinas.proyecto_express.modelo.almacen.DetallePedidoTienda;
 import Colcones_Persinas.proyecto_express.modelo.almacen.PedidoTienda;
 import Colcones_Persinas.proyecto_express.repository.almacen.PedidoTiendaRepository;
+import Colcones_Persinas.proyecto_express.repository.contabilidad.CuentaContableRepository;
 import Colcones_Persinas.proyecto_express.repository.instalaciones.TareaCalendarioRepository;
+import Colcones_Persinas.proyecto_express.servicio.contabilidad.ContabilidadServicio;
 import Colcones_Persinas.proyecto_express.servicio.instalaciones.CalendarioServicio;
 
 /**
@@ -39,6 +41,12 @@ import Colcones_Persinas.proyecto_express.servicio.instalaciones.CalendarioServi
  *  - Cuando un pedido pasa a "En Bodega", aparece solo en "Instalaciones pendientes".
  *  - Cuando pasa a "Instalado" o "Terminado", su instalación queda terminada (verde en el
  *    calendario). Si vuelve a un estado anterior, la instalación vuelve a quedar pendiente.
+ *
+ * Relación con /contabilidad:
+ *  - Cada abono (el inicial de un pedido nuevo y los que se agregan con "+") pide a qué
+ *    cuenta entró la plata, y queda anotado solo como ingreso en Contabilidad.
+ *  - Corregir el abono editando el pedido NO cambia la contabilidad: ese ajuste se hace
+ *    en Contabilidad → Movimientos.
  */
 @Controller
 @RequestMapping("/almacen")
@@ -58,20 +66,35 @@ public class PedidoTiendaControlador {
     @Autowired
     private CalendarioServicio calendarioServicio;
 
+    // ── NUEVO: los abonos quedan anotados como ingresos en Contabilidad ──
+    @Autowired
+    private ContabilidadServicio contabilidadServicio;
+
+    @Autowired
+    private CuentaContableRepository cuentaContableRepository;
+
     @PreAuthorize("hasAnyRole('TIENDA','ADMIN')")
     @GetMapping("/nuevo")
     public String mostrarFormulario(Model model) {
         PedidoTienda pedido = new PedidoTienda();
         pedido.agregarDetalle(new DetallePedidoTienda());
         model.addAttribute("pedidoTienda", pedido);
+        model.addAttribute("cuentasContables", cuentaContableRepository.findByActivaTrueOrderByOrdenAscNombreAsc());
         return "almacen/formulario";
     }
 
     @PreAuthorize("hasAnyRole('TIENDA','ADMIN')")
     @PostMapping("/guardar")
-    public String guardarPedido(@ModelAttribute PedidoTienda pedidoTienda, RedirectAttributes redirectAttributes) {
+    public String guardarPedido(@ModelAttribute PedidoTienda pedidoTienda,
+                                @RequestParam(name = "cuentaAbonoId", required = false) Integer cuentaAbonoId,
+                                RedirectAttributes redirectAttributes) {
         List<String> errores = validarProductos(pedidoTienda.getDetalles());
         errores.addAll(validarPrecios(pedidoTienda));
+        // ── NUEVO: si el cliente dejó abono, hay que decir a qué cuenta entró ──
+        boolean hayAbono = pedidoTienda.getAbono() != null && pedidoTienda.getAbono().compareTo(BigDecimal.ZERO) > 0;
+        if (hayAbono && !contabilidadServicio.existeCuenta(cuentaAbonoId)) {
+            errores.add("Elige a qué cuenta entró el abono.");
+        }
         if (!errores.isEmpty()) {
             redirectAttributes.addFlashAttribute("error", String.join(" ", errores));
             return "redirect:/almacen/nuevo";
@@ -87,6 +110,12 @@ public class PedidoTiendaControlador {
 
         recalcularTotales(pedidoTienda);
         pedidoTiendaRepository.save(pedidoTienda);
+
+        // ── NUEVO: el abono inicial queda como ingreso en Contabilidad ──
+        if (hayAbono) {
+            contabilidadServicio.registrarAbonoAlmacen(pedidoTienda, pedidoTienda.getAbono(), cuentaAbonoId, usuarioActual());
+        }
+
         redirectAttributes.addFlashAttribute("mensaje", "Pedido registrado correctamente.");
         return "redirect:/almacen/listado";
     }
@@ -196,6 +225,8 @@ public class PedidoTiendaControlador {
         model.addAttribute("totalPaginas", totalPaginas);
         model.addAttribute("totalPedidosFiltrados", totalPedidosFiltrados);
         model.addAttribute("puedeCrearPedidos", puedeGestionarPedidos());
+        // ── NUEVO: cuentas para elegir a dónde entró cada abono ──
+        model.addAttribute("cuentasContables", cuentaContableRepository.findByActivaTrueOrderByOrdenAscNombreAsc());
         return "almacen/listado";
     }
 
@@ -309,6 +340,7 @@ public class PedidoTiendaControlador {
     public String agregarAbono(
             @PathVariable("id") int id,
             @RequestParam BigDecimal monto,
+            @RequestParam(name = "cuentaId", required = false) Integer cuentaId,
             RedirectAttributes redirectAttributes) {
 
         PedidoTienda pedido = pedidoTiendaRepository.findById(id).orElseThrow();
@@ -322,10 +354,18 @@ public class PedidoTiendaControlador {
                 "El abono (" + monto + ") no puede ser mayor al saldo pendiente (" + pedido.getSaldo() + ").");
             return "redirect:/almacen/listado";
         }
+        // ── NUEVO: hay que decir a qué cuenta entró la plata ──
+        if (!contabilidadServicio.existeCuenta(cuentaId)) {
+            redirectAttributes.addFlashAttribute("error", "Elige a qué cuenta entró el abono.");
+            return "redirect:/almacen/listado";
+        }
 
         pedido.setAbono(pedido.getAbono().add(monto));
         pedido.setSaldo(pedido.getPrecioCliente().subtract(pedido.getAbono()));
         pedidoTiendaRepository.save(pedido);
+
+        // ── NUEVO: el abono queda como ingreso en Contabilidad ──
+        contabilidadServicio.registrarAbonoAlmacen(pedido, monto, cuentaId, usuarioActual());
 
         redirectAttributes.addFlashAttribute("mensaje",
             "Abono de " + monto + " registrado. Saldo restante: " + pedido.getSaldo());

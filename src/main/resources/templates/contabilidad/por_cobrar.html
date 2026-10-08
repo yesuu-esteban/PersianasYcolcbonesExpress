@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:replace="~{contabilidad/fragmentos :: estilos}"></th:block>
+    <title>Contabilidad - Por cobrar</title>
+</head>
+<body>
+<header th:replace="~{contabilidad/fragmentos :: encabezado('cobrar')}"></header>
+
+<main>
+    <h1>Cuentas por cobrar</h1>
+    <p class="ayuda">Pedidos de Almacén que todavía tienen saldo pendiente, del más antiguo al más nuevo. Para registrar un abono, entra al pedido en Almacén.</p>
+
+    <div class="chips">
+        <div class="chip"><span>Total por cobrar</span><strong><span th:replace="~{contabilidad/fragmentos :: plata(${total})}"></span></strong></div>
+        <div class="chip"><span>Pedidos</span><strong th:text="${#lists.size(filas)}">0</strong></div>
+    </div>
+
+    <div class="caja vacio" th:if="${#lists.isEmpty(filas)}">No hay pedidos con saldo pendiente.</div>
+
+    <div class="tabla-wrap" th:unless="${#lists.isEmpty(filas)}">
+        <table class="table table-hover align-middle">
+            <thead>
+                <tr>
+                    <th>Pedido</th>
+                    <th>Cliente</th>
+                    <th>Teléfono</th>
+                    <th>Fecha</th>
+                    <th class="num">Precio</th>
+                    <th class="num">Abonado</th>
+                    <th class="num">Saldo</th>
+                    <th class="num">Días</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:each="f : ${filas}">
+                    <td th:text="'#' + ${f.pedido.id}">#1287</td>
+                    <td class="detalle-mov">
+                        <span th:text="${f.pedido.nombreCliente}">Cliente</span>
+                        <small th:if="${f.pedido.cedula != null and f.pedido.cedula != ''}" th:text="'C.C. ' + ${f.pedido.cedula}">C.C. 000</small>
+                    </td>
+                    <td th:text="${f.pedido.telefono}">3000000000</td>
+                    <td class="text-nowrap" th:text="${f.pedido.fechaPedido != null} ? ${#temporals.format(f.pedido.fechaPedido, 'dd/MM/yyyy')} : ''">01/10/2026</td>
+                    <td class="num"><span th:replace="~{contabilidad/fragmentos :: plata(${f.pedido.precioCliente})}"></span></td>
+                    <td class="num"><span th:replace="~{contabilidad/fragmentos :: plata(${f.pedido.abono})}"></span></td>
+                    <td class="num fw-bold"><span th:replace="~{contabilidad/fragmentos :: plata(${f.pedido.saldo})}"></span></td>
+                    <td class="num" th:classappend="${f.dias >= 30} ? 'atrasado'" th:text="${f.dias}">0</td>
+                    <td><a class="btn btn-sm btn-outline-secondary text-nowrap"
+                           th:href="@{/almacen/listado(nombre=${f.pedido.nombreCliente})}">Ver en Almacén</a></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    <p class="nota">En dorado, los que llevan 30 días o más.</p>
+</main>
+
+<script src="/js/token-nav.js"></script>
+</body>
+</html>

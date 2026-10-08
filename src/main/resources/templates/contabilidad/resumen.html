@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:replace="~{contabilidad/fragmentos :: estilos}"></th:block>
+    <title>Contabilidad - Resumen</title>
+</head>
+<body>
+<header th:replace="~{contabilidad/fragmentos :: encabezado('resumen')}"></header>
+
+<main>
+    <h1>Resumen</h1>
+    <div th:if="${mensaje}" class="alert alert-success" th:text="${mensaje}"></div>
+    <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
+
+    <!-- ═══ Mes y área ═══ -->
+    <form class="periodo" method="get" action="/contabilidad">
+        <a class="btn btn-outline-secondary flecha" th:href="@{/contabilidad(mes=${mesAnterior}, area=${area})}" title="Mes anterior">‹</a>
+        <span class="mes-texto" th:text="${mesTexto}">Octubre 2026</span>
+        <a class="btn btn-outline-secondary flecha" th:href="@{/contabilidad(mes=${mesSiguiente}, area=${area})}" th:unless="${esMesActual}" title="Mes siguiente">›</a>
+        <div class="campo">
+            <label class="form-label" for="mes">Mes</label>
+            <input type="month" class="form-control" id="mes" name="mes" th:value="${mes}">
+        </div>
+        <div class="campo">
+            <label class="form-label" for="area">Área</label>
+            <select class="form-select" id="area" name="area">
+                <option value="ALMACEN" th:selected="${area == 'ALMACEN'}">Almacén</option>
+                <option value="FABRICA" th:selected="${area == 'FABRICA'}">Fábrica</option>
+                <option value="TODAS" th:selected="${area == 'TODAS'}">Almacén y Fábrica</option>
+            </select>
+        </div>
+        <button type="submit" class="btn btn-outline-secondary">Ver</button>
+    </form>
+
+    <div class="acciones-rapidas">
+        <a class="btn btn-outline-success" href="/contabilidad/movimiento/nuevo?tipo=INGRESO">+ Registrar ingreso</a>
+        <a class="btn btn-outline-danger" href="/contabilidad/movimiento/nuevo?tipo=EGRESO">− Registrar egreso</a>
+        <a class="btn btn-outline-info" href="/contabilidad/movimiento/nuevo?tipo=TRASLADO">⇄ Traslado entre cuentas</a>
+    </div>
+
+    <div class="resumen-grid">
+
+        <!-- ═══ Resultado del mes ═══ -->
+        <section class="caja estado-resultado">
+            <h2>Resultado de <span th:text="${mesTexto}">Octubre 2026</span> · <span th:text="${areaTexto}">Almacén</span></h2>
+
+            <p class="vacio" th:if="${resultado.cantidadMovimientos == 0}">
+                No hay ingresos ni egresos en este mes.
+                <a href="/contabilidad/movimiento/nuevo">Registra el primero.</a>
+            </p>
+
+            <th:block th:unless="${resultado.cantidadMovimientos == 0}">
+                <div class="fila"><span>Ingresos</span><span th:replace="~{contabilidad/fragmentos :: plata(${resultado.totalIngresos})}"></span></div>
+                <details th:each="g : ${resultado.ingresos}">
+                    <summary><span th:text="${g.nombre}"></span><span th:replace="~{contabilidad/fragmentos :: plata(${g.total})}"></span></summary>
+                    <div class="linea" th:each="l : ${g.lineas}"><span th:text="${l.nombre}"></span><span th:replace="~{contabilidad/fragmentos :: plata(${l.valor})}"></span></div>
+                </details>
+
+                <div class="fila"><span>− Costos de venta</span><span th:replace="~{contabilidad/fragmentos :: plata(${resultado.totalCostos})}"></span></div>
+                <details th:each="g : ${resultado.costos}">
+                    <summary><span th:text="${g.nombre}"></span><span th:replace="~{contabilidad/fragmentos :: plata(${g.total})}"></span></summary>
+                    <div class="linea" th:each="l : ${g.lineas}"><span th:text="${l.nombre}"></span><span th:replace="~{contabilidad/fragmentos :: plata(${l.valor})}"></span></div>
+                </details>
+
+                <div class="fila subtotal"><span>= Utilidad bruta</span><span th:replace="~{contabilidad/fragmentos :: plata(${resultado.utilidadBruta})}"></span></div>
+
+                <div class="fila"><span>− Gastos</span><span th:replace="~{contabilidad/fragmentos :: plata(${resultado.totalGastos})}"></span></div>
+                <details th:each="g : ${resultado.gastos}">
+                    <summary><span th:text="${g.nombre}"></span><span th:replace="~{contabilidad/fragmentos :: plata(${g.total})}"></span></summary>
+                    <div class="linea" th:each="l : ${g.lineas}"><span th:text="${l.nombre}"></span><span th:replace="~{contabilidad/fragmentos :: plata(${l.valor})}"></span></div>
+                </details>
+
+                <div class="fila subtotal final"><span>= Utilidad neta</span><span th:replace="~{contabilidad/fragmentos :: plata(${resultado.utilidadNeta})}"></span></div>
+
+                <th:block th:unless="${#lists.isEmpty(resultado.otros)}">
+                    <div class="fila"><span>− No son gasto (activos, préstamos, retiros)</span><span th:replace="~{contabilidad/fragmentos :: plata(${resultado.totalOtros})}"></span></div>
+                    <details th:each="g : ${resultado.otros}">
+                        <summary><span th:text="${g.nombre}"></span><span th:replace="~{contabilidad/fragmentos :: plata(${g.total})}"></span></summary>
+                        <div class="linea" th:each="l : ${g.lineas}"><span th:text="${l.nombre}"></span><span th:replace="~{contabilidad/fragmentos :: plata(${l.valor})}"></span></div>
+                    </details>
+                    <div class="fila subtotal"><span>= Plata que quedó en el mes</span><span th:replace="~{contabilidad/fragmentos :: plata(${resultado.resultadoEnCaja})}"></span></div>
+                </th:block>
+
+                <p class="nota">Toca una categoría para ver el detalle. Los traslados entre cuentas no cuentan aquí: solo cambian dónde está la plata.</p>
+            </th:block>
+        </section>
+
+        <!-- ═══ Consolidado ═══ -->
+        <section class="caja">
+            <h2>Consolidado de hoy</h2>
+            <table class="table consolidado">
+                <tbody>
+                    <tr th:each="f : ${cuentas}" th:classappend="${!f.cuenta.activa} ? 'inactiva'">
+                        <td th:text="${f.cuenta.nombre}">BANCOLOMBIA</td>
+                        <td class="num"><span th:replace="~{contabilidad/fragmentos :: plata(${f.saldo})}"></span></td>
+                    </tr>
+                    <tr class="total">
+                        <td>TOTAL</td>
+                        <td class="num"><span th:replace="~{contabilidad/fragmentos :: plata(${totalCuentas})}"></span></td>
+                    </tr>
+                    <tr>
+                        <td><a href="/contabilidad/por-cobrar" class="link-light">Cuentas por cobrar</a></td>
+                        <td class="num"><span th:replace="~{contabilidad/fragmentos :: plata(${porCobrar})}"></span></td>
+                    </tr>
+                    <tr>
+                        <td><a href="/contabilidad/por-pagar" class="link-light">Cuentas por pagar</a></td>
+                        <td class="num"><span th:replace="~{contabilidad/fragmentos :: plata(${porPagar})}"></span></td>
+                    </tr>
+                    <tr class="neta">
+                        <td>Total + por cobrar − por pagar</td>
+                        <td class="num"><span th:replace="~{contabilidad/fragmentos :: plata(${posicionNeta})}"></span></td>
+                    </tr>
+                </tbody>
+            </table>
+            <p class="nota">Saldos de hoy de toda la empresa: no cambian con el mes ni con el área. Si una cuenta no cuadra, revisa su saldo inicial en <a href="/contabilidad/cuentas" class="link-light">Cuentas</a>.</p>
+        </section>
+    </div>
+</main>
+
+<script src="/js/token-nav.js"></script>
+</body>
+</html>

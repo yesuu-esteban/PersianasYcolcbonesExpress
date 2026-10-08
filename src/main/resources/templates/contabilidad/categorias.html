@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:replace="~{contabilidad/fragmentos :: estilos}"></th:block>
+    <title>Contabilidad - Categorías</title>
+</head>
+<body>
+<header th:replace="~{contabilidad/fragmentos :: encabezado('categorias')}"></header>
+
+<main>
+    <h1>Categorías</h1>
+    <p class="ayuda">El plan de cuentas. Puedes renombrar, agregar o desactivar. Desactivar oculta la categoría al registrar, pero no borra su historial.
+        Si cambias si una categoría es ingreso, costo, gasto o "no es gasto", también cambia cómo se cuentan sus movimientos anteriores.</p>
+    <div th:if="${mensaje}" class="alert alert-success" th:text="${mensaje}"></div>
+    <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
+
+    <section class="caja">
+        <h2>Nueva categoría</h2>
+        <form class="form-linea" method="post" action="/contabilidad/categorias/guardar">
+            <input type="text" class="form-control" name="nombre" maxlength="120" required placeholder="Nombre" aria-label="Nombre">
+            <select class="form-select" name="clase" aria-label="Cómo cuenta">
+                <option th:each="cl : ${clases}" th:value="${cl.key}" th:text="${cl.value}"
+                        th:selected="${cl.key == 'GASTO'}">Gasto</option>
+            </select>
+            <button type="submit" class="btn btn-primary">Agregar</button>
+        </form>
+    </section>
+
+    <section class="caja categoria" th:each="c : ${categorias}" th:classappend="${!c.activa} ? 'inactiva'">
+        <div class="categoria-cabeza">
+            <form class="form-linea flex-grow-1" method="post" action="/contabilidad/categorias/guardar">
+                <input type="hidden" name="id" th:value="${c.id}">
+                <input type="text" class="form-control fw-bold" name="nombre" maxlength="120" required th:value="${c.nombre}" aria-label="Nombre de la categoría">
+                <select class="form-select" name="clase" style="max-width:190px" aria-label="Cómo cuenta">
+                    <option th:each="cl : ${clases}" th:value="${cl.key}" th:selected="${cl.key == c.clase}"
+                            th:text="${cl.value}">Gasto</option>
+                </select>
+                <button type="submit" class="btn btn-sm btn-outline-secondary">Guardar</button>
+            </form>
+            <form method="post" th:action="@{/contabilidad/categorias/{id}/activar(id=${c.id})}">
+                <button type="submit" class="btn btn-sm" th:classappend="${c.activa} ? 'btn-outline-danger' : 'btn-outline-success'"
+                        th:text="${c.activa} ? 'Desactivar' : 'Activar'">Desactivar</button>
+            </form>
+        </div>
+
+        <ul class="sub-lista">
+            <li th:each="s : ${c.subcategorias}" th:classappend="${!s.activa} ? 'inactiva'">
+                <form class="d-flex gap-1 flex-grow-1" method="post" action="/contabilidad/categorias/subcategoria/guardar">
+                    <input type="hidden" name="id" th:value="${s.id}">
+                    <input type="text" class="form-control" name="nombre" maxlength="120" required th:value="${s.nombre}" aria-label="Nombre de la subcategoría">
+                    <button type="submit" class="btn btn-outline-secondary" title="Guardar nombre">✓</button>
+                </form>
+                <form method="post" th:action="@{/contabilidad/categorias/subcategoria/{id}/activar(id=${s.id})}">
+                    <button type="submit" class="btn" th:classappend="${s.activa} ? 'btn-outline-danger' : 'btn-outline-success'"
+                            th:title="${s.activa} ? 'Desactivar' : 'Activar'" th:text="${s.activa} ? '✕' : '↺'">✕</button>
+                </form>
+            </li>
+        </ul>
+
+        <form class="form-linea" method="post" action="/contabilidad/categorias/subcategoria/guardar">
+            <input type="hidden" name="categoriaId" th:value="${c.id}">
+            <input type="text" class="form-control form-control-sm" name="nombre" maxlength="120" required
+                   th:placeholder="'Nueva subcategoría en ' + ${c.nombre}" aria-label="Nueva subcategoría">
+            <button type="submit" class="btn btn-sm btn-outline-secondary">+ Agregar</button>
+        </form>
+    </section>
+</main>
+
+<script src="/js/token-nav.js"></script>
+</body>
+</html>

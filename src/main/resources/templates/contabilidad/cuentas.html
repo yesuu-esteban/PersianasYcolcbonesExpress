@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:replace="~{contabilidad/fragmentos :: estilos}"></th:block>
+    <title>Contabilidad - Cuentas</title>
+</head>
+<body>
+<header th:replace="~{contabilidad/fragmentos :: encabezado('cuentas')}"></header>
+
+<main>
+    <h1>Cuentas</h1>
+    <p class="ayuda">Bancos, billeteras y cajas donde está la plata. El <strong>saldo inicial</strong> es lo que había en cada una el día que empezaron a usar la contabilidad del sistema; desde ahí se suman los ingresos y se restan los egresos.</p>
+    <div th:if="${mensaje}" class="alert alert-success" th:text="${mensaje}"></div>
+    <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
+
+    <div class="tabla-wrap mb-3">
+        <table class="table align-middle">
+            <thead>
+                <tr>
+                    <th>Cuenta</th>
+                    <th>Saldo inicial</th>
+                    <th class="num">Saldo hoy</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:each="f : ${filas}" th:classappend="${!f.cuenta.activa} ? 'inactiva'">
+                    <td>
+                        <input type="text" class="form-control form-control-sm" name="nombre" maxlength="80" required
+                               th:value="${f.cuenta.nombre}" th:attr="form='cuenta-' + ${f.cuenta.id}" aria-label="Nombre de la cuenta">
+                    </td>
+                    <td>
+                        <input type="text" class="form-control form-control-sm" name="saldoInicial" inputmode="numeric"
+                               th:value="${#numbers.formatInteger(f.cuenta.saldoInicial, 1, 'POINT')}"
+                               th:attr="form='cuenta-' + ${f.cuenta.id}" aria-label="Saldo inicial">
+                    </td>
+                    <td class="num fw-bold"><span th:replace="~{contabilidad/fragmentos :: plata(${f.saldo})}"></span></td>
+                    <td class="text-nowrap">
+                        <form th:id="'cuenta-' + ${f.cuenta.id}" class="d-inline" method="post" action="/contabilidad/cuentas/guardar">
+                            <input type="hidden" name="id" th:value="${f.cuenta.id}">
+                            <button type="submit" class="btn btn-sm btn-outline-secondary">Guardar</button>
+                        </form>
+                        <form class="d-inline" method="post" th:action="@{/contabilidad/cuentas/{id}/activar(id=${f.cuenta.id})}">
+                            <button type="submit" class="btn btn-sm"
+                                    th:classappend="${f.cuenta.activa} ? 'btn-outline-danger' : 'btn-outline-success'"
+                                    th:text="${f.cuenta.activa} ? 'Desactivar' : 'Activar'">Desactivar</button>
+                        </form>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="fw-bold" colspan="2">TOTAL</td>
+                    <td class="num fw-bold"><span th:replace="~{contabilidad/fragmentos :: plata(${total})}"></span></td>
+                    <td></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <section class="caja">
+        <h2>Agregar cuenta</h2>
+        <form class="form-linea" method="post" action="/contabilidad/cuentas/guardar">
+            <input type="text" class="form-control" name="nombre" maxlength="80" required placeholder="Nombre (ej. BANCO DE BOGOTÁ)" aria-label="Nombre">
+            <input type="text" class="form-control" name="saldoInicial" inputmode="numeric" placeholder="Saldo inicial (ej. 1.500.000)" aria-label="Saldo inicial">
+            <button type="submit" class="btn btn-primary">Agregar</button>
+        </form>
+        <p class="nota">Una cuenta desactivada ya no aparece para registrar movimientos, pero su historial se conserva. Si una cuenta está sobregirada, escribe el saldo inicial con un menos adelante (ej. -200.000).</p>
+    </section>
+</main>
+
+<script src="/js/token-nav.js"></script>
+</body>
+</html>
