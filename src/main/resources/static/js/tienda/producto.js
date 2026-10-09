@@ -128,10 +128,7 @@
         if (porMetro) {
             desglose = `${metros(medidaCm(elAncho))} × ${metros(medidaCm(elAlto))} m = ${Number(c.m2Reales).toLocaleString('es-CO')} m²`;
             if (c.m2 > c.m2Reales) desglose += `. Se cobra el mínimo de ${Number(c.m2).toLocaleString('es-CO')} m²`;
-            const rolloTexto = Number(c.rollo).toLocaleString('es-CO', { minimumFractionDigits: 2 });
-            desglose += medidaCm(elAlto) / 100 + 0.20 > Number(c.rollo) + 0.0001
-                ? `. Medida especial: se cobra con el precio del rollo de ${rolloTexto} m.`
-                : `. Se corta del rollo de ${rolloTexto} m.`;
+            desglose += '.';
             if (Number(c.precioCabezal) > 0) desglose += ` Incluye el cabezal: ${pesos(c.precioCabezal)}.`;
         }
         if (cant > 1) desglose += ` ${cant} unidades de ${pesos(c.precioUnitario)}.`;
