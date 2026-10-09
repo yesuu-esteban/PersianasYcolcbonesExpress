@@ -224,7 +224,7 @@ public class TiendaControlador {
     // API (la usa el JavaScript de las páginas)
     // ═══════════════════════════════════════════════════════════════
 
-    /** Precio de una configuración (producto + tela + medidas, y si lleva cabezal). */
+    /** Precio de una configuración (producto + tela + medidas, si lleva cabezal y, en rieles, bastón o control). */
     @GetMapping("/api/cotizar")
     @ResponseBody
     public Map<String, Object> cotizar(@RequestParam int productoId,
@@ -232,10 +232,11 @@ public class TiendaControlador {
                                        @RequestParam(required = false) Integer ancho,
                                        @RequestParam(required = false) Integer alto,
                                        @RequestParam(required = false, defaultValue = "1") Integer cantidad,
-                                       @RequestParam(required = false, defaultValue = "false") boolean cabezal) {
+                                       @RequestParam(required = false, defaultValue = "false") boolean cabezal,
+                                       @RequestParam(required = false) String sistema) {
         ProductoTienda p = productoRepository.findById(productoId).orElse(null);
         TelaTienda tela = telaId != null ? telaRepository.findById(telaId).orElse(null) : null;
-        PrecioTiendaServicio.Cotizacion c = precioServicio.cotizar(p, tela, ancho, alto, cantidad, cabezal);
+        PrecioTiendaServicio.Cotizacion c = precioServicio.cotizar(p, tela, ancho, alto, cantidad, cabezal, sistema);
 
         Map<String, Object> r = new LinkedHashMap<>();
         r.put("ok", c.ok());

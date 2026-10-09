@@ -59,9 +59,11 @@ public class TiendaServicio {
     /**
      * Lo que guarda el navegador en el carrito (sin precios: los precios los pone el servidor).
      * cabezal y contrario pueden venir vacíos (carritos guardados antes de estas opciones): cuentan como "no".
+     * sistema ("BASTON" / "CONTROL") y apertura solo vienen en los rieles de onda serena.
      */
     public record ItemCarrito(Integer productoId, Integer telaId, String color, Integer anchoCm, Integer altoCm,
-                              String lado, Integer cantidad, Boolean cabezal, Boolean contrario) {
+                              String lado, Integer cantidad, Boolean cabezal, Boolean contrario,
+                              String sistema, String apertura) {
         public boolean conCabezal() { return Boolean.TRUE.equals(cabezal); }
         public boolean alContrario() { return Boolean.TRUE.equals(contrario); }
     }
@@ -97,7 +99,7 @@ public class TiendaServicio {
         TelaTienda tela = it.telaId() != null ? telaRepository.findById(it.telaId()).orElse(null) : null;
         String error = validarOpciones(p, tela, it);
         PrecioTiendaServicio.Cotizacion c = precioServicio.cotizar(p, tela, it.anchoCm(), it.altoCm(), it.cantidad(),
-                it.conCabezal() && p.isCabezalDisponible());
+                it.conCabezal() && p.isCabezalDisponible(), it.sistema());
         if (error == null && !c.ok()) error = c.mensaje();
         String detalle = detalle(p, tela, it);
         if (error != null) {
@@ -108,8 +110,15 @@ public class TiendaServicio {
                 c.precioUnitario(), c.subtotal(), c.cantidad());
     }
 
-    /** Revisa color, lado del mando, cabezal y enrollado. Devuelve el mensaje de error, o null si todo está bien. */
+    /** Revisa color, lado del mando, cabezal, enrollado y (en rieles) sistema y apertura. Devuelve el error o null. */
     private String validarOpciones(ProductoTienda p, TelaTienda tela, ItemCarrito it) {
+        if (p.isRiel()) {
+            if (p.precioRielPorMetro(it.sistema()) == null) return "Elige si lo quieres con bastón o con control.";
+            if (!ProductoTienda.APERTURAS_RIEL.contains(it.apertura() == null ? "" : it.apertura())) {
+                return "Elige hacia dónde abre la cortina.";
+            }
+            return null;
+        }
         if (p.isPorMetro() && tela != null && !tela.getListaColores().isEmpty()) {
             boolean colorValido = it.color() != null && tela.getListaColores().stream()
                     .anyMatch(c -> c.equalsIgnoreCase(it.color().trim()));
@@ -127,6 +136,14 @@ public class TiendaServicio {
 
     private String detalle(ProductoTienda p, TelaTienda tela, ItemCarrito it) {
         List<String> partes = new ArrayList<>();
+        if (p.isRiel()) {
+            if (it.anchoCm() != null) partes.add(ItemOrdenTienda.enMetros(it.anchoCm()) + " m de ancho");
+            String sistema = ProductoTienda.textoSistema(it.sistema());
+            if (!sistema.isEmpty()) partes.add(sistema);
+            String apertura = ItemOrdenTienda.textoApertura(it.apertura());
+            if (!apertura.isEmpty()) partes.add(apertura);
+            return String.join(", ", partes);
+        }
         if (tela != null) partes.add(tela.getNombre());
         if (it.color() != null && !it.color().isBlank()) partes.add("color " + it.color().trim());
         if (p.isPorMetro() && it.anchoCm() != null && it.altoCm() != null) {
@@ -167,7 +184,7 @@ public class TiendaServicio {
             String error = validarOpciones(p, tela, it);
             if (error != null) throw new IllegalArgumentException(p.getNombre() + ": " + error);
             PrecioTiendaServicio.Cotizacion c = precioServicio.cotizar(p, tela, it.anchoCm(), it.altoCm(), it.cantidad(),
-                    it.conCabezal());
+                    it.conCabezal(), it.sistema());
             if (!c.ok()) throw new IllegalArgumentException(p.getNombre() + ": " + c.mensaje());
 
             ItemOrdenTienda item = new ItemOrdenTienda();
@@ -183,6 +200,10 @@ public class TiendaServicio {
                 item.setRollo(c.rollo());
                 item.setConCabezal(it.conCabezal());
                 item.setEnrolladoContrario(it.alContrario());
+            } else if (p.isRiel()) {
+                item.setAnchoCm(it.anchoCm());
+                item.setSistemaRiel(ProductoTienda.textoSistema(it.sistema()));
+                item.setAperturaRiel(it.apertura());
             }
             item.setCantidad(c.cantidad());
             item.setPrecioUnitario(c.precioUnitario());

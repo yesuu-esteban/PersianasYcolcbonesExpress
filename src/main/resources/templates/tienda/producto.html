@@ -30,6 +30,14 @@
                 <h2>Sobre este producto</h2>
                 <p th:text="${producto.descripcion}"></p>
             </div>
+            <div class="como-medir" th:if="${producto.riel}">
+                <h2>Cómo medir</h2>
+                <ul>
+                    <li>Usa un metro de acero y escribe el ancho en metros. Por ejemplo, 2 metros con 40 centímetros se escribe 2,40.</li>
+                    <li>Mide el ancho por donde va a ir el riel, de un extremo al otro.</li>
+                    <li>Si tienes dudas, escríbenos: te ayudamos a medir.</li>
+                </ul>
+            </div>
             <div class="como-medir" th:if="${producto.porMetro}">
                 <h2>Cómo medir</h2>
                 <ul>
@@ -44,6 +52,7 @@
         <!-- ═══ Configurador ═══ -->
         <form class="configurador" id="configurador" novalidate
               th:attr="data-producto-id=${producto.id}, data-por-metro=${producto.porMetro}, data-con-mando=${producto.conMando},
+                       data-riel=${producto.riel},
                        data-nombre=${producto.nombre}, data-slug=${producto.slug},
                        data-ancho-min=${producto.anchoMinCm}, data-ancho-max=${producto.anchoMaxCm},
                        data-alto-min=${producto.altoMinCm}, data-alto-max=${producto.altoMaxCm}, data-m2-minimo=${producto.m2Minimo}">
@@ -122,6 +131,47 @@
                 </fieldset>
             </th:block>
 
+            <th:block th:if="${producto.riel}">
+                <fieldset class="paso">
+                    <legend>Ancho del riel (en metros)</legend>
+                    <div class="medidas medidas-riel">
+                        <div class="campo">
+                            <label for="ancho">Ancho</label>
+                            <div class="entrada">
+                                <input type="text" id="ancho" inputmode="decimal" autocomplete="off" placeholder="2,40" aria-describedby="ayudaMedidas">
+                                <span>m</span>
+                            </div>
+                        </div>
+                    </div>
+                    <p class="ayuda" id="ayudaMedidas">Escribe el ancho en metros.</p>
+                </fieldset>
+
+                <fieldset class="paso">
+                    <legend>Cómo se abre y se cierra</legend>
+                    <div class="opciones">
+                        <label class="opcion" th:if="${producto.conBaston}">
+                            <input type="radio" name="sistema" value="BASTON" th:checked="${producto.conBaston}"
+                                   th:attr="data-precio=${producto.precioRielBastonMetro}"> Con bastón
+                            <small th:text="'$' + ${#numbers.formatInteger(producto.precioRielBastonMetro, 1, 'POINT')} + ' el metro'">$60.000 el metro</small></label>
+                        <label class="opcion" th:if="${producto.conControl}">
+                            <input type="radio" name="sistema" value="CONTROL" th:checked="${!producto.conBaston}"
+                                   th:attr="data-precio=${producto.precioRielControlMetro}"> Con control
+                            <small th:text="'$' + ${#numbers.formatInteger(producto.precioRielControlMetro, 1, 'POINT')} + ' el metro'">$75.000 el metro</small></label>
+                    </div>
+                    <p class="ayuda">Con bastón la cortina se corre a mano con una varilla. Con control se corre jalando un cordón.</p>
+                </fieldset>
+
+                <fieldset class="paso">
+                    <legend>Hacia dónde abre</legend>
+                    <div class="opciones opciones-3">
+                        <label class="opcion"><input type="radio" name="apertura" value="Izquierda"> Izquierda</label>
+                        <label class="opcion"><input type="radio" name="apertura" value="Derecha" checked> Derecha</label>
+                        <label class="opcion"><input type="radio" name="apertura" value="Hacia los extremos"> Hacia los extremos
+                            <small>Se abre desde el centro</small></label>
+                    </div>
+                </fieldset>
+            </th:block>
+
             <fieldset class="paso">
                 <legend>Cantidad</legend>
                 <div class="cantidad">
@@ -142,6 +192,7 @@
                 </div>
                 <div class="precio-caja" id="precioCaja" aria-live="polite">
                     <p class="indicacion" th:if="${producto.porMetro}">Escribe el ancho y el alto para ver el precio.</p>
+                    <p class="indicacion" th:if="${producto.riel}">Escribe el ancho para ver el precio.</p>
                 </div>
             </div>
 

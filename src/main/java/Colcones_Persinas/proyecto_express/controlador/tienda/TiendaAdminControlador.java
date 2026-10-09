@@ -130,7 +130,9 @@ public class TiendaAdminControlador {
         p.setCategoria(ProductoTienda.CATEGORIAS.containsKey(categoria) ? categoria : "OTROS");
         p.setDescripcionCorta(texto(f, "descripcionCorta"));
         p.setDescripcion(texto(f, "descripcion"));
-        p.setTipoPrecio(ProductoTienda.PRECIO_UNIDAD.equals(texto(f, "tipoPrecio")) ? ProductoTienda.PRECIO_UNIDAD : ProductoTienda.PRECIO_M2);
+        String tipoPrecio = texto(f, "tipoPrecio");
+        p.setTipoPrecio(ProductoTienda.PRECIO_UNIDAD.equals(tipoPrecio) || ProductoTienda.PRECIO_RIEL.equals(tipoPrecio)
+                ? tipoPrecio : ProductoTienda.PRECIO_M2);
         p.setPrecioUnidad(precio(texto(f, "precioUnidad")));
         p.setM2Minimo(decimal(texto(f, "m2Minimo"), 1.0));
         // Solo hay medida mínima: la tienda ya no pone medida máxima (anchoMaxCm / altoMaxCm no se usan)
@@ -140,6 +142,8 @@ public class TiendaAdminControlador {
         p.setOfreceCabezal("true".equals(f.getFirst("ofreceCabezal")));
         p.setPrecioCabezalMetro(precio(texto(f, "precioCabezalMetro")));
         p.setOfreceEnrolladoContrario("true".equals(f.getFirst("ofreceEnrolladoContrario")));
+        p.setPrecioRielBastonMetro(precio(texto(f, "precioRielBastonMetro")));
+        p.setPrecioRielControlMetro(precio(texto(f, "precioRielControlMetro")));
         p.setActivo("true".equals(f.getFirst("activo")));
         p.setDestacado("true".equals(f.getFirst("destacado")));
         p.setOrden(entero(texto(f, "orden"), 0));
@@ -170,8 +174,12 @@ public class TiendaAdminControlador {
         if (error == null && p.isPorMetro() && p.getTelasActivas().stream().noneMatch(t -> t.getPrecioMinimo() != null)) {
             error = "Agrega al menos una tela activa con precio por m² en algún rollo.";
         }
-        if (error == null && !p.isPorMetro() && (p.getPrecioUnidad() == null || p.getPrecioUnidad().signum() <= 0)) {
+        if (error == null && ProductoTienda.PRECIO_UNIDAD.equals(p.getTipoPrecio())
+                && (p.getPrecioUnidad() == null || p.getPrecioUnidad().signum() <= 0)) {
             error = "Escribe el precio por unidad.";
+        }
+        if (error == null && p.isRiel() && !p.isConBaston() && !p.isConControl()) {
+            error = "Escribe el precio por metro con bastón, con control o los dos.";
         }
         if (error == null && p.isCabezalDisponible()
                 && (p.getPrecioCabezalMetro() == null || p.getPrecioCabezalMetro().signum() <= 0)) {

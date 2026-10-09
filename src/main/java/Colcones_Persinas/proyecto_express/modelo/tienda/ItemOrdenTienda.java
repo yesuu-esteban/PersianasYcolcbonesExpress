@@ -36,6 +36,10 @@ public class ItemOrdenTienda {
     @Column(name = "con_cabezal") private Boolean conCabezal;
     /** Enrollado al contrario: la tela cae por delante del tubo. */
     @Column(name = "enrollado_contrario") private Boolean enrolladoContrario;
+    /** Riel de onda serena: "con bastón" o "con control". */
+    @Column(name = "sistema_riel") private String sistemaRiel;
+    /** Riel de onda serena: hacia dónde abre (Izquierda, Derecha, Hacia los extremos). */
+    @Column(name = "apertura_riel") private String aperturaRiel;
     @Column(nullable = false) private int cantidad = 1;
     private Double m2;
     private Double rollo;
@@ -55,6 +59,13 @@ public class ItemOrdenTienda {
     /** Texto para la persiana enrollada al contrario. */
     public static final String TEXTO_CONTRARIO = "enrollado al contrario (tela por delante)";
 
+    /** "Izquierda" → "abre hacia la izquierda"; "Hacia los extremos" → "abre hacia los extremos". */
+    public static String textoApertura(String apertura) {
+        if (apertura == null || apertura.isBlank()) return "";
+        if (apertura.toLowerCase().startsWith("hacia")) return "abre " + apertura.toLowerCase();
+        return "abre hacia la " + apertura.toLowerCase();
+    }
+
     /** Ej: "Blackout liso, color Gris, 1,50 × 2,00 m, mando a la derecha, con cabezal". */
     @Transient
     public String getDetalle() {
@@ -63,7 +74,11 @@ public class ItemOrdenTienda {
         if (color != null && !color.isBlank()) sb.append(sb.length() > 0 ? ", " : "").append("color ").append(color);
         if (anchoCm != null && altoCm != null) {
             sb.append(sb.length() > 0 ? ", " : "").append(enMetros(anchoCm)).append(" × ").append(enMetros(altoCm)).append(" m");
+        } else if (anchoCm != null) {
+            sb.append(sb.length() > 0 ? ", " : "").append(enMetros(anchoCm)).append(" m de ancho");
         }
+        if (sistemaRiel != null && !sistemaRiel.isBlank()) sb.append(sb.length() > 0 ? ", " : "").append(sistemaRiel);
+        if (aperturaRiel != null && !aperturaRiel.isBlank()) sb.append(sb.length() > 0 ? ", " : "").append(textoApertura(aperturaRiel));
         if (ladoMando != null && !ladoMando.isBlank()) {
             sb.append(sb.length() > 0 ? ", " : "").append("mando a la ").append(ladoMando.toLowerCase());
         }

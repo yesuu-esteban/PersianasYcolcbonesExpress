@@ -12,9 +12,11 @@ import java.util.stream.Collectors;
 /**
  * Producto que se muestra en la tienda virtual (/tienda).
  *
- * Dos formas de cobrar:
+ * Tres formas de cobrar:
  *  - M2:     persianas y cortinas a la medida. El precio sale de la TELA elegida y del
  *            ROLLO del que se corta (1,83 / 2,50 / 3,00 m), igual que en fábrica.
+ *  - RIEL:   riel de onda serena. Se cobra por metro de ancho, con un precio si es con
+ *            bastón y otro si es con control.
  *  - UNIDAD: productos de precio fijo (accesorios, etc.).
  *
  * Opciones de enrollable (solo productos a la medida, se activan en el admin):
@@ -28,6 +30,13 @@ public class ProductoTienda {
 
     public static final String PRECIO_M2 = "M2";
     public static final String PRECIO_UNIDAD = "UNIDAD";
+    public static final String PRECIO_RIEL = "RIEL";
+
+    /** Sistemas del riel de onda serena (lo que se guarda → lo que ve el cliente). */
+    public static final String SISTEMA_BASTON = "BASTON";
+    public static final String SISTEMA_CONTROL = "CONTROL";
+    /** Hacia dónde abre el riel (igual que en fábrica). */
+    public static final List<String> APERTURAS_RIEL = List.of("Izquierda", "Derecha", "Hacia los extremos");
 
     /** Categorías visibles en la tienda (clave guardada → texto que ve el cliente). */
     public static final Map<String, String> CATEGORIAS;
@@ -95,6 +104,14 @@ public class ProductoTienda {
     @Column(name = "ofrece_enrollado_contrario")
     private Boolean ofreceEnrolladoContrario;
 
+    /** Riel de onda serena: precio por metro de ancho con bastón (vacío = no se ofrece con bastón). */
+    @Column(name = "precio_riel_baston_metro")
+    private BigDecimal precioRielBastonMetro;
+
+    /** Riel de onda serena: precio por metro de ancho con control (vacío = no se ofrece con control). */
+    @Column(name = "precio_riel_control_metro")
+    private BigDecimal precioRielControlMetro;
+
     @Column(name = "imagen_id")
     private Integer imagenId;
 
@@ -119,6 +136,35 @@ public class ProductoTienda {
         return PRECIO_M2.equals(tipoPrecio);
     }
 
+    /** ¿Es un riel de onda serena (se cobra por metro de ancho)? */
+    @Transient
+    public boolean isRiel() {
+        return PRECIO_RIEL.equals(tipoPrecio);
+    }
+
+    /** Precio por metro del riel según el sistema ("BASTON" o "CONTROL"). Null si no se ofrece. */
+    @Transient
+    public BigDecimal precioRielPorMetro(String sistema) {
+        BigDecimal v = SISTEMA_BASTON.equals(sistema) ? precioRielBastonMetro
+                : SISTEMA_CONTROL.equals(sistema) ? precioRielControlMetro : null;
+        return v != null && v.signum() > 0 ? v : null;
+    }
+
+    @Transient
+    public boolean isConBaston() {
+        return isRiel() && precioRielPorMetro(SISTEMA_BASTON) != null;
+    }
+
+    @Transient
+    public boolean isConControl() {
+        return isRiel() && precioRielPorMetro(SISTEMA_CONTROL) != null;
+    }
+
+    /** "con bastón" / "con control" (para los textos del pedido). */
+    public static String textoSistema(String sistema) {
+        return SISTEMA_CONTROL.equals(sistema) ? "con control" : SISTEMA_BASTON.equals(sistema) ? "con bastón" : "";
+    }
+
     /** ¿El cliente puede elegir "con cabezal"? (solo productos a la medida) */
     @Transient
     public boolean isCabezalDisponible() {
@@ -139,12 +185,26 @@ public class ProductoTienda {
     /** Precio más bajo para mostrar "Desde $X" en el catálogo. */
     @Transient
     public BigDecimal getPrecioDesde() {
+        if (isRiel()) {
+            BigDecimal b = precioRielPorMetro(SISTEMA_BASTON), c = precioRielPorMetro(SISTEMA_CONTROL);
+            if (b == null) return c;
+            if (c == null) return b;
+            return b.min(c);
+        }
         if (!isPorMetro()) return precioUnidad;
         return getTelasActivas().stream()
                 .map(TelaTienda::getPrecioMinimo)
                 .filter(Objects::nonNull)
                 .min(Comparator.naturalOrder())
                 .orElse(null);
+    }
+
+    /** Cómo se lee el precio "Desde": "el m²", "el metro" o "c/u". */
+    @Transient
+    public String getUnidadPrecio() {
+        if (isPorMetro()) return "el m²";
+        if (isRiel()) return "el metro";
+        return "c/u";
     }
 
     @Transient

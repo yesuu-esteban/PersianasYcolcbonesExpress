@@ -81,7 +81,8 @@
                 <div class="col-md-6">
                     <select class="form-select" name="tipoPrecio" id="tipoPrecio">
                         <option value="M2" th:selected="${producto.porMetro}">Por metro cuadrado, según la tela y el rollo</option>
-                        <option value="UNIDAD" th:selected="${!producto.porMetro}">Precio fijo por unidad</option>
+                        <option value="RIEL" th:selected="${producto.riel}">Riel onda serena: por metro (bastón o control)</option>
+                        <option value="UNIDAD" th:selected="${!producto.porMetro and !producto.riel}">Precio fijo por unidad</option>
                     </select>
                 </div>
                 <div class="col-md-6" data-solo="UNIDAD">
@@ -90,6 +91,35 @@
                         <input type="text" class="form-control" name="precioUnidad" inputmode="numeric" placeholder="Precio por unidad"
                                th:value="${producto.precioUnidad != null} ? ${#numbers.formatInteger(producto.precioUnidad, 1, 'POINT')} : ''">
                     </div>
+                </div>
+            </div>
+
+            <div data-solo="RIEL" class="mt-3">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label" for="precioRielBastonMetro">Precio por metro de ancho, con bastón</label>
+                        <div class="input-group">
+                            <span class="input-group-text">$</span>
+                            <input type="text" class="form-control" name="precioRielBastonMetro" id="precioRielBastonMetro" inputmode="numeric" placeholder="Ej: 60.000"
+                                   th:value="${producto.precioRielBastonMetro != null} ? ${#numbers.formatInteger(producto.precioRielBastonMetro, 1, 'POINT')} : ''">
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label" for="precioRielControlMetro">Precio por metro de ancho, con control</label>
+                        <div class="input-group">
+                            <span class="input-group-text">$</span>
+                            <input type="text" class="form-control" name="precioRielControlMetro" id="precioRielControlMetro" inputmode="numeric" placeholder="Ej: 75.000"
+                                   th:value="${producto.precioRielControlMetro != null} ? ${#numbers.formatInteger(producto.precioRielControlMetro, 1, 'POINT')} : ''">
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <label class="form-label" for="anchoMinRielM">Ancho mínimo (m)</label>
+                        <input type="text" class="form-control" id="anchoMinRielM" inputmode="decimal" autocomplete="off" placeholder="0,30">
+                    </div>
+                </div>
+                <div class="ayuda mt-2" id="ejemploRiel">
+                    Se cobra el ancho exacto × el precio por metro del sistema que elija el cliente. Si dejas un precio vacío,
+                    esa opción no sale en la tienda. El cliente también elige hacia dónde abre (izquierda, derecha o hacia los extremos); eso no cambia el precio.
                 </div>
             </div>
 

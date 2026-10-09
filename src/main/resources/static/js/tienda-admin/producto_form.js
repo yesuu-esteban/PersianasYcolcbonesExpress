@@ -26,7 +26,44 @@
             el.classList.remove('is-invalid');
         });
     });
+    /* Riel: su "Ancho mínimo" es el mismo campo del ancho mínimo de las persianas (se copian entre sí) */
+    const anchoMinRiel = document.getElementById('anchoMinRielM');
+    const anchoMin = document.getElementById('anchoMinM');
+    anchoMinRiel.value = anchoMin.value;
+    anchoMinRiel.addEventListener('input', () => {
+        anchoMin.value = anchoMinRiel.value;
+        anchoMin.dispatchEvent(new Event('input'));
+    });
+    anchoMin.addEventListener('input', () => { if (document.activeElement === anchoMin) anchoMinRiel.value = anchoMin.value; });
+
+    const precioBaston = document.getElementById('precioRielBastonMetro');
+    const precioControl = document.getElementById('precioRielControlMetro');
+    const ejemploRiel = document.getElementById('ejemploRiel');
+    const textoRiel = ejemploRiel.textContent.trim();
+    const pesosRiel = new Intl.NumberFormat('es-CO', { maximumFractionDigits: 0 });
+    function actualizarRiel() {
+        const b = parseInt(String(precioBaston.value).replace(/\D/g, ''), 10);
+        const c = parseInt(String(precioControl.value).replace(/\D/g, ''), 10);
+        const partes = [];
+        if (b > 0) partes.push('con bastón $' + pesosRiel.format(Math.round(b * 2.4)));
+        if (c > 0) partes.push('con control $' + pesosRiel.format(Math.round(c * 2.4)));
+        ejemploRiel.textContent = partes.length ? textoRiel + ' Ejemplo, un riel de 2,40 m: ' + partes.join(' · ') + '.' : textoRiel;
+    }
+    precioBaston.addEventListener('input', actualizarRiel);
+    precioControl.addEventListener('input', actualizarRiel);
+    actualizarRiel();
+
     document.querySelector('form[action="/tienda-admin/producto/guardar"]').addEventListener('submit', e => {
+        if (tipo.value === 'RIEL') {
+            const b = parseInt(String(precioBaston.value).replace(/\D/g, ''), 10) > 0;
+            const c = parseInt(String(precioControl.value).replace(/\D/g, ''), 10) > 0;
+            if (!b && !c) {
+                e.preventDefault();
+                precioBaston.classList.add('is-invalid');
+                precioBaston.focus();
+            }
+            return;
+        }
         if (tipo.value !== 'M2') return;
         const cm = {};
         medidas.forEach(el => { cm[el.dataset.medidaM] = aCm(el.value); });

@@ -65,7 +65,7 @@
                     <p class="corta" th:text="${p.descripcionCorta}"></p>
                     <p class="desde" th:if="${p.precioDesde != null}">
                         Desde <strong th:text="'$' + ${#numbers.formatInteger(p.precioDesde, 1, 'POINT')}">$51.200</strong>
-                        <span th:text="${p.porMetro} ? 'el m²' : 'c/u'">el m²</span>
+                        <span th:text="${p.unidadPrecio}">el m²</span>
                     </p>
                 </a>
             </div>

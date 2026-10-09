@@ -22,6 +22,9 @@ import java.math.RoundingMode;
  *  4. Si el cliente lo pide con cabezal: + ancho (m) × valor del cabezal por metro.
  *     (Enrollado al contrario no cambia el precio.)
  *
+ * Riel de onda serena: ancho (m) × precio por metro del sistema elegido (bastón o control).
+ * Se cobra el ancho exacto; hacia dónde abre no cambia el precio.
+ *
  * Las medidas llegan y se guardan en centímetros, pero al cliente siempre se le
  * habla en metros (así se mide en el negocio).
  *
@@ -49,14 +52,23 @@ public class PrecioTiendaServicio {
 
     /** Sin cabezal. */
     public Cotizacion cotizar(ProductoTienda p, TelaTienda tela, Integer anchoCm, Integer altoCm, Integer cantidad) {
-        return cotizar(p, tela, anchoCm, altoCm, cantidad, false);
+        return cotizar(p, tela, anchoCm, altoCm, cantidad, false, null);
     }
 
     public Cotizacion cotizar(ProductoTienda p, TelaTienda tela, Integer anchoCm, Integer altoCm, Integer cantidad,
                               boolean conCabezal) {
+        return cotizar(p, tela, anchoCm, altoCm, cantidad, conCabezal, null);
+    }
+
+    /** @param sistemaRiel solo para rieles: "BASTON" o "CONTROL" */
+    public Cotizacion cotizar(ProductoTienda p, TelaTienda tela, Integer anchoCm, Integer altoCm, Integer cantidad,
+                              boolean conCabezal, String sistemaRiel) {
         if (p == null || !p.isActivo()) return Cotizacion.error("Este producto no está disponible.");
         int cant = cantidad != null ? cantidad : 1;
         if (cant < 1 || cant > 50) return Cotizacion.error("La cantidad debe estar entre 1 y 50.");
+
+        // ── Riel de onda serena: por metro de ancho ──
+        if (p.isRiel()) return cotizarRiel(p, anchoCm, sistemaRiel, cant);
 
         // ── Precio fijo ──
         if (!p.isPorMetro()) {
@@ -128,6 +140,24 @@ public class PrecioTiendaServicio {
             unit = unit.add(cabezal);
         }
         return new Cotizacion(true, null, unit, unit.multiply(BigDecimal.valueOf(cant)), m2, m2Reales, rollo, cant, cabezal);
+    }
+
+    private Cotizacion cotizarRiel(ProductoTienda p, Integer anchoCm, String sistema, int cant) {
+        BigDecimal porMetro = p.precioRielPorMetro(sistema);
+        if (porMetro == null) {
+            return Cotizacion.error(p.isConBaston() && p.isConControl() ? "Elige si lo quieres con bastón o con control."
+                    : "Esa opción no está disponible para este riel.");
+        }
+        if (anchoCm == null) return Cotizacion.error("Escribe el ancho en metros.");
+        if (anchoCm > MEDIDA_IMPOSIBLE_CM) {
+            return Cotizacion.error("Revisa la medida: escríbela en metros. Por ejemplo, 1 metro con 20 centímetros es 1,20.");
+        }
+        if (anchoCm < p.getAnchoMinCm()) {
+            return Cotizacion.error("El ancho mínimo es " + ItemOrdenTienda.enMetros(p.getAnchoMinCm()) + " m.");
+        }
+        double ancho = anchoCm / 100.0;
+        BigDecimal unit = porMetro.multiply(BigDecimal.valueOf(ancho)).setScale(0, RoundingMode.HALF_UP);
+        return new Cotizacion(true, null, unit, unit.multiply(BigDecimal.valueOf(cant)), 0, 0, null, cant, BigDecimal.ZERO);
     }
 
     private static double redondear2(double v) {

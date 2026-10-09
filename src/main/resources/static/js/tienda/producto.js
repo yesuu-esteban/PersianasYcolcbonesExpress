@@ -5,6 +5,7 @@
     const d = form.dataset;
     const porMetro = d.porMetro === 'true';
     const conMando = d.conMando === 'true';
+    const esRiel = d.riel === 'true';
 
     const elAncho = document.getElementById('ancho');
     const elAlto = document.getElementById('alto');
@@ -33,6 +34,10 @@
     /* Opciones de enrollable: solo existen si el producto las ofrece */
     const conCabezal = () => { const el = form.querySelector('input[name="cabezal"]:checked'); return !!el && el.value === 'si'; };
     const alContrario = () => { const el = form.querySelector('input[name="enrollado"]:checked'); return !!el && el.value === 'contrario'; };
+    /* Riel de onda serena: bastón o control, y hacia dónde abre */
+    const sistemaSel = () => form.querySelector('input[name="sistema"]:checked');
+    const aperturaSel = () => form.querySelector('input[name="apertura"]:checked');
+    const textoApertura = a => !a ? '' : (a.toLowerCase().startsWith('hacia') ? 'abre ' + a.toLowerCase() : 'abre hacia la ' + a.toLowerCase());
     const entero = el => { const v = parseInt(el && el.value, 10); return isNaN(v) ? null : v; };
 
     /* Las medidas se escriben en METROS ("1.20" o "1,20"). Al servidor se le envían en centímetros. */
@@ -52,7 +57,7 @@
             return 'Revisa la medida: escríbela en metros. Por ejemplo, 1 metro con 20 centímetros es 1,20.';
         }
         if (anchoCm < anchoMin) return `El ancho mínimo es ${metros(anchoMin)} m.`;
-        if (altoCm < altoMin) return `El alto mínimo es ${metros(altoMin)} m.`;
+        if (altoCm !== null && altoCm < altoMin) return `El alto mínimo es ${metros(altoMin)} m.`;
         return null;
     }
 
@@ -104,6 +109,12 @@
             if (conCabezal()) partes.push('con cabezal');
             if (alContrario()) partes.push('enrollado al contrario (tela por delante)');
         }
+        if (esRiel) {
+            const sistema = sistemaSel(), apertura = aperturaSel();
+            if (medidaCm(elAncho)) partes.push(metros(medidaCm(elAncho)) + ' m de ancho');
+            if (sistema) partes.push(sistema.value === 'CONTROL' ? 'con control' : 'con bastón');
+            if (apertura) partes.push(textoApertura(apertura.value));
+        }
         partes.push('cantidad ' + (entero(elCantidad) || 1));
         return partes.join(', ');
     }
@@ -116,7 +127,8 @@
         ultimaCotizacion = c && c.ok ? c : null;
         btnAgregar.disabled = !ultimaCotizacion;
         if (!c) {
-            elPrecio.innerHTML = porMetro ? '<p class="indicacion">Escribe el ancho y el alto para ver el precio.</p>' : '';
+            elPrecio.innerHTML = porMetro ? '<p class="indicacion">Escribe el ancho y el alto para ver el precio.</p>'
+                : esRiel ? '<p class="indicacion">Escribe el ancho para ver el precio.</p>' : '';
             return;
         }
         if (!c.ok) {
@@ -131,6 +143,10 @@
             desglose += '.';
             if (Number(c.precioCabezal) > 0) desglose += ` Incluye el cabezal: ${pesos(c.precioCabezal)}.`;
         }
+        if (esRiel && sistemaSel()) {
+            desglose = `${metros(medidaCm(elAncho))} m × ${pesos(sistemaSel().dataset.precio)} el metro `
+                + (sistemaSel().value === 'CONTROL' ? '(con control).' : '(con bastón).');
+        }
         if (cant > 1) desglose += ` ${cant} unidades de ${pesos(c.precioUnitario)}.`;
         elPrecio.innerHTML = `<div class="precio-grande">${pesos(c.subtotal)}</div><p class="desglose">${desglose}</p>`;
     }
@@ -141,8 +157,9 @@
         clearTimeout(temporizador);
         const anchoCm = medidaCm(elAncho), altoCm = medidaCm(elAlto);
         if (porMetro && !(anchoCm && altoCm)) { mostrarPrecio(null); return; }
-        if (porMetro) {
-            const aviso = fueraDeRango(anchoCm, altoCm);
+        if (esRiel && !anchoCm) { mostrarPrecio(null); return; }
+        if (porMetro || esRiel) {
+            const aviso = fueraDeRango(anchoCm, porMetro ? altoCm : null);
             if (aviso) { mostrarPrecio({ ok: false, mensaje: aviso }); return; }
         }
         temporizador = setTimeout(async () => {
@@ -152,6 +169,10 @@
                 p.set('ancho', anchoCm);
                 p.set('alto', altoCm);
                 if (conCabezal()) p.set('cabezal', 'true');
+            }
+            if (esRiel) {
+                p.set('ancho', anchoCm);
+                if (sistemaSel()) p.set('sistema', sistemaSel().value);
             }
             try {
                 const r = await fetch('/tienda/api/cotizar?' + p.toString());
@@ -182,19 +203,23 @@
             productoId: Number(d.productoId),
             telaId: porMetro && telaSel() ? Number(telaSel().value) : null,
             color: porMetro && colorSel() ? colorSel().value : '',
-            anchoCm: porMetro ? medidaCm(elAncho) : null,
+            anchoCm: porMetro || esRiel ? medidaCm(elAncho) : null,
             altoCm: porMetro ? medidaCm(elAlto) : null,
             lado: porMetro && conMando && ladoSel() ? ladoSel().value : '',
             cantidad: entero(elCantidad) || 1,
             cabezal: porMetro && conCabezal(),
-            contrario: porMetro && alContrario()
+            contrario: porMetro && alContrario(),
+            sistema: esRiel && sistemaSel() ? sistemaSel().value : null,
+            apertura: esRiel && aperturaSel() ? aperturaSel().value : null
         });
         mostrarToast(`Agregado al carrito: ${escaparHtml(d.nombre)} <a href="/tienda/carrito">Ver carrito</a>`);
     });
 
     /* Texto de ayuda con las medidas mínimas de este producto, en metros */
     const ayuda = document.getElementById('ayudaMedidas');
-    if (ayuda && d.anchoMin && d.altoMin) {
+    if (ayuda && esRiel && d.anchoMin) {
+        ayuda.textContent = `Escribe el ancho en metros, desde ${metros(Number(d.anchoMin))} m.`;
+    } else if (ayuda && d.anchoMin && d.altoMin) {
         ayuda.textContent = `Escribe las medidas en metros. Ancho desde ${metros(Number(d.anchoMin))} m y alto desde ${metros(Number(d.altoMin))} m.`;
     }
 

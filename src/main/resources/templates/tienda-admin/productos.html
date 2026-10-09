@@ -61,8 +61,9 @@
                 <div class="datos">
                     <span th:text="${p.categoriaEtiqueta}"></span> ·
                     <span th:if="${p.porMetro}" th:text="${#lists.size(p.telasActivas)} + ' tela(s)'"></span>
-                    <span th:unless="${p.porMetro}">Precio por unidad</span>
-                    <span th:if="${p.precioDesde != null}" th:text="' · desde $' + ${#numbers.formatInteger(p.precioDesde, 1, 'POINT')} + (${p.porMetro} ? '/m²' : '')"></span>
+                    <span th:if="${p.riel}">Riel por metro de ancho</span>
+                    <span th:if="${!p.porMetro and !p.riel}">Precio por unidad</span>
+                    <span th:if="${p.precioDesde != null}" th:text="' · desde $' + ${#numbers.formatInteger(p.precioDesde, 1, 'POINT')} + (${p.porMetro} ? '/m²' : (${p.riel} ? '/m' : ''))"></span>
                     <span th:unless="${p.imagenId != null}"> · sin foto</span>
                 </div>
             </div>
