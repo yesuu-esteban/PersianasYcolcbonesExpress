@@ -34,16 +34,9 @@
                 <input type="text" class="form-control campo-valor" id="valor" name="valor" inputmode="numeric"
                        autocomplete="off" required placeholder="0" th:value="${valorEscrito}">
             </div>
-            <div class="col-sm-3 col-6">
+            <div class="col-sm-6">
                 <label class="form-label" for="fecha">Fecha</label>
                 <input type="date" class="form-control" id="fecha" name="fecha" required th:value="${mov.fecha}">
-            </div>
-            <div class="col-sm-3 col-6">
-                <label class="form-label" for="area">Área</label>
-                <select class="form-select" id="area" name="area">
-                    <option value="ALMACEN" th:selected="${mov.area == 'ALMACEN'}">Almacén</option>
-                    <option value="FABRICA" th:selected="${mov.area == 'FABRICA'}">Fábrica</option>
-                </select>
             </div>
 
             <!-- Categoría (ingresos y egresos) -->

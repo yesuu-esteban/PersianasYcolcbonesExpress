@@ -25,14 +25,6 @@
             <input type="month" class="form-control" id="mes" name="mes" th:value="${mes}">
         </div>
         <div>
-            <label class="form-label" for="area">Área</label>
-            <select class="form-select" id="area" name="area">
-                <option value="ALMACEN" th:selected="${area == 'ALMACEN'}">Almacén</option>
-                <option value="FABRICA" th:selected="${area == 'FABRICA'}">Fábrica</option>
-                <option value="TODAS" th:selected="${area == 'TODAS'}">Almacén y Fábrica</option>
-            </select>
-        </div>
-        <div>
             <label class="form-label" for="tipo">Tipo</label>
             <select class="form-select" id="tipo" name="tipo">
                 <option value="">Todos</option>
@@ -57,7 +49,7 @@
         </div>
         <div class="d-flex gap-2">
             <button type="submit" class="btn btn-outline-secondary flex-fill">Filtrar</button>
-            <a class="btn btn-outline-secondary" th:href="@{/contabilidad/movimientos(mes=${mes}, area=${area})}" title="Quitar filtros">✕</a>
+            <a class="btn btn-outline-secondary" th:href="@{/contabilidad/movimientos(mes=${mes})}" title="Quitar filtros">✕</a>
         </div>
     </form>
 
@@ -92,7 +84,6 @@
                     <td class="text-nowrap" th:text="${f.fecha}">05/10/2026</td>
                     <td>
                         <span class="tipo" th:classappend="'tipo-' + ${f.tipo}" th:text="${f.tipoEtiqueta}">Egreso</span>
-                        <small class="d-block ayuda" th:if="${area == 'TODAS'}" th:text="${f.areaEtiqueta}">Almacén</small>
                     </td>
                     <td class="detalle-mov">
                         <span th:text="${f.subcategoria != '' ? f.subcategoria : '—'}">ARRIENDO</span>
@@ -122,13 +113,13 @@
     <!-- ═══ Páginas ═══ -->
     <nav class="paginacion" aria-label="Páginas" th:if="${totalPaginas > 1}">
         <a class="btn btn-sm btn-outline-secondary" th:if="${paginaActual > 0}"
-           th:href="@{/contabilidad/movimientos(mes=${mes}, area=${area}, tipo=${tipo}, cuentaId=${cuentaId}, categoriaId=${categoriaId}, pagina=${paginaActual - 1})}">← Anterior</a>
+           th:href="@{/contabilidad/movimientos(mes=${mes}, tipo=${tipo}, cuentaId=${cuentaId}, categoriaId=${categoriaId}, pagina=${paginaActual - 1})}">← Anterior</a>
         <a th:each="i : ${paginas}" class="btn btn-sm"
            th:classappend="${i == paginaActual} ? 'btn-primary' : 'btn-outline-secondary'"
-           th:href="@{/contabilidad/movimientos(mes=${mes}, area=${area}, tipo=${tipo}, cuentaId=${cuentaId}, categoriaId=${categoriaId}, pagina=${i})}"
+           th:href="@{/contabilidad/movimientos(mes=${mes}, tipo=${tipo}, cuentaId=${cuentaId}, categoriaId=${categoriaId}, pagina=${i})}"
            th:text="${i + 1}">1</a>
         <a class="btn btn-sm btn-outline-secondary" th:if="${paginaActual < totalPaginas - 1}"
-           th:href="@{/contabilidad/movimientos(mes=${mes}, area=${area}, tipo=${tipo}, cuentaId=${cuentaId}, categoriaId=${categoriaId}, pagina=${paginaActual + 1})}">Siguiente →</a>
+           th:href="@{/contabilidad/movimientos(mes=${mes}, tipo=${tipo}, cuentaId=${cuentaId}, categoriaId=${categoriaId}, pagina=${paginaActual + 1})}">Siguiente →</a>
     </nav>
     <p class="contador" th:if="${totalFiltrados > 0}"
        th:text="'Página ' + ${paginaActual + 1} + ' de ' + ${totalPaginas} + ' · ' + ${totalFiltrados} + ' movimiento(s)'">Página 1 de 1</p>

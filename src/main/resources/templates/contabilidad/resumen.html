@@ -12,22 +12,14 @@
     <div th:if="${mensaje}" class="alert alert-success" th:text="${mensaje}"></div>
     <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
 
-    <!-- ═══ Mes y área ═══ -->
+    <!-- ═══ Mes ═══ -->
     <form class="periodo" method="get" action="/contabilidad">
-        <a class="btn btn-outline-secondary flecha" th:href="@{/contabilidad(mes=${mesAnterior}, area=${area})}" title="Mes anterior">‹</a>
+        <a class="btn btn-outline-secondary flecha" th:href="@{/contabilidad(mes=${mesAnterior})}" title="Mes anterior">‹</a>
         <span class="mes-texto" th:text="${mesTexto}">Octubre 2026</span>
-        <a class="btn btn-outline-secondary flecha" th:href="@{/contabilidad(mes=${mesSiguiente}, area=${area})}" th:unless="${esMesActual}" title="Mes siguiente">›</a>
+        <a class="btn btn-outline-secondary flecha" th:href="@{/contabilidad(mes=${mesSiguiente})}" th:unless="${esMesActual}" title="Mes siguiente">›</a>
         <div class="campo">
             <label class="form-label" for="mes">Mes</label>
             <input type="month" class="form-control" id="mes" name="mes" th:value="${mes}">
-        </div>
-        <div class="campo">
-            <label class="form-label" for="area">Área</label>
-            <select class="form-select" id="area" name="area">
-                <option value="ALMACEN" th:selected="${area == 'ALMACEN'}">Almacén</option>
-                <option value="FABRICA" th:selected="${area == 'FABRICA'}">Fábrica</option>
-                <option value="TODAS" th:selected="${area == 'TODAS'}">Almacén y Fábrica</option>
-            </select>
         </div>
         <button type="submit" class="btn btn-outline-secondary">Ver</button>
     </form>
@@ -42,7 +34,7 @@
 
         <!-- ═══ Resultado del mes ═══ -->
         <section class="caja estado-resultado">
-            <h2>Resultado de <span th:text="${mesTexto}">Octubre 2026</span> · <span th:text="${areaTexto}">Almacén</span></h2>
+            <h2>Resultado de <span th:text="${mesTexto}">Octubre 2026</span> · Almacén y tienda virtual</h2>
 
             <p class="vacio" th:if="${resultado.cantidadMovimientos == 0}">
                 No hay ingresos ni egresos en este mes.
@@ -112,7 +104,7 @@
                     </tr>
                 </tbody>
             </table>
-            <p class="nota">Saldos de hoy de toda la empresa: no cambian con el mes ni con el área. Si una cuenta no cuadra, revisa su saldo inicial en <a href="/contabilidad/cuentas" class="link-light">Cuentas</a>.</p>
+            <p class="nota">Saldos de hoy: no cambian con el mes. Si una cuenta no cuadra, revisa su saldo inicial en <a href="/contabilidad/cuentas" class="link-light">Cuentas</a>.</p>
         </section>
     </div>
 

@@ -10,6 +10,7 @@ import Colcones_Persinas.proyecto_express.repository.almacen.PedidoTiendaReposit
 import Colcones_Persinas.proyecto_express.repository.tienda.OrdenTiendaRepository;
 import Colcones_Persinas.proyecto_express.repository.tienda.ProductoTiendaRepository;
 import Colcones_Persinas.proyecto_express.repository.tienda.TelaTiendaRepository;
+import Colcones_Persinas.proyecto_express.servicio.contabilidad.ContabilidadTiendaVirtual;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,7 +26,8 @@ import java.util.Locale;
  * Lógica de compra de la tienda virtual:
  *  - Cotiza el carrito (siempre en el servidor).
  *  - Crea la orden antes de mandar al cliente a pagar.
- *  - Aplica el resultado de Wompi o de Addi y, si el pago se aprueba, crea el pedido en Almacén.
+ *  - Aplica el resultado de Wompi o de Addi y, si el pago se aprueba, crea el pedido en Almacén
+ *    y anota la plata como ingreso en Contabilidad (en la cuenta elegida para la tienda).
  *  - Permite corregir los datos del cliente de una compra desde la administración.
  */
 @Service
@@ -41,15 +43,17 @@ public class TiendaServicio {
     private final OrdenTiendaRepository ordenRepository;
     private final PedidoTiendaRepository pedidoTiendaRepository;
     private final PrecioTiendaServicio precioServicio;
+    private final ContabilidadTiendaVirtual contabilidadTienda;
 
     public TiendaServicio(ProductoTiendaRepository productoRepository, TelaTiendaRepository telaRepository,
                           OrdenTiendaRepository ordenRepository, PedidoTiendaRepository pedidoTiendaRepository,
-                          PrecioTiendaServicio precioServicio) {
+                          PrecioTiendaServicio precioServicio, ContabilidadTiendaVirtual contabilidadTienda) {
         this.productoRepository = productoRepository;
         this.telaRepository = telaRepository;
         this.ordenRepository = ordenRepository;
         this.pedidoTiendaRepository = pedidoTiendaRepository;
         this.precioServicio = precioServicio;
+        this.contabilidadTienda = contabilidadTienda;
     }
 
     /** Lo que guarda el navegador en el carrito (sin precios: los precios los pone el servidor). */
@@ -269,6 +273,10 @@ public class TiendaServicio {
 
         pedidoTiendaRepository.save(pedido);
         orden.setPedidoTiendaId(pedido.getId());
+
+        // La plata queda anotada sola en Contabilidad cuando el pago termine de guardarse.
+        // Si algo falla allá, el pago y el pedido no se afectan.
+        contabilidadTienda.anotarCuandoSeGuarde(pedido.getId(), MEDIO_ADDI.equals(orden.getMetodoPago()) ? "Addi" : "Wompi");
     }
 
     // ═══════════════════════════════════════════════════════════════

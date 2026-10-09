@@ -56,6 +56,21 @@
         </table>
     </div>
 
+    <!-- ═══ Tienda virtual: a qué cuenta entra la plata ═══ -->
+    <section class="caja">
+        <h2>Tienda virtual</h2>
+        <p class="ayuda mb-2">Cuando un cliente paga en la tienda virtual (Wompi o Addi), esa plata se anota sola como ingreso en la cuenta que elijas aquí.
+            Si eliges "Ninguna", esas ventas salen en <a href="/contabilidad/ventas" class="link-light">Ventas</a> con el botón Anotar, para hacerlo a mano.</p>
+        <form class="form-linea" method="post" action="/contabilidad/cuentas/tienda">
+            <select class="form-select" name="cuentaId" aria-label="Cuenta de la tienda virtual" style="max-width:340px">
+                <option value="" th:selected="${!hayCuentaTienda}">Ninguna (anotar a mano)</option>
+                <option th:each="o : ${opcionesTienda}" th:value="${o.id}" th:text="${o.nombre}" th:selected="${o.seleccionada}">BANCOLOMBIA</option>
+            </select>
+            <button type="submit" class="btn btn-primary">Guardar</button>
+        </form>
+        <p class="nota">Wompi y Addi cobran una comisión, así que a la cuenta llega un poco menos. Esa comisión anótala como gasto (por ejemplo en GASTOS BANCARIOS).</p>
+    </section>
+
     <section class="caja">
         <h2>Agregar cuenta</h2>
         <form class="form-linea" method="post" action="/contabilidad/cuentas/guardar">

@@ -5,6 +5,7 @@ import Colcones_Persinas.proyecto_express.modelo.contabilidad.*;
 import Colcones_Persinas.proyecto_express.repository.almacen.PedidoTiendaPorCobrarRepository;
 import Colcones_Persinas.proyecto_express.repository.contabilidad.*;
 import Colcones_Persinas.proyecto_express.servicio.contabilidad.ContabilidadServicio;
+import Colcones_Persinas.proyecto_express.servicio.contabilidad.GraficasServicio;
 import Colcones_Persinas.proyecto_express.servicio.contabilidad.VentasAlmacenServicio;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -27,10 +28,11 @@ import java.time.temporal.ChronoUnit;
 import java.util.*;
 
 /**
- * Contabilidad (por ahora de Almacén; cada movimiento dice si es de Almacén o de Fábrica).
+ * Contabilidad de Almacén y de la tienda virtual (la de Fábrica será otra, aparte).
  * Solo para administradores (ADMIN) y el administrador de Almacén (TIENDA_ADMIN).
  *
  *   /contabilidad              resumen: saldos de las cuentas y resultado del mes
+ *   /contabilidad/graficas     pasteles, velas japonesas e ingresos contra gastos
  *   /contabilidad/ventas       pedidos de Almacén del mes (vendido, costo, utilidad, abonos)
  *   /contabilidad/movimientos  ingresos, egresos y traslados (registrar, editar, eliminar)
  *   /contabilidad/por-cobrar   pedidos de Almacén con saldo pendiente
@@ -58,6 +60,7 @@ public class ContabilidadControlador {
     private final CuentaPorPagarRepository porPagarRepository;
     private final PedidoTiendaPorCobrarRepository porCobrarRepository;
     private final VentasAlmacenServicio ventasServicio;
+    private final GraficasServicio graficasServicio;
 
     public ContabilidadControlador(ContabilidadServicio servicio, CuentaContableRepository cuentaRepository,
                                    CategoriaContableRepository categoriaRepository,
@@ -65,7 +68,8 @@ public class ContabilidadControlador {
                                    MovimientoContableRepository movimientoRepository,
                                    CuentaPorPagarRepository porPagarRepository,
                                    PedidoTiendaPorCobrarRepository porCobrarRepository,
-                                   VentasAlmacenServicio ventasServicio) {
+                                   VentasAlmacenServicio ventasServicio,
+                                   GraficasServicio graficasServicio) {
         this.servicio = servicio;
         this.cuentaRepository = cuentaRepository;
         this.categoriaRepository = categoriaRepository;
@@ -74,6 +78,7 @@ public class ContabilidadControlador {
         this.porPagarRepository = porPagarRepository;
         this.porCobrarRepository = porCobrarRepository;
         this.ventasServicio = ventasServicio;
+        this.graficasServicio = graficasServicio;
     }
 
     /** Una cuenta con su saldo actual, para las tablas. */
@@ -170,10 +175,8 @@ public class ContabilidadControlador {
     // ═══════════════════════════════════════════════════════════════
 
     @GetMapping({"", "/"})
-    public String resumen(@RequestParam(required = false) String mes,
-                          @RequestParam(required = false) String area, Model model) {
+    public String resumen(@RequestParam(required = false) String mes, Model model) {
         YearMonth periodo = leerMes(mes);
-        String filtroArea = leerArea(area);
 
         List<FilaCuenta> cuentas = filasCuentas(false);
         BigDecimal totalCuentas = cuentas.stream().map(FilaCuenta::getSaldo).reduce(BigDecimal.ZERO, BigDecimal::add);
@@ -187,12 +190,26 @@ public class ContabilidadControlador {
         model.addAttribute("porCobrar", porCobrar);
         model.addAttribute("porPagar", porPagar);
         model.addAttribute("posicionNeta", totalCuentas.add(porCobrar).subtract(porPagar));
-        model.addAttribute("resultado", servicio.resultado(periodo.atDay(1), periodo.atEndOfMonth(), filtroArea));
-        // Los pedidos de Almacén del mes (no aplica cuando se mira solo Fábrica)
-        boolean conVentas = filtroArea == null || MovimientoContable.ALMACEN.equals(filtroArea);
-        model.addAttribute("ventas", conVentas ? ventasServicio.ventas(periodo.atDay(1), periodo.atEndOfMonth()) : null);
-        ponerPeriodo(model, periodo, filtroArea);
+        model.addAttribute("resultado", servicio.resultado(periodo.atDay(1), periodo.atEndOfMonth(), null));
+        model.addAttribute("ventas", ventasServicio.ventas(periodo.atDay(1), periodo.atEndOfMonth()));
+        ponerPeriodo(model, periodo);
         return "contabilidad/resumen";
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // GRÁFICAS
+    // ═══════════════════════════════════════════════════════════════
+
+    /** velas = "semana" para una vela por semana; cualquier otra cosa = una vela por día del mes. */
+    @GetMapping("/graficas")
+    public String graficas(@RequestParam(required = false) String mes,
+                           @RequestParam(required = false) String velas, Model model) {
+        YearMonth periodo = leerMes(mes);
+        boolean porSemana = "semana".equals(velas);
+        model.addAttribute("datos", graficasServicio.datos(periodo, porSemana));
+        model.addAttribute("porSemana", porSemana);
+        ponerPeriodo(model, periodo);
+        return "contabilidad/graficas";
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -205,7 +222,7 @@ public class ContabilidadControlador {
         model.addAttribute("ventas", ventasServicio.ventas(periodo.atDay(1), periodo.atEndOfMonth()));
         model.addAttribute("todasLasCuentas", cuentaRepository.findAllByOrderByOrdenAscNombreAsc());
         model.addAttribute("hoy", ContabilidadServicio.hoy().toString());
-        ponerPeriodo(model, periodo, MovimientoContable.ALMACEN);
+        ponerPeriodo(model, periodo);
         return "contabilidad/ventas";
     }
 
@@ -243,21 +260,18 @@ public class ContabilidadControlador {
 
     @GetMapping("/movimientos")
     public String movimientos(@RequestParam(required = false) String mes,
-                              @RequestParam(required = false) String area,
                               @RequestParam(required = false) String tipo,
                               @RequestParam(required = false) Integer cuentaId,
                               @RequestParam(required = false) Integer categoriaId,
                               @RequestParam(required = false, defaultValue = "0") int pagina,
                               Model model) {
         YearMonth periodo = leerMes(mes);
-        String filtroArea = leerArea(area);
         String filtroTipo = esUno(tipo, MovimientoContable.INGRESO, MovimientoContable.EGRESO, MovimientoContable.TRASLADO)
                 ? tipo : null;
 
         List<MovimientoContable> filtrados = new ArrayList<>();
         BigDecimal ingresos = BigDecimal.ZERO, egresos = BigDecimal.ZERO, traslados = BigDecimal.ZERO;
         for (MovimientoContable m : movimientoRepository.findByFechaBetweenOrderByFechaDescIdDesc(periodo.atDay(1), periodo.atEndOfMonth())) {
-            if (filtroArea != null && !filtroArea.equals(m.getArea())) continue;
             if (filtroTipo != null && !filtroTipo.equals(m.getTipo())) continue;
             if (cuentaId != null && (m.getCuenta() == null || m.getCuenta().getId() != cuentaId)
                     && (m.getCuentaDestino() == null || m.getCuentaDestino().getId() != cuentaId)) continue;
@@ -302,7 +316,7 @@ public class ContabilidadControlador {
         model.addAttribute("tipo", filtroTipo == null ? "" : filtroTipo);
         model.addAttribute("cuentaId", cuentaId);
         model.addAttribute("categoriaId", categoriaId);
-        ponerPeriodo(model, periodo, filtroArea);
+        ponerPeriodo(model, periodo);
         return "contabilidad/movimientos";
     }
 
@@ -364,14 +378,13 @@ public class ContabilidadControlador {
         boolean desdeCategorias = "categorias".equals(f.get("volver"));
         try {
             MovimientoContable m = servicio.guardarMovimiento(new ContabilidadServicio.DatosMovimiento(
-                    id, f.get("tipo"), fecha, f.get("area"), entero(f.get("cuentaId")), entero(f.get("cuentaDestinoId")),
+                    id, f.get("tipo"), fecha, MovimientoContable.ALMACEN, entero(f.get("cuentaId")), entero(f.get("cuentaDestinoId")),
                     entero(f.get("subcategoriaId")), ContabilidadServicio.pesos(f.get("valor")),
                     f.get("tercero"), f.get("descripcion")), usuarioActual());
             ra.addFlashAttribute("mensaje", m.getTipoEtiqueta() + " de $" + miles(m.getValor()) + " guardado"
                     + (m.getSubcategoria() != null ? " en " + m.getSubcategoria().getNombre() : "") + ".");
             ra.addAttribute("mes", YearMonth.from(m.getFecha()).toString());
             if (desdeCategorias) return "redirect:/contabilidad/categorias";
-            ra.addAttribute("area", m.getArea());
             return "redirect:/contabilidad/movimientos";
         } catch (IllegalArgumentException e) {
             if (desdeCategorias) {
@@ -384,7 +397,7 @@ public class ContabilidadControlador {
             MovimientoContable m = id != null ? movimientoRepository.findById(id).orElse(new MovimientoContable()) : new MovimientoContable();
             m.setTipo(f.getOrDefault("tipo", MovimientoContable.EGRESO));
             m.setFecha(fecha != null ? fecha : ContabilidadServicio.hoy());
-            m.setArea(MovimientoContable.FABRICA.equals(f.get("area")) ? MovimientoContable.FABRICA : MovimientoContable.ALMACEN);
+            m.setArea(MovimientoContable.ALMACEN);
             m.setCuenta(buscarCuenta(f.get("cuentaId")));
             m.setCuentaDestino(buscarCuenta(f.get("cuentaDestinoId")));
             Integer subId = entero(f.get("subcategoriaId"));
@@ -415,7 +428,6 @@ public class ContabilidadControlador {
         movimientoRepository.delete(m);
         ra.addFlashAttribute("mensaje", m.getTipoEtiqueta() + " de $" + miles(m.getValor()) + " eliminado.");
         ra.addAttribute("mes", YearMonth.from(m.getFecha()).toString());
-        ra.addAttribute("area", m.getArea());
         return "redirect:/contabilidad/movimientos";
     }
 
@@ -467,7 +479,7 @@ public class ContabilidadControlador {
     @PostMapping("/por-pagar/guardar")
     public String guardarPorPagar(@RequestParam Map<String, String> f, RedirectAttributes ra) {
         try {
-            CuentaPorPagar c = servicio.registrarPorPagar(f.get("area"), f.get("acreedor"), f.get("concepto"),
+            CuentaPorPagar c = servicio.registrarPorPagar(MovimientoContable.ALMACEN, f.get("acreedor"), f.get("concepto"),
                     ContabilidadServicio.pesos(f.get("valor")), fecha(f.get("vence")));
             ra.addFlashAttribute("mensaje", "Se anotó la deuda con " + c.getAcreedor() + " por $" + miles(c.getValor()) + ".");
         } catch (IllegalArgumentException e) {
@@ -510,7 +522,41 @@ public class ContabilidadControlador {
         List<FilaCuenta> filas = filasCuentas(true);
         model.addAttribute("filas", filas);
         model.addAttribute("total", filas.stream().map(FilaCuenta::getSaldo).reduce(BigDecimal.ZERO, BigDecimal::add));
+        // Para elegir a qué cuenta entra la plata de la tienda virtual
+        List<Opcion> opcionesTienda = new ArrayList<>();
+        Integer cuentaTiendaId = null;
+        for (CuentaContable c : cuentaRepository.findAllByOrderByOrdenAscNombreAsc()) {
+            if (c.isDeLaTienda()) cuentaTiendaId = c.getId();
+            if (c.isActiva() || c.isDeLaTienda()) opcionesTienda.add(new Opcion(c.getId(), texto(c.getNombre()), c.isDeLaTienda()));
+        }
+        model.addAttribute("opcionesTienda", opcionesTienda);
+        model.addAttribute("hayCuentaTienda", cuentaTiendaId != null);
         return "contabilidad/cuentas";
+    }
+
+    /** Elige la cuenta a la que entra sola la plata de la tienda virtual (vacío = ninguna: se anota a mano). */
+    @PostMapping("/cuentas/tienda")
+    @Transactional
+    public String elegirCuentaTienda(@RequestParam(required = false) String cuentaId, RedirectAttributes ra) {
+        Integer id = entero(cuentaId);
+        CuentaContable elegida = id != null ? cuentaRepository.findById(id).orElse(null) : null;
+        if (id != null && (elegida == null || !elegida.isActiva())) {
+            ra.addFlashAttribute("error", "Elige una cuenta activa.");
+            return "redirect:/contabilidad/cuentas";
+        }
+        for (CuentaContable c : cuentaRepository.findByRecibeTiendaTrue()) {
+            c.setRecibeTienda(false);
+            cuentaRepository.save(c);
+        }
+        if (elegida != null) {
+            elegida.setRecibeTienda(true);
+            cuentaRepository.save(elegida);
+            ra.addFlashAttribute("mensaje", "Listo: la plata de las compras pagadas en la tienda virtual (Wompi y Addi) se anota sola en "
+                    + elegida.getNombre() + ".");
+        } else {
+            ra.addFlashAttribute("mensaje", "Las compras de la tienda virtual ya no se anotan solas: anótalas en Ventas con el botón Anotar.");
+        }
+        return "redirect:/contabilidad/cuentas";
     }
 
     @PostMapping("/cuentas/guardar")
@@ -566,7 +612,7 @@ public class ContabilidadControlador {
     @GetMapping("/categorias")
     public String categorias(@RequestParam(required = false) String mes, Model model) {
         YearMonth periodo = leerMes(mes);
-        // Lo que se movió en el mes en cada subcategoría (Almacén y Fábrica)
+        // Lo que se movió en el mes en cada subcategoría
         Map<Integer, BigDecimal> porSub = new HashMap<>();
         Map<Integer, List<MovimientoContable>> porCategoria = new HashMap<>();
         for (MovimientoContable m : movimientoRepository.findByFechaBetweenOrderByFechaDescIdDesc(periodo.atDay(1), periodo.atEndOfMonth())) {
@@ -602,7 +648,7 @@ public class ContabilidadControlador {
         // Fecha que sale por defecto en el cuadro: hoy si se mira el mes actual; si no, el último día de ese mes
         model.addAttribute("fechaSugerida", periodo.atEndOfMonth().isBefore(hoy) ? periodo.atEndOfMonth().toString() : hoy.toString());
         model.addAttribute("hoy", hoy.toString());
-        ponerPeriodo(model, periodo, null);
+        ponerPeriodo(model, periodo);
         Map<String, String> clases = new LinkedHashMap<>();
         for (String clase : List.of(CategoriaContable.INGRESO, CategoriaContable.COSTO, CategoriaContable.GASTO, CategoriaContable.OTRO)) {
             clases.put(clase, CategoriaContable.etiquetaClase(clase));
@@ -784,14 +830,12 @@ public class ContabilidadControlador {
         return filas;
     }
 
-    private void ponerPeriodo(Model model, YearMonth periodo, String area) {
+    private void ponerPeriodo(Model model, YearMonth periodo) {
         model.addAttribute("mes", periodo.toString());
         model.addAttribute("mesTexto", MESES[periodo.getMonthValue() - 1] + " " + periodo.getYear());
         model.addAttribute("mesAnterior", periodo.minusMonths(1).toString());
         model.addAttribute("mesSiguiente", periodo.plusMonths(1).toString());
         model.addAttribute("esMesActual", periodo.equals(YearMonth.from(ContabilidadServicio.hoy())));
-        model.addAttribute("area", area == null ? "TODAS" : area);
-        model.addAttribute("areaTexto", area == null ? "Almacén y Fábrica" : MovimientoContable.etiquetaArea(area));
     }
 
     /** "2026-10" → octubre de 2026. Vacío o mal escrito → el mes actual. */
@@ -801,12 +845,6 @@ public class ContabilidadControlador {
         } catch (Exception e) {
             return YearMonth.from(ContabilidadServicio.hoy());
         }
-    }
-
-    /** Por defecto se ve Almacén. "TODAS" = Almacén y Fábrica juntos (null). */
-    private static String leerArea(String area) {
-        if ("TODAS".equals(area)) return null;
-        return MovimientoContable.FABRICA.equals(area) ? MovimientoContable.FABRICA : MovimientoContable.ALMACEN;
     }
 
     /** null → "" (para que las pantallas nunca reciban null). */

@@ -93,14 +93,7 @@
                     <label class="form-label">Fecha</label>
                     <input type="date" class="form-control" name="fecha" required th:value="${fechaSugerida}" th:max="${hoy}">
                 </div>
-                <div class="col-md-2 col-6">
-                    <label class="form-label">Área</label>
-                    <select class="form-select" name="area">
-                        <option value="ALMACEN">Almacén</option>
-                        <option value="FABRICA">Fábrica</option>
-                    </select>
-                </div>
-                <div class="col-md-7 col-12">
+                <div class="col-md-9 col-12">
                     <label class="form-label" th:text="${fc.categoria.deIngreso} ? 'De quién / detalle (opcional)' : 'A quién se le pagó / detalle (opcional)'">Detalle</label>
                     <input type="text" class="form-control" name="tercero" maxlength="150">
                 </div>
@@ -164,7 +157,7 @@
                 </table>
             </div>
             <a class="ayuda" th:if="${fc.cantidadMovimientos > #lists.size(fc.movimientos)}"
-               th:href="@{/contabilidad/movimientos(mes=${mes}, area='TODAS', categoriaId=${fc.categoria.id})}"
+               th:href="@{/contabilidad/movimientos(mes=${mes}, categoriaId=${fc.categoria.id})}"
                th:text="'Ver los ' + ${fc.cantidadMovimientos} + ' movimientos en Movimientos →'">Ver todos →</a>
         </div>
         <p class="ayuda mb-0" th:if="${fc.cantidadMovimientos == 0}" th:text="'Nada anotado en ' + ${mesTexto} + '.'">Nada anotado.</p>

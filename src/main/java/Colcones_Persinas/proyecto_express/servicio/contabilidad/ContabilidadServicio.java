@@ -114,7 +114,7 @@ public class ContabilidadServicio {
     }
 
     /**
-     * Resultado entre dos fechas (incluidas). area = ALMACEN, FABRICA o null para todo.
+     * Resultado entre dos fechas (incluidas). area = null para todo (la contabilidad es solo de Almacén).
      * Los traslados no cuentan: solo cambian la plata de cuenta.
      */
     @Transactional(readOnly = true)
@@ -193,7 +193,7 @@ public class ContabilidadServicio {
 
         m.setTipo(tipo);
         m.setFecha(d.fecha());
-        m.setArea(MovimientoContable.FABRICA.equals(d.area()) ? MovimientoContable.FABRICA : MovimientoContable.ALMACEN);
+        m.setArea(MovimientoContable.ALMACEN);   // la contabilidad es solo de Almacén (y la tienda virtual)
         m.setCuenta(cuenta);
         m.setValor(d.valor());
         m.setTercero(texto(d.tercero(), 150));
@@ -269,7 +269,7 @@ public class ContabilidadServicio {
         if (acreedor == null || acreedor.isBlank()) throw new IllegalArgumentException("Escribe a quién se le debe.");
         if (valor == null || valor.signum() <= 0) throw new IllegalArgumentException("Escribe un valor mayor a 0.");
         CuentaPorPagar c = new CuentaPorPagar();
-        c.setArea(MovimientoContable.FABRICA.equals(area) ? MovimientoContable.FABRICA : MovimientoContable.ALMACEN);
+        c.setArea(MovimientoContable.ALMACEN);   // la contabilidad es solo de Almacén (y la tienda virtual)
         c.setAcreedor(texto(acreedor, 150));
         c.setConcepto(texto(concepto, 300));
         c.setValor(valor);
