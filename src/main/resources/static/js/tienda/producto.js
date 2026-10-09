@@ -43,16 +43,16 @@
     };
     const metros = cm => (cm / 100).toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-    /* Si una medida se sale de lo que se fabrica, devuelve el aviso; si está bien, null. */
+    /* No hay medida máxima. Solo se avisa si es menor al mínimo, o si es tan grande (más de 20 m)
+       que seguro se escribió en centímetros. Devuelve el aviso; si está bien, null. */
+    const MEDIDA_IMPOSIBLE_CM = 2000;
     function fueraDeRango(anchoCm, altoCm) {
-        const anchoMin = Number(d.anchoMin), anchoMax = Number(d.anchoMax);
-        const altoMin = Number(d.altoMin), altoMax = Number(d.altoMax);
-        if (anchoCm < anchoMin || anchoCm > anchoMax) {
-            return `El ancho debe estar entre ${metros(anchoMin)} y ${metros(anchoMax)} m. Para otras medidas, escríbenos y te cotizamos.`;
+        const anchoMin = Number(d.anchoMin), altoMin = Number(d.altoMin);
+        if (anchoCm > MEDIDA_IMPOSIBLE_CM || altoCm > MEDIDA_IMPOSIBLE_CM) {
+            return 'Revisa la medida: escríbela en metros. Por ejemplo, 1 metro con 20 centímetros es 1,20.';
         }
-        if (altoCm < altoMin || altoCm > altoMax) {
-            return `El alto debe estar entre ${metros(altoMin)} y ${metros(altoMax)} m. Para otras medidas, escríbenos y te cotizamos.`;
-        }
+        if (anchoCm < anchoMin) return `El ancho mínimo es ${metros(anchoMin)} m.`;
+        if (altoCm < altoMin) return `El alto mínimo es ${metros(altoMin)} m.`;
         return null;
     }
 
@@ -128,7 +128,10 @@
         if (porMetro) {
             desglose = `${metros(medidaCm(elAncho))} × ${metros(medidaCm(elAlto))} m = ${Number(c.m2Reales).toLocaleString('es-CO')} m²`;
             if (c.m2 > c.m2Reales) desglose += `. Se cobra el mínimo de ${Number(c.m2).toLocaleString('es-CO')} m²`;
-            desglose += `. Se corta del rollo de ${Number(c.rollo).toLocaleString('es-CO', { minimumFractionDigits: 2 })} m.`;
+            const rolloTexto = Number(c.rollo).toLocaleString('es-CO', { minimumFractionDigits: 2 });
+            desglose += medidaCm(elAlto) / 100 + 0.20 > Number(c.rollo) + 0.0001
+                ? `. Medida especial: se cobra con el precio del rollo de ${rolloTexto} m.`
+                : `. Se corta del rollo de ${rolloTexto} m.`;
             if (Number(c.precioCabezal) > 0) desglose += ` Incluye el cabezal: ${pesos(c.precioCabezal)}.`;
         }
         if (cant > 1) desglose += ` ${cant} unidades de ${pesos(c.precioUnitario)}.`;
@@ -192,11 +195,10 @@
         mostrarToast(`Agregado al carrito: ${escaparHtml(d.nombre)} <a href="/tienda/carrito">Ver carrito</a>`);
     });
 
-    /* Texto de ayuda con los límites de este producto, en metros */
+    /* Texto de ayuda con las medidas mínimas de este producto, en metros */
     const ayuda = document.getElementById('ayudaMedidas');
-    if (ayuda && d.anchoMax && d.altoMax) {
-        ayuda.textContent = `Escribe las medidas en metros. Ancho de ${metros(Number(d.anchoMin))} a ${metros(Number(d.anchoMax))} m. `
-            + `Alto de ${metros(Number(d.altoMin))} a ${metros(Number(d.altoMax))} m.`;
+    if (ayuda && d.anchoMin && d.altoMin) {
+        ayuda.textContent = `Escribe las medidas en metros. Ancho desde ${metros(Number(d.anchoMin))} m y alto desde ${metros(Number(d.altoMin))} m.`;
     }
 
     pintarColores();

@@ -16,19 +16,25 @@ import java.math.RoundingMode;
  * Regla (la misma que usa fábrica en Pedido.getPrecioVenta):
  *  1. Corte de alto = alto + 0,20 m.
  *  2. Se usa el rollo más angosto que alcance para ese corte: 1,83 → 2,50 → 3,00 m
- *     (saltando los rollos que esa tela no tenga).
+ *     (saltando los rollos que esa tela no tenga). Si el corte no cabe en ninguno de sus rollos
+ *     (por ejemplo, persianas de más de 2,80 m de alto), se cobra con el rollo más ancho que tenga esa tela.
  *  3. Precio = ancho × alto (m², con un mínimo cobrable) × precio por m² de ese rollo.
  *  4. Si el cliente lo pide con cabezal: + ancho (m) × valor del cabezal por metro.
  *     (Enrollado al contrario no cambia el precio.)
  *
  * Las medidas llegan y se guardan en centímetros, pero al cliente siempre se le
  * habla en metros (así se mide en el negocio).
+ *
+ * No hay medida máxima: solo el mínimo de cada producto. Lo de más de 20 m se toma como
+ * un error al escribir (por ejemplo "120" pensando en centímetros).
  */
 @Service
 public class PrecioTiendaServicio {
 
     public static final double MARGEN_CORTE_ALTO = 0.20;
     public static final double[] ROLLOS = {1.83, 2.50, 3.00};
+    /** Más de esto (en cm) seguro es un error al escribir la medida. */
+    public static final int MEDIDA_IMPOSIBLE_CM = 2000;
 
     /**
      * Resultado de una cotización. Si ok = false, "mensaje" explica qué pasó.
@@ -67,15 +73,14 @@ public class PrecioTiendaServicio {
             return Cotizacion.error("Elige una tela.");
         }
         if (anchoCm == null || altoCm == null) return Cotizacion.error("Escribe el ancho y el alto en metros.");
-        if (anchoCm < p.getAnchoMinCm() || anchoCm > p.getAnchoMaxCm()) {
-            return Cotizacion.error("El ancho debe estar entre " + ItemOrdenTienda.enMetros(p.getAnchoMinCm())
-                    + " y " + ItemOrdenTienda.enMetros(p.getAnchoMaxCm())
-                    + " m. Para otras medidas, escríbenos y te cotizamos.");
+        if (anchoCm > MEDIDA_IMPOSIBLE_CM || altoCm > MEDIDA_IMPOSIBLE_CM) {
+            return Cotizacion.error("Revisa la medida: escríbela en metros. Por ejemplo, 1 metro con 20 centímetros es 1,20.");
         }
-        if (altoCm < p.getAltoMinCm() || altoCm > p.getAltoMaxCm()) {
-            return Cotizacion.error("El alto debe estar entre " + ItemOrdenTienda.enMetros(p.getAltoMinCm())
-                    + " y " + ItemOrdenTienda.enMetros(p.getAltoMaxCm())
-                    + " m. Para otras medidas, escríbenos y te cotizamos.");
+        if (anchoCm < p.getAnchoMinCm()) {
+            return Cotizacion.error("El ancho mínimo es " + ItemOrdenTienda.enMetros(p.getAnchoMinCm()) + " m.");
+        }
+        if (altoCm < p.getAltoMinCm()) {
+            return Cotizacion.error("El alto mínimo es " + ItemOrdenTienda.enMetros(p.getAltoMinCm()) + " m.");
         }
 
         double ancho = anchoCm / 100.0;
@@ -90,6 +95,18 @@ public class PrecioTiendaServicio {
                 BigDecimal precio = tela.precioParaRollo(r);
                 if (precio != null && precio.signum() > 0) {
                     rollo = r;
+                    precioM2 = precio;
+                    break;
+                }
+            }
+        }
+        // No cabe en ningún rollo que tenga esa tela (por ejemplo, más de 2,80 m de alto):
+        // se cobra con el rollo más ancho que tenga esa tela
+        if (rollo == null) {
+            for (int i = ROLLOS.length - 1; i >= 0; i--) {
+                BigDecimal precio = tela.precioParaRollo(ROLLOS[i]);
+                if (precio != null && precio.signum() > 0) {
+                    rollo = ROLLOS[i];
                     precioM2 = precio;
                     break;
                 }

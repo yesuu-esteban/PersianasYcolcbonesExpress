@@ -8,8 +8,8 @@
     tipo.addEventListener('change', actualizarTipo);
     actualizarTipo();
 
-    /* Límites de medida: se escriben en METROS ("0,30" o "0.30"). El servidor los guarda en centímetros
-       en el campo oculto que está al lado de cada uno. */
+    /* Medidas mínimas: se escriben en METROS ("0,30" o "0.30"). El servidor las guarda en centímetros
+       en el campo oculto que está al lado de cada una. (No hay medida máxima.) */
     const medidas = Array.from(document.querySelectorAll('[data-medida-m]'));
     const ocultoDe = el => document.querySelector('input[type="hidden"][name="' + el.dataset.medidaM + '"]');
     const aCm = texto => {
@@ -31,8 +31,6 @@
         const cm = {};
         medidas.forEach(el => { cm[el.dataset.medidaM] = aCm(el.value); });
         const malas = medidas.filter(el => cm[el.dataset.medidaM] === null);
-        if (malas.length === 0 && cm.anchoMinCm >= cm.anchoMaxCm) malas.push(document.getElementById('anchoMaxM'));
-        if (malas.length === 0 && cm.altoMinCm >= cm.altoMaxCm) malas.push(document.getElementById('altoMaxM'));
         document.getElementById('avisoMedidas').hidden = malas.length === 0;
         if (malas.length === 0) return;
         e.preventDefault();

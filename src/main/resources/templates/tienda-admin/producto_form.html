@@ -101,21 +101,11 @@
                         <input type="hidden" name="anchoMinCm" th:value="${producto.anchoMinCm}">
                     </div>
                     <div class="col-6 col-md-3">
-                        <label class="form-label" for="anchoMaxM">Ancho máximo (m)</label>
-                        <input type="text" class="form-control" id="anchoMaxM" inputmode="decimal" autocomplete="off" placeholder="3,00" data-medida-m="anchoMaxCm">
-                        <input type="hidden" name="anchoMaxCm" th:value="${producto.anchoMaxCm}">
-                    </div>
-                    <div class="col-6 col-md-3">
                         <label class="form-label" for="altoMinM">Alto mínimo (m)</label>
                         <input type="text" class="form-control" id="altoMinM" inputmode="decimal" autocomplete="off" placeholder="0,30" data-medida-m="altoMinCm">
                         <input type="hidden" name="altoMinCm" th:value="${producto.altoMinCm}">
                     </div>
-                    <div class="col-6 col-md-3">
-                        <label class="form-label" for="altoMaxM">Alto máximo (m)</label>
-                        <input type="text" class="form-control" id="altoMaxM" inputmode="decimal" autocomplete="off" placeholder="2,80" data-medida-m="altoMaxCm">
-                        <input type="hidden" name="altoMaxCm" th:value="${producto.altoMaxCm}">
-                    </div>
-                    <div class="col-12 ayuda" id="avisoMedidas" hidden style="color:#ff9a90;">Escribe las cuatro medidas en metros, por ejemplo 0,30 o 3,00. La mínima debe ser menor que la máxima.</div>
+                    <div class="col-12 ayuda" id="avisoMedidas" hidden style="color:#ff9a90;">Escribe las medidas mínimas en metros, por ejemplo 0,30.</div>
                     <div class="col-6 col-md-3">
                         <label class="form-label">Mínimo que se cobra (m²)</label>
                         <input type="text" class="form-control" name="m2Minimo" inputmode="decimal" th:value="${producto.m2Minimo}">
@@ -157,8 +147,8 @@
                     </div>
                 </div>
                 <div class="ayuda mt-2">
-                    Las medidas van en metros. El precio se calcula así: alto + 0,20 m decide el rollo (1,83 → 2,50 → 3,00 m, el primero que alcance y tenga precio).
-                    Luego ancho × alto × precio por m² de ese rollo. Si la medida no cabe en ningún rollo con precio, se le pide al cliente que escriba por WhatsApp.
+                    Las medidas van en metros y no hay medida máxima. El precio se calcula así: alto + 0,20 m decide el rollo (1,83 → 2,50 → 3,00 m, el primero que alcance y tenga precio).
+                    Luego ancho × alto × precio por m² de ese rollo. Si la persiana mide más de 2,80 m de alto, se cobra con el rollo más ancho que tenga la tela.
                 </div>
             </div>
         </div>
