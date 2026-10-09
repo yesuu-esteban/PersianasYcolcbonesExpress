@@ -16,6 +16,10 @@ import java.util.stream.Collectors;
  *  - M2:     persianas y cortinas a la medida. El precio sale de la TELA elegida y del
  *            ROLLO del que se corta (1,83 / 2,50 / 3,00 m), igual que en fábrica.
  *  - UNIDAD: productos de precio fijo (accesorios, etc.).
+ *
+ * Opciones de enrollable (solo productos a la medida, se activan en el admin):
+ *  - Cabezal: el cliente puede pedirlo con cabezal; se cobra un valor por metro de ancho.
+ *  - Enrollado al contrario: la tela cae por delante del tubo. No cambia el precio.
  */
 @Entity
 @Table(name = "tienda_producto")
@@ -76,6 +80,21 @@ public class ProductoTienda {
     @Column(name = "con_mando", nullable = false)
     private boolean conMando = true;
 
+    /**
+     * Si el cliente puede pedirlo con cabezal. Es Boolean (no boolean) para que la
+     * columna nueva acepte los productos que ya existían en la base de datos.
+     */
+    @Column(name = "ofrece_cabezal")
+    private Boolean ofreceCabezal;
+
+    /** Lo que cuesta el cabezal por cada metro de ancho de la persiana. */
+    @Column(name = "precio_cabezal_metro")
+    private BigDecimal precioCabezalMetro;
+
+    /** Si el cliente puede pedirlo enrollado al contrario (la tela cae por delante del tubo). */
+    @Column(name = "ofrece_enrollado_contrario")
+    private Boolean ofreceEnrolladoContrario;
+
     @Column(name = "imagen_id")
     private Integer imagenId;
 
@@ -98,6 +117,18 @@ public class ProductoTienda {
     @Transient
     public boolean isPorMetro() {
         return PRECIO_M2.equals(tipoPrecio);
+    }
+
+    /** ¿El cliente puede elegir "con cabezal"? (solo productos a la medida) */
+    @Transient
+    public boolean isCabezalDisponible() {
+        return isPorMetro() && Boolean.TRUE.equals(ofreceCabezal);
+    }
+
+    /** ¿El cliente puede elegir "enrollado al contrario"? (solo productos a la medida) */
+    @Transient
+    public boolean isContrarioDisponible() {
+        return isPorMetro() && Boolean.TRUE.equals(ofreceEnrolladoContrario);
     }
 
     @Transient

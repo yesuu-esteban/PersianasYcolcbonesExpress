@@ -32,6 +32,10 @@ public class ItemOrdenTienda {
     @Column(name = "ancho_cm") private Integer anchoCm;
     @Column(name = "alto_cm")  private Integer altoCm;
     @Column(name = "lado_mando") private String ladoMando = "";
+    /** Pedido con cabezal (Boolean para que la columna nueva acepte las compras que ya existían). */
+    @Column(name = "con_cabezal") private Boolean conCabezal;
+    /** Enrollado al contrario: la tela cae por delante del tubo. */
+    @Column(name = "enrollado_contrario") private Boolean enrolladoContrario;
     @Column(nullable = false) private int cantidad = 1;
     private Double m2;
     private Double rollo;
@@ -46,7 +50,12 @@ public class ItemOrdenTienda {
         return String.format(Locale.ROOT, "%.2f", cm / 100.0).replace('.', ',');
     }
 
-    /** Ej: "Blackout liso, color Gris, 1,50 × 2,00 m, mando a la derecha". */
+    /** Texto que se le muestra al cliente y que va al pedido de Almacén cuando la persiana lleva cabezal. */
+    public static final String TEXTO_CABEZAL = "con cabezal";
+    /** Texto para la persiana enrollada al contrario. */
+    public static final String TEXTO_CONTRARIO = "enrollado al contrario (tela por delante)";
+
+    /** Ej: "Blackout liso, color Gris, 1,50 × 2,00 m, mando a la derecha, con cabezal". */
     @Transient
     public String getDetalle() {
         StringBuilder sb = new StringBuilder();
@@ -58,6 +67,8 @@ public class ItemOrdenTienda {
         if (ladoMando != null && !ladoMando.isBlank()) {
             sb.append(sb.length() > 0 ? ", " : "").append("mando a la ").append(ladoMando.toLowerCase());
         }
+        if (Boolean.TRUE.equals(conCabezal)) sb.append(sb.length() > 0 ? ", " : "").append(TEXTO_CABEZAL);
+        if (Boolean.TRUE.equals(enrolladoContrario)) sb.append(sb.length() > 0 ? ", " : "").append(TEXTO_CONTRARIO);
         return sb.toString();
     }
 }

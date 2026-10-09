@@ -127,6 +127,35 @@
                         </div>
                     </div>
                 </div>
+                <div class="opciones-enrollable mt-3">
+                    <div class="fw-bold mb-2">Opciones de enrollable</div>
+                    <div class="row g-3 align-items-end">
+                        <div class="col-md-5">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="ofreceCabezal" value="true" id="ofreceCabezal"
+                                       th:checked="${producto.ofreceCabezal != null and producto.ofreceCabezal}">
+                                <label class="form-check-label" for="ofreceCabezal" style="font-size:.86rem;">El cliente puede pedirlo con cabezal</label>
+                            </div>
+                        </div>
+                        <div class="col-md-7" id="filaPrecioCabezal">
+                            <label class="form-label" for="precioCabezalMetro">Valor del cabezal por metro de ancho</label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input type="text" class="form-control" name="precioCabezalMetro" id="precioCabezalMetro" inputmode="numeric" placeholder="Ej: 25.000"
+                                       th:value="${producto.precioCabezalMetro != null} ? ${#numbers.formatInteger(producto.precioCabezalMetro, 1, 'POINT')} : ''">
+                            </div>
+                            <div class="ayuda" id="ejemploCabezal">Se suma al precio de la persiana: ancho × este valor.</div>
+                        </div>
+                        <div class="col-12">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="ofreceEnrolladoContrario" value="true" id="ofreceEnrolladoContrario"
+                                       th:checked="${producto.ofreceEnrolladoContrario != null and producto.ofreceEnrolladoContrario}">
+                                <label class="form-check-label" for="ofreceEnrolladoContrario" style="font-size:.86rem;">
+                                    El cliente puede pedirlo enrollado al contrario (la tela cae por delante del tubo). No cambia el precio.</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
                 <div class="ayuda mt-2">
                     Las medidas van en metros. El precio se calcula así: alto + 0,20 m decide el rollo (1,83 → 2,50 → 3,00 m, el primero que alcance y tenga precio).
                     Luego ancho × alto × precio por m² de ese rollo. Si la medida no cabe en ningún rollo con precio, se le pide al cliente que escriba por WhatsApp.

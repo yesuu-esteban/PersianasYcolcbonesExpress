@@ -40,6 +40,24 @@
         malas[0].focus();
     });
 
+    /* Cabezal: el valor por metro solo se pide si el producto ofrece cabezal */
+    const ofreceCabezal = document.getElementById('ofreceCabezal');
+    const precioCabezal = document.getElementById('precioCabezalMetro');
+    const ejemploCabezal = document.getElementById('ejemploCabezal');
+    const formatoPesos = new Intl.NumberFormat('es-CO', { maximumFractionDigits: 0 });
+    function actualizarCabezal() {
+        document.getElementById('filaPrecioCabezal').hidden = !ofreceCabezal.checked;
+        precioCabezal.required = ofreceCabezal.checked && tipo.value === 'M2';
+        const valor = parseInt(String(precioCabezal.value).replace(/\D/g, ''), 10);
+        ejemploCabezal.textContent = isNaN(valor) || valor <= 0
+            ? 'Se suma al precio de la persiana: ancho × este valor.'
+            : 'Ejemplo: una persiana de 1,50 m de ancho paga $' + formatoPesos.format(Math.round(valor * 1.5)) + ' más por el cabezal.';
+    }
+    ofreceCabezal.addEventListener('change', actualizarCabezal);
+    precioCabezal.addEventListener('input', actualizarCabezal);
+    tipo.addEventListener('change', actualizarCabezal);
+    actualizarCabezal();
+
     const contenedor = document.getElementById('telas');
     document.getElementById('agregarTela').addEventListener('click', () => {
         contenedor.appendChild(document.getElementById('plantillaTela').content.cloneNode(true));

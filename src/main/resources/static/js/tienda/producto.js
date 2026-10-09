@@ -30,6 +30,9 @@
     const telaSel = () => form.querySelector('input[name="tela"]:checked');
     const colorSel = () => form.querySelector('input[name="color"]:checked');
     const ladoSel = () => form.querySelector('input[name="lado"]:checked');
+    /* Opciones de enrollable: solo existen si el producto las ofrece */
+    const conCabezal = () => { const el = form.querySelector('input[name="cabezal"]:checked'); return !!el && el.value === 'si'; };
+    const alContrario = () => { const el = form.querySelector('input[name="enrollado"]:checked'); return !!el && el.value === 'contrario'; };
     const entero = el => { const v = parseInt(el && el.value, 10); return isNaN(v) ? null : v; };
 
     /* Las medidas se escriben en METROS ("1.20" o "1,20"). Al servidor se le envían en centímetros. */
@@ -87,6 +90,7 @@
             const lado = ladoSel() ? ladoSel().value : 'Derecha';
             mando.className = 'mando ' + (lado === 'Izquierda' ? 'izquierda' : 'derecha');
         }
+        persiana.classList.toggle('con-cabezal', conCabezal());
     }
 
     function resumenTexto() {
@@ -97,6 +101,8 @@
             if (color) partes.push('color ' + color.value);
             if (medidaCm(elAncho) && medidaCm(elAlto)) partes.push(metros(medidaCm(elAncho)) + ' × ' + metros(medidaCm(elAlto)) + ' m');
             if (conMando && lado) partes.push('mando a la ' + lado.value.toLowerCase());
+            if (conCabezal()) partes.push('con cabezal');
+            if (alContrario()) partes.push('enrollado al contrario (tela por delante)');
         }
         partes.push('cantidad ' + (entero(elCantidad) || 1));
         return partes.join(', ');
@@ -123,6 +129,7 @@
             desglose = `${metros(medidaCm(elAncho))} × ${metros(medidaCm(elAlto))} m = ${Number(c.m2Reales).toLocaleString('es-CO')} m²`;
             if (c.m2 > c.m2Reales) desglose += `. Se cobra el mínimo de ${Number(c.m2).toLocaleString('es-CO')} m²`;
             desglose += `. Se corta del rollo de ${Number(c.rollo).toLocaleString('es-CO', { minimumFractionDigits: 2 })} m.`;
+            if (Number(c.precioCabezal) > 0) desglose += ` Incluye el cabezal: ${pesos(c.precioCabezal)}.`;
         }
         if (cant > 1) desglose += ` ${cant} unidades de ${pesos(c.precioUnitario)}.`;
         elPrecio.innerHTML = `<div class="precio-grande">${pesos(c.subtotal)}</div><p class="desglose">${desglose}</p>`;
@@ -144,6 +151,7 @@
                 if (telaSel()) p.set('telaId', telaSel().value);
                 p.set('ancho', anchoCm);
                 p.set('alto', altoCm);
+                if (conCabezal()) p.set('cabezal', 'true');
             }
             try {
                 const r = await fetch('/tienda/api/cotizar?' + p.toString());
@@ -177,7 +185,9 @@
             anchoCm: porMetro ? medidaCm(elAncho) : null,
             altoCm: porMetro ? medidaCm(elAlto) : null,
             lado: porMetro && conMando && ladoSel() ? ladoSel().value : '',
-            cantidad: entero(elCantidad) || 1
+            cantidad: entero(elCantidad) || 1,
+            cabezal: porMetro && conCabezal(),
+            contrario: porMetro && alContrario()
         });
         mostrarToast(`Agregado al carrito: ${escaparHtml(d.nombre)} <a href="/tienda/carrito">Ver carrito</a>`);
     });

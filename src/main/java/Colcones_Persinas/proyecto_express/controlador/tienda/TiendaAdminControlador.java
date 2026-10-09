@@ -138,6 +138,9 @@ public class TiendaAdminControlador {
         p.setAltoMinCm(entero(texto(f, "altoMinCm"), 30));
         p.setAltoMaxCm(entero(texto(f, "altoMaxCm"), 280));
         p.setConMando("true".equals(f.getFirst("conMando")));
+        p.setOfreceCabezal("true".equals(f.getFirst("ofreceCabezal")));
+        p.setPrecioCabezalMetro(precio(texto(f, "precioCabezalMetro")));
+        p.setOfreceEnrolladoContrario("true".equals(f.getFirst("ofreceEnrolladoContrario")));
         p.setActivo("true".equals(f.getFirst("activo")));
         p.setDestacado("true".equals(f.getFirst("destacado")));
         p.setOrden(entero(texto(f, "orden"), 0));
@@ -170,6 +173,10 @@ public class TiendaAdminControlador {
         }
         if (error == null && !p.isPorMetro() && (p.getPrecioUnidad() == null || p.getPrecioUnidad().signum() <= 0)) {
             error = "Escribe el precio por unidad.";
+        }
+        if (error == null && p.isCabezalDisponible()
+                && (p.getPrecioCabezalMetro() == null || p.getPrecioCabezalMetro().signum() <= 0)) {
+            error = "Escribe cuánto vale el cabezal por metro de ancho (o quita la opción de cabezal).";
         }
         if (error == null && (p.getAnchoMinCm() >= p.getAnchoMaxCm() || p.getAltoMinCm() >= p.getAltoMaxCm())) {
             error = "Revisa las medidas mínimas y máximas: la mínima debe ser menor que la máxima.";

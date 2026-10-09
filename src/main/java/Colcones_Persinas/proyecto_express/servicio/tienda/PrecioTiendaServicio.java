@@ -18,6 +18,8 @@ import java.math.RoundingMode;
  *  2. Se usa el rollo más angosto que alcance para ese corte: 1,83 → 2,50 → 3,00 m
  *     (saltando los rollos que esa tela no tenga).
  *  3. Precio = ancho × alto (m², con un mínimo cobrable) × precio por m² de ese rollo.
+ *  4. Si el cliente lo pide con cabezal: + ancho (m) × valor del cabezal por metro.
+ *     (Enrollado al contrario no cambia el precio.)
  *
  * Las medidas llegan y se guardan en centímetros, pero al cliente siempre se le
  * habla en metros (así se mide en el negocio).
@@ -28,15 +30,24 @@ public class PrecioTiendaServicio {
     public static final double MARGEN_CORTE_ALTO = 0.20;
     public static final double[] ROLLOS = {1.83, 2.50, 3.00};
 
-    /** Resultado de una cotización. Si ok = false, "mensaje" explica qué pasó. */
+    /**
+     * Resultado de una cotización. Si ok = false, "mensaje" explica qué pasó.
+     * precioUnitario ya incluye el cabezal; precioCabezal dice cuánto de ese valor es del cabezal (0 si no lleva).
+     */
     public record Cotizacion(boolean ok, String mensaje, BigDecimal precioUnitario, BigDecimal subtotal,
-                             double m2, double m2Reales, Double rollo, int cantidad) {
+                             double m2, double m2Reales, Double rollo, int cantidad, BigDecimal precioCabezal) {
         static Cotizacion error(String mensaje) {
-            return new Cotizacion(false, mensaje, null, null, 0, 0, null, 0);
+            return new Cotizacion(false, mensaje, null, null, 0, 0, null, 0, BigDecimal.ZERO);
         }
     }
 
+    /** Sin cabezal. */
     public Cotizacion cotizar(ProductoTienda p, TelaTienda tela, Integer anchoCm, Integer altoCm, Integer cantidad) {
+        return cotizar(p, tela, anchoCm, altoCm, cantidad, false);
+    }
+
+    public Cotizacion cotizar(ProductoTienda p, TelaTienda tela, Integer anchoCm, Integer altoCm, Integer cantidad,
+                              boolean conCabezal) {
         if (p == null || !p.isActivo()) return Cotizacion.error("Este producto no está disponible.");
         int cant = cantidad != null ? cantidad : 1;
         if (cant < 1 || cant > 50) return Cotizacion.error("La cantidad debe estar entre 1 y 50.");
@@ -47,8 +58,9 @@ public class PrecioTiendaServicio {
                 return Cotizacion.error("Este producto se cotiza con un asesor. Escríbenos por WhatsApp.");
             }
             BigDecimal unit = p.getPrecioUnidad().setScale(0, RoundingMode.HALF_UP);
-            return new Cotizacion(true, null, unit, unit.multiply(BigDecimal.valueOf(cant)), 0, 0, null, cant);
+            return new Cotizacion(true, null, unit, unit.multiply(BigDecimal.valueOf(cant)), 0, 0, null, cant, BigDecimal.ZERO);
         }
+        if (conCabezal && !p.isCabezalDisponible()) return Cotizacion.error("Este producto no tiene la opción de cabezal.");
 
         // ── Por metro cuadrado ──
         if (tela == null || !tela.isActiva() || tela.getProducto() == null || tela.getProducto().getId() != p.getId()) {
@@ -90,7 +102,15 @@ public class PrecioTiendaServicio {
         double m2Reales = redondear2(ancho * alto);
         double m2 = Math.max(m2Reales, p.getM2Minimo());
         BigDecimal unit = precioM2.multiply(BigDecimal.valueOf(m2)).setScale(0, RoundingMode.HALF_UP);
-        return new Cotizacion(true, null, unit, unit.multiply(BigDecimal.valueOf(cant)), m2, m2Reales, rollo, cant);
+
+        // Cabezal: valor por metro de ancho
+        BigDecimal cabezal = BigDecimal.ZERO;
+        if (conCabezal) {
+            BigDecimal porMetro = p.getPrecioCabezalMetro() != null ? p.getPrecioCabezalMetro() : BigDecimal.ZERO;
+            cabezal = porMetro.multiply(BigDecimal.valueOf(ancho)).setScale(0, RoundingMode.HALF_UP);
+            unit = unit.add(cabezal);
+        }
+        return new Cotizacion(true, null, unit, unit.multiply(BigDecimal.valueOf(cant)), m2, m2Reales, rollo, cant, cabezal);
     }
 
     private static double redondear2(double v) {

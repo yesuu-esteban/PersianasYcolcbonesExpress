@@ -98,6 +98,28 @@
                         <label class="opcion"><input type="radio" name="lado" value="Derecha" checked> Derecha</label>
                     </div>
                 </fieldset>
+
+                <fieldset class="paso" th:if="${producto.cabezalDisponible}">
+                    <legend>Cabezal</legend>
+                    <div class="opciones">
+                        <label class="opcion"><input type="radio" name="cabezal" value="no" checked> Sin cabezal
+                            <small>El tubo queda a la vista</small></label>
+                        <label class="opcion"><input type="radio" name="cabezal" value="si"> Con cabezal
+                            <small th:text="${producto.precioCabezalMetro != null} ? '+$' + ${#numbers.formatInteger(producto.precioCabezalMetro, 1, 'POINT')} + ' por metro de ancho' : ''">+$25.000 por metro de ancho</small></label>
+                    </div>
+                    <p class="ayuda">El cabezal es la tapa que cubre el tubo por arriba. Se ve más terminado y protege la tela del polvo.</p>
+                </fieldset>
+
+                <fieldset class="paso" th:if="${producto.contrarioDisponible}">
+                    <legend>Cómo se enrolla</legend>
+                    <div class="opciones">
+                        <label class="opcion"><input type="radio" name="enrollado" value="normal" checked> Normal
+                            <small>La tela baja pegada a la ventana</small></label>
+                        <label class="opcion"><input type="radio" name="enrollado" value="contrario"> Al contrario
+                            <small>La tela baja por delante, separada de la ventana</small></label>
+                    </div>
+                    <p class="ayuda">Al contrario sirve cuando hay manijas, rejas o un marco que tocarían la tela. Mismo precio.</p>
+                </fieldset>
             </th:block>
 
             <fieldset class="paso">
@@ -112,6 +134,7 @@
             <div class="previa">
                 <div class="lienzo" th:if="${producto.porMetro}" aria-hidden="true">
                     <div class="persiana fantasma" id="persiana">
+                        <span class="cabezal" th:if="${producto.cabezalDisponible}"></span>
                         <span class="cota cota-ancho" id="cotaAncho">ancho</span>
                         <span class="cota cota-alto" id="cotaAlto">alto</span>
                         <span class="mando derecha" id="mando" th:if="${producto.conMando}"></span>
