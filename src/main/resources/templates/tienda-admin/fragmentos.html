@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<body>
+
+<!-- Encabezado con el menú de la tienda virtual. activo: 'pedidos', 'productos' o 'contabilidad' -->
+<div th:fragment="encabezado(activo)" class="marca-header">
+    <div class="logo">
+        <img src="/tienda/logo.png" alt="">
+        <div class="titulo">PERSIANAS EXPRESS<small>TIENDA VIRTUAL</small></div>
+    </div>
+    <nav class="acciones-header" aria-label="Menú de la tienda">
+        <a href="/portal" class="btn btn-outline-secondary">← Portal</a>
+        <a href="/tienda-admin/ordenes" class="btn btn-outline-secondary"
+           th:classappend="${activo == 'pedidos'} ? 'activo'" th:attr="aria-current=${activo == 'pedidos'} ? 'page' : null">
+            Pedidos <span class="contador-nuevos" data-contador-nuevos hidden></span>
+        </a>
+        <a href="/tienda-admin" class="btn btn-outline-secondary"
+           th:classappend="${activo == 'productos'} ? 'activo'" th:attr="aria-current=${activo == 'productos'} ? 'page' : null">Productos</a>
+        <a href="/tienda-admin/contabilidad" class="btn btn-outline-secondary"
+           th:classappend="${activo == 'contabilidad'} ? 'activo'" th:attr="aria-current=${activo == 'contabilidad'} ? 'page' : null">Contabilidad</a>
+        <a href="/tienda" target="_blank" rel="noopener" class="btn btn-primary">Ver tienda</a>
+    </nav>
+</div>
+
+<!-- Pestañas de la contabilidad de la tienda. activa: 'resumen', 'movimientos' o 'cuentas' -->
+<nav th:fragment="pestanas-conta(activa)" class="pestanas" aria-label="Contabilidad de la tienda">
+    <a href="/tienda-admin/contabilidad" th:classappend="${activa == 'resumen'} ? 'activa'"
+       th:attr="aria-current=${activa == 'resumen'} ? 'page' : null">Resumen</a>
+    <a href="/tienda-admin/contabilidad/movimientos" th:classappend="${activa == 'movimientos'} ? 'activa'"
+       th:attr="aria-current=${activa == 'movimientos'} ? 'page' : null">Ingresos y gastos</a>
+    <a href="/tienda-admin/contabilidad/cuentas" th:classappend="${activa == 'cuentas'} ? 'activa'"
+       th:attr="aria-current=${activa == 'cuentas'} ? 'page' : null">Cuentas</a>
+</nav>
+
+<!-- Selector de mes: ← mes anterior · nombre del mes · mes siguiente → (ruta: a dónde lleva) -->
+<div th:fragment="selector-mes(ruta)" class="selector-mes">
+    <a class="btn btn-sm btn-outline-secondary" th:href="@{${ruta}(mes=${mesAnterior})}" aria-label="Mes anterior">←</a>
+    <strong th:text="${nombreMes}">Octubre 2026</strong>
+    <a class="btn btn-sm btn-outline-secondary" th:if="${mesSiguiente != null}" th:href="@{${ruta}(mes=${mesSiguiente})}" aria-label="Mes siguiente">→</a>
+    <a class="btn btn-sm btn-outline-secondary" th:unless="${esMesActual}" th:href="@{${ruta}}">Este mes</a>
+</div>
+
+<!-- Plata con puntos de miles: $1.250.000 (negativo: −$80.000) -->
+<span th:fragment="plata(valor)" class="plata" th:classappend="${valor != null and valor.signum() < 0} ? 'negativa'"
+      th:text="(${valor != null and valor.signum() < 0} ? '−$' : '$') + ${#numbers.formatInteger(valor == null ? 0 : valor.abs(), 1, 'POINT')}">$0</span>
+
+</body>
+</html>

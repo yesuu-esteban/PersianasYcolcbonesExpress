@@ -7,6 +7,7 @@ import Colcones_Persinas.proyecto_express.repository.almacen.PedidoTiendaVentasR
 import Colcones_Persinas.proyecto_express.repository.contabilidad.CuentaContableRepository;
 import Colcones_Persinas.proyecto_express.repository.contabilidad.MovimientoAbonosRepository;
 import Colcones_Persinas.proyecto_express.repository.contabilidad.MovimientoContableRepository;
+import Colcones_Persinas.proyecto_express.servicio.tienda.TiendaServicio;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,6 +27,9 @@ import java.util.Map;
  *  - A qué cuenta entró cada abono anotado, y cambiarla si se eligió mal.
  *
  * Los abonos NUEVOS que se registran en Almacén se anotan solos (ver PedidoTiendaControlador).
+ *
+ * Los pedidos viejos que creó la tienda virtual en Almacén (vendedor "Tienda virtual") no salen aquí:
+ * la tienda tiene su propia contabilidad (Tienda virtual → Contabilidad).
  */
 @Service
 public class VentasAlmacenServicio {
@@ -119,8 +123,13 @@ public class VentasAlmacenServicio {
     @Transactional(readOnly = true)
     public Ventas ventas(LocalDate desde, LocalDate hasta) {
         Ventas v = new Ventas();
-        List<PedidoTienda> pedidos = pedidoRepository.findByFechaPedidoBetweenOrderByFechaPedidoDescIdDesc(
-                desde.atStartOfDay(), hasta.atTime(23, 59, 59));
+        List<PedidoTienda> pedidos = new ArrayList<>();
+        for (PedidoTienda p : pedidoRepository.findByFechaPedidoBetweenOrderByFechaPedidoDescIdDesc(
+                desde.atStartOfDay(), hasta.atTime(23, 59, 59))) {
+            boolean deLaTienda = p.getVendedor() != null
+                    && TiendaServicio.VENDEDOR_TIENDA.equalsIgnoreCase(p.getVendedor().trim());
+            if (!deLaTienda) pedidos.add(p);
+        }
 
         // Los abonos ya anotados de estos pedidos, agrupados por pedido
         Map<Integer, List<AbonoAnotado>> abonosPorPedido = new HashMap<>();

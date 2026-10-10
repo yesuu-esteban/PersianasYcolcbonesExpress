@@ -26,6 +26,13 @@
 .seguimiento .numero strong { color: var(--tinta); overflow-wrap: anywhere; }
 .seguimiento h2 { margin-top: 6px; font-size: clamp(1.8rem, 5vw, 2.4rem); font-style: italic; text-transform: uppercase; }
 .seguimiento .saludo { margin-top: 8px; }
+/* Transportadora y guía cuando el pedido va en camino */
+.seguimiento .envio {
+    margin-top: 14px; padding: 10px 14px; border-radius: var(--radio); background: #fff;
+    display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline;
+}
+.seguimiento .envio span { font-size: .85rem; color: var(--gris); }
+.seguimiento .envio strong { color: var(--tinta); overflow-wrap: anywhere; }
 
 .pasos { list-style: none; margin: 26px 0 0; padding: 0; }
 .pasos li { position: relative; display: flex; gap: 16px; padding-bottom: 24px; }

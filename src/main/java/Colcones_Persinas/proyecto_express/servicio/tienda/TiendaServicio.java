@@ -1,16 +1,12 @@
 package Colcones_Persinas.proyecto_express.servicio.tienda;
 
-import Colcones_Persinas.proyecto_express.modelo.almacen.DetallePedidoTienda;
-import Colcones_Persinas.proyecto_express.modelo.almacen.PedidoTienda;
 import Colcones_Persinas.proyecto_express.modelo.tienda.ItemOrdenTienda;
 import Colcones_Persinas.proyecto_express.modelo.tienda.OrdenTienda;
 import Colcones_Persinas.proyecto_express.modelo.tienda.ProductoTienda;
 import Colcones_Persinas.proyecto_express.modelo.tienda.TelaTienda;
-import Colcones_Persinas.proyecto_express.repository.almacen.PedidoTiendaRepository;
 import Colcones_Persinas.proyecto_express.repository.tienda.OrdenTiendaRepository;
 import Colcones_Persinas.proyecto_express.repository.tienda.ProductoTiendaRepository;
 import Colcones_Persinas.proyecto_express.repository.tienda.TelaTiendaRepository;
-import Colcones_Persinas.proyecto_express.servicio.contabilidad.ContabilidadTiendaVirtual;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,19 +16,23 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 
 /**
  * Lógica de compra de la tienda virtual:
  *  - Cotiza el carrito (siempre en el servidor).
  *  - Crea la orden antes de mandar al cliente a pagar.
- *  - Aplica el resultado de Wompi o de Addi y, si el pago se aprueba, crea el pedido en Almacén
- *    y anota la plata como ingreso en Contabilidad (en la cuenta elegida para la tienda).
- *  - Permite corregir los datos del cliente de una compra desde la administración.
+ *  - Aplica el resultado de Wompi o de Addi. Si el pago se aprueba, el pedido queda en "Nuevo"
+ *    en la pantalla Pedidos de la tienda y la plata se anota sola en la contabilidad DE LA TIENDA.
+ *    La tienda es un módulo aparte: ya no crea nada en Almacén ni en la contabilidad de Almacén.
+ *  - Permite corregir los datos del cliente y cambiar el estado del pedido desde la administración.
  */
 @Service
 public class TiendaServicio {
 
+    /**
+     * Vendedor con el que la tienda creaba antes sus pedidos en Almacén. Ya no se crean,
+     * pero Almacén lo usa para no mostrar esos pedidos viejos (ahora se ven en la tienda).
+     */
     public static final String VENDEDOR_TIENDA = "Tienda virtual";
     /** Así queda marcada la compra cuando el cliente eligió pagar a cuotas con Addi. */
     public static final String MEDIO_ADDI = "ADDI";
@@ -41,17 +41,15 @@ public class TiendaServicio {
     private final ProductoTiendaRepository productoRepository;
     private final TelaTiendaRepository telaRepository;
     private final OrdenTiendaRepository ordenRepository;
-    private final PedidoTiendaRepository pedidoTiendaRepository;
     private final PrecioTiendaServicio precioServicio;
-    private final ContabilidadTiendaVirtual contabilidadTienda;
+    private final ContabilidadTiendaServicio contabilidadTienda;
 
     public TiendaServicio(ProductoTiendaRepository productoRepository, TelaTiendaRepository telaRepository,
-                          OrdenTiendaRepository ordenRepository, PedidoTiendaRepository pedidoTiendaRepository,
-                          PrecioTiendaServicio precioServicio, ContabilidadTiendaVirtual contabilidadTienda) {
+                          OrdenTiendaRepository ordenRepository, PrecioTiendaServicio precioServicio,
+                          ContabilidadTiendaServicio contabilidadTienda) {
         this.productoRepository = productoRepository;
         this.telaRepository = telaRepository;
         this.ordenRepository = ordenRepository;
-        this.pedidoTiendaRepository = pedidoTiendaRepository;
         this.precioServicio = precioServicio;
         this.contabilidadTienda = contabilidadTienda;
     }
@@ -234,7 +232,8 @@ public class TiendaServicio {
 
     /**
      * Aplica el estado que reporta Wompi (o Addi, ya pasado a los mismos nombres de Wompi).
-     * Es seguro llamarlo varias veces con el mismo pago: el pedido de Almacén se crea una sola vez.
+     * Es seguro llamarlo varias veces con el mismo pago: una compra ya aprobada no se vuelve a procesar
+     * y la venta se anota una sola vez en la contabilidad de la tienda.
      */
     @Transactional
     public OrdenTienda aplicarPago(String referencia, String transaccionId, String estadoWompi,
@@ -254,9 +253,15 @@ public class TiendaServicio {
                             + ") no coincide con el total de la orden. Revisar en "
                             + (MEDIO_ADDI.equals(orden.getMetodoPago()) ? "Addi" : "Wompi") + ".]");
                 } else {
+                    LocalDateTime ahora = LocalDateTime.now(OrdenTienda.ZONA_COLOMBIA);
                     orden.setEstado(OrdenTienda.APROBADA);
-                    orden.setFechaPago(LocalDateTime.now(OrdenTienda.ZONA_COLOMBIA));
-                    crearPedidoEnAlmacen(orden);
+                    orden.setFechaPago(ahora);
+                    // Queda en "Nuevo" en la pantalla Pedidos de la tienda
+                    orden.setEstadoPedido(OrdenTienda.NUEVO);
+                    orden.setFechaEstadoPedido(ahora);
+                    // La plata se anota sola en la contabilidad de la tienda cuando el pago termine de guardarse.
+                    // Si algo falla allá, el pago no se afecta.
+                    contabilidadTienda.anotarVentaCuandoSeGuarde(orden.getId());
                 }
             }
             case "DECLINED" -> orden.setEstado(OrdenTienda.RECHAZADA);
@@ -267,77 +272,19 @@ public class TiendaServicio {
         return ordenRepository.save(orden);
     }
 
-    /** Crea el pedido en el listado de Almacén con lo comprado, ya pagado por completo. */
-    private void crearPedidoEnAlmacen(OrdenTienda orden) {
-        if (orden.getPedidoTiendaId() != null) return;
-
-        PedidoTienda pedido = new PedidoTienda();
-        pedido.setNombreCliente(orden.getNombreCliente());
-        pedido.setCedula(orden.getCedula());
-        pedido.setTelefono(orden.getTelefono());
-        pedido.setDireccion(orden.getDireccion() + (vacio(orden.getCiudad()) ? "" : ", " + orden.getCiudad()));
-        pedido.setFechaPedido(LocalDateTime.now(OrdenTienda.ZONA_COLOMBIA));
-        pedido.setVendedor(VENDEDOR_TIENDA);
-        pedido.setFabrica("");
-        pedido.setEstado("Pendiente");
-        pedido.setMetodoPago(MEDIO_ADDI.equals(orden.getMetodoPago())
-                ? "Addi"
-                : "Wompi" + (vacio(orden.getMetodoPago()) ? "" : " - " + orden.getMetodoPago()));
-
-        StringBuilder desc = new StringBuilder("Compra en la tienda virtual. Referencia ")
-                .append(orden.getReferencia()).append(". Correo: ").append(orden.getEmail()).append('.');
-        if (!vacio(orden.getNotas())) desc.append(" Notas del cliente: ").append(orden.getNotas());
-        pedido.setDescripcion(desc.toString());
-
-        for (ItemOrdenTienda it : orden.getItems()) {
-            DetallePedidoTienda d = new DetallePedidoTienda();
-            d.setProducto(it.getProductoNombre().toUpperCase(new Locale("es", "CO")));
-            d.setMaterial(it.getDetalle().toUpperCase(new Locale("es", "CO")));
-            d.setCantidad(it.getCantidad());
-            d.setPrecioUnitario(it.getPrecioUnitario());
-            d.setSubtotal(it.getSubtotal());
-            d.setPrecioFabricaUnitario(BigDecimal.ZERO);
-            d.setSubtotalFabrica(BigDecimal.ZERO);
-            pedido.agregarDetalle(d);
-        }
-
-        pedido.setTotal(orden.getTotal());
-        pedido.setDescuento(BigDecimal.ZERO);
-        pedido.setAbono(orden.getTotal());   // ya está pagado completo
-        pedido.setSaldo(BigDecimal.ZERO);
-
-        pedidoTiendaRepository.save(pedido);
-        orden.setPedidoTiendaId(pedido.getId());
-
-        // La plata queda anotada sola en Contabilidad cuando el pago termine de guardarse.
-        // Si algo falla allá, el pago y el pedido no se afectan.
-        contabilidadTienda.anotarCuandoSeGuarde(pedido.getId(), MEDIO_ADDI.equals(orden.getMetodoPago()) ? "Addi" : "Wompi");
-    }
-
     // ═══════════════════════════════════════════════════════════════
     // ADMINISTRACIÓN DE COMPRAS
     // ═══════════════════════════════════════════════════════════════
 
     /**
-     * Corrige los datos de contacto y entrega de una compra (pantalla "Compras en línea").
-     * No toca los productos, el total ni el estado: esos vienen del pago.
-     *
-     * Si la compra ya tiene su pedido en Almacén, los datos que cambiaron se copian
-     * también allá, para no tener que editar en dos partes.
-     *
-     * @return true si además se actualizó el pedido de Almacén.
+     * Corrige los datos de contacto y entrega de una compra (pantalla "Pedidos").
+     * No toca los productos, el total ni el estado del pago: esos vienen del pago.
      */
     @Transactional
-    public boolean editarDatosCliente(int ordenId, DatosCliente d) {
+    public void editarDatosCliente(int ordenId, DatosCliente d) {
         validarCliente(d);
         OrdenTienda orden = ordenRepository.findById(ordenId)
-                .orElseThrow(() -> new IllegalArgumentException("Esa compra ya no existe."));
-
-        boolean cambioNombre    = !limpio(d.nombre()).equals(limpio(orden.getNombreCliente()));
-        boolean cambioCedula    = !limpio(d.cedula()).equals(limpio(orden.getCedula()));
-        boolean cambioTelefono  = !limpio(d.telefono()).equals(limpio(orden.getTelefono()));
-        boolean cambioDireccion = !limpio(d.direccion()).equals(limpio(orden.getDireccion()))
-                || !limpio(d.ciudad()).equals(limpio(orden.getCiudad()));
+                .orElseThrow(() -> new IllegalArgumentException("Ese pedido ya no existe."));
 
         String notas = limpio(d.notas());
         if (notas.length() > 1000) notas = notas.substring(0, 1000);
@@ -350,21 +297,33 @@ public class TiendaServicio {
         orden.setCiudad(limpio(d.ciudad()));
         orden.setNotas(notas);
         ordenRepository.save(orden);
+    }
 
-        boolean hayCambiosParaAlmacen = cambioNombre || cambioCedula || cambioTelefono || cambioDireccion;
-        if (orden.getPedidoTiendaId() == null || !hayCambiosParaAlmacen) return false;
-
-        PedidoTienda pedido = pedidoTiendaRepository.findById(orden.getPedidoTiendaId()).orElse(null);
-        if (pedido == null) return false;   // el pedido ya fue borrado en Almacén
-
-        if (cambioNombre)   pedido.setNombreCliente(orden.getNombreCliente());
-        if (cambioCedula)   pedido.setCedula(orden.getCedula());
-        if (cambioTelefono) pedido.setTelefono(orden.getTelefono());
-        if (cambioDireccion) {
-            pedido.setDireccion(orden.getDireccion() + (vacio(orden.getCiudad()) ? "" : ", " + orden.getCiudad()));
+    /**
+     * Cambia en qué va un pedido pagado: Nuevo, En fabricación, Listo, Despachado, Entregado o Cancelado.
+     * Se puede devolver a un estado anterior si se eligió mal.
+     *
+     * @param guia transportadora y número de guía (solo se guarda si el estado es Despachado; puede ir vacío)
+     */
+    @Transactional
+    public OrdenTienda cambiarEstadoPedido(int ordenId, String estado, String guia) {
+        OrdenTienda orden = ordenRepository.findById(ordenId)
+                .orElseThrow(() -> new IllegalArgumentException("Ese pedido ya no existe."));
+        if (!orden.isPagada()) {
+            throw new IllegalArgumentException("Solo se puede cambiar el estado de un pedido pagado.");
         }
-        pedidoTiendaRepository.save(pedido);
-        return true;
+        if (estado == null || !OrdenTienda.ESTADOS_PEDIDO.containsKey(estado)) {
+            throw new IllegalArgumentException("Elige un estado de la lista.");
+        }
+        if (OrdenTienda.DESPACHADO.equals(estado)) {
+            String g = limpio(guia);
+            orden.setGuiaEnvio(g.length() > 200 ? g.substring(0, 200) : g);
+        }
+        if (!estado.equals(orden.getEstadoPedidoActual())) {
+            orden.setEstadoPedido(estado);
+            orden.setFechaEstadoPedido(LocalDateTime.now(OrdenTienda.ZONA_COLOMBIA));
+        }
+        return ordenRepository.save(orden);
     }
 
     // ═══════════════════════════════════════════════════════════════

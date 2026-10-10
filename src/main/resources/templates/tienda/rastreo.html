@@ -44,19 +44,32 @@
                 Si crees que es un error, escríbenos con este número y lo revisamos.
             </div>
 
+            <!-- ═══ Pedido pagado pero cancelado ═══ -->
+            <div class="aviso aviso-error" th:if="${orden.estado == 'APROBADA' and paso == 0}">
+                El pedido <strong th:text="${orden.referencia}"></strong> fue cancelado.
+                Si tienes alguna duda, escríbenos por WhatsApp con este número y te ayudamos.
+            </div>
+
             <!-- ═══ Pedido pagado: avance ═══ -->
-            <section class="seguimiento" th:if="${orden.estado == 'APROBADA'}">
+            <section class="seguimiento" th:if="${orden.estado == 'APROBADA' and paso gt 0}">
                 <p class="numero">Pedido <strong th:text="${orden.referencia}">PCX000000000000-XXXXX</strong></p>
 
                 <h2 th:if="${paso == 1}">Recibimos tu pago</h2>
-                <h2 th:if="${paso == 2}">Tu pedido está en preparación</h2>
+                <h2 th:if="${paso == 2}">Tu pedido está en fabricación</h2>
                 <h2 th:if="${paso == 3}">Tu pedido está listo</h2>
-                <h2 th:if="${paso == 4}">Tu pedido fue entregado</h2>
+                <h2 th:if="${paso == 4}">Tu pedido va en camino</h2>
+                <h2 th:if="${paso == 5}">Tu pedido fue entregado</h2>
 
-                <p class="saludo" th:if="${paso == 1}">Hola, <span th:text="${orden.primerNombre}">cliente</span>. Tu pedido quedó confirmado y pronto empezamos a prepararlo.</p>
-                <p class="saludo" th:if="${paso == 2}">Hola, <span th:text="${orden.primerNombre}">cliente</span>. Estamos fabricando o alistando lo que pediste.</p>
+                <p class="saludo" th:if="${paso == 1}">Hola, <span th:text="${orden.primerNombre}">cliente</span>. Tu pedido quedó confirmado y pronto empezamos a fabricarlo.</p>
+                <p class="saludo" th:if="${paso == 2}">Hola, <span th:text="${orden.primerNombre}">cliente</span>. Estamos fabricando lo que pediste, a tu medida.</p>
                 <p class="saludo" th:if="${paso == 3}">Hola, <span th:text="${orden.primerNombre}">cliente</span>. Te llamaremos para acordar el día de la entrega o la instalación.</p>
-                <p class="saludo" th:if="${paso == 4}">Hola, <span th:text="${orden.primerNombre}">cliente</span>. Gracias por tu compra.</p>
+                <p class="saludo" th:if="${paso == 4}">Hola, <span th:text="${orden.primerNombre}">cliente</span>. Ya despachamos tu pedido y pronto llega a tu dirección.</p>
+                <p class="saludo" th:if="${paso == 5}">Hola, <span th:text="${orden.primerNombre}">cliente</span>. Gracias por tu compra.</p>
+
+                <p class="envio" th:if="${paso >= 4 and orden.guiaEnvio != null and orden.guiaEnvio != ''}">
+                    <span>Envío</span>
+                    <strong th:text="${orden.guiaEnvio}">Servientrega · guía 123456</strong>
+                </p>
 
                 <ol class="pasos">
                     <li th:classappend="${paso == 1} ? 'hecho actual' : 'hecho'"
@@ -71,20 +84,28 @@
                         th:attr="aria-current=${paso == 2} ? 'step' : null">
                         <span class="punto" aria-hidden="true"></span>
                         <div>
-                            <strong>En preparación</strong>
-                            <span>Fabricamos o alistamos tu pedido.</span>
+                            <strong>En fabricación</strong>
+                            <span>Fabricamos tu pedido a la medida.</span>
                         </div>
                     </li>
                     <li th:classappend="${paso gt 3} ? 'hecho' : (${paso == 3} ? 'hecho actual' : 'falta')"
                         th:attr="aria-current=${paso == 3} ? 'step' : null">
                         <span class="punto" aria-hidden="true"></span>
                         <div>
-                            <strong>Listo para entregar o instalar</strong>
-                            <span>Te llamamos para acordar el día.</span>
+                            <strong>Listo</strong>
+                            <span>Te llamamos para acordar la entrega o la instalación.</span>
                         </div>
                     </li>
-                    <li th:classappend="${paso == 4} ? 'hecho actual' : 'falta'"
+                    <li th:classappend="${paso gt 4} ? 'hecho' : (${paso == 4} ? 'hecho actual' : 'falta')"
                         th:attr="aria-current=${paso == 4} ? 'step' : null">
+                        <span class="punto" aria-hidden="true"></span>
+                        <div>
+                            <strong>Despachado</strong>
+                            <span>Tu pedido va en camino.</span>
+                        </div>
+                    </li>
+                    <li th:classappend="${paso == 5} ? 'hecho actual' : 'falta'"
+                        th:attr="aria-current=${paso == 5} ? 'step' : null">
                         <span class="punto" aria-hidden="true"></span>
                         <div>
                             <strong>Entregado</strong>

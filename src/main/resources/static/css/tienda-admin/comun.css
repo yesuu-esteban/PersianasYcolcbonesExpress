@@ -1,4 +1,4 @@
-/* Pantallas: templates/tienda-admin/productos.html, templates/tienda-admin/producto_form.html, templates/tienda-admin/ordenes.html */
+/* Pantallas: todas las de templates/tienda-admin/ (productos, pedidos y contabilidad de la tienda) */
 
 :root { --bg-card: #2a1b42; --bg-input: #1e1330; --accent: #ec1561; --accent-light: #ff4d94; --gold: #ffc107; --texto: #f4f0fb; --texto-suave: #cbb8e0; }
 * { font-family: 'Poppins', sans-serif; }
@@ -10,6 +10,13 @@ body { background: linear-gradient(160deg, #1a0f2e 0%, #241536 100%); color: #ff
 .marca-header .titulo { font-weight: 800; font-size: 1.05rem; line-height: 1.1; }
 .marca-header .titulo small { display: block; font-weight: 600; font-size: .62rem; color: var(--gold); letter-spacing: 1.2px; margin-top: 2px; }
 .acciones-header { display: flex; flex-wrap: wrap; gap: 8px; }
+/* Pantalla en la que se está (menú de la tienda) */
+.acciones-header .btn.activo { background: rgba(255,255,255,0.14); border-color: var(--gold); color: #fff; }
+/* Numerito de pedidos nuevos en "Pedidos" (lo llena /js/tienda-admin/avisos.js) */
+.contador-nuevos {
+    display: inline-block; min-width: 20px; margin-left: 4px; padding: 1px 6px; border-radius: 999px;
+    background: var(--gold); color: #1a0f2e; font-size: .72rem; font-weight: 800; line-height: 1.4; text-align: center;
+}
 h1 { font-weight: 700; font-size: 1.35rem; margin: 0 0 14px; }
 .caja { background: var(--bg-card); border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; padding: 20px; box-shadow: 0 4px 22px rgba(0,0,0,0.3); }
 .btn-primary { background: linear-gradient(135deg, var(--accent), #b81050) !important; border: none !important; font-weight: 600; }
@@ -33,6 +40,7 @@ h1 { font-weight: 700; font-size: 1.35rem; margin: 0 0 14px; }
     .marca-header { padding: 12px 14px; }
     .acciones-header { width: 100%; display: grid; grid-template-columns: 1fr 1fr; }
     .acciones-header .btn { font-size: .8rem; }
+    .acciones-header .btn-primary { grid-column: 1 / -1; }
     .caja { padding: 14px; }
     .form-control, .form-select { font-size: 16px; }
 }

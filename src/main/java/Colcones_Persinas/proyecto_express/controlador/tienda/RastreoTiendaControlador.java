@@ -1,8 +1,6 @@
 package Colcones_Persinas.proyecto_express.controlador.tienda;
 
-import Colcones_Persinas.proyecto_express.modelo.almacen.PedidoTienda;
 import Colcones_Persinas.proyecto_express.modelo.tienda.OrdenTienda;
-import Colcones_Persinas.proyecto_express.repository.almacen.PedidoTiendaRepository;
 import Colcones_Persinas.proyecto_express.repository.tienda.OrdenTiendaRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Controller;
@@ -24,8 +22,8 @@ import java.util.Locale;
  *   /tienda/rastrear?numero=X   → resultado (lo que envía el formulario)
  *   /tienda/rastrear/X          → resultado (enlace directo para guardar o compartir)
  *
- * El avance sale del estado que el pedido tiene en Almacén, así que no hay que
- * actualizar nada aparte: basta con cambiar el estado en el listado de Almacén.
+ * El avance sale del estado del pedido que se cambia en Tienda virtual → Pedidos:
+ * Nuevo → En fabricación → Listo → Despachado → Entregado (o Cancelado).
  *
  * La página NO muestra dirección, cédula, celular ni correo: solo el primer nombre,
  * lo que se pidió y el avance.
@@ -37,7 +35,6 @@ public class RastreoTiendaControlador {
     private static final String VISTA = "tienda/rastreo";
 
     private final OrdenTiendaRepository ordenRepository;
-    private final PedidoTiendaRepository pedidoTiendaRepository;
 
     /** Los mismos datos de contacto que usa el resto de la tienda (encabezado y pie). */
     @Value("${tienda.whatsapp:573041354963}")
@@ -46,10 +43,8 @@ public class RastreoTiendaControlador {
     @Value("${tienda.telefonos:304 135 4963, 312 206 5950, 314 866 0215}")
     private String telefonos;
 
-    public RastreoTiendaControlador(OrdenTiendaRepository ordenRepository,
-                                    PedidoTiendaRepository pedidoTiendaRepository) {
+    public RastreoTiendaControlador(OrdenTiendaRepository ordenRepository) {
         this.ordenRepository = ordenRepository;
-        this.pedidoTiendaRepository = pedidoTiendaRepository;
     }
 
     @ModelAttribute
@@ -77,38 +72,11 @@ public class RastreoTiendaControlador {
         OrdenTienda orden = ordenRepository.findByReferencia(limpio).orElse(null);
         model.addAttribute("orden", orden);
 
-        if (orden != null && OrdenTienda.APROBADA.equals(orden.getEstado())) {
-            String estadoAlmacen = null;
-            if (orden.getPedidoTiendaId() != null) {
-                estadoAlmacen = pedidoTiendaRepository.findById(orden.getPedidoTiendaId())
-                        .map(PedidoTienda::getEstado).orElse(null);
-            }
-            model.addAttribute("paso", pasoSegunAlmacen(estadoAlmacen));
+        if (orden != null && orden.isPagada()) {
+            // 1 Pago recibido · 2 En fabricación · 3 Listo · 4 Despachado · 5 Entregado · 0 Cancelado
+            model.addAttribute("paso", orden.getPasoPedido());
         }
         return VISTA;
-    }
-
-    /**
-     * Convierte el estado del pedido en Almacén en el paso que ve el cliente:
-     *   Pendiente              → 1  Pago recibido
-     *   Pedido                 → 2  En preparación
-     *   En Bodega              → 3  Listo para entregar o instalar
-     *   Instalado / Terminado  → 4  Entregado
-     * Si el pedido ya no está en Almacén o tiene otro estado, se queda en el paso 1.
-     */
-    static int pasoSegunAlmacen(String estadoAlmacen) {
-        if (estadoAlmacen == null) return 1;
-        switch (estadoAlmacen.trim().toLowerCase(Locale.ROOT)) {
-            case "pedido":
-                return 2;
-            case "en bodega":
-                return 3;
-            case "instalado":
-            case "terminado":
-                return 4;
-            default:
-                return 1;
-        }
     }
 
     /**

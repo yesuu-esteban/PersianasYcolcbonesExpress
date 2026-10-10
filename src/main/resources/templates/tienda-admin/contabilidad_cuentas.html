@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/tienda-admin/comun.css">
+
+    <title>Tienda virtual - Cuentas</title>
+    <link rel="stylesheet" href="/css/tienda-admin/contabilidad.css">
+</head>
+<body>
+<div class="container-fluid" style="max-width:1200px;">
+    <div th:replace="~{tienda-admin/fragmentos :: encabezado('contabilidad')}"></div>
+
+    <div class="titulo-conta">
+        <h1>Contabilidad de la tienda</h1>
+    </div>
+    <nav th:replace="~{tienda-admin/fragmentos :: pestanas-conta('cuentas')}"></nav>
+
+    <div th:if="${mensaje}" class="alert alert-success" th:text="${mensaje}"></div>
+    <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
+
+    <p class="ayuda mb-3">Las cuentas donde está la plata de la tienda (bancos, billeteras o cajas). Son aparte de las cuentas de Almacén.
+        El <strong>saldo inicial</strong> es lo que había en cada una el día que empiezan a usar esta contabilidad; desde ahí se suman los ingresos y se restan los gastos.</p>
+
+    <!-- ═══ Cuentas ═══ -->
+    <section class="caja seccion">
+        <h2>Cuentas</h2>
+        <p class="vacio-chico" th:if="${#lists.isEmpty(filas)}">Todavía no hay cuentas. Agrega la primera abajo.</p>
+        <div class="tabla-wrap" th:unless="${#lists.isEmpty(filas)}">
+            <table class="table tabla-conta align-middle">
+                <thead>
+                    <tr><th>Cuenta</th><th>Saldo inicial</th><th class="num">Saldo hoy</th><th></th></tr>
+                </thead>
+                <tbody>
+                    <tr th:each="f : ${filas}" th:classappend="${!f.cuenta.activa} ? 'inactiva'">
+                        <td>
+                            <input type="text" class="form-control form-control-sm" name="nombre" maxlength="80" required
+                                   th:value="${f.cuenta.nombre}" th:attr="form='cuenta-' + ${f.cuenta.id}" aria-label="Nombre de la cuenta">
+                            <span class="badge badge-medio" th:if="${f.cuenta.deWompi}">Recibe Wompi</span>
+                            <span class="badge badge-medio" th:if="${f.cuenta.deAddi}">Recibe Addi</span>
+                            <span class="badge badge-no" th:unless="${f.cuenta.activa}">Desactivada</span>
+                        </td>
+                        <td>
+                            <input type="text" class="form-control form-control-sm" name="saldoInicial" inputmode="numeric" data-plata
+                                   th:value="(${f.cuenta.saldoInicial.signum() < 0} ? '-' : '') + ${#numbers.formatInteger(f.cuenta.saldoInicial.abs(), 1, 'POINT')}"
+                                   th:attr="form='cuenta-' + ${f.cuenta.id}" aria-label="Saldo inicial">
+                        </td>
+                        <td class="num fw-bold" th:insert="~{tienda-admin/fragmentos :: plata(${f.saldo})}"></td>
+                        <td class="text-nowrap">
+                            <form th:id="'cuenta-' + ${f.cuenta.id}" class="d-inline" method="post" action="/tienda-admin/contabilidad/cuentas/guardar">
+                                <input type="hidden" name="id" th:value="${f.cuenta.id}">
+                                <button type="submit" class="btn btn-sm btn-outline-secondary">Guardar</button>
+                            </form>
+                            <form class="d-inline" method="post" th:action="@{/tienda-admin/contabilidad/cuentas/{id}/activar(id=${f.cuenta.id})}">
+                                <button type="submit" class="btn btn-sm"
+                                        th:classappend="${f.cuenta.activa} ? 'btn-outline-danger' : 'btn-outline-success'"
+                                        th:text="${f.cuenta.activa} ? 'Desactivar' : 'Activar'">Desactivar</button>
+                            </form>
+                        </td>
+                    </tr>
+                    <tr class="total">
+                        <td colspan="2">TOTAL (cuentas activas)</td>
+                        <td class="num" th:insert="~{tienda-admin/fragmentos :: plata(${total})}"></td>
+                        <td></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <!-- ═══ A qué cuenta entra la plata de los pagos en línea ═══ -->
+    <section class="caja seccion">
+        <h2>¿A qué cuenta entra la plata de la tienda?</h2>
+        <p class="ayuda">Cada compra pagada en la tienda se anota sola como ingreso en la cuenta que elijas aquí.
+            Si eliges "Ninguna", esas ventas salen en el Resumen para anotarlas a mano.</p>
+        <form class="form-pagos" method="post" action="/tienda-admin/contabilidad/cuentas/pagos">
+            <div>
+                <label class="form-label" for="cuentaWompi">Pagos con Wompi (PSE, Nequi, tarjetas, Bancolombia)</label>
+                <select class="form-select" id="cuentaWompi" name="cuentaWompi">
+                    <option value="" th:selected="${cuentaWompi == null}">Ninguna (anotar a mano)</option>
+                    <option th:each="c : ${cuentasActivas}" th:value="${c.id}" th:text="${c.nombre}"
+                            th:selected="${cuentaWompi != null and cuentaWompi == c.id}">BANCOLOMBIA</option>
+                </select>
+            </div>
+            <div>
+                <label class="form-label" for="cuentaAddi">Pagos a cuotas con Addi</label>
+                <select class="form-select" id="cuentaAddi" name="cuentaAddi">
+                    <option value="" th:selected="${cuentaAddi == null}">Ninguna (anotar a mano)</option>
+                    <option th:each="c : ${cuentasActivas}" th:value="${c.id}" th:text="${c.nombre}"
+                            th:selected="${cuentaAddi != null and cuentaAddi == c.id}">BANCOLOMBIA</option>
+                </select>
+            </div>
+            <div class="enviar">
+                <button type="submit" class="btn btn-primary" th:disabled="${#lists.isEmpty(cuentasActivas)}">Guardar</button>
+            </div>
+        </form>
+        <p class="nota">Wompi y Addi cobran una comisión, así que a la cuenta llega un poco menos. Esa comisión anótala como gasto en "Comisiones Wompi / Addi".</p>
+    </section>
+
+    <!-- ═══ Agregar cuenta ═══ -->
+    <section class="caja seccion">
+        <h2>Agregar cuenta</h2>
+        <form class="form-linea" method="post" action="/tienda-admin/contabilidad/cuentas/guardar">
+            <input type="text" class="form-control" name="nombre" maxlength="80" required placeholder="Nombre (ej. BANCOLOMBIA TIENDA)" aria-label="Nombre">
+            <input type="text" class="form-control" name="saldoInicial" inputmode="numeric" data-plata placeholder="Saldo inicial (ej. 500.000)" aria-label="Saldo inicial">
+            <button type="submit" class="btn btn-primary">Agregar</button>
+        </form>
+        <p class="nota">Una cuenta desactivada ya no aparece para anotar movimientos, pero su historial se conserva. Si una cuenta está sobregirada, escribe el saldo inicial con un menos adelante (ej. -200.000).</p>
+    </section>
+</div>
+<script src="/js/tienda-admin/contabilidad.js"></script>
+<script src="/js/tienda-admin/avisos.js"></script>
+</body>
+</html>

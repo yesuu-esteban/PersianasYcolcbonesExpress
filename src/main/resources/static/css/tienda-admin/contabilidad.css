@@ -1,0 +1,129 @@
+/* Pantallas: templates/tienda-admin/contabilidad_resumen.html, contabilidad_movimientos.html y contabilidad_cuentas.html */
+
+:root { --verde-conta: #51cf66; --rojo-conta: #ff8787; }
+
+.titulo-conta { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; margin-bottom: 12px; }
+.titulo-conta h1 { margin: 0; }
+.selector-mes { display: flex; align-items: center; gap: 8px; }
+.selector-mes strong { min-width: 130px; text-align: center; font-size: .98rem; }
+
+/* ── Pestañas: Resumen · Ingresos y gastos · Cuentas ── */
+.pestanas { display: flex; flex-wrap: wrap; gap: 4px; border-bottom: 1px solid rgba(255,255,255,0.12); margin-bottom: 18px; }
+.pestanas a {
+    text-decoration: none; color: var(--texto-suave); font-weight: 600; font-size: .9rem;
+    padding: 9px 14px; border-bottom: 3px solid transparent; margin-bottom: -1px;
+}
+.pestanas a:hover { color: #fff; }
+.pestanas a.activa { color: #fff; border-bottom-color: var(--accent); }
+
+/* ── Plata ── */
+.plata { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.txt-ingreso, .txt-ingreso .plata { color: var(--verde-conta); }
+.txt-egreso, .txt-egreso .plata { color: var(--rojo-conta); }
+
+/* ── Tarjetas del resumen ── */
+.tarjetas { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
+.tarjeta {
+    background: var(--bg-card); border: 1px solid rgba(255,255,255,0.08); border-top: 3px solid rgba(255,255,255,0.25);
+    border-radius: 14px; padding: 14px 16px; display: flex; flex-direction: column; gap: 4px; min-width: 0;
+}
+.tarjeta.ingreso { border-top-color: var(--verde-conta); }
+.tarjeta.egreso { border-top-color: var(--rojo-conta); }
+.tarjeta.resultado.ganancia { border-top-color: var(--gold); }
+.tarjeta.resultado.perdida { border-top-color: var(--rojo-conta); }
+.tarjeta .etiqueta { font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; color: var(--texto-suave); }
+.tarjeta .cifra { font-size: 1.45rem; font-weight: 800; line-height: 1.15; overflow-wrap: anywhere; }
+.tarjeta .detalle { font-size: .76rem; color: var(--texto-suave); }
+.tarjeta.resultado.perdida .cifra { color: var(--rojo-conta); }
+
+/* ── Secciones ── */
+.seccion { margin-bottom: 16px; }
+.seccion h2 { font-size: 1rem; font-weight: 700; margin: 0 0 8px; display: flex; align-items: center; gap: 8px; }
+.nota { font-size: .76rem; color: var(--texto-suave); margin: 10px 0 0; }
+.vacio-chico { color: var(--texto-suave); font-size: .86rem; margin: 4px 0; }
+.vacio-chico a { color: var(--accent-light); }
+.suave { color: var(--texto-suave); font-size: .78rem; overflow-wrap: anywhere; }
+.badge-medio { background: rgba(255,193,7,0.18); color: var(--gold); border: 1px solid rgba(255,193,7,0.4); font-weight: 600; }
+.enlace-mas { display: inline-block; margin-top: 10px; font-size: .84rem; color: var(--accent-light); text-decoration: none; }
+.enlace-mas:hover { text-decoration: underline; color: #fff; }
+
+.dos-columnas { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0 16px; }
+
+/* ── Barras por categoría ── */
+.barras { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.fila-barra { display: flex; justify-content: space-between; gap: 12px; font-size: .86rem; margin-bottom: 4px; }
+.fila-barra .valor { font-weight: 700; }
+.barra { display: block; height: 8px; border-radius: 999px; background: rgba(255,255,255,0.08); overflow: hidden; }
+.barra > span { display: block; height: 100%; border-radius: 999px; min-width: 4px; }
+.barra.egreso > span { background: var(--rojo-conta); }
+.barra.ingreso > span { background: var(--verde-conta); }
+
+/* ── Tablas ── */
+.tabla-wrap { overflow-x: auto; }
+.tabla-conta { --bs-table-bg: transparent; --bs-table-color: var(--texto); --bs-table-border-color: rgba(255,255,255,0.08); margin: 0; }
+.tabla-conta th { font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: var(--texto-suave); }
+.tabla-conta td { font-size: .88rem; }
+.tabla-conta .num { text-align: right; }
+.tabla-conta tr.total td { font-weight: 800; border-bottom: 0; }
+.tabla-conta tr.inactiva td { opacity: .6; }
+.tabla-conta tr.en-edicion td { background: rgba(236,21,97,0.12); }
+.tabla-conta .desc { color: var(--texto-suave); max-width: 340px; overflow-wrap: anywhere; }
+.tabla-conta .acciones-fila { text-align: right; white-space: nowrap; }
+.tabla-conta td .form-control-sm { min-width: 140px; }
+.punto-tipo { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
+.punto-tipo.ingreso { background: var(--verde-conta); }
+.punto-tipo.egreso { background: var(--rojo-conta); }
+
+.form-anotar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.form-anotar .form-select { width: auto; min-width: 150px; }
+.form-anotar input[type="date"] { width: auto; }
+
+/* ── Formulario de movimiento ── */
+.form-movimiento .tipo { display: flex; flex-wrap: wrap; gap: 8px; border: 0; padding: 0; margin: 0 0 12px; }
+.form-movimiento .tipo legend { width: 100%; margin-bottom: 4px; }
+.opcion-tipo {
+    display: inline-flex; align-items: center; gap: 8px; cursor: pointer; font-weight: 600;
+    padding: 8px 18px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.18); background: var(--bg-input);
+}
+.opcion-tipo input { accent-color: var(--accent); }
+.opcion-tipo.egreso:has(input:checked) { border-color: var(--rojo-conta); box-shadow: inset 0 0 0 1px var(--rojo-conta); }
+.opcion-tipo.ingreso:has(input:checked) { border-color: var(--verde-conta); box-shadow: inset 0 0 0 1px var(--verde-conta); }
+.opcion-tipo:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.cabeza-lista { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 6px 16px; margin-bottom: 8px; }
+.cabeza-lista h2 { margin: 0; }
+.totales-mes { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: .84rem; color: var(--texto-suave); }
+.totales-mes strong { color: #fff; margin-left: 4px; }
+
+/* ── Cuentas ── */
+.form-pagos { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; gap: 12px; align-items: end; }
+.form-linea { display: flex; flex-wrap: wrap; gap: 8px; }
+.form-linea .form-control { flex: 1 1 220px; min-width: 0; }
+
+@media (max-width: 991.98px) {
+    .tarjetas { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 767.98px) {
+    .titulo-conta { flex-direction: column; align-items: flex-start; }
+    .selector-mes { width: 100%; }
+    .selector-mes strong { flex: 1 1 auto; }
+    .pestanas a { flex: 1 1 auto; text-align: center; padding: 9px 8px; font-size: .84rem; }
+    .tarjeta .cifra { font-size: 1.15rem; }
+    .dos-columnas { grid-template-columns: minmax(0, 1fr); }
+    .form-pagos { grid-template-columns: minmax(0, 1fr); }
+    .form-pagos .enviar .btn { width: 100%; }
+
+    /* En celular, cada movimiento y cada venta sin anotar se ve como una tarjeta */
+    .tabla-movimientos thead, .sin-anotar thead { display: none; }
+    .tabla-movimientos, .tabla-movimientos tbody, .tabla-movimientos tr, .tabla-movimientos td,
+    .sin-anotar table, .sin-anotar tbody, .sin-anotar tr, .sin-anotar td { display: block; width: 100%; }
+    .tabla-movimientos tr, .sin-anotar tr { border-bottom: 1px solid rgba(255,255,255,0.1); padding: 8px 0; }
+    .tabla-movimientos td, .sin-anotar td { border: 0; padding: 3px 0; text-align: left !important; }
+    .tabla-movimientos td[data-titulo="Fecha"] { font-size: .76rem; color: var(--texto-suave); }
+    .tabla-movimientos td[data-titulo="Cuenta"]::before { content: 'Cuenta: '; color: var(--texto-suave); }
+    .tabla-movimientos .desc { max-width: none; }
+    .tabla-conta .acciones-fila { text-align: left; padding-top: 6px; }
+    .form-anotar .form-select, .form-anotar input[type="date"] { flex: 1 1 140px; min-width: 0; }
+    .form-anotar .btn { width: 100%; }
+}

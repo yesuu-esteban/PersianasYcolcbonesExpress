@@ -7,25 +7,14 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/css/tienda-admin/comun.css">
 
-    <title>Tienda virtual - Editar datos de la compra</title>
+    <title>Tienda virtual - Editar datos del pedido</title>
     <link rel="stylesheet" href="/css/tienda-admin/orden_form.css">
 </head>
 <body>
 <div class="container-fluid" style="max-width:900px;">
-    <div class="marca-header">
-        <div class="logo">
-            <img src="/tienda/logo.png" alt="">
-            <div class="titulo">PERSIANAS EXPRESS<small>TIENDA VIRTUAL</small></div>
-        </div>
-        <div class="acciones-header">
-            <a href="/portal" class="btn btn-outline-secondary">← Portal</a>
-            <a href="/tienda-admin" class="btn btn-outline-secondary">Productos</a>
-            <a href="/tienda-admin/ordenes" class="btn btn-outline-secondary">Compras en línea</a>
-            <a href="/tienda" target="_blank" rel="noopener" class="btn btn-primary">Ver tienda</a>
-        </div>
-    </div>
+    <div th:replace="~{tienda-admin/fragmentos :: encabezado('pedidos')}"></div>
 
-    <h1>Editar datos de la compra</h1>
+    <h1>Editar datos del pedido</h1>
     <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
 
     <!-- ═══ Lo que se compró (no se edita: viene del pago) ═══ -->
@@ -36,6 +25,7 @@
                 <span class="badge"
                       th:classappend="${orden.estado == 'APROBADA'} ? 'badge-ok' : (${orden.estado == 'PENDIENTE'} ? 'badge-pend' : 'badge-mal')"
                       th:text="${orden.estadoEtiqueta}">Pagada</span>
+                <span class="badge badge-no" th:if="${orden.pagada}" th:text="${orden.estadoPedidoEtiqueta}">Nuevo</span>
             </span>
             <span class="total" th:text="'$' + ${#numbers.formatInteger(orden.total, 1, 'POINT')}">$0</span>
         </div>
@@ -45,11 +35,12 @@
                 <span th:if="${it.detalle != ''}" th:text="${it.detalle}">Tela, color, medidas</span>
             </li>
         </ul>
-        <p class="ayuda mb-0">Los productos, el total y el estado no se pueden cambiar aquí porque vienen del pago.</p>
+        <p class="ayuda mb-0">Los productos y el total no se pueden cambiar porque vienen del pago. El estado del pedido se cambia en la lista de Pedidos.</p>
     </div>
 
     <form method="post" th:action="@{/tienda-admin/orden/{id}/guardar(id=${orden.id})}">
         <input type="hidden" name="ver" th:value="${ver}">
+        <input type="hidden" name="q" th:value="${q}">
         <input type="hidden" name="pagina" th:value="${pagina}">
 
         <div class="caja seccion">
@@ -99,16 +90,12 @@
             </div>
         </div>
 
-        <div class="alert alert-info" th:if="${orden.pedidoTiendaId != null}">
-            Esta compra ya tiene el pedido de Almacén #<span th:text="${orden.pedidoTiendaId}">0</span>.
-            Si cambias el nombre, la cédula, el celular o la dirección, se cambian también en ese pedido.
-        </div>
-
         <div class="d-flex gap-2 flex-wrap mb-4">
             <button type="submit" class="btn btn-primary px-4">Guardar cambios</button>
-            <a th:href="@{/tienda-admin/ordenes(ver=${ver}, pagina=${pagina})}" class="btn btn-outline-secondary">Cancelar</a>
+            <a th:href="@{/tienda-admin/ordenes(ver=${ver}, q=${q != null and q != '' ? q : null}, pagina=${pagina})}" class="btn btn-outline-secondary">Cancelar</a>
         </div>
     </form>
 </div>
+<script src="/js/tienda-admin/avisos.js"></script>
 </body>
 </html>

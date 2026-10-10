@@ -1,13 +1,32 @@
-/* Pantalla: templates/tienda-admin/ordenes.html */
+/* Pantalla: templates/tienda-admin/ordenes.html (Pedidos de la tienda) */
 
-.explicacion { color: var(--texto-suave); font-size: .86rem; margin-bottom: 16px; }
+.explicacion { color: var(--texto-suave); font-size: .86rem; margin-bottom: 16px; max-width: 80ch; }
+.explicacion strong { color: var(--texto); }
 
-/* ── Filtro por estado ── */
-.filtros { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+/* Colores de cada estado del pedido */
+.orden { --color-estado: #6c757d; }
+.est-NUEVO          { --color-estado: #ffc107; }
+.est-EN_FABRICACION { --color-estado: #4dabf7; }
+.est-LISTO          { --color-estado: #20c997; }
+.est-DESPACHADO     { --color-estado: #b197fc; }
+.est-ENTREGADO      { --color-estado: #2f9e44; }
+.est-CANCELADO      { --color-estado: #e03131; }
+
+/* ── Buscador ── */
+.buscador { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+.buscador input { flex: 1 1 320px; min-width: 0; }
+
+/* ── Filtros por estado ── */
+.grupos-filtros { display: grid; gap: 8px; margin-bottom: 16px; }
+.filtros { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.filtros .grupo {
+    font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .6px;
+    color: var(--texto-suave); min-width: 92px;
+}
 .filtros a {
-    display: inline-flex; align-items: center; gap: 8px; text-decoration: none; font-weight: 600; font-size: .88rem;
+    display: inline-flex; align-items: center; gap: 8px; text-decoration: none; font-weight: 600; font-size: .86rem;
     color: var(--texto); background: var(--bg-card); border: 1px solid rgba(255,255,255,0.14);
-    border-radius: 999px; padding: 7px 14px;
+    border-radius: 999px; padding: 6px 13px;
 }
 .filtros a:hover { border-color: rgba(255,255,255,0.4); color: #fff; }
 .filtros a.activo { background: var(--accent); border-color: var(--accent); color: #fff; }
@@ -19,14 +38,14 @@
 .nota-filtro { color: var(--texto-suave); font-size: .82rem; margin: -4px 0 14px; }
 .vacio { text-align: center; color: var(--texto-suave); padding: 32px 20px; }
 
-/* ── Tarjeta de una compra ── */
+/* ── Tarjeta de un pedido ── */
 .orden {
-    background: var(--bg-card); border: 1px solid rgba(255,255,255,0.08); border-left: 4px solid #6c757d;
+    background: var(--bg-card); border: 1px solid rgba(255,255,255,0.08); border-left: 4px solid var(--color-estado);
     border-radius: 14px; margin-bottom: 14px; box-shadow: 0 4px 22px rgba(0,0,0,0.3); overflow: hidden;
 }
-.orden.es-pagada { border-left-color: #2f9e44; }
-.orden.es-pendiente { border-left-color: #e8890c; }
-.orden.es-fallida { border-left-color: #c92a2a; }
+.orden.es-pendiente { --color-estado: #e8890c; }
+.orden.es-fallida { --color-estado: #c92a2a; }
+.orden.resaltada { box-shadow: 0 0 0 2px var(--color-estado), 0 4px 22px rgba(0,0,0,0.3); }
 
 .orden-cabeza {
     display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px 16px;
@@ -36,6 +55,29 @@
 .orden .ref { font-weight: 700; font-size: .98rem; letter-spacing: .2px; overflow-wrap: anywhere; }
 .orden .fecha { font-size: .8rem; color: var(--texto-suave); }
 .orden .total { font-weight: 800; font-size: 1.25rem; white-space: nowrap; }
+.badge.estado { background: var(--color-estado, #6c757d); color: #fff; }
+.badge.estado.est-NUEVO, .badge.estado.est-LISTO { color: #1a0f2e; }
+
+/* ── Avance: Nuevo → En fabricación → Listo → Despachado → Entregado ── */
+.avance {
+    list-style: none; margin: 0; padding: 14px 20px 4px; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+.avance li { position: relative; display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; }
+/* línea que une un paso con el siguiente */
+.avance li::before {
+    content: ''; position: absolute; top: 7px; left: calc(-50% + 9px); right: calc(50% + 9px); height: 2px;
+    background: rgba(255,255,255,0.15);
+}
+.avance li:first-child::before { display: none; }
+.avance li.hecho::before, .avance li.actual::before { background: var(--color-estado); }
+.avance .punto {
+    width: 16px; height: 16px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.3); background: var(--bg-input);
+}
+.avance .hecho .punto { background: var(--color-estado); border-color: var(--color-estado); }
+.avance .actual .punto { background: var(--color-estado); border-color: #fff; box-shadow: 0 0 0 4px rgba(255,255,255,0.12); }
+.avance .nombre { font-size: .72rem; color: var(--texto-suave); line-height: 1.2; }
+.avance .actual .nombre { color: #fff; font-weight: 700; }
+.cancelado { margin: 0; padding: 12px 20px 0; color: #ff9a90; font-weight: 600; font-size: .86rem; }
 
 .orden-cuerpo { padding: 16px 20px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 18px 28px; }
 
@@ -60,21 +102,37 @@
 .notas { grid-column: 1 / -1; margin: 0; font-size: .84rem; color: var(--texto-suave); background: var(--bg-input); border-radius: 8px; padding: 9px 12px; overflow-wrap: anywhere; }
 .notas strong { color: var(--texto); }
 
+/* ── Cambiar el estado ── */
+.cambio-estado {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px;
+    padding: 12px 20px; border-top: 1px solid rgba(255,255,255,0.08);
+}
+.cambio-estado .elegir-estado { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.cambio-estado .form-select { width: auto; min-width: 160px; }
+.cambio-estado input[data-guia] { width: 260px; max-width: 100%; }
+.cambio-estado .desde { font-size: .76rem; color: var(--texto-suave); margin-left: auto; }
+
 .orden-acciones {
-    display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px;
+    display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 10px;
     padding: 12px 20px; background: rgba(0,0,0,0.16);
 }
-.orden-acciones .almacen { font-size: .82rem; color: var(--texto-suave); }
-.orden-acciones .botones { display: flex; flex-wrap: wrap; gap: 6px; margin-left: auto; }
+.orden-acciones .botones { display: flex; flex-wrap: wrap; gap: 6px; }
 
 /* ── Páginas ── */
 .paginacion { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin: 20px 0 8px; }
 .contador { text-align: center; color: var(--texto-suave); font-size: .8rem; margin-bottom: 24px; }
 
 @media (max-width: 767.98px) {
-    .orden-cabeza, .orden-cuerpo, .orden-acciones { padding-left: 14px; padding-right: 14px; }
+    .orden-cabeza, .orden-cuerpo, .orden-acciones, .cambio-estado, .avance { padding-left: 14px; padding-right: 14px; }
     .orden-cuerpo { grid-template-columns: minmax(0, 1fr); }
-    .orden-acciones .botones { margin-left: 0; width: 100%; }
+    .filtros .grupo { width: 100%; min-width: 0; }
+    .avance .nombre { font-size: .64rem; }
+    .cambio-estado .avanzar, .cambio-estado .avanzar .btn { width: 100%; }
+    .cambio-estado .elegir-estado { width: 100%; }
+    .cambio-estado .form-select { flex: 1 1 140px; min-width: 0; }
+    .cambio-estado input[data-guia] { width: 100%; }
+    .cambio-estado .desde { margin-left: 0; }
+    .orden-acciones .botones { width: 100%; }
     .orden-acciones .botones .btn { flex: 1 1 auto; }
     .orden-acciones .botones form { flex: 1 1 auto; display: flex !important; }
     .orden-acciones .botones form .btn { width: 100%; }

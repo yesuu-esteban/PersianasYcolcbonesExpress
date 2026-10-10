@@ -7,12 +7,7 @@ import Colcones_Persinas.proyecto_express.modelo.tienda.TelaTienda;
 import Colcones_Persinas.proyecto_express.repository.tienda.ImagenTiendaRepository;
 import Colcones_Persinas.proyecto_express.repository.tienda.OrdenTiendaRepository;
 import Colcones_Persinas.proyecto_express.repository.tienda.ProductoTiendaRepository;
-import Colcones_Persinas.proyecto_express.servicio.tienda.TiendaServicio;
 import Colcones_Persinas.proyecto_express.servicio.tienda.WompiServicio;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,19 +17,17 @@ import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
-import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.math.BigDecimal;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.text.Normalizer;
 import java.util.*;
 
 /**
  * Administración de la tienda virtual (TIENDA_ADMIN y ADMIN): productos, telas con
- * sus precios por rollo, fotos y las compras hechas en línea (verlas por páginas,
- * corregir los datos del cliente, eliminarlas y enviarle al cliente por WhatsApp
- * su número de pedido con el enlace para rastrearlo).
+ * sus precios por rollo y fotos.
+ *
+ * Los pedidos están en OrdenesTiendaControlador y la contabilidad de la tienda en
+ * ContabilidadTiendaControlador (las tres pantallas comparten el menú de la tienda).
  */
 @Controller
 @RequestMapping("/tienda-admin")
@@ -43,32 +36,17 @@ public class TiendaAdminControlador {
 
     private static final long MAX_IMAGEN_BYTES = 5L * 1024 * 1024;
 
-    /** Cuántas compras se muestran por página en "Compras en línea". */
-    private static final int COMPRAS_POR_PAGINA = 10;
-    private static final List<String> ESTADOS_NO_COMPLETADAS =
-            List.of(OrdenTienda.RECHAZADA, OrdenTienda.ANULADA, OrdenTienda.ERROR);
-
     private final ProductoTiendaRepository productoRepository;
     private final ImagenTiendaRepository imagenRepository;
     private final OrdenTiendaRepository ordenRepository;
     private final WompiServicio wompi;
-    private final TiendaServicio tiendaServicio;
-
-    /**
-     * Dominio propio de la tienda (variable APP_DOMINIO_TIENDA), si ya se configuró.
-     * Se usa para armar el enlace de rastreo que se le envía al cliente.
-     */
-    @Value("${app.dominio-tienda:}")
-    private String dominioTienda;
 
     public TiendaAdminControlador(ProductoTiendaRepository productoRepository, ImagenTiendaRepository imagenRepository,
-                                  OrdenTiendaRepository ordenRepository, WompiServicio wompi,
-                                  TiendaServicio tiendaServicio) {
+                                  OrdenTiendaRepository ordenRepository, WompiServicio wompi) {
         this.productoRepository = productoRepository;
         this.imagenRepository = imagenRepository;
         this.ordenRepository = ordenRepository;
         this.wompi = wompi;
-        this.tiendaServicio = tiendaServicio;
     }
 
     // ─── Productos ────────────────────────────────────────────────────
@@ -254,182 +232,6 @@ public class TiendaAdminControlador {
             ra.addFlashAttribute("mensaje", "Producto \"" + p.getNombre() + "\" eliminado. Las compras ya hechas no se afectan.");
         });
         return "redirect:/tienda-admin";
-    }
-
-    // ─── Compras en línea ─────────────────────────────────────────────
-
-    /**
-     * Listado de compras, de a 10 por página.
-     *   ver=pagadas     (por defecto) solo las que ya se pagaron
-     *   ver=pendientes  las que se quedaron esperando el pago
-     *   ver=fallidas    rechazadas, anuladas o con error
-     *   ver=todas       todas
-     */
-    @GetMapping("/ordenes")
-    public String ordenes(@RequestParam(name = "ver", required = false, defaultValue = "pagadas") String ver,
-                          @RequestParam(name = "pagina", required = false, defaultValue = "0") int pagina,
-                          Model model) {
-        String filtro = filtroValido(ver);
-        Page<OrdenTienda> resultado = buscarCompras(filtro, Math.max(pagina, 0));
-        // Si se eliminó la última compra de una página, se muestra la última página que quede
-        if (resultado.getTotalPages() > 0 && resultado.getNumber() >= resultado.getTotalPages()) {
-            resultado = buscarCompras(filtro, resultado.getTotalPages() - 1);
-        }
-
-        model.addAttribute("ordenes", resultado.getContent());
-        model.addAttribute("ver", filtro);
-        model.addAttribute("paginaActual", resultado.getNumber());
-        model.addAttribute("totalPaginas", Math.max(resultado.getTotalPages(), 1));
-        model.addAttribute("totalFiltradas", resultado.getTotalElements());
-
-        model.addAttribute("conteoPagadas", ordenRepository.countByEstado(OrdenTienda.APROBADA));
-        model.addAttribute("conteoPendientes", ordenRepository.countByEstado(OrdenTienda.PENDIENTE));
-        model.addAttribute("conteoFallidas", ordenRepository.countByEstadoIn(ESTADOS_NO_COMPLETADAS));
-        model.addAttribute("conteoTodas", ordenRepository.count());
-
-        // Enlace de WhatsApp de cada compra pagada (se busca por la referencia de la compra)
-        String urlRastreo = urlBaseTienda() + "/tienda/rastrear/";
-        Map<String, String> enlacesWhatsapp = new HashMap<>();
-        for (OrdenTienda o : resultado.getContent()) {
-            String enlace = enlaceWhatsappRastreo(o, urlRastreo);
-            if (enlace != null) enlacesWhatsapp.put(o.getReferencia(), enlace);
-        }
-        model.addAttribute("enlacesWhatsapp", enlacesWhatsapp);
-        return "tienda-admin/ordenes";
-    }
-
-    /**
-     * Enlace que abre WhatsApp en el chat del cliente con el mensaje ya escrito:
-     * su número de pedido y la dirección para rastrearlo.
-     * Devuelve null si la compra no está pagada o el celular no sirve para WhatsApp.
-     */
-    static String enlaceWhatsappRastreo(OrdenTienda o, String urlRastreo) {
-        if (!OrdenTienda.APROBADA.equals(o.getEstado())) return null;
-        String celular = celularParaWhatsapp(o.getTelefono());
-        if (celular == null) return null;
-
-        String nombre = o.getPrimerNombre();
-        String mensaje = "Hola" + (nombre == null || nombre.isBlank() ? "" : ", " + nombre) + ". "
-                + "Recibimos el pago de tu pedido en P.C Express.\n"
-                + "Tu número de pedido es *" + o.getReferencia() + "*.\n"
-                + "Puedes ver en qué va aquí:\n"
-                + urlRastreo + o.getReferencia();
-        return "https://wa.me/" + celular + "?text="
-                + URLEncoder.encode(mensaje, StandardCharsets.UTF_8).replace("+", "%20");
-    }
-
-    /**
-     * Deja el celular como lo pide WhatsApp: solo números y con el 57 de Colombia adelante.
-     * "312 304 3450" → "573123043450". Devuelve null si no parece un celular.
-     */
-    static String celularParaWhatsapp(String telefono) {
-        if (telefono == null) return null;
-        String n = telefono.replaceAll("\\D", "");
-        if (n.length() == 10 && n.startsWith("3")) return "57" + n;                 // celular colombiano
-        if (n.length() == 12 && n.startsWith("573")) return n;                       // ya trae el 57
-        if (telefono.trim().startsWith("+") && n.length() >= 10 && n.length() <= 15) return n;   // de otro país
-        return null;
-    }
-
-    /** Dirección pública de la tienda: el dominio propio si existe; si no, la misma por la que se entró. */
-    private String urlBaseTienda() {
-        if (dominioTienda != null && !dominioTienda.isBlank()) {
-            return "https://" + dominioTienda.split(",")[0].trim();
-        }
-        return ServletUriComponentsBuilder.fromCurrentContextPath().build().toUriString();
-    }
-
-    private Page<OrdenTienda> buscarCompras(String filtro, int pagina) {
-        Pageable pag = PageRequest.of(pagina, COMPRAS_POR_PAGINA);
-        switch (filtro) {
-            case "pendientes":
-                return ordenRepository.findByEstadoInOrderByFechaCreacionDesc(List.of(OrdenTienda.PENDIENTE), pag);
-            case "fallidas":
-                return ordenRepository.findByEstadoInOrderByFechaCreacionDesc(ESTADOS_NO_COMPLETADAS, pag);
-            case "todas":
-                return ordenRepository.findAllByOrderByFechaCreacionDesc(pag);
-            default:
-                return ordenRepository.findByEstadoInOrderByFechaCreacionDesc(List.of(OrdenTienda.APROBADA), pag);
-        }
-    }
-
-    /** Solo se aceptan los cuatro filtros conocidos; cualquier otro valor vuelve a "pagadas". */
-    private static String filtroValido(String ver) {
-        if ("pendientes".equals(ver) || "fallidas".equals(ver) || "todas".equals(ver)) return ver;
-        return "pagadas";
-    }
-
-    /** Formulario para corregir los datos del cliente de una compra. */
-    @GetMapping("/orden/{id}/editar")
-    public String editarOrden(@PathVariable int id,
-                              @RequestParam(name = "ver", required = false, defaultValue = "pagadas") String ver,
-                              @RequestParam(name = "pagina", required = false, defaultValue = "0") int pagina,
-                              Model model, RedirectAttributes ra) {
-        OrdenTienda orden = ordenRepository.findById(id).orElse(null);
-        if (orden == null) {
-            ra.addFlashAttribute("error", "Esa compra ya no existe.");
-            return "redirect:/tienda-admin/ordenes";
-        }
-        model.addAttribute("orden", orden);
-        model.addAttribute("ver", filtroValido(ver));
-        model.addAttribute("pagina", Math.max(pagina, 0));
-        return "tienda-admin/orden_form";
-    }
-
-    @PostMapping("/orden/{id}/guardar")
-    public String guardarOrden(@PathVariable int id,
-                               @RequestParam Map<String, String> f,
-                               @RequestParam(name = "ver", required = false, defaultValue = "pagadas") String ver,
-                               @RequestParam(name = "pagina", required = false, defaultValue = "0") int pagina,
-                               Model model, RedirectAttributes ra) {
-        try {
-            boolean tambienAlmacen = tiendaServicio.editarDatosCliente(id, new TiendaServicio.DatosCliente(
-                    f.get("nombre"), f.get("cedula"), f.get("email"), f.get("telefono"),
-                    f.get("direccion"), f.get("ciudad"), f.get("notas")));
-            ra.addFlashAttribute("mensaje", "Datos de la compra actualizados."
-                    + (tambienAlmacen ? " También se actualizó el pedido de Almacén." : ""));
-        } catch (IllegalArgumentException e) {
-            OrdenTienda orden = ordenRepository.findById(id).orElse(null);
-            if (orden == null) {
-                ra.addFlashAttribute("error", e.getMessage());
-                return "redirect:/tienda-admin/ordenes";
-            }
-            // Se vuelve a mostrar el formulario con lo que se escribió, para corregirlo
-            model.addAttribute("orden", orden);
-            model.addAttribute("datos", f);
-            model.addAttribute("error", e.getMessage());
-            model.addAttribute("ver", filtroValido(ver));
-            model.addAttribute("pagina", Math.max(pagina, 0));
-            return "tienda-admin/orden_form";
-        }
-        ra.addAttribute("ver", filtroValido(ver));
-        ra.addAttribute("pagina", Math.max(pagina, 0));
-        return "redirect:/tienda-admin/ordenes";
-    }
-
-    /**
-     * Elimina una compra de la lista. NO borra el pedido de Almacén ni devuelve dinero:
-     * solo quita el registro de la tienda (sirve para limpiar pruebas e intentos sin pagar).
-     */
-    @PostMapping("/orden/{id}/eliminar")
-    @Transactional
-    public String eliminarOrden(@PathVariable int id,
-                                @RequestParam(name = "ver", required = false, defaultValue = "pagadas") String ver,
-                                @RequestParam(name = "pagina", required = false, defaultValue = "0") int pagina,
-                                RedirectAttributes ra) {
-        OrdenTienda orden = ordenRepository.findById(id).orElse(null);
-        if (orden == null) {
-            ra.addFlashAttribute("error", "Esa compra ya no existe.");
-        } else {
-            Integer pedidoAlmacen = orden.getPedidoTiendaId();
-            String referencia = orden.getReferencia();
-            ordenRepository.delete(orden);
-            ra.addFlashAttribute("mensaje", "Compra " + referencia + " eliminada de la lista."
-                    + (pedidoAlmacen != null ? " El pedido de Almacén #" + pedidoAlmacen + " no se tocó." : ""));
-        }
-        ra.addAttribute("ver", filtroValido(ver));
-        ra.addAttribute("pagina", Math.max(pagina, 0));
-        return "redirect:/tienda-admin/ordenes";
     }
 
     // ─── Helpers ──────────────────────────────────────────────────────

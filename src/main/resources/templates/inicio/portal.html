@@ -8,7 +8,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
     <link rel="stylesheet" href="/css/inicio/portal.css">
-    <link rel="stylesheet" href="/css/almacen/avisos_tienda.css">
+    <link rel="stylesheet" href="/css/tienda-admin/avisos.css">
 </head>
 <body>
 
@@ -53,8 +53,6 @@
                 <div class="module-content">
                     <span class="module-category">Módulo Comercial</span>
                     <h2>Almacén</h2>
-                    <!-- Aviso de pedidos nuevos de la tienda virtual (lo llena /js/almacen/avisos_tienda.js) -->
-                    <span class="module-aviso" data-pedidos-tienda-nuevos hidden></span>
                     <p>Gestión de pedidos de almacén, atención y puntos de venta.</p>
                     <span class="module-action">Acceder al módulo &rarr;</span>
                 </div>
@@ -119,12 +117,14 @@
                 </div>
             </a>
 
-            <!-- TIENDA VIRTUAL: productos, precios, fotos y compras pagadas en línea -->
-            <a class="module-card" th:href="@{/tienda-admin}" sec:authorize="hasAnyRole('TIENDA_ADMIN','ADMIN')">
+            <!-- TIENDA VIRTUAL: módulo aparte con sus pedidos, sus productos y su propia contabilidad -->
+            <a class="module-card" th:href="@{/tienda-admin/ordenes}" sec:authorize="hasAnyRole('TIENDA_ADMIN','ADMIN')">
                 <div class="module-content">
                     <span class="module-category">Módulo de Ventas en Línea</span>
                     <h2>Tienda virtual</h2>
-                    <p>Administra los productos, telas, precios por rollo y fotos de la tienda, y revisa las compras pagadas en línea.</p>
+                    <!-- Aviso de pedidos nuevos de la tienda (lo llena /js/tienda-admin/avisos.js) -->
+                    <span class="module-aviso" data-pedidos-tienda-nuevos hidden></span>
+                    <p>Los pedidos que llegan por la tienda y en qué va cada uno, los productos con sus precios y fotos, y la contabilidad de la tienda.</p>
                     <span class="module-action">Acceder al módulo &rarr;</span>
                 </div>
             </a>
@@ -136,7 +136,7 @@
         <p>&copy; 2026 Persianas Express. Todos los derechos reservados.</p>
     </footer>
 
-    <script src="/js/almacen/avisos_tienda.js"></script>
+    <script src="/js/tienda-admin/avisos.js"></script>
     <script src="/js/token-nav.js"></script>
 </body>
 </html>

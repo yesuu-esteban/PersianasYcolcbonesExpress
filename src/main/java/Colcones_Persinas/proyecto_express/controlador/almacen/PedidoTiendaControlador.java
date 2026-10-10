@@ -28,6 +28,7 @@ import Colcones_Persinas.proyecto_express.repository.contabilidad.CuentaContable
 import Colcones_Persinas.proyecto_express.repository.instalaciones.TareaCalendarioRepository;
 import Colcones_Persinas.proyecto_express.servicio.contabilidad.ContabilidadServicio;
 import Colcones_Persinas.proyecto_express.servicio.instalaciones.CalendarioServicio;
+import Colcones_Persinas.proyecto_express.servicio.tienda.TiendaServicio;
 
 /**
  * Controlador del módulo de Almacén (antes llamado "Tienda").
@@ -41,6 +42,11 @@ import Colcones_Persinas.proyecto_express.servicio.instalaciones.CalendarioServi
  *  - Cuando un pedido pasa a "En Bodega", aparece solo en "Instalaciones pendientes".
  *  - Cuando pasa a "Instalado" o "Terminado", su instalación queda terminada (verde en el
  *    calendario). Si vuelve a un estado anterior, la instalación vuelve a quedar pendiente.
+ *
+ * Relación con la tienda virtual:
+ *  - La tienda es un módulo aparte con sus propios pedidos. Los pedidos viejos que la tienda
+ *    creó aquí (vendedor "Tienda virtual") ya NO se muestran en el listado ni en el reporte:
+ *    ahora se ven en Tienda virtual → Pedidos.
  *
  * Relación con /contabilidad:
  *  - Cada abono (el inicial de un pedido nuevo y los que se agregan con "+") pide a qué
@@ -136,7 +142,7 @@ public class PedidoTiendaControlador {
 
         // Orden por fecha de pedido descendente: el más nuevo siempre queda primero.
         // (En caso de empate de fecha, se desempata por id descendente).
-        List<PedidoTienda> todos = pedidoTiendaRepository.findAllByOrderByFechaPedidoDescIdDesc();
+        List<PedidoTienda> todos = pedidosDeAlmacen();
 
         // Años disponibles para el filtro, calculados sobre TODOS los pedidos
         // (sin aplicar los demás filtros), para que el desplegable no cambie según
@@ -411,13 +417,13 @@ public class PedidoTiendaControlador {
             LocalDateTime fechaDesde = LocalDate.parse(desde).atStartOfDay();
             LocalDateTime fechaHasta = LocalDate.parse(hasta).atTime(23, 59, 59);
 
-            pedidosFiltrados = pedidoTiendaRepository.findAllByOrderByFechaPedidoDescIdDesc().stream()
+            pedidosFiltrados = pedidosDeAlmacen().stream()
                     .filter(p -> p.getFechaPedido() != null
                             && !p.getFechaPedido().isBefore(fechaDesde)
                             && !p.getFechaPedido().isAfter(fechaHasta))
                     .collect(Collectors.toList());
         } else {
-            pedidosFiltrados = pedidoTiendaRepository.findAllByOrderByFechaPedidoDescIdDesc();
+            pedidosFiltrados = pedidosDeAlmacen();
         }
 
         int totalPedidos = pedidosFiltrados.size();
@@ -476,6 +482,21 @@ public class PedidoTiendaControlador {
     }
 
     // ─── Helpers ────────────────────────────────────────────────────────
+
+    /**
+     * Todos los pedidos de Almacén, del más nuevo al más viejo, SIN los que creó la tienda virtual
+     * (vendedor "Tienda virtual"): esos ahora se manejan en Tienda virtual → Pedidos.
+     */
+    private List<PedidoTienda> pedidosDeAlmacen() {
+        return pedidoTiendaRepository.findAllByOrderByFechaPedidoDescIdDesc().stream()
+                .filter(p -> !esDeLaTiendaVirtual(p))
+                .collect(Collectors.toList());
+    }
+
+    static boolean esDeLaTiendaVirtual(PedidoTienda p) {
+        return p.getVendedor() != null && TiendaServicio.VENDEDOR_TIENDA.equalsIgnoreCase(p.getVendedor().trim());
+    }
+
     private Integer parseEnteroSeguro(String valor) {
         if (valor == null || valor.isBlank()) return null;
         try {

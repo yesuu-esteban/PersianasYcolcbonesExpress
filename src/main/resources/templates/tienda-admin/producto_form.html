@@ -12,18 +12,7 @@
 </head>
 <body>
 <div class="container-fluid" style="max-width:1000px;">
-    <div class="marca-header">
-        <div class="logo">
-            <img src="/tienda/logo.png" alt="">
-            <div class="titulo">PERSIANAS EXPRESS<small>TIENDA VIRTUAL</small></div>
-        </div>
-        <div class="acciones-header">
-            <a href="/portal" class="btn btn-outline-secondary">← Portal</a>
-            <a href="/tienda-admin" class="btn btn-outline-secondary">Productos</a>
-            <a href="/tienda-admin/ordenes" class="btn btn-outline-secondary">Compras en línea</a>
-            <a href="/tienda" target="_blank" rel="noopener" class="btn btn-primary">Ver tienda</a>
-        </div>
-    </div>
+    <div th:replace="~{tienda-admin/fragmentos :: encabezado('productos')}"></div>
 
     <h1 th:text="${producto.id == 0} ? 'Nuevo producto' : 'Editar ' + ${producto.nombre}">Producto</h1>
     <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
@@ -280,5 +269,6 @@
 </template>
 
 <script src="/js/tienda-admin/producto_form.js"></script>
+<script src="/js/tienda-admin/avisos.js"></script>
 </body>
 </html>

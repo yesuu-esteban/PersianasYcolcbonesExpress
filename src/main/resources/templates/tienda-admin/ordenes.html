@@ -7,72 +7,101 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/css/tienda-admin/comun.css">
 
-    <title>Tienda virtual - Compras en línea</title>
+    <title>Tienda virtual - Pedidos</title>
     <link rel="stylesheet" href="/css/tienda-admin/ordenes.css">
 </head>
 <body>
 <div class="container-fluid" style="max-width:1200px;">
-    <div class="marca-header">
-        <div class="logo">
-            <img src="/tienda/logo.png" alt="">
-            <div class="titulo">PERSIANAS EXPRESS<small>TIENDA VIRTUAL</small></div>
-        </div>
-        <div class="acciones-header">
-            <a href="/portal" class="btn btn-outline-secondary">← Portal</a>
-            <a href="/tienda-admin" class="btn btn-outline-secondary">Productos</a>
-            <a href="/tienda-admin/ordenes" class="btn btn-outline-secondary">Compras en línea</a>
-            <a href="/tienda" target="_blank" rel="noopener" class="btn btn-primary">Ver tienda</a>
-        </div>
-    </div>
+    <div th:replace="~{tienda-admin/fragmentos :: encabezado('pedidos')}"></div>
 
-    <h1>Compras en línea</h1>
-    <p class="explicacion">Cuando un pago se aprueba, el pedido se crea solo en el listado de Almacén con el vendedor "Tienda virtual" y el abono completo.</p>
+    <h1>Pedidos de la tienda</h1>
+    <p class="explicacion">Cada compra pagada en la tienda llega aquí en <strong>Nuevo</strong>. Cámbiale el estado a medida que avanza: el cliente ve ese avance en la página de rastreo.</p>
 
     <div th:if="${mensaje}" class="alert alert-success" th:text="${mensaje}"></div>
     <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
 
-    <!-- ═══ Filtro: al entrar solo se ven las compras pagadas ═══ -->
-    <nav class="filtros" aria-label="Qué compras ver">
-        <a th:href="@{/tienda-admin/ordenes(ver='pagadas')}" th:classappend="${ver == 'pagadas'} ? 'activo'">
-            Pagadas <span class="num" th:text="${conteoPagadas}">0</span>
-        </a>
-        <a th:href="@{/tienda-admin/ordenes(ver='pendientes')}" th:classappend="${ver == 'pendientes'} ? 'activo'">
-            Esperando pago <span class="num" th:text="${conteoPendientes}">0</span>
-        </a>
-        <a th:href="@{/tienda-admin/ordenes(ver='fallidas')}" th:classappend="${ver == 'fallidas'} ? 'activo'">
-            No completadas <span class="num" th:text="${conteoFallidas}">0</span>
-        </a>
-        <a th:href="@{/tienda-admin/ordenes(ver='todas')}" th:classappend="${ver == 'todas'} ? 'activo'">
-            Todas <span class="num" th:text="${conteoTodas}">0</span>
-        </a>
-    </nav>
+    <!-- ═══ Buscador ═══ -->
+    <form class="buscador" method="get" action="/tienda-admin/ordenes" role="search">
+        <input type="hidden" name="ver" th:value="${ver}">
+        <input type="search" class="form-control" name="q" th:value="${q}" maxlength="60"
+               placeholder="Buscar por nombre, cédula, celular, ciudad o número de pedido" aria-label="Buscar pedidos">
+        <button type="submit" class="btn btn-outline-secondary">Buscar</button>
+        <a th:if="${q != ''}" th:href="@{/tienda-admin/ordenes(ver=${ver})}" class="btn btn-outline-secondary">Quitar búsqueda</a>
+    </form>
+
+    <!-- ═══ Filtros por estado ═══ -->
+    <div class="grupos-filtros">
+        <nav class="filtros" aria-label="Pedidos por atender">
+            <span class="grupo">Por atender</span>
+            <a th:each="k : ${ {'activos','nuevos','fabricacion','listos','despachados'} }"
+               th:href="@{/tienda-admin/ordenes(ver=${k}, q=${q != '' ? q : null})}"
+               th:classappend="${ver == k} ? 'activo'" th:attr="aria-current=${ver == k} ? 'page' : null">
+                <span th:text="${k == 'activos'} ? 'Todos' : ${filtros.get(k)}">Nuevos</span>
+                <span class="num" th:text="${conteos.get(k)}">0</span>
+            </a>
+        </nav>
+        <nav class="filtros" aria-label="Pedidos terminados">
+            <span class="grupo">Terminados</span>
+            <a th:each="k : ${ {'entregados','cancelados'} }"
+               th:href="@{/tienda-admin/ordenes(ver=${k}, q=${q != '' ? q : null})}"
+               th:classappend="${ver == k} ? 'activo'" th:attr="aria-current=${ver == k} ? 'page' : null">
+                <span th:text="${filtros.get(k)}">Entregados</span>
+                <span class="num" th:text="${conteos.get(k)}">0</span>
+            </a>
+        </nav>
+        <nav class="filtros" aria-label="Compras sin pagar">
+            <span class="grupo">Sin pagar</span>
+            <a th:each="k : ${ {'pendientes','fallidas','todas'} }"
+               th:href="@{/tienda-admin/ordenes(ver=${k}, q=${q != '' ? q : null})}"
+               th:classappend="${ver == k} ? 'activo'" th:attr="aria-current=${ver == k} ? 'page' : null">
+                <span th:text="${filtros.get(k)}">Esperando pago</span>
+                <span class="num" th:text="${conteos.get(k)}">0</span>
+            </a>
+        </nav>
+    </div>
 
     <p class="nota-filtro" th:if="${ver == 'pendientes'}">
         Estas compras se crearon cuando el cliente le dio "Ir a pagar", pero el pago todavía no se confirma. La mayoría son intentos que no se terminaron.
     </p>
+    <p class="nota-filtro" th:if="${ver == 'todas'}">Todas las compras, pagadas o no.</p>
 
-    <!-- ═══ Sin compras en este filtro ═══ -->
+    <!-- ═══ Sin pedidos en este filtro ═══ -->
     <div class="caja vacio" th:if="${#lists.isEmpty(ordenes)}">
-        <span th:if="${ver == 'pagadas'}">Todavía no hay compras pagadas.</span>
-        <span th:if="${ver == 'pendientes'}">No hay compras esperando pago.</span>
-        <span th:if="${ver == 'fallidas'}">No hay compras rechazadas, anuladas ni con error.</span>
-        <span th:if="${ver == 'todas'}">Todavía no hay compras en línea.</span>
+        <span th:if="${q != ''}">No hay pedidos que coincidan con "<span th:text="${q}"></span>" en <span th:text="${filtros.get(ver)}"></span>.</span>
+        <span th:if="${q == ''}">No hay pedidos en <strong th:text="${filtros.get(ver)}">este filtro</strong>.</span>
     </div>
 
-    <!-- ═══ Una tarjeta por compra ═══ -->
+    <!-- ═══ Una tarjeta por pedido ═══ -->
     <article class="orden" th:each="o : ${ordenes}"
-             th:classappend="${o.estado == 'APROBADA'} ? 'es-pagada' : (${o.estado == 'PENDIENTE'} ? 'es-pendiente' : 'es-fallida')">
+             th:id="'pedido-' + ${o.referencia}"
+             th:classappend="(${o.pagada} ? 'est-' + ${o.estadoPedidoActual} : (${o.estado == 'PENDIENTE'} ? 'es-pendiente' : 'es-fallida'))
+                             + (${resaltar != null and resaltar == o.referencia} ? ' resaltada' : '')">
 
         <header class="orden-cabeza">
             <div class="identificacion">
                 <span class="ref" th:text="${o.referencia}">PCX000000000000-XXXXX</span>
-                <span class="badge"
-                      th:classappend="${o.estado == 'APROBADA'} ? 'badge-ok' : (${o.estado == 'PENDIENTE'} ? 'badge-pend' : 'badge-mal')"
-                      th:text="${o.estadoEtiqueta}">Pagada</span>
-                <span class="fecha" th:text="${o.fechaCreacionFormateada}">01/01/2026 10:00 a. m.</span>
+                <span th:if="${o.pagada}" class="badge estado" th:classappend="'est-' + ${o.estadoPedidoActual}"
+                      th:text="${o.estadoPedidoEtiqueta}">Nuevo</span>
+                <span th:unless="${o.pagada}" class="badge"
+                      th:classappend="${o.estado == 'PENDIENTE'} ? 'badge-pend' : 'badge-mal'"
+                      th:text="${o.estadoEtiqueta}">Esperando pago</span>
+                <span class="fecha" th:text="${o.pagada and o.fechaPago != null} ? 'Pagado el ' + ${o.fechaPagoFormateada} : ${o.fechaCreacionFormateada}">01/01/2026 10:00 a. m.</span>
             </div>
             <span class="total" th:text="'$' + ${#numbers.formatInteger(o.total, 1, 'POINT')}">$0</span>
         </header>
+
+        <!-- Avance del pedido (solo pagados y no cancelados) -->
+        <ol class="avance" th:if="${o.pagada and !o.cancelada}" aria-label="Avance del pedido">
+            <li th:each="e, it : ${ {'NUEVO','EN_FABRICACION','LISTO','DESPACHADO','ENTREGADO'} }"
+                th:classappend="${it.count lt o.pasoPedido} ? 'hecho' : (${it.count == o.pasoPedido} ? 'actual' : '')"
+                th:attr="aria-current=${it.count == o.pasoPedido} ? 'step' : null">
+                <span class="punto" aria-hidden="true"></span>
+                <span class="nombre" th:text="${estadosPedido.get(e)}">Nuevo</span>
+            </li>
+        </ol>
+        <p class="cancelado" th:if="${o.pagada and o.cancelada}">
+            Pedido cancelado<span th:if="${o.fechaEstadoPedido != null}" th:text="' el ' + ${o.fechaEstadoPedidoFormateada}"></span>
+        </p>
 
         <div class="orden-cuerpo">
             <dl class="cliente">
@@ -88,6 +117,10 @@
                     <dt>Cédula</dt>
                     <dd th:text="${o.cedula}">000</dd>
                 </div>
+                <div th:if="${o.metodoPago != null and o.metodoPago != ''}">
+                    <dt>Medio de pago</dt>
+                    <dd th:text="${o.metodoPago}">CARD</dd>
+                </div>
                 <div class="ancho" th:if="${o.email != null and o.email != ''}">
                     <dt>Correo</dt>
                     <dd th:text="${o.email}">correo@ejemplo.com</dd>
@@ -96,13 +129,9 @@
                     <dt>Entrega</dt>
                     <dd th:text="${o.direccion} + ', ' + ${o.ciudad}">Dirección, ciudad</dd>
                 </div>
-                <div th:if="${o.metodoPago != null and o.metodoPago != ''}">
-                    <dt>Medio de pago</dt>
-                    <dd th:text="${o.metodoPago}">CARD</dd>
-                </div>
-                <div th:if="${o.fechaPago != null}">
-                    <dt>Pagada el</dt>
-                    <dd th:text="${o.fechaPagoFormateada}">01/01/2026 10:05 a. m.</dd>
+                <div class="ancho" th:if="${o.guiaEnvio != null and o.guiaEnvio != '' and o.pasoPedido >= 4}">
+                    <dt>Envío</dt>
+                    <dd th:text="${o.guiaEnvio}">Servientrega 123456</dd>
                 </div>
             </dl>
 
@@ -124,21 +153,46 @@
             </p>
         </div>
 
+        <!-- ═══ Cambiar el estado (solo pedidos pagados) ═══ -->
+        <div class="cambio-estado" th:if="${o.pagada}">
+            <form th:if="${siguienteEstado.get(o.referencia) != null}" class="avanzar" method="post"
+                  th:action="@{/tienda-admin/orden/{id}/estado(id=${o.id})}">
+                <input type="hidden" name="estado" th:value="${siguienteEstado.get(o.referencia)}">
+                <input type="hidden" name="ver" th:value="${ver}">
+                <input type="hidden" name="q" th:value="${q}">
+                <input type="hidden" name="pagina" th:value="${paginaActual}">
+                <button type="submit" class="btn btn-sm btn-primary"
+                        th:text="'Pasar a ' + ${estadosPedido.get(siguienteEstado.get(o.referencia))} + ' →'">Pasar a En fabricación →</button>
+            </form>
+
+            <form class="elegir-estado" method="post" th:action="@{/tienda-admin/orden/{id}/estado(id=${o.id})}">
+                <input type="hidden" name="ver" th:value="${ver}">
+                <input type="hidden" name="q" th:value="${q}">
+                <input type="hidden" name="pagina" th:value="${paginaActual}">
+                <label class="visually-hidden" th:for="'estado-' + ${o.id}">Estado del pedido</label>
+                <select class="form-select form-select-sm" name="estado" th:id="'estado-' + ${o.id}" data-estado-pedido>
+                    <option th:each="e : ${estadosPedido}" th:value="${e.key}" th:text="${e.value}"
+                            th:selected="${e.key == o.estadoPedidoActual}">Nuevo</option>
+                </select>
+                <input type="text" class="form-control form-control-sm" name="guia" maxlength="200" data-guia
+                       th:value="${o.guiaEnvio}" placeholder="Transportadora y guía (opcional)" aria-label="Transportadora y número de guía"
+                       th:hidden="${o.estadoPedidoActual != 'DESPACHADO'}">
+                <button type="submit" class="btn btn-sm btn-outline-secondary">Cambiar estado</button>
+            </form>
+            <span class="desde" th:if="${o.fechaEstadoPedido != null}" th:text="'Último cambio: ' + ${o.fechaEstadoPedidoFormateada}">Último cambio</span>
+        </div>
+
         <footer class="orden-acciones">
-            <span class="almacen" th:if="${o.pedidoTiendaId != null}">
-                Pedido de Almacén #<span th:text="${o.pedidoTiendaId}">0</span>
-            </span>
             <span class="botones">
                 <a th:if="${enlacesWhatsapp.get(o.referencia) != null}" th:href="${enlacesWhatsapp.get(o.referencia)}"
-                   target="_blank" rel="noopener" class="btn btn-sm btn-success">Enviar rastreo por WhatsApp</a>
-                <a th:if="${o.pedidoTiendaId != null}" th:href="@{/almacen/imprimir/{id}(id=${o.pedidoTiendaId})}"
-                   target="_blank" rel="noopener" class="btn btn-sm btn-outline-secondary">Ver pedido de Almacén</a>
-                <a th:href="@{/tienda-admin/orden/{id}/editar(id=${o.id}, ver=${ver}, pagina=${paginaActual})}"
+                   target="_blank" rel="noopener" class="btn btn-sm btn-success">Avisar al cliente por WhatsApp</a>
+                <a th:href="@{/tienda-admin/orden/{id}/editar(id=${o.id}, ver=${ver}, q=${q != '' ? q : null}, pagina=${paginaActual})}"
                    class="btn btn-sm btn-outline-secondary">Editar datos</a>
                 <form th:action="@{/tienda-admin/orden/{id}/eliminar(id=${o.id})}" method="post" class="d-inline"
                       onsubmit="return confirm(this.dataset.aviso);"
-                      th:data-aviso="${o.estado == 'APROBADA'} ? 'Esta compra ya está PAGADA. Se borra solo de esta lista: el pedido de Almacén y el pago en Wompi no se tocan. ¿Eliminarla?' : (${o.estado == 'PENDIENTE'} ? 'Esta compra está esperando pago. Si el cliente todavía está pagando, el pago quedaría sin pedido. ¿Eliminarla?' : '¿Eliminar esta compra de la lista?')">
+                      th:data-aviso="${o.pagada} ? 'Este pedido ya está PAGADO. Se borra solo de esta lista: el pago en Wompi o Addi no se devuelve y su venta en Contabilidad no se borra. ¿Eliminarlo?' : (${o.estado == 'PENDIENTE'} ? 'Esta compra está esperando pago. Si el cliente todavía está pagando, el pago quedaría sin pedido. ¿Eliminarla?' : '¿Eliminar esta compra de la lista?')">
                     <input type="hidden" name="ver" th:value="${ver}">
+                    <input type="hidden" name="q" th:value="${q}">
                     <input type="hidden" name="pagina" th:value="${paginaActual}">
                     <button type="submit" class="btn btn-sm btn-outline-danger">Eliminar</button>
                 </form>
@@ -146,19 +200,21 @@
         </footer>
     </article>
 
-    <!-- ═══ Páginas (10 compras por página) ═══ -->
+    <!-- ═══ Páginas (10 pedidos por página) ═══ -->
     <nav class="paginacion" aria-label="Páginas" th:if="${totalPaginas > 1}">
         <a class="btn btn-sm btn-outline-secondary" th:if="${paginaActual > 0}"
-           th:href="@{/tienda-admin/ordenes(ver=${ver}, pagina=${paginaActual - 1})}">← Anterior</a>
+           th:href="@{/tienda-admin/ordenes(ver=${ver}, q=${q != '' ? q : null}, pagina=${paginaActual - 1})}">← Anterior</a>
         <a th:each="i : ${#numbers.sequence(0, totalPaginas - 1)}"
-           th:href="@{/tienda-admin/ordenes(ver=${ver}, pagina=${i})}"
+           th:href="@{/tienda-admin/ordenes(ver=${ver}, q=${q != '' ? q : null}, pagina=${i})}"
            class="btn btn-sm" th:classappend="${i == paginaActual} ? 'btn-primary' : 'btn-outline-secondary'"
            th:text="${i + 1}">1</a>
         <a class="btn btn-sm btn-outline-secondary" th:if="${paginaActual < totalPaginas - 1}"
-           th:href="@{/tienda-admin/ordenes(ver=${ver}, pagina=${paginaActual + 1})}">Siguiente →</a>
+           th:href="@{/tienda-admin/ordenes(ver=${ver}, q=${q != '' ? q : null}, pagina=${paginaActual + 1})}">Siguiente →</a>
     </nav>
     <p class="contador" th:if="${not #lists.isEmpty(ordenes)}"
-       th:text="'Página ' + ${paginaActual + 1} + ' de ' + ${totalPaginas} + ' · ' + ${totalFiltradas} + ' compra(s)'">Página 1 de 1</p>
+       th:text="'Página ' + ${paginaActual + 1} + ' de ' + ${totalPaginas} + ' · ' + ${totalFiltradas} + ' pedido(s)'">Página 1 de 1</p>
 </div>
+<script src="/js/tienda-admin/ordenes.js"></script>
+<script src="/js/tienda-admin/avisos.js"></script>
 </body>
 </html>

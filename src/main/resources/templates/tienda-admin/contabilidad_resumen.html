@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/tienda-admin/comun.css">
+
+    <title>Tienda virtual - Contabilidad</title>
+    <link rel="stylesheet" href="/css/tienda-admin/contabilidad.css">
+</head>
+<body>
+<div class="container-fluid" style="max-width:1200px;">
+    <div th:replace="~{tienda-admin/fragmentos :: encabezado('contabilidad')}"></div>
+
+    <div class="titulo-conta">
+        <h1>Contabilidad de la tienda</h1>
+        <div th:replace="~{tienda-admin/fragmentos :: selector-mes('/tienda-admin/contabilidad')}"></div>
+    </div>
+    <nav th:replace="~{tienda-admin/fragmentos :: pestanas-conta('resumen')}"></nav>
+
+    <div th:if="${mensaje}" class="alert alert-success" th:text="${mensaje}"></div>
+    <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
+
+    <div class="alert alert-info" th:unless="${hayCuentas}">
+        Para empezar, crea en <a href="/tienda-admin/contabilidad/cuentas" class="alert-link">Cuentas</a> las cuentas de la tienda
+        (por ejemplo, la cuenta de banco donde Wompi deposita) y elige a cuál entra la plata de Wompi y de Addi.
+        Desde ahí, cada compra pagada se anota sola.
+    </div>
+
+    <!-- ═══ Números del mes ═══ -->
+    <section class="tarjetas" aria-label="Resumen del mes">
+        <div class="tarjeta">
+            <span class="etiqueta">Vendido en línea</span>
+            <span class="cifra" th:insert="~{tienda-admin/fragmentos :: plata(${resumen.vendido})}"></span>
+            <span class="detalle" th:text="${resumen.ventas} + (${resumen.ventas == 1} ? ' pedido pagado' : ' pedidos pagados')
+                  + (${resumen.canceladas gt 0} ? ' · ' + ${resumen.canceladas} + ' cancelado(s) no cuentan' : '')">0 pedidos</span>
+            <span class="detalle" th:if="${resumen.ventasEnAlmacen gt 0}"
+                  th:text="${resumen.ventasEnAlmacen} + ' de antes de separar la tienda: su plata quedó en la contabilidad de Almacén'">antes</span>
+        </div>
+        <div class="tarjeta ingreso">
+            <span class="etiqueta">Entró a las cuentas</span>
+            <span class="cifra" th:insert="~{tienda-admin/fragmentos :: plata(${resumen.ingresos})}"></span>
+            <span class="detalle">Ingresos anotados en el mes</span>
+        </div>
+        <div class="tarjeta egreso">
+            <span class="etiqueta">Gastos</span>
+            <span class="cifra" th:insert="~{tienda-admin/fragmentos :: plata(${resumen.egresos})}"></span>
+            <span class="detalle">Fabricación, envíos, publicidad…</span>
+        </div>
+        <div class="tarjeta resultado" th:classappend="${resumen.resultado.signum() < 0} ? 'perdida' : 'ganancia'">
+            <span class="etiqueta">Resultado del mes</span>
+            <span class="cifra" th:insert="~{tienda-admin/fragmentos :: plata(${resumen.resultado})}"></span>
+            <span class="detalle" th:text="${resumen.resultado.signum() < 0} ? 'Salió más de lo que entró' : 'Ingresos menos gastos'">Ingresos menos gastos</span>
+        </div>
+    </section>
+
+    <!-- ═══ Ventas sin anotar ═══ -->
+    <section class="caja seccion sin-anotar" th:if="${not #lists.isEmpty(resumen.ventasSinAnotar)}">
+        <h2>
+            Ventas sin anotar
+            <span class="badge badge-pend" th:text="${resumen.ventasSinAnotarTotal}">0</span>
+        </h2>
+        <p class="ayuda">Compras pagadas cuya plata todavía no está en ninguna cuenta. Pasa cuando no hay cuenta elegida para Wompi o Addi.
+            Elige a qué cuenta entró y la fecha, y dale Anotar.</p>
+        <div class="tabla-wrap">
+            <table class="table tabla-conta align-middle">
+                <thead>
+                    <tr><th>Pedido</th><th>Pagado el</th><th class="num">Valor</th><th>Anotar en</th></tr>
+                </thead>
+                <tbody>
+                    <tr th:each="o : ${resumen.ventasSinAnotar}">
+                        <td>
+                            <strong class="d-block" th:text="${o.nombreCliente}">Cliente</strong>
+                            <span class="suave" th:text="${o.referencia}">PCX...</span>
+                        </td>
+                        <td class="text-nowrap" th:text="${o.fechaPagoFormateada}">01/10/2026</td>
+                        <td class="num fw-bold" th:insert="~{tienda-admin/fragmentos :: plata(${o.total})}"></td>
+                        <td>
+                            <form class="form-anotar" method="post" th:action="@{/tienda-admin/contabilidad/ventas/{id}/anotar(id=${o.id})}">
+                                <input type="hidden" name="mes" th:value="${mes}">
+                                <select class="form-select form-select-sm" name="cuentaId" required aria-label="Cuenta">
+                                    <option value="">Cuenta…</option>
+                                    <option th:each="c : ${cuentasActivas}" th:value="${c.id}" th:text="${c.nombre}">BANCOLOMBIA</option>
+                                </select>
+                                <input type="date" class="form-control form-control-sm" name="fecha" required th:max="${hoy}"
+                                       th:value="${o.fechaPago != null} ? ${o.fechaPago.toLocalDate()} : ${hoy}" aria-label="Fecha en que entró la plata">
+                                <button type="submit" class="btn btn-sm btn-primary" th:disabled="${#lists.isEmpty(cuentasActivas)}">Anotar</button>
+                            </form>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <p class="nota" th:if="${resumen.ventasSinAnotarTotal gt #lists.size(resumen.ventasSinAnotar)}"
+           th:text="'Se muestran las ' + ${#lists.size(resumen.ventasSinAnotar)} + ' más recientes de ' + ${resumen.ventasSinAnotarTotal} + '.'"></p>
+    </section>
+
+    <div class="dos-columnas">
+        <!-- ═══ Gastos por categoría ═══ -->
+        <section class="caja seccion">
+            <h2>Gastos del mes</h2>
+            <p class="vacio-chico" th:if="${#lists.isEmpty(resumen.egresosPorCategoria)}">No hay gastos anotados este mes.</p>
+            <ul class="barras" th:unless="${#lists.isEmpty(resumen.egresosPorCategoria)}">
+                <li th:each="c : ${resumen.egresosPorCategoria}">
+                    <div class="fila-barra">
+                        <span th:text="${c.categoria}">Fabricación</span>
+                        <span class="valor" th:insert="~{tienda-admin/fragmentos :: plata(${c.valor})}"></span>
+                    </div>
+                    <span class="barra egreso" aria-hidden="true"><span th:style="'width:' + ${c.porcentaje} + '%'"></span></span>
+                </li>
+            </ul>
+            <a class="enlace-mas" th:href="@{/tienda-admin/contabilidad/movimientos(mes=${mes})}">Ver ingresos y gastos del mes →</a>
+        </section>
+
+        <!-- ═══ Ingresos por categoría ═══ -->
+        <section class="caja seccion">
+            <h2>Ingresos del mes</h2>
+            <p class="vacio-chico" th:if="${#lists.isEmpty(resumen.ingresosPorCategoria)}">No hay ingresos anotados este mes.</p>
+            <ul class="barras" th:unless="${#lists.isEmpty(resumen.ingresosPorCategoria)}">
+                <li th:each="c : ${resumen.ingresosPorCategoria}">
+                    <div class="fila-barra">
+                        <span th:text="${c.categoria}">Venta en línea</span>
+                        <span class="valor" th:insert="~{tienda-admin/fragmentos :: plata(${c.valor})}"></span>
+                    </div>
+                    <span class="barra ingreso" aria-hidden="true"><span th:style="'width:' + ${c.porcentaje} + '%'"></span></span>
+                </li>
+            </ul>
+        </section>
+    </div>
+
+    <!-- ═══ Saldos de las cuentas ═══ -->
+    <section class="caja seccion">
+        <h2>Saldo de las cuentas hoy</h2>
+        <p class="vacio-chico" th:if="${#lists.isEmpty(resumen.cuentas)}">
+            Todavía no hay cuentas. <a href="/tienda-admin/contabilidad/cuentas">Crear cuentas</a>
+        </p>
+        <div class="tabla-wrap" th:unless="${#lists.isEmpty(resumen.cuentas)}">
+            <table class="table tabla-conta align-middle">
+                <tbody>
+                    <tr th:each="f : ${resumen.cuentas}">
+                        <td>
+                            <span th:text="${f.cuenta.nombre}">BANCOLOMBIA</span>
+                            <span class="badge badge-medio" th:if="${f.cuenta.deWompi}">Wompi</span>
+                            <span class="badge badge-medio" th:if="${f.cuenta.deAddi}">Addi</span>
+                        </td>
+                        <td class="num fw-bold" th:insert="~{tienda-admin/fragmentos :: plata(${f.saldo})}"></td>
+                    </tr>
+                    <tr class="total">
+                        <td>TOTAL</td>
+                        <td class="num" th:insert="~{tienda-admin/fragmentos :: plata(${resumen.totalCuentas})}"></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+</div>
+<script src="/js/tienda-admin/avisos.js"></script>
+</body>
+</html>
