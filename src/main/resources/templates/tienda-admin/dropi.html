@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/tienda-admin/comun.css">
+
+    <title>Tienda virtual - Conexión con Dropi</title>
+    <link rel="stylesheet" href="/css/tienda-admin/dropi.css">
+</head>
+<body>
+<div class="container-fluid" style="max-width:1000px;">
+    <div th:replace="~{tienda-admin/fragmentos :: encabezado('productos')}"></div>
+
+    <a href="/tienda-admin" class="volver">← Productos</a>
+    <h1>Conexión con Dropi <span class="badge badge-prueba">Prueba</span></h1>
+    <p class="explicacion">
+        Aquí se prueba si tu tienda puede leer información de Dropi con tu token. <strong>Solo consulta</strong>:
+        no crea pedidos ni cambia nada en Dropi ni en tu tienda.
+    </p>
+
+    <!-- ═══ Token ═══ -->
+    <div class="alert" th:classappend="${configurado} ? 'alert-success' : 'alert-warning'">
+        <strong th:if="${configurado}">Token de Dropi configurado.</strong>
+        <th:block th:unless="${configurado}">
+            <strong>Falta el token de Dropi.</strong>
+            Ponlo en la variable <code>DROPI_TOKEN</code> (en Railway → Variables, o en las variables de entorno de tu computadora)
+            y reinicia el programa. No lo escribas en el código ni lo pegues en ningún chat.
+        </th:block>
+    </div>
+
+    <!-- ═══ Probar con un producto ═══ -->
+    <section class="caja seccion">
+        <h2>1. Probar con un producto de Dropi</h2>
+        <p class="ayuda mb-3">Escribe el <strong>ID</strong> de un producto de Dropi (el número que ves en Dropi en el detalle del producto, ej: 45872).</p>
+        <form class="probar" method="post" th:action="@{/tienda-admin/dropi/probar}">
+            <input type="text" class="form-control" name="id" inputmode="numeric" maxlength="12" required autocomplete="off"
+                   placeholder="ID del producto en Dropi" aria-label="ID del producto en Dropi" th:value="${idProbado}">
+            <button type="submit" class="btn btn-primary" th:disabled="${!configurado}">Consultar en Dropi</button>
+        </form>
+
+        <div class="resultado" th:if="${prueba != null}" th:classappend="${prueba.ok} ? 'bien' : 'mal'">
+            <p class="titulo-resultado" th:text="${prueba.ok} ? '✓ ' + ${prueba.mensaje} : '✗ ' + ${prueba.mensaje}">Resultado</p>
+            <dl class="datos" th:if="${prueba.ok}">
+                <div><dt>Producto</dt><dd th:text="${prueba.nombre} ?: '—'">Nombre</dd></div>
+                <div><dt>ID / SKU</dt><dd th:text="(${prueba.id} ?: '—') + ' / ' + (${prueba.sku} ?: '—')">1 / SKU</dd></div>
+                <div><dt>Stock en Dropi</dt><dd th:text="${prueba.stock != null} ? ${prueba.stock} + ' unidades' : 'No vino'">10</dd></div>
+                <div><dt>Precio para ti</dt>
+                    <dd th:text="${prueba.precioParaTi != null} ? '$' + ${#numbers.formatInteger(prueba.precioParaTi, 1, 'POINT')} : 'No vino'">$0</dd></div>
+                <div><dt>Precio sugerido de venta</dt>
+                    <dd th:text="${prueba.precioSugerido != null} ? '$' + ${#numbers.formatInteger(prueba.precioSugerido, 1, 'POINT')} : 'No vino'">$0</dd></div>
+                <div th:if="${prueba.variaciones > 0}"><dt>Variaciones</dt>
+                    <dd th:text="${prueba.variaciones} + ' (tallas, colores…)'">2</dd></div>
+            </dl>
+            <details class="crudo" th:if="${prueba.respuesta != null and prueba.respuesta != ''}">
+                <summary>Ver la respuesta completa de Dropi</summary>
+                <pre th:text="${prueba.respuesta}">{}</pre>
+            </details>
+        </div>
+    </section>
+
+    <!-- ═══ Revisar mis productos de Dropi ═══ -->
+    <section class="caja seccion">
+        <h2>2. Revisar mis productos de Dropi</h2>
+        <p class="ayuda mb-3" th:if="${#lists.isEmpty(productosDropi)}">
+            Todavía no tienes productos marcados como Dropi. Créalos en Productos con "¿Quién lo despacha? → Dropi".
+        </p>
+        <th:block th:unless="${#lists.isEmpty(productosDropi)}">
+            <p class="ayuda mb-3" th:text="'Consulta en Dropi el stock y el precio de hoy de tus ' + ${#lists.size(productosDropi)}
+                    + ' producto(s) de Dropi. Para que funcione, en cada producto el código debe ser el ID numérico de Dropi.'">Consulta…</p>
+            <form method="post" th:action="@{/tienda-admin/dropi/revisar}">
+                <button type="submit" class="btn btn-outline-secondary" th:disabled="${!configurado}">Revisar mis productos en Dropi</button>
+            </form>
+        </th:block>
+
+        <div class="tabla-wrap" th:if="${revisiones != null}">
+            <table class="table tabla-dropi align-middle">
+                <thead>
+                    <tr><th>Producto en tu tienda</th><th>Stock en Dropi</th><th class="num">Te cobra hoy</th><th class="num">Tienes anotado</th></tr>
+                </thead>
+                <tbody>
+                    <tr th:each="r : ${revisiones}" th:classappend="${!r.dropi.ok} ? 'fila-error' : (${r.dropi.stock != null and r.dropi.stock <= 0} ? 'fila-agotado' : '')">
+                        <td>
+                            <strong class="d-block" th:text="${r.producto.nombre}">Producto</strong>
+                            <span class="suave" th:text="'Código ' + ${r.producto.codigoProveedor} + (${r.producto.activo} ? ' · visible' : ' · oculto')">Código</span>
+                            <span class="error-dropi" th:unless="${r.dropi.ok}" th:text="${r.dropi.mensaje}">Error</span>
+                        </td>
+                        <td>
+                            <th:block th:if="${r.dropi.ok}">
+                                <span th:if="${r.dropi.stock == null}">No vino</span>
+                                <span th:if="${r.dropi.stock != null and r.dropi.stock > 0}" th:text="${r.dropi.stock}">10</span>
+                                <span th:if="${r.dropi.stock != null and r.dropi.stock <= 0}" class="agotado">Agotado</span>
+                            </th:block>
+                        </td>
+                        <td class="num">
+                            <span th:if="${r.dropi.ok and r.dropi.precioParaTi != null}"
+                                  th:classappend="${r.producto.costoProveedor != null and r.dropi.precioParaTi.compareTo(r.producto.costoProveedor) != 0} ? 'cambio'"
+                                  th:text="'$' + ${#numbers.formatInteger(r.dropi.precioParaTi, 1, 'POINT')}">$0</span>
+                        </td>
+                        <td class="num" th:text="${r.producto.costoProveedor != null} ? '$' + ${#numbers.formatInteger(r.producto.costoProveedor, 1, 'POINT')} : '—'">$0</td>
+                    </tr>
+                </tbody>
+            </table>
+            <p class="nota" th:if="${revisionRecortada}">Se revisaron los primeros 30.</p>
+            <p class="nota">Si el precio de hoy sale en amarillo, es distinto al que tienes anotado: actualízalo en el producto.
+                Si sale agotado, oculta el producto en tu tienda.</p>
+        </div>
+    </section>
+</div>
+<script src="/js/tienda-admin/avisos.js"></script>
+</body>
+</html>
