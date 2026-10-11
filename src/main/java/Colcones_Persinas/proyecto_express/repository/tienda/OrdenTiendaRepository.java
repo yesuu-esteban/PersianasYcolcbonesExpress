@@ -57,6 +57,28 @@ public interface OrdenTiendaRepository extends JpaRepository<OrdenTienda, Intege
                              @Param("q") String q,
                              Pageable pagina);
 
+    /**
+     * Pedidos pagados (y no cancelados) que tienen productos de Dropi que todavía no se han pedido allá.
+     * q igual que en buscar().
+     */
+    @Query(value = "select o from OrdenTienda o where o.estado = 'APROBADA' and coalesce(o.estadoPedido, 'NUEVO') <> 'CANCELADO' "
+            + "and exists (select i.id from ItemOrdenTienda i where i.orden = o and i.proveedor = 'DROPI' "
+            + "            and (i.pedidoProveedor is null or i.pedidoProveedor = '')) "
+            + "and (lower(o.nombreCliente) like :q or lower(o.cedula) like :q or lower(o.telefono) like :q "
+            + "     or lower(o.ciudad) like :q or lower(o.referencia) like :q) "
+            + "order by coalesce(o.fechaPago, o.fechaCreacion) desc, o.id desc",
+           countQuery = "select count(o) from OrdenTienda o where o.estado = 'APROBADA' and coalesce(o.estadoPedido, 'NUEVO') <> 'CANCELADO' "
+            + "and exists (select i.id from ItemOrdenTienda i where i.orden = o and i.proveedor = 'DROPI' "
+            + "            and (i.pedidoProveedor is null or i.pedidoProveedor = '')) "
+            + "and (lower(o.nombreCliente) like :q or lower(o.cedula) like :q or lower(o.telefono) like :q "
+            + "     or lower(o.ciudad) like :q or lower(o.referencia) like :q)")
+    Page<OrdenTienda> porPedirEnDropi(@Param("q") String q, Pageable pagina);
+
+    @Query("select count(o) from OrdenTienda o where o.estado = 'APROBADA' and coalesce(o.estadoPedido, 'NUEVO') <> 'CANCELADO' "
+            + "and exists (select i.id from ItemOrdenTienda i where i.orden = o and i.proveedor = 'DROPI' "
+            + "            and (i.pedidoProveedor is null or i.pedidoProveedor = ''))")
+    long contarPorPedirEnDropi();
+
     /** Cuántas compras pagadas hay en cada estado del pedido: filas [estado (puede venir vacío), cantidad]. */
     @Query("select o.estadoPedido, count(o) from OrdenTienda o where o.estado = 'APROBADA' group by o.estadoPedido")
     List<Object[]> contarPorEstadoPedido();

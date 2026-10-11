@@ -22,6 +22,11 @@ import java.util.stream.Collectors;
  * Opciones de enrollable (solo productos a la medida, se activan en el admin):
  *  - Cabezal: el cliente puede pedirlo con cabezal; se cobra un valor por metro de ancho.
  *  - Enrollado al contrario: la tela cae por delante del tubo. No cambia el precio.
+ *
+ * Proveedor (solo productos de precio fijo): un producto puede ser NUESTRO o de DROPI.
+ * Los de Dropi se venden en la tienda como cualquier otro, pero al venderse hay que pedirlos
+ * en el panel de Dropi (la pantalla Pedidos los marca "Por pedir en Dropi"). Se guarda el
+ * código del producto en Dropi y cuánto nos cuesta, para saber la ganancia.
  */
 @Entity
 @Table(name = "tienda_producto")
@@ -31,6 +36,10 @@ public class ProductoTienda {
     public static final String PRECIO_M2 = "M2";
     public static final String PRECIO_UNIDAD = "UNIDAD";
     public static final String PRECIO_RIEL = "RIEL";
+
+    /** Quién despacha el producto. Vacío o PROPIO = nosotros. */
+    public static final String PROVEEDOR_PROPIO = "PROPIO";
+    public static final String PROVEEDOR_DROPI = "DROPI";
 
     /** Sistemas del riel de onda serena (lo que se guarda → lo que ve el cliente). */
     public static final String SISTEMA_BASTON = "BASTON";
@@ -112,6 +121,22 @@ public class ProductoTienda {
     @Column(name = "precio_riel_control_metro")
     private BigDecimal precioRielControlMetro;
 
+    /** Quién lo despacha: vacío/PROPIO (nosotros) o DROPI. Solo aplica a productos de precio fijo. */
+    @Column(name = "proveedor", length = 20)
+    private String proveedor;
+
+    /** Código o ID del producto en Dropi, para encontrarlo rápido al hacer el pedido allá. */
+    @Column(name = "codigo_proveedor", length = 80)
+    private String codigoProveedor;
+
+    /** Lo que nos cuesta cada unidad en Dropi (precio para el dropshipper). */
+    @Column(name = "costo_proveedor")
+    private BigDecimal costoProveedor;
+
+    /** Enlace al producto en el panel de Dropi (opcional). */
+    @Column(name = "enlace_proveedor", length = 500)
+    private String enlaceProveedor;
+
     @Column(name = "imagen_id")
     private Integer imagenId;
 
@@ -175,6 +200,19 @@ public class ProductoTienda {
     @Transient
     public boolean isContrarioDisponible() {
         return isPorMetro() && Boolean.TRUE.equals(ofreceEnrolladoContrario);
+    }
+
+    /** ¿Es un producto de Dropi? (solo los de precio fijo pueden serlo) */
+    @Transient
+    public boolean isDeDropi() {
+        return PROVEEDOR_DROPI.equals(proveedor) && PRECIO_UNIDAD.equals(tipoPrecio);
+    }
+
+    /** Lo que se gana por unidad en un producto de Dropi (precio de venta − costo en Dropi). Null si falta algún dato. */
+    @Transient
+    public BigDecimal getGananciaUnidad() {
+        if (!isDeDropi() || precioUnidad == null || costoProveedor == null) return null;
+        return precioUnidad.subtract(costoProveedor);
     }
 
     @Transient

@@ -46,6 +46,7 @@
                     <span class="badge badge-ok ms-1" th:if="${p.activo}">Visible</span>
                     <span class="badge badge-no ms-1" th:unless="${p.activo}">Oculto</span>
                     <span class="badge ms-1" style="background:var(--accent)" th:if="${p.destacado}">Destacado</span>
+                    <span class="badge badge-dropi ms-1" th:if="${p.deDropi}">Dropi</span>
                 </div>
                 <div class="datos">
                     <span th:text="${p.categoriaEtiqueta}"></span> ·
@@ -54,6 +55,12 @@
                     <span th:if="${!p.porMetro and !p.riel}">Precio por unidad</span>
                     <span th:if="${p.precioDesde != null}" th:text="' · desde $' + ${#numbers.formatInteger(p.precioDesde, 1, 'POINT')} + (${p.porMetro} ? '/m²' : (${p.riel} ? '/m' : ''))"></span>
                     <span th:unless="${p.imagenId != null}"> · sin foto</span>
+                </div>
+                <div class="datos dropi" th:if="${p.deDropi}">
+                    <span th:text="'Código Dropi ' + ${p.codigoProveedor}">Código Dropi 45872</span>
+                    <span th:if="${p.costoProveedor != null}" th:text="' · te cuesta $' + ${#numbers.formatInteger(p.costoProveedor, 1, 'POINT')}"> · te cuesta $38.000</span>
+                    <span th:if="${p.gananciaUnidad != null}" th:classappend="${p.gananciaUnidad.signum() <= 0} ? 'pierde'"
+                          th:text="' · ganas $' + ${#numbers.formatInteger(p.gananciaUnidad, 1, 'POINT')} + ' por unidad'"> · ganas $21.000 por unidad</span>
                 </div>
             </div>
             <div class="botones">

@@ -202,6 +202,12 @@ public class TiendaServicio {
                 item.setAnchoCm(it.anchoCm());
                 item.setSistemaRiel(ProductoTienda.textoSistema(it.sistema()));
                 item.setAperturaRiel(it.apertura());
+            } else if (p.isDeDropi()) {
+                // Lo despacha Dropi: se guarda con qué pedirlo allá y cuánto cuesta
+                item.setProveedor(ProductoTienda.PROVEEDOR_DROPI);
+                item.setCodigoProveedor(p.getCodigoProveedor());
+                item.setCostoProveedor(p.getCostoProveedor());
+                item.setEnlaceProveedor(p.getEnlaceProveedor());
             }
             item.setCantidad(c.cantidad());
             item.setPrecioUnitario(c.precioUnitario());
@@ -324,6 +330,27 @@ public class TiendaServicio {
             orden.setFechaEstadoPedido(LocalDateTime.now(OrdenTienda.ZONA_COLOMBIA));
         }
         return ordenRepository.save(orden);
+    }
+
+    /**
+     * Anota el número de pedido (o la guía) con que se pidió en Dropi un producto de este pedido.
+     * Vacío = se borra (vuelve a quedar "por pedir en Dropi").
+     */
+    @Transactional
+    public ItemOrdenTienda anotarPedidoProveedor(int ordenId, int itemId, String numero) {
+        OrdenTienda orden = ordenRepository.findById(ordenId)
+                .orElseThrow(() -> new IllegalArgumentException("Ese pedido ya no existe."));
+        if (!orden.isPagada()) throw new IllegalArgumentException("Ese pedido no está pagado.");
+        ItemOrdenTienda item = orden.getItems().stream().filter(i -> i.getId() == itemId).findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("Ese producto ya no está en el pedido."));
+        if (!item.isDeDropi()) throw new IllegalArgumentException("Ese producto no es de Dropi.");
+
+        String n = limpio(numero);
+        if (n.length() > 200) n = n.substring(0, 200);
+        item.setPedidoProveedor(n.isEmpty() ? null : n);
+        item.setFechaPedidoProveedor(n.isEmpty() ? null : LocalDateTime.now(OrdenTienda.ZONA_COLOMBIA));
+        ordenRepository.save(orden);
+        return item;
     }
 
     // ═══════════════════════════════════════════════════════════════

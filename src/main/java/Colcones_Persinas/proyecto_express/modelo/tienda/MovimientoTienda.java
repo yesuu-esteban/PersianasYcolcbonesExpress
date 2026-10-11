@@ -36,7 +36,7 @@ public class MovimientoTienda {
     public static final List<String> CATEGORIAS_INGRESO_A_MANO = List.of("Aporte de los dueños", "Otro ingreso");
     public static final List<String> CATEGORIAS_EGRESO = List.of(
             "Fabricación", "Materiales", "Envíos", "Instalación", "Publicidad",
-            "Comisiones Wompi / Addi", "Devoluciones", "Retiro de los dueños", "Otro gasto");
+            "Pago a Dropi", "Comisiones Wompi / Addi", "Devoluciones", "Retiro de los dueños", "Otro gasto");
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

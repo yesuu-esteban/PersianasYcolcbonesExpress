@@ -24,7 +24,8 @@ import java.util.*;
 
 /**
  * Administración de la tienda virtual (TIENDA_ADMIN y ADMIN): productos, telas con
- * sus precios por rollo y fotos.
+ * sus precios por rollo y fotos. Un producto de precio fijo por unidad puede ser de Dropi:
+ * se guarda su código y su costo allá para pedirlo cuando un cliente lo compre.
  *
  * Los pedidos están en OrdenesTiendaControlador y la contabilidad de la tienda en
  * ContabilidadTiendaControlador (las tres pantallas comparten el menú de la tienda).
@@ -122,6 +123,20 @@ public class TiendaAdminControlador {
         p.setOfreceEnrolladoContrario("true".equals(f.getFirst("ofreceEnrolladoContrario")));
         p.setPrecioRielBastonMetro(precio(texto(f, "precioRielBastonMetro")));
         p.setPrecioRielControlMetro(precio(texto(f, "precioRielControlMetro")));
+        // ── Quién lo despacha: nosotros o Dropi (solo productos de precio fijo por unidad) ──
+        boolean deDropi = ProductoTienda.PROVEEDOR_DROPI.equals(texto(f, "proveedor"))
+                && ProductoTienda.PRECIO_UNIDAD.equals(p.getTipoPrecio());
+        if (deDropi) {
+            p.setProveedor(ProductoTienda.PROVEEDOR_DROPI);
+            p.setCodigoProveedor(corto(texto(f, "codigoProveedor"), 80));
+            p.setCostoProveedor(precio(texto(f, "costoProveedor")));
+            p.setEnlaceProveedor(corto(texto(f, "enlaceProveedor"), 500));
+        } else {
+            p.setProveedor(ProductoTienda.PROVEEDOR_PROPIO);
+            p.setCodigoProveedor(null);
+            p.setCostoProveedor(null);
+            p.setEnlaceProveedor(null);
+        }
         p.setActivo("true".equals(f.getFirst("activo")));
         p.setDestacado("true".equals(f.getFirst("destacado")));
         p.setOrden(entero(texto(f, "orden"), 0));
@@ -155,6 +170,9 @@ public class TiendaAdminControlador {
         if (error == null && ProductoTienda.PRECIO_UNIDAD.equals(p.getTipoPrecio())
                 && (p.getPrecioUnidad() == null || p.getPrecioUnidad().signum() <= 0)) {
             error = "Escribe el precio por unidad.";
+        }
+        if (error == null && deDropi) {
+            error = errorDropi(p);
         }
         if (error == null && p.isRiel() && !p.isConBaston() && !p.isConControl()) {
             error = "Escribe el precio por metro con bastón, con control o los dos.";
@@ -250,6 +268,31 @@ public class TiendaAdminControlador {
         if (s == null) return null;
         String digitos = s.replaceAll("\\D", "");
         return digitos.isEmpty() ? null : new BigDecimal(digitos);
+    }
+
+    /** Revisa los datos de Dropi de un producto. Devuelve el error o null si todo está bien. */
+    static String errorDropi(ProductoTienda p) {
+        if (p.getCodigoProveedor() == null || p.getCodigoProveedor().isEmpty()) {
+            return "Escribe el código del producto en Dropi (con ese código lo pides allá cuando te compren).";
+        }
+        if (p.getCostoProveedor() == null || p.getCostoProveedor().signum() <= 0) {
+            return "Escribe cuánto te cobra Dropi por cada unidad.";
+        }
+        if (p.getPrecioUnidad() != null && p.getCostoProveedor().compareTo(p.getPrecioUnidad()) >= 0) {
+            return "El precio de venta debe ser mayor que lo que te cobra Dropi; si no, pierdes plata en cada venta.";
+        }
+        String enlace = p.getEnlaceProveedor();
+        if (enlace != null && !enlace.isEmpty()
+                && !(enlace.toLowerCase(Locale.ROOT).startsWith("http://") || enlace.toLowerCase(Locale.ROOT).startsWith("https://"))) {
+            return "El enlace de Dropi debe empezar por https:// (cópialo completo de la barra del navegador), o déjalo vacío.";
+        }
+        return null;
+    }
+
+    /** Texto recortado a un largo máximo; vacío → null. */
+    private static String corto(String s, int max) {
+        if (s == null || s.isEmpty()) return null;
+        return s.length() > max ? s.substring(0, max) : s;
     }
 
     private static int entero(String s, int porDefecto) {

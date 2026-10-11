@@ -75,6 +75,35 @@
         malas[0].focus();
     });
 
+    /* Dropi: sus datos solo se piden si el producto lo despacha Dropi. Se muestra cuánto se gana por unidad. */
+    const proveedor = document.getElementById('proveedor');
+    const datosDropi = document.getElementById('datosDropi');
+    const precioUnidad = document.getElementById('precioUnidad');
+    const costoDropi = document.getElementById('costoProveedor');
+    const codigoDropi = document.getElementById('codigoProveedor');
+    const gananciaDropi = document.getElementById('gananciaDropi');
+    const numero = el => parseInt(String(el.value).replace(/\D/g, ''), 10);
+    function actualizarDropi() {
+        const esDropi = proveedor.value === 'DROPI' && tipo.value === 'UNIDAD';
+        datosDropi.hidden = proveedor.value !== 'DROPI';
+        codigoDropi.required = esDropi;
+        costoDropi.required = esDropi;
+        const venta = numero(precioUnidad), costo = numero(costoDropi);
+        gananciaDropi.classList.remove('mala');
+        if (!(venta > 0) || !(costo > 0)) {
+            gananciaDropi.textContent = 'Escribe el precio de venta y lo que cobra Dropi para ver cuánto ganas.';
+        } else if (costo >= venta) {
+            gananciaDropi.classList.add('mala');
+            gananciaDropi.textContent = 'Así pierdes plata: el precio de venta debe ser mayor que lo que cobra Dropi.';
+        } else {
+            const g = venta - costo;
+            gananciaDropi.textContent = 'Ganas unos $' + formatoPesos.format(g) + ' por unidad ('
+                + Math.round(g * 100 / venta) + '% del precio), antes de envío y comisiones.';
+        }
+    }
+    [proveedor, tipo].forEach(el => el.addEventListener('change', actualizarDropi));
+    [precioUnidad, costoDropi].forEach(el => el.addEventListener('input', actualizarDropi));
+
     /* Cabezal: el valor por metro solo se pide si el producto ofrece cabezal */
     const ofreceCabezal = document.getElementById('ofreceCabezal');
     const precioCabezal = document.getElementById('precioCabezalMetro');
@@ -92,6 +121,7 @@
     precioCabezal.addEventListener('input', actualizarCabezal);
     tipo.addEventListener('change', actualizarCabezal);
     actualizarCabezal();
+    actualizarDropi();
 
     const contenedor = document.getElementById('telas');
     document.getElementById('agregarTela').addEventListener('click', () => {

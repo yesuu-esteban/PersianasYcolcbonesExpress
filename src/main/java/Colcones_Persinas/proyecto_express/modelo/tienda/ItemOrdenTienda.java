@@ -6,11 +6,16 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Locale;
 
 /**
  * Una línea de una compra de la tienda. Guarda los nombres y precios tal como
  * estaban al momento de comprar (si luego cambian los precios, la orden no cambia).
+ *
+ * Si el producto es de Dropi, también guarda su código y su costo en Dropi, y el número
+ * de pedido o guía que se anota cuando ya se pidió allá.
  */
 @Entity
 @Table(name = "tienda_orden_item")
@@ -46,6 +51,17 @@ public class ItemOrdenTienda {
     @Column(name = "precio_unitario", nullable = false) private BigDecimal precioUnitario = BigDecimal.ZERO;
     @Column(nullable = false) private BigDecimal subtotal = BigDecimal.ZERO;
 
+    // ── Productos de Dropi ──
+    /** DROPI si el producto lo despacha Dropi; vacío si es nuestro. */
+    @Column(name = "proveedor", length = 20) private String proveedor;
+    @Column(name = "codigo_proveedor", length = 80) private String codigoProveedor;
+    /** Lo que costaba cada unidad en Dropi al momento de la compra. */
+    @Column(name = "costo_proveedor") private BigDecimal costoProveedor;
+    @Column(name = "enlace_proveedor", length = 500) private String enlaceProveedor;
+    /** Número de pedido o guía en Dropi. Vacío = todavía no se ha pedido allá. */
+    @Column(name = "pedido_proveedor", length = 200) private String pedidoProveedor;
+    @Column(name = "fecha_pedido_proveedor") private LocalDateTime fechaPedidoProveedor;
+
     /**
      * Las medidas se guardan en centímetros, pero siempre se muestran en metros,
      * como en el resto del negocio. Ej: 120 → "1,20".
@@ -64,6 +80,37 @@ public class ItemOrdenTienda {
         if (apertura == null || apertura.isBlank()) return "";
         if (apertura.toLowerCase().startsWith("hacia")) return "abre " + apertura.toLowerCase();
         return "abre hacia la " + apertura.toLowerCase();
+    }
+
+    /** ¿Este producto lo despacha Dropi? */
+    @Transient
+    public boolean isDeDropi() {
+        return ProductoTienda.PROVEEDOR_DROPI.equals(proveedor);
+    }
+
+    /** ¿Es de Dropi y todavía no se ha pedido allá? */
+    @Transient
+    public boolean isPorPedirEnDropi() {
+        return isDeDropi() && (pedidoProveedor == null || pedidoProveedor.isBlank());
+    }
+
+    /** Lo que cuesta en Dropi toda la línea (costo por unidad × cantidad). Null si no se sabe. */
+    @Transient
+    public BigDecimal getCostoProveedorTotal() {
+        return costoProveedor == null ? null : costoProveedor.multiply(BigDecimal.valueOf(cantidad));
+    }
+
+    /** Ganancia aproximada de la línea: lo que pagó el cliente − lo que cuesta en Dropi (sin contar envío). */
+    @Transient
+    public BigDecimal getGananciaProveedor() {
+        BigDecimal costo = getCostoProveedorTotal();
+        return costo == null || subtotal == null ? null : subtotal.subtract(costo);
+    }
+
+    @Transient
+    public String getFechaPedidoProveedorFormateada() {
+        return fechaPedidoProveedor == null ? ""
+                : fechaPedidoProveedor.format(DateTimeFormatter.ofPattern("dd/MM/yyyy h:mm a", new Locale("es", "CO")));
     }
 
     /** Ej: "Blackout liso, color Gris, 1,50 × 2,00 m, mando a la derecha, con cabezal". */

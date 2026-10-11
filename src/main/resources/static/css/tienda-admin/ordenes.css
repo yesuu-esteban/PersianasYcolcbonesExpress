@@ -94,6 +94,28 @@
     padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.07); font-size: .88rem;
 }
 .productos li:last-child { border-bottom: 0; }
+.productos li { flex-wrap: wrap; }
+
+/* ── Productos de Dropi ── */
+.badge-dropi { background: #ff9f43; color: #1a0f2e; }
+.orden.por-dropi { box-shadow: inset 0 0 0 1px rgba(255, 159, 67, 0.55), 0 4px 22px rgba(0,0,0,0.3); }
+.orden.por-dropi.resaltada { box-shadow: 0 0 0 2px var(--color-estado), 0 4px 22px rgba(0,0,0,0.3); }
+.filtros a.filtro-dropi { border-color: rgba(255, 159, 67, 0.6); }
+.filtros a.filtro-dropi.activo { background: #ff9f43; border-color: #ff9f43; color: #1a0f2e; }
+.dropi { flex: 1 1 100%; border-radius: 8px; padding: 8px 10px; font-size: .82rem; }
+.dropi.falta { background: rgba(255, 159, 67, 0.12); border: 1px solid rgba(255, 159, 67, 0.45); }
+.dropi.pedido { background: rgba(32, 201, 151, 0.08); border: 1px solid rgba(32, 201, 151, 0.3); }
+.dropi p { margin: 0; overflow-wrap: anywhere; }
+.dropi-datos { color: var(--texto-suave); }
+.dropi-datos .badge { margin-right: 4px; }
+.dropi-datos a { color: #ffc98f; font-weight: 600; margin-left: 6px; white-space: nowrap; }
+.dropi-hecho { margin-top: 4px !important; color: #7ee2a8; }
+.dropi-hecho strong { color: #fff; }
+.dropi-form { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.dropi-form .form-control { flex: 1 1 220px; min-width: 0; }
+.dropi-corregir { margin-top: 4px; }
+.dropi-corregir summary { cursor: pointer; color: var(--texto-suave); font-size: .78rem; }
+.dropi-corregir .ayuda { display: block; }
 .productos .que { min-width: 0; }
 .productos .que strong { display: block; font-weight: 600; }
 .productos .detalle { display: block; color: var(--texto-suave); font-size: .82rem; }
@@ -133,7 +155,7 @@
     .cambio-estado input[data-guia] { width: 100%; }
     .cambio-estado .desde { margin-left: 0; }
     .orden-acciones .botones { width: 100%; }
-    .orden-acciones .botones .btn { flex: 1 1 auto; }
     .orden-acciones .botones form { flex: 1 1 auto; display: flex !important; }
+    .orden-acciones .botones .btn { flex: 1 1 auto; }
     .orden-acciones .botones form .btn { width: 100%; }
 }

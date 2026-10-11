@@ -9,6 +9,9 @@
 .producto .datos { font-size: .8rem; color: var(--texto-suave); margin-top: 2px; }
 .producto .botones { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
 .producto.inactivo { opacity: .55; }
+.badge-dropi { background: #ff9f43; color: #1a0f2e; }
+.producto .datos.dropi { color: #ffc98f; }
+.producto .datos.dropi .pierde { color: #ff8a8a; font-weight: 600; }
 @media (max-width: 767.98px) {
     .producto { grid-template-columns: 56px 1fr; }
     .producto .mini { width: 56px; height: 44px; }

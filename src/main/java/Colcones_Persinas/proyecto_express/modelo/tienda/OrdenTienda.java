@@ -191,6 +191,12 @@ public class OrdenTienda {
         return CANCELADO.equals(getEstadoPedidoActual());
     }
 
+    /** ¿Está pagado, no cancelado y tiene productos de Dropi que todavía no se han pedido allá? */
+    @Transient
+    public boolean isPorPedirEnDropi() {
+        return isPagada() && !isCancelada() && items.stream().anyMatch(ItemOrdenTienda::isPorPedirEnDropi);
+    }
+
     @Transient
     public String getPrimerNombre() {
         if (nombreCliente == null || nombreCliente.isBlank()) return "";
