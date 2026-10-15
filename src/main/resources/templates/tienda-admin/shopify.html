@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/tienda-admin/comun.css">
+
+    <title>Tienda virtual - Conexión con Shopify</title>
+    <link rel="stylesheet" href="/css/tienda-admin/shopify.css">
+</head>
+<body>
+<div class="container-fluid" style="max-width:1000px;">
+    <div th:replace="~{tienda-admin/fragmentos :: encabezado('productos')}"></div>
+
+    <a href="/tienda-admin" class="volver">← Productos</a>
+    <h1>Conexión con Shopify</h1>
+    <p class="explicacion">
+        Shopify es el puente con Dropi: <strong>nuestra tienda ⇄ Shopify ⇄ Dropi</strong> (con la app de Dropi instalada en Shopify).
+        Nuestros productos de precio fijo pasan a Shopify; los productos de Dropi que están en Shopify llegan solos a nuestra tienda;
+        y cuando un cliente compra aquí un producto de Dropi, el pedido se crea solo en Shopify y Dropi lo despacha.
+        Lo que es a la medida se sigue vendiendo solo en nuestra tienda.
+    </p>
+
+    <!-- ═══ Configuración ═══ -->
+    <div class="alert" th:classappend="${configurado} ? 'alert-success' : 'alert-warning'">
+        <th:block th:if="${configurado}">
+            <strong>Shopify configurado</strong> · tienda <code th:text="${tiendaShopify}">mitienda.myshopify.com</code>
+        </th:block>
+        <th:block th:unless="${configurado}">
+            <strong>Falta configurar Shopify.</strong>
+            En Railway → Variables pon: <code th:text="${faltante}">SHOPIFY_TIENDA</code>, y reinicia.
+            No escribas las claves en el código ni las pegues en ningún chat.
+        </th:block>
+    </div>
+
+    <!-- ═══ 1. Probar ═══ -->
+    <section class="caja seccion">
+        <h2>1. Probar la conexión</h2>
+        <form method="post" th:action="@{/tienda-admin/shopify/probar}">
+            <button type="submit" class="btn btn-primary" th:disabled="${!configurado}">Probar conexión con Shopify</button>
+        </form>
+        <div class="resultado bien" th:if="${conexionOk != null}">
+            <p class="titulo-resultado">✓ ¡Conectado con Shopify!</p>
+            <p class="mb-0" th:text="${conexionOk}">Mi tienda · mitienda.myshopify.com · moneda COP</p>
+            <p class="nota" th:unless="${#strings.contains(conexionOk, 'COP')}">
+                Ojo: la moneda de la tienda de Shopify no es COP. Cámbiala en Shopify → Configuración → Detalles de la tienda antes de enviar productos.
+            </p>
+        </div>
+        <div class="resultado mal" th:if="${conexionError != null}">
+            <p class="titulo-resultado" th:text="'✗ ' + ${conexionError}">Error</p>
+        </div>
+    </section>
+
+    <!-- ═══ 2. Productos ═══ -->
+    <section class="caja seccion">
+        <h2>2. Enviar nuestros productos a Shopify</h2>
+        <p class="ayuda mb-3"
+           th:text="'Se envían ' + ${#lists.size(paraShopify)} + ' producto(s) nuestros de precio fijo. No se envían los '
+                    + ${aLaMedida} + ' a la medida ni los que vienen de Shopify. Si cambias un precio, una foto o una descripción, vuelve a darle a este botón.'">Se envían…</p>
+        <ul class="lista-productos" th:unless="${#lists.isEmpty(paraShopify)}">
+            <li th:each="p : ${paraShopify}">
+                <span th:text="${p.nombre}">Producto</span>
+                <span class="suave" th:text="'$' + ${#numbers.formatInteger(p.precioUnidad, 1, 'POINT')}">$0</span>
+                <span class="badge" th:classappend="${p.enShopify} ? 'badge-ok' : 'badge-pend'" th:text="${p.enShopify} ? 'En Shopify' : 'Todavía no'">En Shopify</span>
+                <span class="badge badge-no" th:unless="${p.activo}">Oculto: va en borrador</span>
+            </li>
+        </ul>
+        <p class="nota mb-3" th:if="${#strings.contains(urlFotos, 'localhost') or #strings.contains(urlFotos, '127.0.0.1')}">
+            Estás en tu computadora: los productos se envían sin foto, porque Shopify no puede descargarlas de aquí.
+            Para que vayan con foto, envíalos desde la página de Railway.
+        </p>
+        <form method="post" th:action="@{/tienda-admin/shopify/enviar}">
+            <button type="submit" class="btn btn-outline-secondary" th:disabled="${!configurado or #lists.isEmpty(paraShopify)}">Enviar productos a Shopify</button>
+        </form>
+
+        <div class="tabla-wrap" th:if="${resultadosProductos != null}">
+            <p class="nota" th:if="${#lists.isEmpty(resultadosProductos)}">No había productos para enviar.</p>
+            <table class="table tabla-shopify align-middle" th:unless="${#lists.isEmpty(resultadosProductos)}">
+                <thead><tr><th>Producto</th><th>Resultado</th></tr></thead>
+                <tbody>
+                    <tr th:each="r : ${resultadosProductos}">
+                        <td th:text="${r.nombre}">Producto</td>
+                        <td>
+                            <span th:class="${r.ok} ? 'ok' : 'error'" th:text="(${r.ok} ? '✓ ' : '✗ ') + ${r.accion}">✓ Creado</span>
+                            <span class="d-block suave" th:if="${r.mensaje != null and r.mensaje != ''}" th:text="${r.mensaje}">aviso</span>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <!-- ═══ 3. Productos de Dropi ═══ -->
+    <section class="caja seccion">
+        <h2>3. Traer los productos de Dropi (los que están en Shopify)</h2>
+        <p class="ayuda mb-2">Se traen solos cada 30 minutos con su foto, precio, costo y stock. Cada variación (talla, color…) queda como un producto.
+            Si se agotan en Shopify, se ocultan aquí solos; si vuelve el stock, se muestran otra vez. Los precios se cambian en Shopify.</p>
+        <p class="nota mb-2" th:text="'Hoy hay ' + ${#lists.size(deShopify)} + ' producto(s) de Dropi en nuestra tienda.'">Hoy hay…</p>
+        <p class="nota mb-3" th:if="${ultimaImportacion != null}"
+           th:text="'Última revisión: ' + ${ultimaImportacion.cuandoFormateado} + (${ultimaImportacion.error != null} ? ' · con error' : '')">Última</p>
+        <form method="post" th:action="@{/tienda-admin/shopify/productos}">
+            <button type="submit" class="btn btn-outline-secondary" th:disabled="${!configurado}">Traer productos de Shopify</button>
+        </form>
+        <th:block th:with="r=${resultadoImportacion}">
+            <div class="resultado mal" th:if="${r != null and r.error != null}">
+                <p class="titulo-resultado" th:text="'✗ ' + ${r.error}">Error</p>
+            </div>
+            <div class="resultado bien" th:if="${r != null and r.error == null}">
+                <p class="titulo-resultado" th:text="'✓ ' + ${r.nuevos} + ' nuevo(s) · ' + ${r.actualizados} + ' actualizado(s)'
+                        + (${r.agotados > 0} ? ' · ' + ${r.agotados} + ' agotado(s)' : '') + (${r.retirados > 0} ? ' · ' + ${r.retirados} + ' ya no están en Shopify' : '')">✓</p>
+                <ul class="mb-0" th:unless="${#lists.isEmpty(r.detalle)}">
+                    <li th:each="d : ${r.detalle}" th:text="${d}">Nuevo: Lámpara</li>
+                </ul>
+                <a class="btn btn-sm btn-primary mt-2" href="/tienda-admin">Ver en Productos</a>
+            </div>
+        </th:block>
+    </section>
+
+    <!-- ═══ 4. Pedidos ═══ -->
+    <section class="caja seccion">
+        <h2>4. Pedidos</h2>
+        <ul class="ayuda mb-2 ps-3">
+            <li>Cuando un cliente paga <strong>aquí</strong> productos de Dropi, el pedido se crea solo en Shopify (ya pagado, sin recaudo) y Dropi lo despacha. La guía vuelve sola y el pedido pasa a "Despachado".</li>
+            <li>Los pedidos pagados <strong>en Shopify</strong> que traen productos nuestros llegan a Pedidos con la etiqueta "Shopify".
+                Su plata entra por el medio de pago de Shopify: quedan en Contabilidad → "Ventas sin anotar".</li>
+        </ul>
+        <p class="nota mb-2" th:if="${porEnviar > 0}">
+            <a href="/tienda-admin/ordenes?ver=shopify" th:text="${porEnviar} + ' pedido(s) de nuestra tienda todavía sin crear en Shopify →'">pendientes</a>
+        </p>
+        <p class="nota mb-3" th:if="${ultimaRevision != null}"
+           th:text="'Última revisión: ' + ${ultimaRevision.cuandoFormateado} + (${ultimaRevision.error != null} ? ' · con error' : '')">Última revisión</p>
+        <form method="post" th:action="@{/tienda-admin/shopify/traer}">
+            <button type="submit" class="btn btn-outline-secondary" th:disabled="${!configurado}">Revisar pedidos ahora</button>
+        </form>
+
+        <th:block th:with="r=${resultadoPedidos}">
+            <div class="resultado mal" th:if="${r != null and r.error != null}">
+                <p class="titulo-resultado" th:text="'✗ ' + ${r.error}">Error</p>
+            </div>
+            <div class="resultado bien" th:if="${r != null and r.error == null}">
+                <p class="titulo-resultado" th:text="${r.nuevos > 0} ? '✓ Llegaron ' + ${r.nuevos} + ' pedido(s) de Shopify' : '✓ No hay pedidos nuevos de Shopify'">✓</p>
+                <p class="mb-1 suave" th:text="'Revisados ' + ${r.revisados} + ' pedido(s) pagado(s) de los últimos 7 días en Shopify'
+                        + (${r.sinProductosNuestros > 0} ? ' · ' + ${r.sinProductosNuestros} + ' sin productos nuestros (son de Dropi: se manejan allá)' : '') + '.'">Revisados…</p>
+                <ul class="mb-0" th:unless="${#lists.isEmpty(r.traidos)}">
+                    <li th:each="t : ${r.traidos}" th:text="${t}">SHP-1001 · Cliente</li>
+                </ul>
+                <p class="aviso-datos" th:if="${r.aviso != null}" th:text="${r.aviso}">aviso</p>
+                <a class="btn btn-sm btn-primary mt-2" th:if="${r.nuevos > 0}" href="/tienda-admin/ordenes?ver=nuevos">Ver en Pedidos</a>
+            </div>
+            <div class="resultado" th:if="${r != null}" th:classappend="${r.conErrorAShopify > 0} ? 'mal' : 'bien'">
+                <p class="titulo-resultado" th:text="'Pedidos de aquí enviados a Shopify: ' + ${r.enviadosAShopify}
+                        + (${r.conErrorAShopify > 0} ? ' · ' + ${r.conErrorAShopify} + ' con error' : '') + ' · guías nuevas: ' + ${r.guiasNuevas}">Enviados</p>
+                <a class="btn btn-sm btn-outline-secondary mt-1" th:if="${r.conErrorAShopify > 0}" href="/tienda-admin/ordenes?ver=shopify">Ver los que tienen error</a>
+            </div>
+        </th:block>
+    </section>
+</div>
+<script src="/js/tienda-admin/avisos.js"></script>
+</body>
+</html>

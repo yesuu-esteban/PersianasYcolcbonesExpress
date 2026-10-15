@@ -91,6 +91,7 @@ public class ContabilidadTiendaServicio {
                 OrdenTienda orden = ordenRepository.findById(ordenId).orElse(null);
                 if (orden == null || !orden.isPagada() || orden.isCancelada() || orden.isAnotadaEnAlmacen()) return;
                 if (movimientoRepository.existsByOrdenId(ordenId)) return;   // ya estaba anotada
+                if (orden.isDeShopify()) return;   // la plata de Shopify no entra a Wompi ni a Addi: se anota a mano
 
                 CuentaTienda cuenta = (esAddi(orden) ? cuentaRepository.findFirstByRecibeAddiTrue()
                         : cuentaRepository.findFirstByRecibeWompiTrue()).orElse(null);
@@ -130,7 +131,8 @@ public class ContabilidadTiendaServicio {
         m.setFecha(fecha);
         m.setTipo(MovimientoTienda.INGRESO);
         m.setCategoria(MovimientoTienda.VENTA_EN_LINEA);
-        String medio = esAddi(orden) ? "Addi"
+        String medio = orden.isDeShopify() ? "Shopify"
+                : esAddi(orden) ? "Addi"
                 : "Wompi" + (vacio(orden.getMetodoPago()) ? "" : " - " + orden.getMetodoPago());
         m.setDescripcion(recortar("Pedido " + orden.getReferencia() + " · " + texto(orden.getNombreCliente())
                 + " (" + medio + ")", 300));

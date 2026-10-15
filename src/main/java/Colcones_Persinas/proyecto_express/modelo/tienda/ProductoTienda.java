@@ -23,10 +23,11 @@ import java.util.stream.Collectors;
  *  - Cabezal: el cliente puede pedirlo con cabezal; se cobra un valor por metro de ancho.
  *  - Enrollado al contrario: la tela cae por delante del tubo. No cambia el precio.
  *
- * Proveedor (solo productos de precio fijo): un producto puede ser NUESTRO o de DROPI.
- * Los de Dropi se venden en la tienda como cualquier otro, pero al venderse hay que pedirlos
- * en el panel de Dropi (la pantalla Pedidos los marca "Por pedir en Dropi"). Se guarda el
- * código del producto en Dropi y cuánto nos cuesta, para saber la ganancia.
+ * Conexión con Shopify (pantalla "Conexión con Shopify"):
+ *  - Los productos de precio fijo que son NUESTROS (proveedor vacío o PROPIO) se envían a Shopify.
+ *  - Los productos que la app de Dropi mete en Shopify llegan solos aquí (proveedor SHOPIFY): nombre,
+ *    descripción, foto, precio, costo y stock se toman de Shopify. Si se agotan allá, se ocultan aquí.
+ *    Cuando un cliente los compra aquí, el pedido se crea solo en Shopify y Dropi lo despacha.
  */
 @Entity
 @Table(name = "tienda_producto")
@@ -37,9 +38,11 @@ public class ProductoTienda {
     public static final String PRECIO_UNIDAD = "UNIDAD";
     public static final String PRECIO_RIEL = "RIEL";
 
-    /** Quién despacha el producto. Vacío o PROPIO = nosotros. */
+    /** De dónde viene el producto. Vacío o PROPIO = nuestro; SHOPIFY = viene de Shopify (productos de Dropi). */
     public static final String PROVEEDOR_PROPIO = "PROPIO";
-    public static final String PROVEEDOR_DROPI = "DROPI";
+    public static final String PROVEEDOR_SHOPIFY = "SHOPIFY";
+    /** Valor de antes (productos de Dropi creados a mano). Ya no se usa: al guardar el producto pasa a PROPIO. */
+    public static final String PROVEEDOR_DROPI_A_MANO = "DROPI";
 
     /** Sistemas del riel de onda serena (lo que se guarda → lo que ve el cliente). */
     public static final String SISTEMA_BASTON = "BASTON";
@@ -121,21 +124,37 @@ public class ProductoTienda {
     @Column(name = "precio_riel_control_metro")
     private BigDecimal precioRielControlMetro;
 
-    /** Quién lo despacha: vacío/PROPIO (nosotros) o DROPI. Solo aplica a productos de precio fijo. */
+    /** De dónde viene: vacío/PROPIO (nuestro) o SHOPIFY (viene de Shopify; normalmente productos de Dropi). */
     @Column(name = "proveedor", length = 20)
     private String proveedor;
 
-    /** Código o ID del producto en Dropi, para encontrarlo rápido al hacer el pedido allá. */
-    @Column(name = "codigo_proveedor", length = 80)
-    private String codigoProveedor;
-
-    /** Lo que nos cuesta cada unidad en Dropi (precio para el dropshipper). */
+    /** Productos que vienen de Shopify: lo que nos cuesta cada unidad (el costo que tiene en Shopify). */
     @Column(name = "costo_proveedor")
     private BigDecimal costoProveedor;
 
-    /** Enlace al producto en el panel de Dropi (opcional). */
-    @Column(name = "enlace_proveedor", length = 500)
-    private String enlaceProveedor;
+    /** ID del producto en Shopify (gid://shopify/Product/...). En los nuestros: cuando ya se envió allá. */
+    @Column(name = "shopify_producto_id", length = 100)
+    private String shopifyProductoId;
+
+    /** Productos que vienen de Shopify: la variante exacta (gid://shopify/ProductVariant/...). Con esto se crea el pedido allá. */
+    @Column(name = "shopify_variante_id", length = 100)
+    private String shopifyVarianteId;
+
+    /** Nuestros productos: qué foto se le mandó a Shopify, para no volver a subirla si no cambió. */
+    @Column(name = "shopify_imagen_id")
+    private Integer shopifyImagenId;
+
+    /** Productos que vienen de Shopify: de qué dirección se bajó la foto, para no bajarla otra vez. */
+    @Column(name = "shopify_imagen_url", length = 1000)
+    private String shopifyImagenUrl;
+
+    /** Productos que vienen de Shopify: unidades disponibles allá (vacío = Shopify no lleva inventario). */
+    @Column(name = "stock_shopify")
+    private Integer stockShopify;
+
+    /** true si se ocultó solo porque se agotó en Shopify (vuelve a verse solo cuando llegue stock). */
+    @Column(name = "oculto_por_stock")
+    private Boolean ocultoPorStock;
 
     @Column(name = "imagen_id")
     private Integer imagenId;
@@ -202,17 +221,39 @@ public class ProductoTienda {
         return isPorMetro() && Boolean.TRUE.equals(ofreceEnrolladoContrario);
     }
 
-    /** ¿Es un producto de Dropi? (solo los de precio fijo pueden serlo) */
+    /** ¿Viene de Shopify? (normalmente productos de Dropi que la app de Dropi puso en Shopify) */
     @Transient
-    public boolean isDeDropi() {
-        return PROVEEDOR_DROPI.equals(proveedor) && PRECIO_UNIDAD.equals(tipoPrecio);
+    public boolean isDeShopify() {
+        return PROVEEDOR_SHOPIFY.equals(proveedor);
     }
 
-    /** Lo que se gana por unidad en un producto de Dropi (precio de venta − costo en Dropi). Null si falta algún dato. */
+    /** ¿Es un producto de Dropi creado a mano antes (ya no se usa)? */
+    @Transient
+    public boolean isDropiAMano() {
+        return PROVEEDOR_DROPI_A_MANO.equals(proveedor);
+    }
+
+    /** Productos que vienen de Shopify: lo que se gana por unidad (precio de venta − costo). Null si falta algún dato. */
     @Transient
     public BigDecimal getGananciaUnidad() {
-        if (!isDeDropi() || precioUnidad == null || costoProveedor == null) return null;
+        if (!isDeShopify() || precioUnidad == null || costoProveedor == null || costoProveedor.signum() <= 0) return null;
         return precioUnidad.subtract(costoProveedor);
+    }
+
+    /**
+     * ¿Se envía a Shopify? Solo los de precio fijo que son NUESTROS
+     * (los que vienen de Shopify ya están allá; los a la medida solo se venden aquí).
+     */
+    @Transient
+    public boolean isParaShopify() {
+        boolean nuestro = proveedor == null || proveedor.isBlank() || PROVEEDOR_PROPIO.equals(proveedor);
+        return nuestro && PRECIO_UNIDAD.equals(tipoPrecio) && precioUnidad != null && precioUnidad.signum() > 0;
+    }
+
+    /** Nuestros productos: ¿ya están en Shopify? */
+    @Transient
+    public boolean isEnShopify() {
+        return !isDeShopify() && shopifyProductoId != null && !shopifyProductoId.isBlank();
     }
 
     @Transient

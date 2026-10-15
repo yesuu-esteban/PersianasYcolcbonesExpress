@@ -33,6 +33,11 @@ public interface OrdenTiendaRepository extends JpaRepository<OrdenTienda, Intege
 
     long countByEstadoIn(Collection<String> estados);
 
+    /** ¿Ya se trajo este pedido de Shopify? */
+    boolean existsByShopifyPedidoId(String shopifyPedidoId);
+
+    boolean existsByReferencia(String referencia);
+
     // ── Pantalla "Pedidos" de la tienda ──
 
     /**
@@ -57,27 +62,35 @@ public interface OrdenTiendaRepository extends JpaRepository<OrdenTienda, Intege
                              @Param("q") String q,
                              Pageable pagina);
 
-    /**
-     * Pedidos pagados (y no cancelados) que tienen productos de Dropi que todavía no se han pedido allá.
-     * q igual que en buscar().
-     */
-    @Query(value = "select o from OrdenTienda o where o.estado = 'APROBADA' and coalesce(o.estadoPedido, 'NUEVO') <> 'CANCELADO' "
-            + "and exists (select i.id from ItemOrdenTienda i where i.orden = o and i.proveedor = 'DROPI' "
-            + "            and (i.pedidoProveedor is null or i.pedidoProveedor = '')) "
+    // ── Pedidos con productos que vienen de Shopify (los despacha Dropi) ──
+
+    /** Condición: pagado, no cancelado, hecho aquí, con productos de Shopify y todavía sin crear en Shopify. */
+    String POR_ENVIAR_A_SHOPIFY = "o.estado = 'APROBADA' and coalesce(o.estadoPedido, 'NUEVO') <> 'CANCELADO' "
+            + "and (o.origen is null or o.origen = '') and (o.shopifyPedidoId is null or o.shopifyPedidoId = '') "
+            + "and exists (select i.id from ItemOrdenTienda i where i.orden = o and i.proveedor = 'SHOPIFY') ";
+
+    /** Pedidos que falta crear en Shopify (filtro "Por enviar a Shopify"). q igual que en buscar(). */
+    @Query(value = "select o from OrdenTienda o where " + POR_ENVIAR_A_SHOPIFY
             + "and (lower(o.nombreCliente) like :q or lower(o.cedula) like :q or lower(o.telefono) like :q "
             + "     or lower(o.ciudad) like :q or lower(o.referencia) like :q) "
             + "order by coalesce(o.fechaPago, o.fechaCreacion) desc, o.id desc",
-           countQuery = "select count(o) from OrdenTienda o where o.estado = 'APROBADA' and coalesce(o.estadoPedido, 'NUEVO') <> 'CANCELADO' "
-            + "and exists (select i.id from ItemOrdenTienda i where i.orden = o and i.proveedor = 'DROPI' "
-            + "            and (i.pedidoProveedor is null or i.pedidoProveedor = '')) "
+           countQuery = "select count(o) from OrdenTienda o where " + POR_ENVIAR_A_SHOPIFY
             + "and (lower(o.nombreCliente) like :q or lower(o.cedula) like :q or lower(o.telefono) like :q "
             + "     or lower(o.ciudad) like :q or lower(o.referencia) like :q)")
-    Page<OrdenTienda> porPedirEnDropi(@Param("q") String q, Pageable pagina);
+    Page<OrdenTienda> porEnviarAShopify(@Param("q") String q, Pageable pagina);
 
-    @Query("select count(o) from OrdenTienda o where o.estado = 'APROBADA' and coalesce(o.estadoPedido, 'NUEVO') <> 'CANCELADO' "
-            + "and exists (select i.id from ItemOrdenTienda i where i.orden = o and i.proveedor = 'DROPI' "
-            + "            and (i.pedidoProveedor is null or i.pedidoProveedor = ''))")
-    long contarPorPedirEnDropi();
+    @Query("select count(o) from OrdenTienda o where " + POR_ENVIAR_A_SHOPIFY)
+    long contarPorEnviarAShopify();
+
+    /** Los que falta crear en Shopify, pagados desde cierta fecha (para reintentar solos). */
+    @Query("select o.id from OrdenTienda o where " + POR_ENVIAR_A_SHOPIFY + "and o.fechaPago >= :desde order by o.fechaPago")
+    List<Integer> idsPorEnviarAShopify(@Param("desde") LocalDateTime desde);
+
+    /** Pedidos ya creados en Shopify que siguen abiertos (para traer la guía del despacho). */
+    @Query("select o.id from OrdenTienda o where o.estado = 'APROBADA' and (o.origen is null or o.origen = '') "
+            + "and o.shopifyPedidoId is not null and o.shopifyPedidoId <> '' "
+            + "and coalesce(o.estadoPedido, 'NUEVO') not in ('ENTREGADO', 'CANCELADO') and o.fechaPago >= :desde")
+    List<Integer> idsEnviadosAShopifyAbiertos(@Param("desde") LocalDateTime desde);
 
     /** Cuántas compras pagadas hay en cada estado del pedido: filas [estado (puede venir vacío), cantidad]. */
     @Query("select o.estadoPedido, count(o) from OrdenTienda o where o.estado = 'APROBADA' group by o.estadoPedido")

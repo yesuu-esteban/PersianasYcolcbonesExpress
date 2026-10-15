@@ -24,6 +24,7 @@ import java.util.List;
  *  - Aplica el resultado de Wompi o de Addi. Si el pago se aprueba, el pedido queda en "Nuevo"
  *    en la pantalla Pedidos de la tienda y la plata se anota sola en la contabilidad DE LA TIENDA.
  *    La tienda es un módulo aparte: ya no crea nada en Almacén ni en la contabilidad de Almacén.
+ *    Si la compra trae productos que vienen de Shopify (los de Dropi), el pedido se crea solo en Shopify.
  *  - Permite corregir los datos del cliente y cambiar el estado del pedido desde la administración.
  */
 @Service
@@ -43,15 +44,17 @@ public class TiendaServicio {
     private final OrdenTiendaRepository ordenRepository;
     private final PrecioTiendaServicio precioServicio;
     private final ContabilidadTiendaServicio contabilidadTienda;
+    private final ShopifyTiendaServicio shopifyTienda;
 
     public TiendaServicio(ProductoTiendaRepository productoRepository, TelaTiendaRepository telaRepository,
                           OrdenTiendaRepository ordenRepository, PrecioTiendaServicio precioServicio,
-                          ContabilidadTiendaServicio contabilidadTienda) {
+                          ContabilidadTiendaServicio contabilidadTienda, ShopifyTiendaServicio shopifyTienda) {
         this.productoRepository = productoRepository;
         this.telaRepository = telaRepository;
         this.ordenRepository = ordenRepository;
         this.precioServicio = precioServicio;
         this.contabilidadTienda = contabilidadTienda;
+        this.shopifyTienda = shopifyTienda;
     }
 
     /**
@@ -202,12 +205,18 @@ public class TiendaServicio {
                 item.setAnchoCm(it.anchoCm());
                 item.setSistemaRiel(ProductoTienda.textoSistema(it.sistema()));
                 item.setAperturaRiel(it.apertura());
-            } else if (p.isDeDropi()) {
-                // Lo despacha Dropi: se guarda con qué pedirlo allá y cuánto cuesta
-                item.setProveedor(ProductoTienda.PROVEEDOR_DROPI);
-                item.setCodigoProveedor(p.getCodigoProveedor());
+            } else if (p.isDeShopify()) {
+                // Viene de Shopify (lo despacha Dropi): al pagarse, el pedido se crea solo en Shopify
+                if (p.getShopifyVarianteId() == null || p.getShopifyVarianteId().isBlank()) {
+                    throw new IllegalArgumentException(p.getNombre() + ": este producto no está disponible ahora. Escríbenos por WhatsApp.");
+                }
+                if (p.getStockShopify() != null && c.cantidad() > p.getStockShopify()) {
+                    throw new IllegalArgumentException(p.getNombre() + ": solo quedan " + Math.max(p.getStockShopify(), 0)
+                            + " unidad(es). Cambia la cantidad en tu carrito.");
+                }
+                item.setProveedor(ProductoTienda.PROVEEDOR_SHOPIFY);
+                item.setShopifyVarianteId(p.getShopifyVarianteId());
                 item.setCostoProveedor(p.getCostoProveedor());
-                item.setEnlaceProveedor(p.getEnlaceProveedor());
             }
             item.setCantidad(c.cantidad());
             item.setPrecioUnitario(c.precioUnitario());
@@ -268,6 +277,10 @@ public class TiendaServicio {
                     // La plata se anota sola en la contabilidad de la tienda cuando el pago termine de guardarse.
                     // Si algo falla allá, el pago no se afecta.
                     contabilidadTienda.anotarVentaCuandoSeGuarde(orden.getId());
+                    // Si trae productos de Dropi (vienen de Shopify), el pedido se crea solo en Shopify
+                    if (shopifyTienda != null && orden.isConProductosDeShopify()) {
+                        shopifyTienda.enviarPedidoCuandoSeGuarde(orden.getId());
+                    }
                 }
             }
             case "DECLINED" -> orden.setEstado(OrdenTienda.RECHAZADA);
@@ -330,27 +343,6 @@ public class TiendaServicio {
             orden.setFechaEstadoPedido(LocalDateTime.now(OrdenTienda.ZONA_COLOMBIA));
         }
         return ordenRepository.save(orden);
-    }
-
-    /**
-     * Anota el número de pedido (o la guía) con que se pidió en Dropi un producto de este pedido.
-     * Vacío = se borra (vuelve a quedar "por pedir en Dropi").
-     */
-    @Transactional
-    public ItemOrdenTienda anotarPedidoProveedor(int ordenId, int itemId, String numero) {
-        OrdenTienda orden = ordenRepository.findById(ordenId)
-                .orElseThrow(() -> new IllegalArgumentException("Ese pedido ya no existe."));
-        if (!orden.isPagada()) throw new IllegalArgumentException("Ese pedido no está pagado.");
-        ItemOrdenTienda item = orden.getItems().stream().filter(i -> i.getId() == itemId).findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("Ese producto ya no está en el pedido."));
-        if (!item.isDeDropi()) throw new IllegalArgumentException("Ese producto no es de Dropi.");
-
-        String n = limpio(numero);
-        if (n.length() > 200) n = n.substring(0, 200);
-        item.setPedidoProveedor(n.isEmpty() ? null : n);
-        item.setFechaPedidoProveedor(n.isEmpty() ? null : LocalDateTime.now(OrdenTienda.ZONA_COLOMBIA));
-        ordenRepository.save(orden);
-        return item;
     }
 
     // ═══════════════════════════════════════════════════════════════

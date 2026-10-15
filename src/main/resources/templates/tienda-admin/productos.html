@@ -32,7 +32,7 @@
     <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
         <h1 class="mb-0">Productos de la tienda</h1>
         <span class="d-flex gap-2 flex-wrap">
-            <a href="/tienda-admin/dropi" class="btn btn-outline-secondary">Conexión con Dropi</a>
+            <a href="/tienda-admin/shopify" class="btn btn-outline-secondary">Conexión con Shopify</a>
             <a href="/tienda-admin/producto/nuevo" class="btn btn-primary">+ Nuevo producto</a>
         </span>
     </div>
@@ -49,7 +49,9 @@
                     <span class="badge badge-ok ms-1" th:if="${p.activo}">Visible</span>
                     <span class="badge badge-no ms-1" th:unless="${p.activo}">Oculto</span>
                     <span class="badge ms-1" style="background:var(--accent)" th:if="${p.destacado}">Destacado</span>
-                    <span class="badge badge-dropi ms-1" th:if="${p.deDropi}">Dropi</span>
+                    <span class="badge badge-shopify ms-1" th:if="${p.deShopify}">Dropi · Shopify</span>
+                    <span class="badge badge-shopify ms-1" th:if="${p.enShopify and p.paraShopify}">En Shopify</span>
+                    <span class="badge badge-no ms-1" th:if="${p.dropiAMano}">Dropi a mano (ya no se usa)</span>
                 </div>
                 <div class="datos">
                     <span th:text="${p.categoriaEtiqueta}"></span> ·
@@ -59,11 +61,13 @@
                     <span th:if="${p.precioDesde != null}" th:text="' · desde $' + ${#numbers.formatInteger(p.precioDesde, 1, 'POINT')} + (${p.porMetro} ? '/m²' : (${p.riel} ? '/m' : ''))"></span>
                     <span th:unless="${p.imagenId != null}"> · sin foto</span>
                 </div>
-                <div class="datos dropi" th:if="${p.deDropi}">
-                    <span th:text="'Código Dropi ' + ${p.codigoProveedor}">Código Dropi 45872</span>
+                <div class="datos shopify" th:if="${p.deShopify}">
+                    <span>Viene de Shopify</span>
                     <span th:if="${p.costoProveedor != null}" th:text="' · te cuesta $' + ${#numbers.formatInteger(p.costoProveedor, 1, 'POINT')}"> · te cuesta $38.000</span>
                     <span th:if="${p.gananciaUnidad != null}" th:classappend="${p.gananciaUnidad.signum() <= 0} ? 'pierde'"
                           th:text="' · ganas $' + ${#numbers.formatInteger(p.gananciaUnidad, 1, 'POINT')} + ' por unidad'"> · ganas $21.000 por unidad</span>
+                    <span th:if="${p.stockShopify != null}" th:classappend="${p.stockShopify <= 0} ? 'pierde'" th:text="' · ' + ${p.stockShopify} + ' en stock'"> · 12 en stock</span>
+                    <span th:if="${p.ocultoPorStock != null and p.ocultoPorStock and !p.activo}"> · oculto porque se agotó</span>
                 </div>
             </div>
             <div class="botones">

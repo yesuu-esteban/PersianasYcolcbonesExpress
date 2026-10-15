@@ -83,48 +83,24 @@
                 </div>
             </div>
 
-            <!-- ═══ Quién lo despacha (solo precio fijo por unidad) ═══ -->
-            <div data-solo="UNIDAD" class="mt-3 despacho">
-                <div class="row g-3">
-                    <div class="col-md-6">
-                        <label class="form-label" for="proveedor">¿Quién lo despacha?</label>
-                        <select class="form-select" name="proveedor" id="proveedor">
-                            <option value="PROPIO" th:selected="${producto.proveedor != 'DROPI'}">Nosotros</option>
-                            <option value="DROPI" th:selected="${producto.proveedor == 'DROPI'}">Dropi</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div class="caja-dropi mt-3" id="datosDropi">
-                    <p class="ayuda mt-0 mb-3">
-                        El cliente lo ve igual que los demás productos. Cuando te lo compren, el pedido sale en
-                        <strong>Pedidos → Por pedir en Dropi</strong>: lo pides en tu panel de Dropi con este código y pegas allí el número que te dan.
-                    </p>
-                    <div class="row g-3">
-                        <div class="col-md-6">
-                            <label class="form-label" for="codigoProveedor">Código o SKU en Dropi</label>
-                            <input type="text" class="form-control" name="codigoProveedor" id="codigoProveedor" maxlength="80" autocomplete="off"
-                                   placeholder="Ej: 45872" th:value="${producto.codigoProveedor}">
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label" for="costoProveedor">Lo que te cobra Dropi por unidad</label>
-                            <div class="input-group">
-                                <span class="input-group-text">$</span>
-                                <input type="text" class="form-control" name="costoProveedor" id="costoProveedor" inputmode="numeric" placeholder="Ej: 38.000"
-                                       th:value="${producto.costoProveedor != null} ? ${#numbers.formatInteger(producto.costoProveedor, 1, 'POINT')} : ''">
-                            </div>
-                        </div>
-                        <div class="col-12">
-                            <label class="form-label" for="enlaceProveedor">Enlace del producto en Dropi <span class="opcional">(opcional)</span></label>
-                            <input type="url" class="form-control" name="enlaceProveedor" id="enlaceProveedor" maxlength="500" autocomplete="off"
-                                   placeholder="https://app.dropi.co/..." th:value="${producto.enlaceProveedor}">
-                        </div>
-                    </div>
-                    <p class="ganancia" id="gananciaDropi" aria-live="polite"></p>
-                    <p class="ayuda mb-0">
-                        El stock de Dropi no se actualiza solo: si allá se agota, oculta el producto aquí (casilla "Se ve en la tienda").
-                    </p>
-                </div>
+            <!-- ═══ Producto que viene de Shopify (los de Dropi) ═══ -->
+            <div class="caja-shopify mt-3" th:if="${producto.deShopify}">
+                <p class="titulo-shopify"><span class="badge badge-shopify">Dropi · Shopify</span> Este producto viene de Shopify</p>
+                <p class="ayuda mt-1 mb-2">
+                    El nombre, la descripción, el precio, la foto y el stock se actualizan solos desde Shopify (cada 30 minutos):
+                    si los cambias aquí, se vuelven a poner como están allá. Cámbialos en Shopify.
+                    Aquí sí puedes cambiar la categoría, si se ve en la tienda, si es destacado y el orden.
+                    Cuando un cliente lo compra, el pedido se crea solo en Shopify y Dropi lo despacha.
+                </p>
+                <p class="datos-shopify mb-0">
+                    <span th:if="${producto.costoProveedor != null}" th:text="'Te cuesta $' + ${#numbers.formatInteger(producto.costoProveedor, 1, 'POINT')}">Te cuesta $38.000</span>
+                    <span th:if="${producto.gananciaUnidad != null}" th:text="' · ganas unos $' + ${#numbers.formatInteger(producto.gananciaUnidad, 1, 'POINT')} + ' por unidad'"> · ganas</span>
+                    <span th:text="${producto.stockShopify != null} ? ' · ' + ${producto.stockShopify} + ' en stock' : ' · Shopify no lleva su stock'"> · 12 en stock</span>
+                </p>
+            </div>
+            <div class="alert alert-warning mt-3 mb-0" th:if="${producto.dropiAMano}">
+                Este producto se creó antes como "de Dropi" a mano. Eso ya no se usa: ahora los productos de Dropi llegan solos desde Shopify.
+                Si ya te llegó desde Shopify, elimina este. Si lo guardas, queda como producto nuestro.
             </div>
 
             <div data-solo="RIEL" class="mt-3">

@@ -14,8 +14,8 @@ import java.util.Locale;
  * Una línea de una compra de la tienda. Guarda los nombres y precios tal como
  * estaban al momento de comprar (si luego cambian los precios, la orden no cambia).
  *
- * Si el producto es de Dropi, también guarda su código y su costo en Dropi, y el número
- * de pedido o guía que se anota cuando ya se pidió allá.
+ * Si el producto viene de Shopify (productos de Dropi), también guarda su variante en Shopify y su
+ * costo; con eso se crea el pedido en Shopify y Dropi lo despacha. La guía de ese despacho llega sola.
  */
 @Entity
 @Table(name = "tienda_orden_item")
@@ -51,14 +51,14 @@ public class ItemOrdenTienda {
     @Column(name = "precio_unitario", nullable = false) private BigDecimal precioUnitario = BigDecimal.ZERO;
     @Column(nullable = false) private BigDecimal subtotal = BigDecimal.ZERO;
 
-    // ── Productos de Dropi ──
-    /** DROPI si el producto lo despacha Dropi; vacío si es nuestro. */
+    // ── Productos que vienen de Shopify (los despacha Dropi) ──
+    /** SHOPIFY si el producto viene de Shopify; vacío si es nuestro. */
     @Column(name = "proveedor", length = 20) private String proveedor;
-    @Column(name = "codigo_proveedor", length = 80) private String codigoProveedor;
-    /** Lo que costaba cada unidad en Dropi al momento de la compra. */
+    /** La variante en Shopify, para crear el pedido allá. */
+    @Column(name = "shopify_variante_id", length = 100) private String shopifyVarianteId;
+    /** Lo que costaba cada unidad al momento de la compra. */
     @Column(name = "costo_proveedor") private BigDecimal costoProveedor;
-    @Column(name = "enlace_proveedor", length = 500) private String enlaceProveedor;
-    /** Número de pedido o guía en Dropi. Vacío = todavía no se ha pedido allá. */
+    /** Transportadora y guía del despacho (llega sola de Shopify). Vacío = todavía no se ha despachado. */
     @Column(name = "pedido_proveedor", length = 200) private String pedidoProveedor;
     @Column(name = "fecha_pedido_proveedor") private LocalDateTime fechaPedidoProveedor;
 
@@ -82,25 +82,25 @@ public class ItemOrdenTienda {
         return "abre hacia la " + apertura.toLowerCase();
     }
 
-    /** ¿Este producto lo despacha Dropi? */
+    /** ¿Viene de Shopify? (lo despacha Dropi a través de Shopify) */
     @Transient
-    public boolean isDeDropi() {
-        return ProductoTienda.PROVEEDOR_DROPI.equals(proveedor);
+    public boolean isDeShopify() {
+        return ProductoTienda.PROVEEDOR_SHOPIFY.equals(proveedor);
     }
 
-    /** ¿Es de Dropi y todavía no se ha pedido allá? */
+    /** ¿Ya llegó la guía del despacho? */
     @Transient
-    public boolean isPorPedirEnDropi() {
-        return isDeDropi() && (pedidoProveedor == null || pedidoProveedor.isBlank());
+    public boolean isConGuia() {
+        return pedidoProveedor != null && !pedidoProveedor.isBlank();
     }
 
-    /** Lo que cuesta en Dropi toda la línea (costo por unidad × cantidad). Null si no se sabe. */
+    /** Lo que cuesta toda la línea (costo por unidad × cantidad). Null si no se sabe. */
     @Transient
     public BigDecimal getCostoProveedorTotal() {
-        return costoProveedor == null ? null : costoProveedor.multiply(BigDecimal.valueOf(cantidad));
+        return costoProveedor == null || costoProveedor.signum() <= 0 ? null : costoProveedor.multiply(BigDecimal.valueOf(cantidad));
     }
 
-    /** Ganancia aproximada de la línea: lo que pagó el cliente − lo que cuesta en Dropi (sin contar envío). */
+    /** Ganancia aproximada de la línea: lo que pagó el cliente − lo que cuesta (sin contar envío). */
     @Transient
     public BigDecimal getGananciaProveedor() {
         BigDecimal costo = getCostoProveedorTotal();

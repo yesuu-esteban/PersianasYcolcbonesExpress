@@ -25,6 +25,11 @@ import java.util.Map;
  *    Nuevo → En fabricación → Listo → Despachado → Entregado, o Cancelado.
  *    El cliente ve ese avance en la página de rastreo.
  *
+ * Shopify:
+ *  - Las compras hechas en la tienda de Shopify con productos nuestros llegan aquí (origen = SHOPIFY), ya pagadas.
+ *  - Las compras hechas aquí con productos que vienen de Shopify (los de Dropi) se crean solas en Shopify
+ *    al pagarse (shopifyPedidoId), y Dropi las despacha desde allá.
+ *
  * La tienda es un módulo aparte: sus pedidos ya NO se crean en el listado de Almacén.
  * pedidoTiendaId solo queda en las compras viejas, que sí se crearon allá.
  */
@@ -62,6 +67,9 @@ public class OrdenTienda {
         m.put(CANCELADO, "Cancelado");
         ESTADOS_PEDIDO = java.util.Collections.unmodifiableMap(m);
     }
+
+    /** De dónde viene la compra. Vacío = de nuestra tienda; SHOPIFY = se compró en la tienda de Shopify. */
+    public static final String ORIGEN_SHOPIFY = "SHOPIFY";
 
     /** Pedidos pagados que todavía hay que atender (ni entregados ni cancelados). */
     public static final List<String> ESTADOS_ACTIVOS = List.of(NUEVO, EN_FABRICACION, LISTO, DESPACHADO);
@@ -114,6 +122,21 @@ public class OrdenTienda {
      * contabilidad de Almacén: no se vuelven a anotar en la contabilidad de la tienda.
      */
     @Column(name = "venta_en_conta_almacen") private Boolean ventaEnContaAlmacen;
+
+    /** De dónde viene: vacío (nuestra tienda) o SHOPIFY. */
+    @Column(name = "origen", length = 20) private String origen;
+
+    /**
+     * ID del pedido en Shopify (gid://shopify/Order/...): el que se trajo de Shopify, o el que se creó
+     * allá con los productos de Dropi. Sirve también para no traerlo dos veces.
+     */
+    @Column(name = "shopify_pedido_id", length = 100) private String shopifyPedidoId;
+
+    /** Número del pedido en Shopify, ej: "#1005". */
+    @Column(name = "shopify_pedido_nombre", length = 40) private String shopifyPedidoNombre;
+
+    /** Si no se pudo crear el pedido en Shopify: por qué (se reintenta solo). */
+    @Column(name = "shopify_error", length = 500) private String shopifyError;
 
     @OneToMany(mappedBy = "orden", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("id ASC")
@@ -191,10 +214,28 @@ public class OrdenTienda {
         return CANCELADO.equals(getEstadoPedidoActual());
     }
 
-    /** ¿Está pagado, no cancelado y tiene productos de Dropi que todavía no se han pedido allá? */
+    /** ¿Trae productos que vienen de Shopify (los despacha Dropi)? */
     @Transient
-    public boolean isPorPedirEnDropi() {
-        return isPagada() && !isCancelada() && items.stream().anyMatch(ItemOrdenTienda::isPorPedirEnDropi);
+    public boolean isConProductosDeShopify() {
+        return items.stream().anyMatch(ItemOrdenTienda::isDeShopify);
+    }
+
+    /** ¿Ya se creó en Shopify el pedido con los productos de Dropi? */
+    @Transient
+    public boolean isEnviadoAShopify() {
+        return !isDeShopify() && shopifyPedidoId != null && !shopifyPedidoId.isBlank();
+    }
+
+    /** ¿Está pagado, no cancelado y falta crear en Shopify el pedido de sus productos de Dropi? */
+    @Transient
+    public boolean isPorEnviarAShopify() {
+        return isPagada() && !isCancelada() && !isDeShopify() && !isEnviadoAShopify() && isConProductosDeShopify();
+    }
+
+    /** ¿Se compró en la tienda de Shopify? */
+    @Transient
+    public boolean isDeShopify() {
+        return ORIGEN_SHOPIFY.equals(origen);
     }
 
     @Transient

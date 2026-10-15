@@ -10,9 +10,8 @@
 .form-check-input { background-color: var(--bg-input); border-color: rgba(255,255,255,0.3); }
 .form-check-input:checked { background-color: var(--accent); border-color: var(--accent); }
 
-/* Productos de Dropi */
-.caja-dropi { border: 1px solid rgba(255, 159, 67, 0.45); background: rgba(255, 159, 67, 0.07); border-radius: 10px; padding: 14px; }
-.caja-dropi .ayuda { color: var(--texto-suave); }
-.opcional { font-weight: 400; color: var(--texto-suave); font-size: .85em; }
-.ganancia { margin: 12px 0 8px; font-weight: 600; font-size: .92rem; color: #7ee2a8; }
-.ganancia.mala { color: #ff8a8a; }
+/* Producto que viene de Shopify (los de Dropi) */
+.caja-shopify { border: 1px solid rgba(149, 191, 71, 0.5); background: rgba(149, 191, 71, 0.08); border-radius: 10px; padding: 14px; }
+.titulo-shopify { font-weight: 700; margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.badge-shopify { background: #95bf47; color: #14210a; }
+.datos-shopify { font-size: .86rem; color: #c9e59a; font-weight: 600; }

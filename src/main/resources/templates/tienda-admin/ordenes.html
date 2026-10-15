@@ -33,10 +33,10 @@
     <div class="grupos-filtros">
         <nav class="filtros" aria-label="Pedidos por atender">
             <span class="grupo">Por atender</span>
-            <a th:each="k : ${ {'activos','nuevos','fabricacion','listos','despachados','dropi'} }"
-               th:if="${k != 'dropi' or conteos.get('dropi') > 0 or ver == 'dropi'}"
+            <a th:each="k : ${ {'activos','nuevos','fabricacion','listos','despachados','shopify'} }"
+               th:if="${k != 'shopify' or conteos.get('shopify') > 0 or ver == 'shopify'}"
                th:href="@{/tienda-admin/ordenes(ver=${k}, q=${q != '' ? q : null})}"
-               th:classappend="(${ver == k} ? 'activo' : '') + (${k == 'dropi'} ? ' filtro-dropi' : '')"
+               th:classappend="(${ver == k} ? 'activo' : '') + (${k == 'shopify'} ? ' filtro-shopify' : '')"
                th:attr="aria-current=${ver == k} ? 'page' : null">
                 <span th:text="${k == 'activos'} ? 'Todos' : ${filtros.get(k)}">Nuevos</span>
                 <span class="num" th:text="${conteos.get(k)}">0</span>
@@ -66,9 +66,9 @@
         Estas compras se crearon cuando el cliente le dio "Ir a pagar", pero el pago todavía no se confirma. La mayoría son intentos que no se terminaron.
     </p>
     <p class="nota-filtro" th:if="${ver == 'todas'}">Todas las compras, pagadas o no.</p>
-    <p class="nota-filtro" th:if="${ver == 'dropi'}">
-        Pedidos pagados con productos de Dropi que todavía no has pedido allá. Haz el pedido en tu panel de Dropi
-        con la dirección del cliente y pega aquí el número que te dan: así sale de esta lista.
+    <p class="nota-filtro" th:if="${ver == 'shopify'}">
+        Pedidos pagados con productos de Dropi que todavía no se han podido crear en Shopify. Normalmente se crean solos al pagarse;
+        si aquí aparece alguno, mira el error y dale "Reintentar en Shopify".
     </p>
 
     <!-- ═══ Sin pedidos en este filtro ═══ -->
@@ -82,7 +82,7 @@
              th:id="'pedido-' + ${o.referencia}"
              th:classappend="(${o.pagada} ? 'est-' + ${o.estadoPedidoActual} : (${o.estado == 'PENDIENTE'} ? 'es-pendiente' : 'es-fallida'))
                              + (${resaltar != null and resaltar == o.referencia} ? ' resaltada' : '')
-                             + (${o.porPedirEnDropi} ? ' por-dropi' : '')">
+                             + (${o.porEnviarAShopify} ? ' por-shopify' : '')">
 
         <header class="orden-cabeza">
             <div class="identificacion">
@@ -92,7 +92,8 @@
                 <span th:unless="${o.pagada}" class="badge"
                       th:classappend="${o.estado == 'PENDIENTE'} ? 'badge-pend' : 'badge-mal'"
                       th:text="${o.estadoEtiqueta}">Esperando pago</span>
-                <span th:if="${o.porPedirEnDropi}" class="badge badge-dropi">Pedir en Dropi</span>
+                <span th:if="${o.deShopify}" class="badge badge-shopify">Shopify</span>
+                <span th:if="${o.porEnviarAShopify}" class="badge badge-error-shopify">Falta enviar a Shopify</span>
                 <span class="fecha" th:text="${o.pagada and o.fechaPago != null} ? 'Pagado el ' + ${o.fechaPagoFormateada} : ${o.fechaCreacionFormateada}">01/01/2026 10:00 a. m.</span>
             </div>
             <span class="total" th:text="'$' + ${#numbers.formatInteger(o.total, 1, 'POINT')}">$0</span>
@@ -153,47 +154,40 @@
                         </span>
                         <span class="precio" th:text="'$' + ${#numbers.formatInteger(it.subtotal, 1, 'POINT')}">$0</span>
 
-                        <!-- Producto de Dropi: datos para pedirlo allá y el número del pedido -->
-                        <div class="dropi" th:if="${it.deDropi}" th:classappend="${it.porPedirEnDropi} ? 'falta' : 'pedido'">
+                        <!-- Producto de Dropi (viene de Shopify): lo despacha Dropi a través de Shopify -->
+                        <div class="dropi" th:if="${it.deShopify}" th:classappend="${it.conGuia} ? 'pedido' : 'falta'">
                             <p class="dropi-datos">
-                                <span class="badge badge-dropi">Dropi</span>
-                                <span th:text="'Código ' + ${it.codigoProveedor}">Código 45872</span>
+                                <span class="badge badge-shopify">Dropi · Shopify</span>
+                                <span>Lo despacha Dropi</span>
                                 <span th:if="${it.costoProveedorTotal != null}"
                                       th:text="' · te cuesta $' + ${#numbers.formatInteger(it.costoProveedorTotal, 1, 'POINT')}"> · te cuesta $38.000</span>
                                 <span th:if="${it.gananciaProveedor != null and it.gananciaProveedor.signum() > 0}"
                                       th:text="' · ganas unos $' + ${#numbers.formatInteger(it.gananciaProveedor, 1, 'POINT')}"> · ganas unos $21.000</span>
-                                <a th:if="${it.enlaceProveedor != null and it.enlaceProveedor != ''}" th:href="${it.enlaceProveedor}"
-                                   target="_blank" rel="noopener noreferrer">Abrir en Dropi ↗</a>
                             </p>
-                            <p class="dropi-hecho" th:unless="${it.porPedirEnDropi}">
-                                ✓ Pedido en Dropi: <strong th:text="${it.pedidoProveedor}">123456</strong>
-                                <span th:if="${it.fechaPedidoProveedor != null}" th:text="'(' + ${it.fechaPedidoProveedorFormateada} + ')'">(fecha)</span>
+                            <p class="dropi-hecho" th:if="${it.conGuia}">
+                                ✓ Despachado: <strong th:text="${it.pedidoProveedor}">Servientrega · guía 123</strong>
                             </p>
-                            <details class="dropi-corregir" th:if="${o.pagada and !it.porPedirEnDropi}">
-                                <summary>Corregir número</summary>
-                                <form class="dropi-form" method="post"
-                                      th:action="@{/tienda-admin/orden/{id}/item/{item}/proveedor(id=${o.id}, item=${it.id})}">
-                                    <input type="hidden" name="ver" th:value="${ver}">
-                                    <input type="hidden" name="q" th:value="${q}">
-                                    <input type="hidden" name="pagina" th:value="${paginaActual}">
-                                    <input type="text" class="form-control form-control-sm" name="numero" maxlength="200"
-                                           th:value="${it.pedidoProveedor}" aria-label="Número del pedido en Dropi">
-                                    <button type="submit" class="btn btn-sm btn-outline-secondary">Guardar</button>
-                                </form>
-                                <span class="ayuda">Si lo borras y guardas, vuelve a quedar por pedir.</span>
-                            </details>
-                            <form class="dropi-form" method="post" th:if="${o.pagada and !o.cancelada and it.porPedirEnDropi}"
-                                  th:action="@{/tienda-admin/orden/{id}/item/{item}/proveedor(id=${o.id}, item=${it.id})}">
-                                <input type="hidden" name="ver" th:value="${ver}">
-                                <input type="hidden" name="q" th:value="${q}">
-                                <input type="hidden" name="pagina" th:value="${paginaActual}">
-                                <input type="text" class="form-control form-control-sm" name="numero" maxlength="200" required
-                                       placeholder="Número de pedido o guía que te dio Dropi" aria-label="Número del pedido en Dropi">
-                                <button type="submit" class="btn btn-sm btn-warning">Ya lo pedí</button>
-                            </form>
                         </div>
                     </li>
                 </ul>
+            </div>
+
+            <div class="envio-shopify" th:if="${o.conProductosDeShopify and !o.deShopify and o.pagada and !o.cancelada}"
+                 th:classappend="${o.enviadoAShopify} ? 'ok' : (${o.shopifyError != null} ? 'mal' : 'espera')">
+                <p class="mb-0" th:if="${o.enviadoAShopify}">
+                    ✓ Creado en Shopify<span th:if="${o.shopifyPedidoNombre != null and o.shopifyPedidoNombre != ''}" th:text="' como ' + ${o.shopifyPedidoNombre}"></span>.
+                    Dropi lo despacha desde allá; la guía llega sola.
+                </p>
+                <th:block th:unless="${o.enviadoAShopify}">
+                    <p class="mb-1" th:if="${o.shopifyError == null}">Se está creando en Shopify (se revisa solo cada 10 minutos).</p>
+                    <p class="mb-1" th:if="${o.shopifyError != null}" th:text="'✗ No se pudo crear en Shopify: ' + ${o.shopifyError}">error</p>
+                    <form method="post" th:action="@{/tienda-admin/orden/{id}/shopify(id=${o.id})}">
+                        <input type="hidden" name="ver" th:value="${ver}">
+                        <input type="hidden" name="q" th:value="${q}">
+                        <input type="hidden" name="pagina" th:value="${paginaActual}">
+                        <button type="submit" class="btn btn-sm btn-warning">Reintentar en Shopify</button>
+                    </form>
+                </th:block>
             </div>
 
             <p class="notas" th:if="${o.notas != null and o.notas != ''}">

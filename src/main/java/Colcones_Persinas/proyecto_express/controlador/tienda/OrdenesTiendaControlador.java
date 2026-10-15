@@ -1,8 +1,8 @@
 package Colcones_Persinas.proyecto_express.controlador.tienda;
 
-import Colcones_Persinas.proyecto_express.modelo.tienda.ItemOrdenTienda;
 import Colcones_Persinas.proyecto_express.modelo.tienda.OrdenTienda;
 import Colcones_Persinas.proyecto_express.repository.tienda.OrdenTiendaRepository;
+import Colcones_Persinas.proyecto_express.servicio.tienda.ShopifyTiendaServicio;
 import Colcones_Persinas.proyecto_express.servicio.tienda.TiendaServicio;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
@@ -29,7 +29,8 @@ import java.util.*;
  *    o Cancelado. El cliente ve ese avance en la página de rastreo.
  *  - Corregir los datos del cliente, eliminar compras (pruebas, intentos sin pagar) y
  *    avisarle al cliente por WhatsApp con su número de pedido y el enlace de rastreo.
- *  - Productos de Dropi: el filtro "Por pedir en Dropi" y anotar el número del pedido hecho allá.
+ *  - Productos de Dropi (vienen de Shopify): el filtro "Por enviar a Shopify" y el botón para reintentar
+ *    crear el pedido en Shopify si no se pudo (normalmente se crea solo al pagarse).
  *  - /tienda-admin/api/pedidos-nuevos: cuántos pedidos pagados siguen en Nuevo (aviso del portal y del menú).
  */
 @Controller
@@ -51,7 +52,7 @@ public class OrdenesTiendaControlador {
     static {
         Map<String, String> m = new LinkedHashMap<>();
         m.put("activos", "Por atender");
-        m.put("dropi", "Por pedir en Dropi");
+        m.put("shopify", "Por enviar a Shopify");
         m.put("nuevos", "Nuevos");
         m.put("fabricacion", "En fabricación");
         m.put("listos", "Listos");
@@ -68,6 +69,7 @@ public class OrdenesTiendaControlador {
 
     private final OrdenTiendaRepository ordenRepository;
     private final TiendaServicio tiendaServicio;
+    private final ShopifyTiendaServicio shopifyTienda;
 
     /**
      * Dominio propio de la tienda (variable APP_DOMINIO_TIENDA), si ya se configuró.
@@ -76,9 +78,11 @@ public class OrdenesTiendaControlador {
     @Value("${app.dominio-tienda:}")
     private String dominioTienda;
 
-    public OrdenesTiendaControlador(OrdenTiendaRepository ordenRepository, TiendaServicio tiendaServicio) {
+    public OrdenesTiendaControlador(OrdenTiendaRepository ordenRepository, TiendaServicio tiendaServicio,
+                                    ShopifyTiendaServicio shopifyTienda) {
         this.ordenRepository = ordenRepository;
         this.tiendaServicio = tiendaServicio;
+        this.shopifyTienda = shopifyTienda;
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -126,7 +130,7 @@ public class OrdenesTiendaControlador {
         String q = busqueda.isEmpty() ? "%" : "%" + busqueda.toLowerCase(Locale.ROOT) + "%";
         PageRequest pag = PageRequest.of(pagina, POR_PAGINA);
         switch (filtro) {
-            case "dropi":       return ordenRepository.porPedirEnDropi(q, pag);
+            case "shopify":     return ordenRepository.porEnviarAShopify(q, pag);
             case "nuevos":      return ordenRepository.buscar(PAGO_APROBADO, List.of(OrdenTienda.NUEVO), q, pag);
             case "fabricacion": return ordenRepository.buscar(PAGO_APROBADO, List.of(OrdenTienda.EN_FABRICACION), q, pag);
             case "listos":      return ordenRepository.buscar(PAGO_APROBADO, List.of(OrdenTienda.LISTO), q, pag);
@@ -155,7 +159,7 @@ public class OrdenesTiendaControlador {
         c.put("entregados", porEstado.getOrDefault(OrdenTienda.ENTREGADO, 0L));
         c.put("cancelados", porEstado.getOrDefault(OrdenTienda.CANCELADO, 0L));
         c.put("activos", c.get("nuevos") + c.get("fabricacion") + c.get("listos") + c.get("despachados"));
-        c.put("dropi", ordenRepository.contarPorPedirEnDropi());
+        c.put("shopify", ordenRepository.contarPorEnviarAShopify());
         c.put("pendientes", ordenRepository.countByEstado(OrdenTienda.PENDIENTE));
         c.put("fallidas", ordenRepository.countByEstadoIn(PAGO_NO_COMPLETADO));
         c.put("todas", ordenRepository.count());
@@ -211,32 +215,33 @@ public class OrdenesTiendaControlador {
     }
 
     // ═══════════════════════════════════════════════════════════════
-    // PRODUCTOS DE DROPI: ANOTAR QUE YA SE PIDIERON ALLÁ
+    // PRODUCTOS DE DROPI: REINTENTAR CREAR EL PEDIDO EN SHOPIFY
     // ═══════════════════════════════════════════════════════════════
 
-    /**
-     * Guarda el número de pedido (o la guía) que dio Dropi para un producto de la compra.
-     * Con eso el producto deja de salir en "Por pedir en Dropi". Vacío = todavía no se ha pedido.
-     */
-    @PostMapping("/orden/{id}/item/{itemId}/proveedor")
-    public String anotarPedidoDropi(@PathVariable int id, @PathVariable int itemId,
-                                    @RequestParam(name = "numero", required = false, defaultValue = "") String numero,
-                                    @RequestParam(name = "ver", required = false, defaultValue = "activos") String ver,
-                                    @RequestParam(name = "q", required = false, defaultValue = "") String q,
-                                    @RequestParam(name = "pagina", required = false, defaultValue = "0") int pagina,
-                                    RedirectAttributes ra) {
-        try {
-            ItemOrdenTienda it = tiendaServicio.anotarPedidoProveedor(id, itemId, numero);
-            OrdenTienda o = it.getOrden();
-            String referencia = o != null ? o.getReferencia() : "";
-            ra.addFlashAttribute("mensaje", it.getPedidoProveedor() == null
-                    ? "\"" + it.getProductoNombre() + "\" del pedido " + referencia + " volvió a quedar por pedir en Dropi."
-                    : "Listo: \"" + it.getProductoNombre() + "\" del pedido " + referencia + " quedó pedido en Dropi ("
-                      + it.getPedidoProveedor() + ").");
-            if (!referencia.isEmpty()) ra.addFlashAttribute("resaltar", referencia);
-        } catch (IllegalArgumentException e) {
-            ra.addFlashAttribute("error", e.getMessage());
+    /** Vuelve a intentar crear en Shopify el pedido con los productos de Dropi (si no se pudo solo). */
+    @PostMapping("/orden/{id}/shopify")
+    public String enviarAShopify(@PathVariable int id,
+                                 @RequestParam(name = "ver", required = false, defaultValue = "activos") String ver,
+                                 @RequestParam(name = "q", required = false, defaultValue = "") String q,
+                                 @RequestParam(name = "pagina", required = false, defaultValue = "0") int pagina,
+                                 RedirectAttributes ra) {
+        OrdenTienda antes = ordenRepository.findById(id).orElse(null);
+        if (antes == null) {
+            ra.addFlashAttribute("error", "Ese pedido ya no existe.");
+            return volverALista(ra, ver, q, pagina);
         }
+        String error = shopifyTienda.enviarPedido(id);
+        OrdenTienda o = ordenRepository.findById(id).orElse(antes);
+        if (error != null) {
+            ra.addFlashAttribute("error", "No se pudo crear en Shopify el pedido " + o.getReferencia() + ": " + error);
+        } else if (o.isEnviadoAShopify()) {
+            ra.addFlashAttribute("mensaje", "Listo: el pedido " + o.getReferencia() + " quedó creado en Shopify"
+                    + (o.getShopifyPedidoNombre() == null || o.getShopifyPedidoNombre().isBlank() ? "" : " como " + o.getShopifyPedidoNombre())
+                    + ". Dropi lo despacha desde allá.");
+        } else {
+            ra.addFlashAttribute("error", "Ese pedido no tiene nada que enviar a Shopify (no está pagado, está cancelado o no trae productos de Dropi).");
+        }
+        ra.addFlashAttribute("resaltar", o.getReferencia());
         return volverALista(ra, ver, q, pagina);
     }
 
