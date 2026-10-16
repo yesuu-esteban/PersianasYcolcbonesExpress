@@ -11,6 +11,8 @@
      Valores válidos: pedidos-fabrica, inventario-fabrica, precios-fabrica,
      recibos-fabrica, reportes-fabrica.
      Por ahora este sidebar solo muestra el módulo de Fábrica.
+     El menú está oculto para que la página tenga todo el ancho: se abre con el botón ☰
+     y se cierra con ✕, tocando fuera del menú o con la tecla Esc (js/fragments/sidebar.js).
      ═══════════════════════════════════════════════════════════════ -->
 <div th:fragment="layout(contenido, activo, titulo)">
 <!DOCTYPE html>
@@ -25,10 +27,11 @@
     <div class="app-shell">
 
         <!-- ═══ SIDEBAR ═══ -->
-        <aside class="app-sidebar" id="appSidebar">
+        <aside class="app-sidebar" id="appSidebar" aria-label="Menú">
             <div class="brand">
                 <span class="icono">⚙️</span>
                 <div class="texto">PERSIANAS EXPRESS<small>PANEL DE GESTIÓN</small></div>
+                <button type="button" class="btn-cerrar-sidebar" data-cerrar-sidebar aria-label="Cerrar menú">✕</button>
             </div>
 
             <nav class="flex-grow-1 py-2">
@@ -54,12 +57,13 @@
                 <a href="/logout">🚪 Cerrar sesión</a>
             </div>
         </aside>
+        <div class="app-sidebar-fondo" data-cerrar-sidebar hidden></div>
 
         <!-- ═══ CONTENIDO ═══ -->
         <div class="app-main">
             <div class="app-topbar">
                 <div class="d-flex align-items-center gap-2">
-                    <button type="button" class="btn-toggle-sidebar" onclick="document.getElementById('appSidebar').classList.toggle('abierto')">☰</button>
+                    <button type="button" class="btn-toggle-sidebar" id="btnMenu" aria-controls="appSidebar" aria-expanded="false" title="Mostrar menú">☰ <span class="txt">Menú</span></button>
                     <h1 th:text="${titulo}">Título</h1>
                 </div>
             </div>
@@ -71,6 +75,7 @@
     </div>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="/js/token-nav.js"></script>
+    <script src="/js/fragments/sidebar.js"></script>
 </body>
 </html>
 </div>
