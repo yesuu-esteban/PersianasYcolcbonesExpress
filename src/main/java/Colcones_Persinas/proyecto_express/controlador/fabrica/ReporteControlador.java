@@ -32,7 +32,8 @@ public class ReporteControlador {
         // Precarga el mes actual como valores por defecto en el formulario
         YearMonth mesActual = YearMonth.now();
         model.addAttribute("mesDefecto", mesActual.toString()); // "2026-06"
-        return "reportes";
+        // La pantalla está en templates/fabrica/reportes.html
+        return "fabrica/reportes";
     }
 
     // ─── Descarga por MES ─────────────────────────────────────────
