@@ -201,8 +201,10 @@ public class ShopifyTiendaServicio {
             return in;
         }
         in.put("descriptionHtml", descripcionHtml(p));
-        in.put("vendor", "Persianas Express");
+        in.put("vendor", "Express Variedades");
         in.put("productType", p.getCategoriaEtiqueta());
+        // Etiquetas: "express-propio" (es nuestro) y la categoría (persianas, cortinas…): el aviso "a la medida" del tema sale con ellas
+        in.put("tags", List.of("express-propio", (p.getCategoria() == null ? "otros" : p.getCategoria()).toLowerCase(Locale.ROOT)));
         in.put("status", p.isActivo() ? "ACTIVE" : "DRAFT");
         if (crear && p.getSlug() != null && !p.getSlug().isBlank()) in.put("handle", p.getSlug());
         in.put("productOptions", List.of(Map.of("name", "Title", "values", List.of(Map.of("name", "Default Title")))));
