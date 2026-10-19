@@ -8,7 +8,7 @@ import java.time.format.DateTimeFormatter;
 
 @Entity
 @Table(name = "pedido")
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+@Getter @Setter @NoArgsConstructor
 public class Pedido {
 
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)

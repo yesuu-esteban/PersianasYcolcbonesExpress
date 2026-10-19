@@ -2,6 +2,7 @@ package Colcones_Persinas.proyecto_express.servicio.contabilidad;
 
 import Colcones_Persinas.proyecto_express.modelo.almacen.PedidoTienda;
 import Colcones_Persinas.proyecto_express.modelo.contabilidad.*;
+import Colcones_Persinas.proyecto_express.repository.almacen.PedidoTiendaPorCobrarRepository;
 import Colcones_Persinas.proyecto_express.repository.contabilidad.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,7 +17,10 @@ import java.util.*;
  * Cuentas de la contabilidad:
  *  - Saldo de cada cuenta (dónde está la plata).
  *  - Resultado de un periodo: ingresos − costos − gastos.
- *  - Guardar movimientos, pagar cuentas por pagar y anotar solos los abonos de Almacén.
+ *  - Guardar movimientos, pagar cuentas por pagar (completas o por abonos) y anotar solos los abonos de Almacén.
+ *  - Fecha de inicio: "iniciar la contabilidad en cero" desde un día. Lo anterior queda guardado como
+ *    historial, pero ya no cuenta en saldos, resúmenes, deudas por pagar ni pedidos por cobrar. Se puede deshacer.
+ *  - Ajustar el saldo de una cuenta al saldo real de hoy y eliminar cuentas sin movimientos.
  */
 @Service
 public class ContabilidadServicio {
@@ -30,39 +34,171 @@ public class ContabilidadServicio {
     private final CategoriaContableRepository categoriaRepository;
     private final MovimientoContableRepository movimientoRepository;
     private final CuentaPorPagarRepository porPagarRepository;
+    private final ConfiguracionContableRepository configuracionRepository;
+    private final PedidoTiendaPorCobrarRepository porCobrarRepository;
 
     public ContabilidadServicio(CuentaContableRepository cuentaRepository,
                                 SubcategoriaContableRepository subcategoriaRepository,
                                 CategoriaContableRepository categoriaRepository,
                                 MovimientoContableRepository movimientoRepository,
-                                CuentaPorPagarRepository porPagarRepository) {
+                                CuentaPorPagarRepository porPagarRepository,
+                                ConfiguracionContableRepository configuracionRepository,
+                                PedidoTiendaPorCobrarRepository porCobrarRepository) {
         this.cuentaRepository = cuentaRepository;
         this.subcategoriaRepository = subcategoriaRepository;
         this.categoriaRepository = categoriaRepository;
         this.movimientoRepository = movimientoRepository;
         this.porPagarRepository = porPagarRepository;
+        this.configuracionRepository = configuracionRepository;
+        this.porCobrarRepository = porCobrarRepository;
     }
 
     public static LocalDate hoy() { return LocalDate.now(ZONA); }
 
     // ═══════════════════════════════════════════════════════════════
+    // FECHA DE INICIO ("iniciar la contabilidad en cero")
+    // ═══════════════════════════════════════════════════════════════
+
+    /** Los ajustes guardados (null si nunca se guardaron). */
+    @Transactional(readOnly = true)
+    public ConfiguracionContable configuracion() {
+        return configuracionRepository.findById(ConfiguracionContable.ID).orElse(null);
+    }
+
+    /** Desde qué día cuenta la contabilidad (null = desde siempre). */
+    @Transactional(readOnly = true)
+    public LocalDate fechaInicio() {
+        ConfiguracionContable c = configuracion();
+        return c != null ? c.getFechaInicio() : null;
+    }
+
+    /** Si "desde" es anterior a la fecha de inicio, devuelve la fecha de inicio; si no, "desde". */
+    public LocalDate desdeInicio(LocalDate desde) {
+        LocalDate inicio = fechaInicio();
+        if (inicio == null) return desde;
+        return desde == null || desde.isBefore(inicio) ? inicio : desde;
+    }
+
+    /**
+     * Desde qué momento cuentan las deudas por pagar y los pedidos por cobrar: lo que ya existía antes
+     * no cuenta. Es lo primero entre el día de inicio y el momento en que se inició en cero
+     * (así, si se inicia hoy con fecha futura, lo que se anote desde hoy sí aparece).
+     * null = cuenta todo.
+     */
+    @Transactional(readOnly = true)
+    public LocalDateTime corteDeudas() {
+        ConfiguracionContable c = configuracion();
+        if (c == null || c.getFechaInicio() == null) return null;
+        LocalDateTime inicio = c.getFechaInicio().atStartOfDay();
+        LocalDateTime cambio = c.getFechaCambio();
+        return cambio != null && cambio.isBefore(inicio) ? cambio : inicio;
+    }
+
+    /** ¿Algo creado en ese momento cuenta (no es anterior al corte)? Sin fecha = es viejo. */
+    private static boolean despuesDelCorte(LocalDateTime creado, LocalDateTime corte) {
+        if (corte == null) return true;
+        return creado != null && !creado.isBefore(corte);
+    }
+
+    /**
+     * Inicia la contabilidad en cero desde "fecha": cada cuenta arranca con el saldo que se escriba
+     * (vacío = 0). Lo anterior no se borra: queda como historial y se puede deshacer.
+     */
+    @Transactional
+    public void iniciarEnCero(LocalDate fecha, Map<Integer, BigDecimal> saldosDeArranque, String usuario) {
+        if (fecha == null) throw new IllegalArgumentException("Elige desde qué fecha empieza la contabilidad.");
+        if (fecha.isAfter(hoy().plusYears(1))) throw new IllegalArgumentException("La fecha de inicio está demasiado lejos.");
+        for (CuentaContable c : cuentaRepository.findAll()) {
+            // Se guarda el saldo de antes solo la primera vez, para poder deshacer y volver a como estaba
+            if (c.getSaldoAntesInicio() == null) c.setSaldoAntesInicio(nz(c.getSaldoInicial()));
+            BigDecimal arranque = saldosDeArranque == null ? null : saldosDeArranque.get(c.getId());
+            c.setSaldoInicial(arranque != null ? arranque : BigDecimal.ZERO);
+            cuentaRepository.save(c);
+        }
+        ConfiguracionContable conf = configuracionRepository.findById(ConfiguracionContable.ID).orElseGet(ConfiguracionContable::new);
+        conf.setFechaInicio(fecha);
+        conf.setFechaCambio(LocalDateTime.now(ZONA));
+        conf.setCambiadoPor(texto(usuario, 80));
+        configuracionRepository.save(conf);
+    }
+
+    /** Deshace el inicio en cero: la contabilidad vuelve a contar desde siempre y las cuentas recuperan su saldo inicial. */
+    @Transactional
+    public void deshacerInicio(String usuario) {
+        for (CuentaContable c : cuentaRepository.findAll()) {
+            if (c.getSaldoAntesInicio() != null) {
+                c.setSaldoInicial(c.getSaldoAntesInicio());
+                c.setSaldoAntesInicio(null);
+                cuentaRepository.save(c);
+            }
+        }
+        ConfiguracionContable conf = configuracionRepository.findById(ConfiguracionContable.ID).orElse(null);
+        if (conf != null) {
+            conf.setFechaInicio(null);
+            conf.setFechaCambio(LocalDateTime.now(ZONA));
+            conf.setCambiadoPor(texto(usuario, 80));
+            configuracionRepository.save(conf);
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════
     // SALDOS
     // ═══════════════════════════════════════════════════════════════
 
-    /** Saldo actual de cada cuenta (por id): saldo inicial + ingresos − egresos − traslados que salen + traslados que entran. */
+    /**
+     * Saldo actual de cada cuenta (por id): saldo inicial + ingresos − egresos − traslados que salen
+     * + traslados que entran. Si hay fecha de inicio, solo cuentan los movimientos desde ese día.
+     */
     @Transactional(readOnly = true)
     public Map<Integer, BigDecimal> saldosPorCuenta() {
+        LocalDate inicio = fechaInicio();
         Map<Integer, BigDecimal> saldos = new HashMap<>();
         for (CuentaContable c : cuentaRepository.findAll()) saldos.put(c.getId(), nz(c.getSaldoInicial()));
-        for (Object[] fila : movimientoRepository.sumasPorCuentaYTipo()) {
+        List<Object[]> sumas = inicio == null ? movimientoRepository.sumasPorCuentaYTipo()
+                : movimientoRepository.sumasPorCuentaYTipoDesde(inicio);
+        for (Object[] fila : sumas) {
             int cuentaId = ((Number) fila[0]).intValue();
             BigDecimal suma = nz((BigDecimal) fila[2]);
             saldos.merge(cuentaId, MovimientoContable.INGRESO.equals(fila[1]) ? suma : suma.negate(), BigDecimal::add);
         }
-        for (Object[] fila : movimientoRepository.trasladosEntrantes()) {
+        List<Object[]> entrantes = inicio == null ? movimientoRepository.trasladosEntrantes()
+                : movimientoRepository.trasladosEntrantesDesde(inicio);
+        for (Object[] fila : entrantes) {
             saldos.merge(((Number) fila[0]).intValue(), nz((BigDecimal) fila[1]), BigDecimal::add);
         }
         return saldos;
+    }
+
+    /**
+     * Deja la cuenta con el saldo real de hoy: corrige su saldo inicial por la diferencia.
+     * @return la diferencia aplicada (positiva si subió, negativa si bajó)
+     */
+    @Transactional
+    public BigDecimal ajustarSaldo(int cuentaId, BigDecimal saldoReal) {
+        if (saldoReal == null) throw new IllegalArgumentException("Escribe cuánto hay hoy en la cuenta (puede ser 0).");
+        CuentaContable c = cuentaRepository.findById(cuentaId).orElseThrow(() -> new IllegalArgumentException("Esa cuenta ya no existe."));
+        BigDecimal actual = saldosPorCuenta().getOrDefault(cuentaId, BigDecimal.ZERO);
+        BigDecimal diferencia = saldoReal.subtract(actual);
+        c.setSaldoInicial(nz(c.getSaldoInicial()).add(diferencia));
+        cuentaRepository.save(c);
+        return diferencia;
+    }
+
+    /** Elimina una cuenta que nunca se ha usado. Si tiene movimientos, hay que desactivarla. */
+    @Transactional
+    public CuentaContable eliminarCuenta(int cuentaId) {
+        CuentaContable c = cuentaRepository.findById(cuentaId).orElseThrow(() -> new IllegalArgumentException("Esa cuenta ya no existe."));
+        long usados = movimientoRepository.contarDeCuenta(c);
+        if (usados > 0) {
+            throw new IllegalArgumentException("No se puede eliminar " + c.getNombre() + ": tiene " + usados
+                    + " movimiento(s) anotados (también los de antes de la fecha de inicio). Desactívala: así deja de aparecer y se guarda el historial.");
+        }
+        if (c.isDeLaTienda()) {
+            throw new IllegalArgumentException("No se puede eliminar " + c.getNombre()
+                    + ": es la cuenta donde entra la plata de la tienda virtual. Elige otra cuenta para la tienda primero.");
+        }
+        cuentaRepository.delete(c);
+        return c;
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -115,14 +251,16 @@ public class ContabilidadServicio {
 
     /**
      * Resultado entre dos fechas (incluidas). area = null para todo (la contabilidad es solo de Almacén).
-     * Los traslados no cuentan: solo cambian la plata de cuenta.
+     * Los traslados no cuentan: solo cambian la plata de cuenta. Lo anterior a la fecha de inicio tampoco.
      */
     @Transactional(readOnly = true)
     public Resultado resultado(LocalDate desde, LocalDate hasta, String area) {
+        Resultado r = new Resultado();
+        desde = desdeInicio(desde);
+        if (desde != null && hasta != null && desde.isAfter(hasta)) return r;   // todo el periodo es de antes del inicio
+
         Map<Integer, CategoriaContable> categorias = new HashMap<>();
         Map<Integer, Map<String, BigDecimal>> porCategoria = new HashMap<>();
-        Resultado r = new Resultado();
-
         for (MovimientoContable m : movimientoRepository.findByFechaBetweenOrderByFechaDescIdDesc(desde, hasta)) {
             if (MovimientoContable.TRASLADO.equals(m.getTipo()) || m.getSubcategoria() == null) continue;
             if (area != null && !area.equals(m.getArea())) continue;
@@ -183,6 +321,11 @@ public class ContabilidadServicio {
         }
         if (d.fecha() == null) throw new IllegalArgumentException("Escribe la fecha.");
         if (d.fecha().isAfter(hoy().plusDays(1))) throw new IllegalArgumentException("La fecha no puede ser futura.");
+        LocalDate inicio = fechaInicio();
+        if (inicio != null && d.fecha().isBefore(inicio)) {
+            throw new IllegalArgumentException("La contabilidad empieza el " + configuracion().getFechaInicioFormateada()
+                    + ": no se pueden anotar movimientos con fecha anterior.");
+        }
         if (d.valor() == null || d.valor().signum() <= 0) throw new IllegalArgumentException("Escribe un valor mayor a 0.");
 
         CuentaContable cuenta = d.cuentaId() == null ? null : cuentaRepository.findById(d.cuentaId()).orElse(null);
@@ -207,7 +350,7 @@ public class ContabilidadServicio {
             m.setSubcategoria(null);
         } else {
             SubcategoriaContable sub = d.subcategoriaId() == null ? null : subcategoriaRepository.findById(d.subcategoriaId()).orElse(null);
-            if (sub == null) throw new IllegalArgumentException("Elige la categoría.");
+            if (sub == null) throw new IllegalArgumentException("Elige la categoría y lo que hay dentro de ella.");
             boolean esIngreso = MovimientoContable.INGRESO.equals(tipo);
             if (esIngreso && !sub.getCategoria().isDeIngreso()) {
                 throw new IllegalArgumentException("\"" + sub.getNombre() + "\" es de egresos. Para un ingreso elige una categoría de ingresos.");
@@ -218,7 +361,22 @@ public class ContabilidadServicio {
             m.setSubcategoria(sub);
             m.setCuentaDestino(null);
         }
-        return movimientoRepository.save(m);
+        MovimientoContable guardado = movimientoRepository.save(m);
+        // Si es el pago de una deuda y le cambiaron el valor, la deuda se vuelve a cuadrar
+        recalcularDeudasDe(guardado);
+        return guardado;
+    }
+
+    /** Elimina un movimiento. Si era el pago (o un abono) de una deuda, esa deuda se vuelve a cuadrar. */
+    @Transactional
+    public MovimientoContable eliminarMovimiento(int id) {
+        MovimientoContable m = movimientoRepository.findById(id).orElseThrow(() -> new IllegalArgumentException("Ese movimiento ya no existe."));
+        Set<CuentaPorPagar> deudas = new LinkedHashSet<>(porPagarRepository.findByMovimientoId(id));
+        if (m.getPorPagarId() != null) porPagarRepository.findById(m.getPorPagarId()).ifPresent(deudas::add);
+        movimientoRepository.delete(m);
+        movimientoRepository.flush();
+        for (CuentaPorPagar c : deudas) recalcularDeuda(c);
+        return m;
     }
 
     /**
@@ -261,7 +419,28 @@ public class ContabilidadServicio {
     }
 
     // ═══════════════════════════════════════════════════════════════
-    // CUENTAS POR PAGAR
+    // CUENTAS POR COBRAR (pedidos de Almacén con saldo)
+    // ═══════════════════════════════════════════════════════════════
+
+    /** Pedidos de Almacén que deben plata, del más viejo al más nuevo (sin los de antes del inicio en cero). */
+    @Transactional(readOnly = true)
+    public List<PedidoTienda> pedidosPorCobrar() {
+        LocalDateTime corte = corteDeudas();
+        List<PedidoTienda> lista = new ArrayList<>();
+        for (PedidoTienda p : porCobrarRepository.findBySaldoGreaterThanOrderByFechaPedidoAsc(BigDecimal.ZERO)) {
+            if (despuesDelCorte(p.getFechaPedido(), corte)) lista.add(p);
+        }
+        return lista;
+    }
+
+    @Transactional(readOnly = true)
+    public BigDecimal totalPorCobrar() {
+        return pedidosPorCobrar().stream().map(PedidoTienda::getSaldo).map(ContabilidadServicio::nz)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // CUENTAS POR PAGAR (completas o por abonos)
     // ═══════════════════════════════════════════════════════════════
 
     @Transactional
@@ -273,24 +452,123 @@ public class ContabilidadServicio {
         c.setAcreedor(texto(acreedor, 150));
         c.setConcepto(texto(concepto, 300));
         c.setValor(valor);
+        c.setAbonado(BigDecimal.ZERO);
         c.setFechaVencimiento(vence);
         c.setFechaCreacion(LocalDateTime.now(ZONA));
         return porPagarRepository.save(c);
     }
 
-    /** Marca la deuda como pagada y crea el egreso correspondiente. */
+    /** Deudas pendientes (sin las de antes del inicio en cero), por fecha de pago. */
+    @Transactional(readOnly = true)
+    public List<CuentaPorPagar> deudasPendientes() {
+        LocalDateTime corte = corteDeudas();
+        List<CuentaPorPagar> lista = new ArrayList<>();
+        for (CuentaPorPagar c : porPagarRepository.findByPagadaFalseOrderByFechaVencimientoAscIdAsc()) {
+            if (despuesDelCorte(c.getFechaCreacion(), corte)) lista.add(c);
+        }
+        return lista;
+    }
+
+    /** Las últimas deudas pagadas (máximo "cuantas"), sin las de antes del inicio en cero. */
+    @Transactional(readOnly = true)
+    public List<CuentaPorPagar> deudasPagadas(int cuantas) {
+        LocalDateTime corte = corteDeudas();
+        List<CuentaPorPagar> lista = new ArrayList<>();
+        for (CuentaPorPagar c : porPagarRepository.findByPagadaTrueOrderByFechaPagoDescIdDesc()) {
+            if (lista.size() >= cuantas) break;
+            if (despuesDelCorte(c.getFechaCreacion(), corte)) lista.add(c);
+        }
+        return lista;
+    }
+
+    /** Lo que falta por pagar de todas las deudas pendientes. */
+    @Transactional(readOnly = true)
+    public BigDecimal totalPorPagar() {
+        return deudasPendientes().stream().map(CuentaPorPagar::getSaldoPendiente).reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    /** Los pagos (abonos) de cada deuda, por número de deuda. */
+    @Transactional(readOnly = true)
+    public Map<Integer, List<MovimientoContable>> pagosDe(List<CuentaPorPagar> deudas) {
+        Map<Integer, List<MovimientoContable>> mapa = new HashMap<>();
+        List<Integer> ids = new ArrayList<>();
+        for (CuentaPorPagar c : deudas) ids.add(c.getId());
+        if (ids.isEmpty()) return mapa;
+        for (MovimientoContable m : movimientoRepository.findByPorPagarIdInOrderByFechaAscIdAsc(ids)) {
+            mapa.computeIfAbsent(m.getPorPagarId(), k -> new ArrayList<>()).add(m);
+        }
+        return mapa;
+    }
+
+    /**
+     * Paga una deuda completa o una parte (abono) y crea el egreso correspondiente.
+     * @param monto cuánto se paga ahora; vacío = todo lo que falta
+     */
     @Transactional
-    public MovimientoContable pagarPorPagar(int id, Integer cuentaId, Integer subcategoriaId, LocalDate fecha, String usuario) {
+    public MovimientoContable pagarPorPagar(int id, Integer cuentaId, Integer subcategoriaId, LocalDate fecha,
+                                            BigDecimal monto, String usuario) {
         CuentaPorPagar c = porPagarRepository.findById(id).orElseThrow(() -> new IllegalArgumentException("Esa cuenta por pagar ya no existe."));
-        if (c.isPagada()) throw new IllegalArgumentException("Esa cuenta ya estaba pagada.");
+        if (c.isPagada()) throw new IllegalArgumentException("Esa deuda ya estaba pagada.");
+        BigDecimal falta = c.getSaldoPendiente();
+        BigDecimal pago = monto != null ? monto : falta;
+        if (pago.signum() <= 0) throw new IllegalArgumentException("Escribe cuánto vas a pagar.");
+        if (pago.compareTo(falta) > 0) {
+            throw new IllegalArgumentException("A " + c.getAcreedor() + " solo le faltan $" + miles(falta) + ". Escribe un valor igual o menor.");
+        }
+        boolean completo = pago.compareTo(falta) == 0;
+        String concepto = c.getConcepto() == null || c.getConcepto().isBlank() ? "deuda con " + c.getAcreedor() : c.getConcepto();
+        String descripcion = (completo && !c.isConAbonos() ? "Pago: " : (completo ? "Último abono: " : "Abono: ")) + concepto;
         MovimientoContable m = guardarMovimiento(new DatosMovimiento(null, MovimientoContable.EGRESO,
-                fecha != null ? fecha : hoy(), c.getArea(), cuentaId, null, subcategoriaId, c.getValor(),
-                c.getAcreedor(), "Pago: " + c.getConcepto()), usuario);
-        c.setPagada(true);
-        c.setFechaPago(m.getFecha());
-        c.setMovimientoId(m.getId());
-        porPagarRepository.save(c);
+                fecha != null ? fecha : hoy(), c.getArea(), cuentaId, null, subcategoriaId, pago,
+                c.getAcreedor(), descripcion), usuario);
+        m.setPorPagarId(c.getId());
+        movimientoRepository.save(m);
+        recalcularDeuda(c);
         return m;
+    }
+
+    /** Cuadra una deuda con sus pagos: cuánto se ha abonado y si ya quedó pagada. */
+    @Transactional
+    public void recalcularDeuda(CuentaPorPagar c) {
+        List<MovimientoContable> pagos = new ArrayList<>(movimientoRepository.findByPorPagarIdOrderByFechaAscIdAsc(c.getId()));
+        pagos.removeIf(p -> !MovimientoContable.EGRESO.equals(p.getTipo()));
+        // Deudas de antes de los abonos: el pago quedó guardado solo en movimientoId
+        if (c.getMovimientoId() != null && pagos.stream().noneMatch(p -> p.getId() == c.getMovimientoId())) {
+            MovimientoContable viejo = movimientoRepository.findById(c.getMovimientoId()).orElse(null);
+            if (viejo != null) pagos.add(viejo);
+            else c.setMovimientoId(null);
+        }
+        BigDecimal abonado = BigDecimal.ZERO;
+        MovimientoContable ultimo = null;
+        for (MovimientoContable p : pagos) {
+            abonado = abonado.add(nz(p.getValor()));
+            if (ultimo == null || p.getFecha().isAfter(ultimo.getFecha())
+                    || (p.getFecha().isEqual(ultimo.getFecha()) && p.getId() > ultimo.getId())) ultimo = p;
+        }
+        c.setAbonado(abonado);
+        boolean pagada = abonado.compareTo(nz(c.getValor())) >= 0 && abonado.signum() > 0;
+        c.setPagada(pagada);
+        c.setFechaPago(pagada && ultimo != null ? ultimo.getFecha() : null);
+        c.setMovimientoId(ultimo != null ? ultimo.getId() : null);
+        porPagarRepository.save(c);
+    }
+
+    /** Si el movimiento es el pago de alguna deuda, la vuelve a cuadrar. */
+    private void recalcularDeudasDe(MovimientoContable m) {
+        Set<CuentaPorPagar> deudas = new LinkedHashSet<>(porPagarRepository.findByMovimientoId(m.getId()));
+        if (m.getPorPagarId() != null) porPagarRepository.findById(m.getPorPagarId()).ifPresent(deudas::add);
+        for (CuentaPorPagar c : deudas) recalcularDeuda(c);
+    }
+
+    /** Elimina una deuda anotada por error. Si ya tiene pagos, primero hay que borrar esos egresos. */
+    @Transactional
+    public CuentaPorPagar eliminarPorPagar(int id) {
+        CuentaPorPagar c = porPagarRepository.findById(id).orElseThrow(() -> new IllegalArgumentException("Esa deuda ya no existe."));
+        if (c.isPagada() || c.isConAbonos()) {
+            throw new IllegalArgumentException("La deuda con " + c.getAcreedor() + " ya tiene pagos. Para eliminarla, borra primero sus pagos en Movimientos.");
+        }
+        porPagarRepository.delete(c);
+        return c;
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -306,7 +584,17 @@ public class ContabilidadServicio {
         return new BigDecimal(digitos);
     }
 
+    /** Como pesos(), pero respeta el menos adelante ("-200.000" → -200000). */
+    public static BigDecimal pesosConSigno(String s) {
+        BigDecimal v = pesos(s);
+        return v != null && s.trim().startsWith("-") ? v.negate() : v;
+    }
+
     private static BigDecimal nz(BigDecimal v) { return v == null ? BigDecimal.ZERO : v; }
+
+    private static String miles(BigDecimal v) {
+        return java.text.NumberFormat.getIntegerInstance(new Locale("es", "CO")).format(v == null ? BigDecimal.ZERO : v);
+    }
 
     private static String texto(String s, int max) {
         if (s == null) return "";

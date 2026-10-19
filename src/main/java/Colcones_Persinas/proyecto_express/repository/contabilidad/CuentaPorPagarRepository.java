@@ -11,5 +11,8 @@ public interface CuentaPorPagarRepository extends JpaRepository<CuentaPorPagar, 
 
     List<CuentaPorPagar> findTop30ByPagadaTrueOrderByFechaPagoDescIdDesc();
 
+    /** Todas las pagadas, de la más reciente a la más vieja (el servicio las filtra por la fecha de inicio). */
+    List<CuentaPorPagar> findByPagadaTrueOrderByFechaPagoDescIdDesc();
+
     List<CuentaPorPagar> findByMovimientoId(Integer movimientoId);
 }

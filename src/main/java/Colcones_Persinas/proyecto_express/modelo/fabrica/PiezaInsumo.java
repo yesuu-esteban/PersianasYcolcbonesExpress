@@ -15,7 +15,7 @@ import java.time.LocalDateTime;
  */
 @Entity
 @Table(name = "pieza_insumo")
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+@Getter @Setter @NoArgsConstructor
 public class PiezaInsumo {
 
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)

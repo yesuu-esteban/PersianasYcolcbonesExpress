@@ -9,6 +9,11 @@
 
 <main>
     <h1>Movimientos de <span th:text="${mesTexto}">Octubre 2026</span></h1>
+    <div th:replace="~{contabilidad/fragmentos :: aviso-inicio}"></div>
+    <p class="ayuda" th:if="${mesAntesDelInicio}">
+        Este mes empieza antes del inicio de la contabilidad: aquí solo salen los movimientos desde el
+        <span th:text="${fechaInicioTexto}">01/11/2026</span>.
+    </p>
     <div th:if="${mensaje}" class="alert alert-success" th:text="${mensaje}"></div>
     <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
 

@@ -9,6 +9,7 @@
 
 <main>
     <h1>Resumen</h1>
+    <div th:replace="~{contabilidad/fragmentos :: aviso-inicio}"></div>
     <div th:if="${mensaje}" class="alert alert-success" th:text="${mensaje}"></div>
     <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
 

@@ -149,6 +149,28 @@ table.table td { vertical-align: middle; font-size: .86rem; }
 details.pagar summary { cursor: pointer; display: inline-block; }
 details.pagar[open] { background: rgba(0,0,0,0.18); border-radius: 10px; padding: 10px; margin-top: 6px; }
 
+/* ── Inicio en cero, abonos y acciones de cuentas ── */
+.aviso-inicio {
+    background: rgba(255,193,7,0.10); border: 1px solid rgba(255,193,7,0.45); color: #ffe08a;
+    border-radius: 10px; padding: 9px 14px; font-size: .84rem; margin-bottom: 14px;
+}
+.aviso-inicio strong { color: #fff; }
+details.abonos { margin-top: 4px; font-size: .78rem; }
+details.abonos summary { cursor: pointer; color: var(--azul); display: inline-block; }
+details.abonos ul { list-style: none; margin: 6px 0 0; padding: 0; }
+details.abonos li { padding: 3px 0; color: var(--texto-suave); }
+details.abonos li strong { color: var(--texto); }
+.acciones-cuenta { display: flex; flex-wrap: wrap; gap: 6px; align-items: flex-start; }
+.acciones-cuenta details.pagar[open] { flex-basis: 100%; max-width: 320px; }
+.caja-inicio { border-color: rgba(255,193,7,0.35); }
+.estado-inicio { background: rgba(255,193,7,0.08); border-radius: 10px; padding: 12px 14px; margin-bottom: 12px; }
+details.iniciar summary { cursor: pointer; display: inline-block; }
+.form-inicio .table td, .form-inicio .table th { padding-top: 6px; padding-bottom: 6px; }
+.form-inicio .form-control { max-width: 220px; }
+.form-check-input { background-color: var(--bg-input); border-color: rgba(255,255,255,0.35); }
+.form-check-input:checked { background-color: var(--accent); border-color: var(--accent); }
+select:disabled { opacity: .55; }
+
 @media (max-width: 991.98px) {
     .resumen-grid { grid-template-columns: minmax(0, 1fr); }
     .filtros { grid-template-columns: repeat(2, minmax(0, 1fr)); }

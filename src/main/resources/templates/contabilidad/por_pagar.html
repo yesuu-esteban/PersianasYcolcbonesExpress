@@ -9,7 +9,9 @@
 
 <main>
     <h1>Cuentas por pagar</h1>
-    <p class="ayuda">Lo que se debe (a proveedores, a la fábrica, cuotas…). Al registrar el pago se crea solo el egreso en Movimientos.</p>
+    <div th:replace="~{contabilidad/fragmentos :: aviso-inicio}"></div>
+    <p class="ayuda">Lo que se debe (a proveedores, a la fábrica, cuotas…). Se puede pagar todo de una vez o por partes (abonos):
+        cada pago crea solo su egreso en Movimientos y la deuda baja hasta quedar en 0.</p>
     <div th:if="${mensaje}" class="alert alert-success" th:text="${mensaje}"></div>
     <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
 
@@ -26,7 +28,7 @@
             </div>
             <div class="col-md-2 col-6">
                 <label class="form-label" for="valor">Valor</label>
-                <input type="text" class="form-control" id="valor" name="valor" inputmode="numeric" required placeholder="0">
+                <input type="text" class="form-control campo-pesos" id="valor" name="valor" inputmode="numeric" required placeholder="0">
             </div>
             <div class="col-md-2 col-6">
                 <label class="form-label" for="vence">Se paga el <span class="ayuda">(opcional)</span></label>
@@ -39,7 +41,7 @@
     </section>
 
     <div class="chips">
-        <div class="chip"><span>Total pendiente</span><strong><span th:replace="~{contabilidad/fragmentos :: plata(${totalPendiente})}"></span></strong></div>
+        <div class="chip"><span>Total que falta pagar</span><strong><span th:replace="~{contabilidad/fragmentos :: plata(${totalPendiente})}"></span></strong></div>
         <div class="chip"><span>Deudas pendientes</span><strong th:text="${#lists.size(pendientes)}">0</strong></div>
     </div>
 
@@ -52,37 +54,65 @@
                     <th>A quién</th>
                     <th>Se paga el</th>
                     <th class="num">Valor</th>
+                    <th class="num">Abonado</th>
+                    <th class="num">Falta</th>
                     <th></th>
                 </tr>
             </thead>
             <tbody>
-                <tr th:each="d : ${pendientes}">
+                <tr th:each="d : ${pendientes}" th:with="abonos=${pagos.get(d.id)}">
                     <td class="detalle-mov">
                         <span th:text="${d.acreedor}">Proveedor</span>
                         <small th:text="${d.concepto}">Pedido de octubre</small>
+                        <details class="abonos" th:if="${abonos != null and !#lists.isEmpty(abonos)}">
+                            <summary th:text="'Ver abonos (' + ${#lists.size(abonos)} + ')'">Ver abonos (2)</summary>
+                            <ul>
+                                <li th:each="p : ${abonos}">
+                                    <span th:text="${p.fechaFormateada}">05/11/2026</span> ·
+                                    <span th:text="${p.cuenta != null ? p.cuenta.nombre : ''}">NEQUI</span> ·
+                                    <strong><span th:replace="~{contabilidad/fragmentos :: plata(${p.valor})}"></span></strong>
+                                    <a class="link-light" th:href="@{/contabilidad/movimiento/{id}/editar(id=${p.id})}" title="Ver o corregir este abono">✏️</a>
+                                </li>
+                            </ul>
+                        </details>
                     </td>
                     <td class="text-nowrap" th:classappend="${d.vencida} ? 'atrasado'"
                         th:text="${d.fechaVencimiento != null} ? ${d.fechaVencimientoFormateada} + (${d.vencida} ? ' (vencida)' : '') : '—'">30/10/2026</td>
-                    <td class="num fw-bold"><span th:replace="~{contabilidad/fragmentos :: plata(${d.valor})}"></span></td>
-                    <td style="min-width:220px">
+                    <td class="num"><span th:replace="~{contabilidad/fragmentos :: plata(${d.valor})}"></span></td>
+                    <td class="num txt-ingreso"><span th:replace="~{contabilidad/fragmentos :: plata(${d.abonado})}"></span></td>
+                    <td class="num fw-bold"><span th:replace="~{contabilidad/fragmentos :: plata(${d.saldoPendiente})}"></span></td>
+                    <td style="min-width:240px">
                         <details class="pagar">
-                            <summary class="btn btn-sm btn-outline-success">Registrar pago</summary>
-                            <form class="mt-2 d-grid gap-2" method="post" th:action="@{/contabilidad/por-pagar/{id}/pagar(id=${d.id})}">
+                            <summary class="btn btn-sm btn-outline-success">Pagar o abonar</summary>
+                            <form class="mt-2 d-grid gap-2 form-pago" method="post" th:action="@{/contabilidad/por-pagar/{id}/pagar(id=${d.id})}">
+                                <label class="form-label mb-0" th:for="'monto-' + ${d.id}">¿Cuánto pagas ahora?</label>
+                                <input type="text" class="form-control form-control-sm campo-pesos" name="monto" inputmode="numeric" required
+                                       th:id="'monto-' + ${d.id}" th:value="${#numbers.formatInteger(d.saldoPendiente, 1, 'POINT')}"
+                                       th:attr="data-maximo=${d.saldoPendiente}">
+                                <small class="ayuda">Deja el valor completo para pagar todo, o escribe menos para un abono.</small>
                                 <select class="form-select form-select-sm" name="cuentaId" required aria-label="De qué cuenta salió">
                                     <option value="">¿De qué cuenta salió?</option>
                                     <option th:each="c : ${todasLasCuentas}" th:if="${c.activa}" th:value="${c.id}" th:text="${c.nombre}">BANCOLOMBIA</option>
                                 </select>
-                                <select class="form-select form-select-sm" name="subcategoriaId" required aria-label="Categoría del gasto">
-                                    <option value="">¿Qué categoría?</option>
-                                    <optgroup th:each="cat : ${categorias}" th:if="${!cat.deIngreso and cat.activa}" th:label="${cat.nombre}">
-                                        <option th:each="s : ${cat.subcategorias}" th:if="${s.activa}" th:value="${s.id}" th:text="${s.nombre}">COMPRA DE MERCANCÍA</option>
-                                    </optgroup>
+                                <select class="form-select form-select-sm sel-categoria" required aria-label="Categoría del gasto">
+                                    <option value="">1. ¿Qué categoría?</option>
+                                    <option th:each="cat : ${categorias}" th:if="${!cat.deIngreso and cat.activa}"
+                                            th:value="${cat.id}" th:text="${cat.nombre}">COSTOS DE VENTA</option>
                                 </select>
-                                <input type="date" class="form-control form-control-sm" name="fecha" th:value="${hoy}" required aria-label="Fecha del pago">
+                                <select class="form-select form-select-sm sel-subcategoria" name="subcategoriaId" required aria-label="Dentro de la categoría">
+                                    <option value="">2. Primero elige la categoría</option>
+                                    <th:block th:each="cat : ${categorias}" th:if="${!cat.deIngreso and cat.activa}">
+                                        <option th:each="s : ${cat.subcategorias}" th:if="${s.activa}"
+                                                th:value="${s.id}" th:text="${s.nombre}" th:attr="data-categoria=${cat.id}">COMPRA DE MERCANCÍA</option>
+                                    </th:block>
+                                </select>
+                                <input type="date" class="form-control form-control-sm" name="fecha" th:value="${hoy}" required
+                                       th:attr="min=${fechaInicioIso}" aria-label="Fecha del pago">
                                 <button type="submit" class="btn btn-sm btn-primary">Guardar pago</button>
                             </form>
                         </details>
                         <form class="d-inline" method="post" th:action="@{/contabilidad/por-pagar/{id}/eliminar(id=${d.id})}"
+                              th:if="${!d.conAbonos}"
                               onsubmit="return confirm('¿Eliminar esta deuda? Úsalo solo si se anotó por error.');">
                             <button type="submit" class="btn btn-sm btn-outline-danger mt-1" title="Eliminar">🗑️</button>
                         </form>
@@ -103,10 +133,11 @@
                 </tr>
             </tbody>
         </table>
-        <p class="nota">Para deshacer un pago, elimina su egreso en Movimientos: la deuda vuelve a quedar pendiente.</p>
+        <p class="nota">Para deshacer un pago o un abono, elimina su egreso en Movimientos: la deuda vuelve a deber ese valor.</p>
     </section>
 </main>
 
+<script src="/js/contabilidad/por_pagar.js"></script>
 <script src="/js/token-nav.js"></script>
 </body>
 </html>

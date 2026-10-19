@@ -16,7 +16,7 @@ import java.time.LocalDateTime;
  */
 @Entity
 @Table(name = "material_usado")
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+@Getter @Setter @NoArgsConstructor
 public class MaterialUsado {
 
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)

@@ -16,7 +16,7 @@ import java.time.LocalDateTime;
  */
 @Entity
 @Table(name = "rollo_tela")
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+@Getter @Setter @NoArgsConstructor
 public class RolloTela {
 
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)

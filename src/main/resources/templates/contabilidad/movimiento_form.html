@@ -14,6 +14,11 @@
         Este ingreso se anotó solo desde un abono del pedido de Almacén #<span th:text="${mov.pedidoTiendaId}">0</span>.
         Si lo cambias aquí, el pedido no cambia.
     </div>
+    <div class="alert alert-info form-mov" th:if="${mov.porPagarId != null}">
+        Este egreso es un pago de una deuda de <a href="/contabilidad/por-pagar" class="link-light">Por pagar</a>.
+        Si le cambias el valor o lo eliminas, la deuda se vuelve a cuadrar sola.
+    </div>
+    <div th:replace="~{contabilidad/fragmentos :: aviso-inicio}"></div>
 
     <form class="caja form-mov" method="post" action="/contabilidad/movimiento/guardar" id="formMovimiento">
         <input type="hidden" name="id" th:value="${mov.id == 0} ? '' : ${mov.id}">
@@ -36,21 +41,32 @@
             </div>
             <div class="col-sm-6">
                 <label class="form-label" for="fecha">Fecha</label>
-                <input type="date" class="form-control" id="fecha" name="fecha" required th:value="${mov.fecha}">
+                <input type="date" class="form-control" id="fecha" name="fecha" required th:value="${mov.fecha}"
+                       th:attr="min=${fechaInicioIso}">
             </div>
 
-            <!-- Categoría (ingresos y egresos) -->
-            <div class="col-12" id="bloqueCategoria">
-                <label class="form-label" for="subcategoriaId">Categoría</label>
+            <!-- Categoría y lo que hay dentro de ella (ingresos y egresos) -->
+            <div class="col-sm-6" id="bloqueCategoria">
+                <label class="form-label" for="categoriaId">1. Categoría</label>
+                <select class="form-select" id="categoriaId" aria-describedby="ayudaCategoria">
+                    <option value="">Elige la categoría…</option>
+                    <option th:each="cat : ${categorias}"
+                            th:if="${cat.activa or (mov.subcategoria != null and mov.subcategoria.categoria.id == cat.id)}"
+                            th:value="${cat.id}" th:text="${cat.nombre}" th:attr="data-ingreso=${cat.deIngreso}"
+                            th:selected="${mov.subcategoria != null and mov.subcategoria.categoria.id == cat.id}">GASTOS ADMINISTRATIVOS</option>
+                </select>
+                <div class="ayuda mt-1" id="ayudaCategoria">Primero la categoría; después escoges lo que hay dentro.</div>
+            </div>
+            <div class="col-sm-6" id="bloqueSubcategoria">
+                <label class="form-label" for="subcategoriaId">2. Dentro de la categoría</label>
                 <select class="form-select" id="subcategoriaId" name="subcategoriaId">
-                    <option value="">Elige…</option>
-                    <optgroup th:each="cat : ${categorias}" th:label="${cat.nombre}"
-                              th:attr="data-ingreso=${cat.deIngreso}">
+                    <option value="">Primero elige la categoría</option>
+                    <th:block th:each="cat : ${categorias}">
                         <option th:each="s : ${cat.subcategorias}"
                                 th:if="${(s.activa and cat.activa) or (mov.subcategoria != null and mov.subcategoria.id == s.id)}"
-                                th:value="${s.id}" th:text="${s.nombre}"
+                                th:value="${s.id}" th:text="${s.nombre}" th:attr="data-categoria=${cat.id}"
                                 th:selected="${mov.subcategoria != null and mov.subcategoria.id == s.id}">ARRIENDO</option>
-                    </optgroup>
+                    </th:block>
                 </select>
             </div>
 

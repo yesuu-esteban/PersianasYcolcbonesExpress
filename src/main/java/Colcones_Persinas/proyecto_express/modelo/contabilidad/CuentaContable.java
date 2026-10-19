@@ -23,9 +23,19 @@ public class CuentaContable {
     @Column(nullable = false, unique = true, length = 80)
     private String nombre = "";
 
-    /** Lo que había en la cuenta cuando se empezó a llevar la contabilidad en el sistema. */
+    /**
+     * Lo que había en la cuenta cuando se empezó a llevar la contabilidad en el sistema
+     * (o el día de la fecha de inicio, si se inició la contabilidad en cero).
+     */
     @Column(name = "saldo_inicial", nullable = false)
     private BigDecimal saldoInicial = BigDecimal.ZERO;
+
+    /**
+     * El saldo inicial que tenía antes de "Iniciar la contabilidad en cero".
+     * Sirve para deshacer el inicio y dejar todo como estaba. Vacío si no se ha iniciado en cero.
+     */
+    @Column(name = "saldo_antes_inicio")
+    private BigDecimal saldoAntesInicio;
 
     private int orden;
     private boolean activa = true;

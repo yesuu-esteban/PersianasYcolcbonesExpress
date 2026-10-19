@@ -9,12 +9,14 @@
 
 <main>
     <h1>Cuentas</h1>
-    <p class="ayuda">Bancos, billeteras y cajas donde está la plata. El <strong>saldo inicial</strong> es lo que había en cada una el día que empezaron a usar la contabilidad del sistema; desde ahí se suman los ingresos y se restan los egresos.</p>
+    <p class="ayuda">Bancos, billeteras y cajas donde está la plata. El <strong>saldo inicial</strong> es lo que había en cada una
+        el día que empezó la contabilidad; desde ahí se suman los ingresos y se restan los egresos.
+        Si el saldo de hoy no cuadra con el real, usa <strong>Ajustar</strong> y escribe cuánto hay de verdad.</p>
     <div th:if="${mensaje}" class="alert alert-success" th:text="${mensaje}"></div>
     <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
 
     <div class="tabla-wrap mb-3">
-        <table class="table align-middle">
+        <table class="table align-middle tabla-cuentas">
             <thead>
                 <tr>
                     <th>Cuenta</th>
@@ -30,20 +32,35 @@
                                th:value="${f.cuenta.nombre}" th:attr="form='cuenta-' + ${f.cuenta.id}" aria-label="Nombre de la cuenta">
                     </td>
                     <td>
-                        <input type="text" class="form-control form-control-sm" name="saldoInicial" inputmode="numeric"
-                               th:value="${#numbers.formatInteger(f.cuenta.saldoInicial, 1, 'POINT')}"
+                        <input type="text" class="form-control form-control-sm campo-pesos" name="saldoInicial" inputmode="numeric"
+                               th:value="${f.cuenta.saldoInicial.signum() < 0 ? '-' : ''} + ${#numbers.formatInteger(f.cuenta.saldoInicial.abs(), 1, 'POINT')}"
                                th:attr="form='cuenta-' + ${f.cuenta.id}" aria-label="Saldo inicial">
                     </td>
                     <td class="num fw-bold"><span th:replace="~{contabilidad/fragmentos :: plata(${f.saldo})}"></span></td>
-                    <td class="text-nowrap">
+                    <td class="acciones-cuenta">
                         <form th:id="'cuenta-' + ${f.cuenta.id}" class="d-inline" method="post" action="/contabilidad/cuentas/guardar">
                             <input type="hidden" name="id" th:value="${f.cuenta.id}">
-                            <button type="submit" class="btn btn-sm btn-outline-secondary">Guardar</button>
+                            <button type="submit" class="btn btn-sm btn-outline-secondary" title="Guardar nombre y saldo inicial">Guardar</button>
                         </form>
+                        <details class="pagar d-inline-block">
+                            <summary class="btn btn-sm btn-outline-info">Ajustar</summary>
+                            <form class="mt-2 d-grid gap-2" method="post" th:action="@{/contabilidad/cuentas/{id}/ajustar(id=${f.cuenta.id})}">
+                                <label class="form-label mb-0" th:for="'real-' + ${f.cuenta.id}">¿Cuánto hay hoy de verdad?</label>
+                                <input type="text" class="form-control form-control-sm campo-pesos" name="saldoReal" inputmode="numeric" required
+                                       th:id="'real-' + ${f.cuenta.id}" placeholder="Ej. 1.250.000 (o 0)">
+                                <small class="ayuda">El sistema cuadra la cuenta con ese valor. Si está sobregirada, pon un menos adelante (-200.000).</small>
+                                <button type="submit" class="btn btn-sm btn-primary">Dejar en este saldo</button>
+                            </form>
+                        </details>
                         <form class="d-inline" method="post" th:action="@{/contabilidad/cuentas/{id}/activar(id=${f.cuenta.id})}">
                             <button type="submit" class="btn btn-sm"
                                     th:classappend="${f.cuenta.activa} ? 'btn-outline-danger' : 'btn-outline-success'"
                                     th:text="${f.cuenta.activa} ? 'Desactivar' : 'Activar'">Desactivar</button>
+                        </form>
+                        <form class="d-inline" method="post" th:action="@{/contabilidad/cuentas/{id}/eliminar(id=${f.cuenta.id})}"
+                              th:attr="data-aviso='¿Eliminar la cuenta ' + ${f.cuenta.nombre} + '? Solo se puede si nunca ha tenido movimientos.'"
+                              onsubmit="return confirm(this.getAttribute('data-aviso'));">
+                            <button type="submit" class="btn btn-sm btn-outline-danger" title="Eliminar cuenta">🗑️</button>
                         </form>
                     </td>
                 </tr>
@@ -62,13 +79,75 @@
         <h2>Agregar cuenta</h2>
         <form class="form-linea" method="post" action="/contabilidad/cuentas/guardar">
             <input type="text" class="form-control" name="nombre" maxlength="80" required placeholder="Nombre (ej. BANCO DE BOGOTÁ)" aria-label="Nombre">
-            <input type="text" class="form-control" name="saldoInicial" inputmode="numeric" placeholder="Saldo inicial (ej. 1.500.000)" aria-label="Saldo inicial">
+            <input type="text" class="form-control campo-pesos" name="saldoInicial" inputmode="numeric" placeholder="Saldo inicial (ej. 1.500.000)" aria-label="Saldo inicial">
             <button type="submit" class="btn btn-primary">Agregar</button>
         </form>
-        <p class="nota">Una cuenta desactivada ya no aparece para registrar movimientos, pero su historial se conserva. Si una cuenta está sobregirada, escribe el saldo inicial con un menos adelante (ej. -200.000).</p>
+        <p class="nota">Una cuenta desactivada ya no aparece para registrar movimientos, pero su historial se conserva.
+            Solo se puede <strong>eliminar</strong> una cuenta que nunca ha tenido movimientos.
+            Si una cuenta está sobregirada, escribe el saldo con un menos adelante (ej. -200.000).</p>
+    </section>
+
+    <!-- ═══ Iniciar la contabilidad en cero ═══ -->
+    <section class="caja caja-inicio" id="inicio">
+        <h2>Iniciar la contabilidad en cero</h2>
+
+        <div class="estado-inicio" th:if="${hayInicio}">
+            <p class="mb-2">
+                📅 La contabilidad empieza el <strong th:text="${conf.fechaInicioFormateada}">01/11/2026</strong>.
+                Todo lo de antes (movimientos, deudas por pagar y pedidos por cobrar) quedó guardado como historial
+                y no suma en saldos ni resúmenes.
+            </p>
+            <form method="post" action="/contabilidad/cuentas/deshacer-inicio"
+                  onsubmit="return confirm('¿Deshacer el inicio en cero? La contabilidad vuelve a contar todo lo anterior y cada cuenta recupera el saldo inicial que tenía antes.');">
+                <button type="submit" class="btn btn-sm btn-outline-danger">Deshacer el inicio en cero</button>
+            </form>
+        </div>
+
+        <details class="iniciar" th:attr="open=${hayInicio ? null : 'open'}">
+            <summary class="btn btn-sm btn-outline-secondary" th:text="${hayInicio} ? 'Cambiar la fecha de inicio' : 'Iniciar en cero'">Iniciar en cero</summary>
+            <p class="ayuda mt-3">
+                Sirve para empezar la contabilidad limpia desde un día (por ejemplo, el 1 de noviembre).
+                <strong>No se borra nada</strong>: lo de antes queda guardado como historial, pero ya no cuenta
+                en saldos, resumen, gráficas, deudas por pagar ni pedidos por cobrar. Y se puede deshacer.
+                Cada cuenta arranca con lo que escribas aquí; si la dejas vacía, arranca en $0.
+            </p>
+            <form method="post" action="/contabilidad/cuentas/iniciar" class="form-inicio">
+                <div class="row g-3 mb-2">
+                    <div class="col-sm-5 col-md-4">
+                        <label class="form-label" for="fechaInicio">La contabilidad empieza el</label>
+                        <input type="date" class="form-control" id="fechaInicio" name="fechaInicio" required
+                               th:value="${hayInicio} ? ${conf.fechaInicio} : ${fechaInicioSugerida}">
+                    </div>
+                </div>
+                <div class="tabla-wrap mb-2">
+                    <table class="table align-middle mb-0">
+                        <thead>
+                            <tr><th>Cuenta</th><th>Con cuánto arranca ese día</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="f : ${filas}" th:if="${f.cuenta.activa}">
+                                <td th:text="${f.cuenta.nombre}">NEQUI</td>
+                                <td>
+                                    <input type="text" class="form-control form-control-sm campo-pesos" inputmode="numeric" placeholder="0"
+                                           th:name="'saldo_' + ${f.cuenta.id}" th:attr="aria-label='Saldo de arranque de ' + ${f.cuenta.nombre}">
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="form-check mb-3">
+                    <input class="form-check-input" type="checkbox" name="confirmar" value="SI" id="confirmarInicio" required>
+                    <label class="form-check-label" for="confirmarInicio">
+                        Entiendo que desde esa fecha todo empieza en cero (lo de antes queda como historial).
+                    </label>
+                </div>
+                <button type="submit" class="btn btn-primary">Iniciar la contabilidad en cero</button>
+            </form>
+        </details>
     </section>
 </main>
 
+<script src="/js/contabilidad/cuentas.js"></script>
 <script src="/js/token-nav.js"></script>
 </body>
 </html>

@@ -16,7 +16,7 @@ import lombok.*;
  */
 @Entity
 @Table(name = "usuario")
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+@Getter @Setter @NoArgsConstructor
 public class Usuario {
 
     @Id
@@ -45,13 +45,11 @@ public class Usuario {
     private boolean activo = true;
 
     /**
-     * ── NUEVO ──
      * Para jefes que además salen a instalar (ej: Mono es ADMIN y también instala).
      * Si es true, el usuario conserva su rol principal y ADEMÁS:
      *  - aparece en la lista de instaladores del módulo Instalaciones,
      *  - recibe el permiso de instalador (ve "Mi agenda" en /mi-calendario).
      */
-    @Builder.Default
     @Column(name = "tambien_instalador", nullable = false, columnDefinition = "BOOLEAN DEFAULT false")
     private boolean tambienInstalador = false;
 

@@ -2,7 +2,6 @@ package Colcones_Persinas.proyecto_express.controlador.contabilidad;
 
 import Colcones_Persinas.proyecto_express.modelo.almacen.PedidoTienda;
 import Colcones_Persinas.proyecto_express.modelo.contabilidad.*;
-import Colcones_Persinas.proyecto_express.repository.almacen.PedidoTiendaPorCobrarRepository;
 import Colcones_Persinas.proyecto_express.repository.contabilidad.*;
 import Colcones_Persinas.proyecto_express.servicio.contabilidad.ContabilidadServicio;
 import Colcones_Persinas.proyecto_express.servicio.contabilidad.GraficasServicio;
@@ -37,10 +36,14 @@ import java.util.*;
  *   /contabilidad/movimientos  ingresos, egresos y traslados (registrar, editar, eliminar)
  *   /contabilidad/por-cobrar   pedidos de Almacén con saldo pendiente
  *   /contabilidad/por-pagar    deudas por pagar
- *   /contabilidad/cuentas      bancos, billeteras y cajas, con su saldo inicial
+ *   /contabilidad/cuentas      bancos, billeteras y cajas: saldo inicial, ajustar al saldo real, eliminar,
+ *                              e "iniciar la contabilidad en cero" desde una fecha (y deshacerlo)
  *   /contabilidad/categorias   plan de cuentas (categorías y subcategorías)
  *
  * Si algo falla, se muestra una página con el error (contabilidad/error) en vez de mandar al login.
+ *
+ * Si se inició la contabilidad en cero, todas las pantallas muestran desde qué fecha cuenta
+ * (fechaInicioTexto) y lo anterior no suma en nada.
  */
 @Controller
 @RequestMapping("/contabilidad")
@@ -58,7 +61,6 @@ public class ContabilidadControlador {
     private final SubcategoriaContableRepository subcategoriaRepository;
     private final MovimientoContableRepository movimientoRepository;
     private final CuentaPorPagarRepository porPagarRepository;
-    private final PedidoTiendaPorCobrarRepository porCobrarRepository;
     private final VentasAlmacenServicio ventasServicio;
     private final GraficasServicio graficasServicio;
 
@@ -67,7 +69,6 @@ public class ContabilidadControlador {
                                    SubcategoriaContableRepository subcategoriaRepository,
                                    MovimientoContableRepository movimientoRepository,
                                    CuentaPorPagarRepository porPagarRepository,
-                                   PedidoTiendaPorCobrarRepository porCobrarRepository,
                                    VentasAlmacenServicio ventasServicio,
                                    GraficasServicio graficasServicio) {
         this.servicio = servicio;
@@ -76,7 +77,6 @@ public class ContabilidadControlador {
         this.subcategoriaRepository = subcategoriaRepository;
         this.movimientoRepository = movimientoRepository;
         this.porPagarRepository = porPagarRepository;
-        this.porCobrarRepository = porCobrarRepository;
         this.ventasServicio = ventasServicio;
         this.graficasServicio = graficasServicio;
     }
@@ -170,6 +170,16 @@ public class ContabilidadControlador {
         }
     }
 
+    /** Para el aviso "La contabilidad empieza el …" que sale en todas las pantallas (vacío = desde siempre). */
+    @ModelAttribute
+    public void datosDeInicio(Model model) {
+        ConfiguracionContable conf = servicio.configuracion();
+        boolean hay = conf != null && conf.getFechaInicio() != null;
+        model.addAttribute("fechaInicioTexto", hay ? conf.getFechaInicioFormateada() : "");
+        // Para que los campos de fecha no dejen elegir días de antes del inicio (null = sin límite)
+        model.addAttribute("fechaInicioIso", hay ? conf.getFechaInicio().toString() : null);
+    }
+
     // ═══════════════════════════════════════════════════════════════
     // RESUMEN
     // ═══════════════════════════════════════════════════════════════
@@ -180,10 +190,8 @@ public class ContabilidadControlador {
 
         List<FilaCuenta> cuentas = filasCuentas(false);
         BigDecimal totalCuentas = cuentas.stream().map(FilaCuenta::getSaldo).reduce(BigDecimal.ZERO, BigDecimal::add);
-        BigDecimal porCobrar = porCobrarRepository.findBySaldoGreaterThanOrderByFechaPedidoAsc(BigDecimal.ZERO).stream()
-                .map(PedidoTienda::getSaldo).reduce(BigDecimal.ZERO, BigDecimal::add);
-        BigDecimal porPagar = porPagarRepository.findByPagadaFalseOrderByFechaVencimientoAscIdAsc().stream()
-                .map(CuentaPorPagar::getValor).reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal porCobrar = servicio.totalPorCobrar();
+        BigDecimal porPagar = servicio.totalPorPagar();   // lo que falta, descontando los abonos
 
         model.addAttribute("cuentas", cuentas);
         model.addAttribute("totalCuentas", totalCuentas);
@@ -269,9 +277,11 @@ public class ContabilidadControlador {
         String filtroTipo = esUno(tipo, MovimientoContable.INGRESO, MovimientoContable.EGRESO, MovimientoContable.TRASLADO)
                 ? tipo : null;
 
+        LocalDate inicio = servicio.fechaInicio();
         List<MovimientoContable> filtrados = new ArrayList<>();
         BigDecimal ingresos = BigDecimal.ZERO, egresos = BigDecimal.ZERO, traslados = BigDecimal.ZERO;
         for (MovimientoContable m : movimientoRepository.findByFechaBetweenOrderByFechaDescIdDesc(periodo.atDay(1), periodo.atEndOfMonth())) {
+            if (inicio != null && m.getFecha().isBefore(inicio)) continue;   // historial de antes del inicio en cero
             if (filtroTipo != null && !filtroTipo.equals(m.getTipo())) continue;
             if (cuentaId != null && (m.getCuenta() == null || m.getCuenta().getId() != cuentaId)
                     && (m.getCuentaDestino() == null || m.getCuentaDestino().getId() != cuentaId)) continue;
@@ -316,6 +326,8 @@ public class ContabilidadControlador {
         model.addAttribute("tipo", filtroTipo == null ? "" : filtroTipo);
         model.addAttribute("cuentaId", cuentaId);
         model.addAttribute("categoriaId", categoriaId);
+        // Mes que queda (todo o en parte) antes del inicio en cero: se avisa por qué faltan movimientos
+        model.addAttribute("mesAntesDelInicio", inicio != null && periodo.atDay(1).isBefore(inicio));
         ponerPeriodo(model, periodo);
         return "contabilidad/movimientos";
     }
@@ -341,6 +353,8 @@ public class ContabilidadControlador {
         f.claseValor = "txt-" + f.tipo.toLowerCase(Locale.ROOT);
         f.aviso = m.getPedidoTiendaId() != null
                 ? "Este ingreso salió de un abono de Almacén (pedido #" + m.getPedidoTiendaId() + "). Si lo eliminas, el abono del pedido NO se borra. ¿Eliminar el movimiento?"
+                : m.getPorPagarId() != null
+                ? "Este egreso es un pago de una deuda de Por pagar. Si lo eliminas, la deuda vuelve a deber ese valor. ¿Eliminar el movimiento?"
                 : "¿Eliminar este movimiento?";
         return f;
     }
@@ -411,23 +425,16 @@ public class ContabilidadControlador {
     }
 
     @PostMapping("/movimiento/{id}/eliminar")
-    @Transactional
     public String eliminarMovimiento(@PathVariable int id, RedirectAttributes ra) {
-        MovimientoContable m = movimientoRepository.findById(id).orElse(null);
-        if (m == null) {
-            ra.addFlashAttribute("error", "Ese movimiento ya no existe.");
-            return "redirect:/contabilidad/movimientos";
+        try {
+            // Si era el pago (o un abono) de una deuda de Por pagar, esa deuda vuelve a deber ese valor
+            MovimientoContable m = servicio.eliminarMovimiento(id);
+            ra.addFlashAttribute("mensaje", m.getTipoEtiqueta() + " de $" + miles(m.getValor()) + " eliminado."
+                    + (m.getPorPagarId() != null ? " La deuda en Por pagar volvió a sumar ese valor." : ""));
+            ra.addAttribute("mes", YearMonth.from(m.getFecha()).toString());
+        } catch (IllegalArgumentException e) {
+            ra.addFlashAttribute("error", e.getMessage());
         }
-        // Si era el pago de una cuenta por pagar, esa deuda vuelve a quedar pendiente
-        for (CuentaPorPagar c : porPagarRepository.findByMovimientoId(id)) {
-            c.setPagada(false);
-            c.setFechaPago(null);
-            c.setMovimientoId(null);
-            porPagarRepository.save(c);
-        }
-        movimientoRepository.delete(m);
-        ra.addFlashAttribute("mensaje", m.getTipoEtiqueta() + " de $" + miles(m.getValor()) + " eliminado.");
-        ra.addAttribute("mes", YearMonth.from(m.getFecha()).toString());
         return "redirect:/contabilidad/movimientos";
     }
 
@@ -450,7 +457,7 @@ public class ContabilidadControlador {
         LocalDate hoy = ContabilidadServicio.hoy();
         List<FilaCobro> filas = new ArrayList<>();
         BigDecimal total = BigDecimal.ZERO;
-        for (PedidoTienda p : porCobrarRepository.findBySaldoGreaterThanOrderByFechaPedidoAsc(BigDecimal.ZERO)) {
+        for (PedidoTienda p : servicio.pedidosPorCobrar()) {
             long dias = p.getFechaPedido() != null ? Math.max(0, ChronoUnit.DAYS.between(p.getFechaPedido().toLocalDate(), hoy)) : 0;
             filas.add(new FilaCobro(p, dias));
             total = total.add(p.getSaldo());
@@ -466,10 +473,11 @@ public class ContabilidadControlador {
 
     @GetMapping("/por-pagar")
     public String porPagar(Model model) {
-        List<CuentaPorPagar> pendientes = porPagarRepository.findByPagadaFalseOrderByFechaVencimientoAscIdAsc();
+        List<CuentaPorPagar> pendientes = servicio.deudasPendientes();
         model.addAttribute("pendientes", pendientes);
-        model.addAttribute("pagadas", porPagarRepository.findTop30ByPagadaTrueOrderByFechaPagoDescIdDesc());
-        model.addAttribute("totalPendiente", pendientes.stream().map(CuentaPorPagar::getValor).reduce(BigDecimal.ZERO, BigDecimal::add));
+        model.addAttribute("pagos", servicio.pagosDe(pendientes));
+        model.addAttribute("pagadas", servicio.deudasPagadas(30));
+        model.addAttribute("totalPendiente", servicio.totalPorPagar());
         model.addAttribute("todasLasCuentas", cuentaRepository.findAllByOrderByOrdenAscNombreAsc());
         model.addAttribute("categorias", categoriaRepository.findAllByOrderByOrdenAscNombreAsc());
         model.addAttribute("hoy", ContabilidadServicio.hoy().toString());
@@ -492,8 +500,12 @@ public class ContabilidadControlador {
     public String pagarPorPagar(@PathVariable int id, @RequestParam Map<String, String> f, RedirectAttributes ra) {
         try {
             MovimientoContable m = servicio.pagarPorPagar(id, entero(f.get("cuentaId")), entero(f.get("subcategoriaId")),
-                    fecha(f.get("fecha")), usuarioActual());
-            ra.addFlashAttribute("mensaje", "Pago registrado: egreso de $" + miles(m.getValor()) + " desde " + m.getCuenta().getNombre() + ".");
+                    fecha(f.get("fecha")), ContabilidadServicio.pesos(f.get("monto")), usuarioActual());
+            CuentaPorPagar c = porPagarRepository.findById(id).orElse(null);
+            String estado = c == null ? "" : c.isPagada() ? " La deuda con " + c.getAcreedor() + " quedó pagada."
+                    : " A " + c.getAcreedor() + " le faltan $" + miles(c.getSaldoPendiente()) + ".";
+            ra.addFlashAttribute("mensaje", "Pago registrado: egreso de $" + miles(m.getValor()) + " desde "
+                    + m.getCuenta().getNombre() + "." + estado);
         } catch (IllegalArgumentException e) {
             ra.addFlashAttribute("error", e.getMessage());
         }
@@ -502,14 +514,12 @@ public class ContabilidadControlador {
 
     @PostMapping("/por-pagar/{id}/eliminar")
     public String eliminarPorPagar(@PathVariable int id, RedirectAttributes ra) {
-        porPagarRepository.findById(id).ifPresent(c -> {
-            if (c.isPagada()) {
-                ra.addFlashAttribute("error", "Esa deuda ya está pagada. Para deshacerla, elimina su egreso en Movimientos.");
-            } else {
-                porPagarRepository.delete(c);
-                ra.addFlashAttribute("mensaje", "Se eliminó la deuda con " + c.getAcreedor() + ".");
-            }
-        });
+        try {
+            CuentaPorPagar c = servicio.eliminarPorPagar(id);
+            ra.addFlashAttribute("mensaje", "Se eliminó la deuda con " + c.getAcreedor() + ".");
+        } catch (IllegalArgumentException e) {
+            ra.addFlashAttribute("error", e.getMessage());
+        }
         return "redirect:/contabilidad/por-pagar";
     }
 
@@ -531,7 +541,76 @@ public class ContabilidadControlador {
         }
         model.addAttribute("opcionesTienda", opcionesTienda);
         model.addAttribute("hayCuentaTienda", cuentaTiendaId != null);
+        // Iniciar la contabilidad en cero: por defecto el primer día del mes que viene
+        ConfiguracionContable conf = servicio.configuracion();
+        LocalDate hoy = ContabilidadServicio.hoy();
+        model.addAttribute("conf", conf);
+        model.addAttribute("hayInicio", conf != null && conf.getFechaInicio() != null);
+        model.addAttribute("fechaInicioSugerida", hoy.withDayOfMonth(1).plusMonths(1).toString());
+        model.addAttribute("hoy", hoy.toString());
         return "contabilidad/cuentas";
+    }
+
+    /** Escribe cuánto hay hoy en la cuenta y el sistema la cuadra (corrige su saldo inicial por la diferencia). */
+    @PostMapping("/cuentas/{id}/ajustar")
+    public String ajustarSaldo(@PathVariable int id, @RequestParam(required = false) String saldoReal, RedirectAttributes ra) {
+        try {
+            BigDecimal real = ContabilidadServicio.pesosConSigno(saldoReal);
+            BigDecimal diferencia = servicio.ajustarSaldo(id, real);
+            String nombre = cuentaRepository.findById(id).map(CuentaContable::getNombre).orElse("La cuenta");
+            ra.addFlashAttribute("mensaje", diferencia.signum() == 0 ? nombre + " ya tenía $" + miles(real) + ": no hubo que ajustar nada."
+                    : nombre + " quedó en $" + miles(real) + (real.signum() < 0 ? " (sobregirada)" : "") + ". Se ajustó "
+                    + (diferencia.signum() > 0 ? "+" : "−") + "$" + miles(diferencia.abs()) + " en su saldo inicial.");
+        } catch (IllegalArgumentException e) {
+            ra.addFlashAttribute("error", e.getMessage());
+        }
+        return "redirect:/contabilidad/cuentas";
+    }
+
+    /** Elimina una cuenta que nunca se ha usado (si tiene movimientos, hay que desactivarla). */
+    @PostMapping("/cuentas/{id}/eliminar")
+    public String eliminarCuenta(@PathVariable int id, RedirectAttributes ra) {
+        try {
+            CuentaContable c = servicio.eliminarCuenta(id);
+            ra.addFlashAttribute("mensaje", "Se eliminó la cuenta " + c.getNombre() + ".");
+        } catch (IllegalArgumentException e) {
+            ra.addFlashAttribute("error", e.getMessage());
+        }
+        return "redirect:/contabilidad/cuentas";
+    }
+
+    /**
+     * Inicia la contabilidad en cero desde una fecha. Cada cuenta arranca con lo que se escriba
+     * en "saldo_{id}" (vacío = 0). Lo anterior queda guardado y se puede deshacer.
+     */
+    @PostMapping("/cuentas/iniciar")
+    public String iniciarEnCero(@RequestParam Map<String, String> f, RedirectAttributes ra) {
+        if (!"SI".equals(f.get("confirmar"))) {
+            ra.addFlashAttribute("error", "Para iniciar en cero, marca la casilla de confirmación.");
+            return "redirect:/contabilidad/cuentas";
+        }
+        try {
+            Map<Integer, BigDecimal> saldos = new HashMap<>();
+            for (CuentaContable c : cuentaRepository.findAll()) {
+                BigDecimal v = ContabilidadServicio.pesosConSigno(f.get("saldo_" + c.getId()));
+                if (v != null) saldos.put(c.getId(), v);
+            }
+            LocalDate fecha = fecha(f.get("fechaInicio"));
+            servicio.iniciarEnCero(fecha, saldos, usuarioActual());
+            ra.addFlashAttribute("mensaje", "Listo: la contabilidad empieza el " + servicio.configuracion().getFechaInicioFormateada()
+                    + ". Lo anterior quedó guardado como historial y ya no suma. Si te equivocaste, usa \"Deshacer\".");
+        } catch (IllegalArgumentException e) {
+            ra.addFlashAttribute("error", e.getMessage());
+        }
+        return "redirect:/contabilidad/cuentas";
+    }
+
+    /** Deshace el inicio en cero: todo vuelve a contar desde siempre, con los saldos iniciales de antes. */
+    @PostMapping("/cuentas/deshacer-inicio")
+    public String deshacerInicio(RedirectAttributes ra) {
+        servicio.deshacerInicio(usuarioActual());
+        ra.addFlashAttribute("mensaje", "Se deshizo el inicio en cero: la contabilidad vuelve a contar todo, con los saldos iniciales de antes.");
+        return "redirect:/contabilidad/cuentas";
     }
 
     /** Elige la cuenta a la que entra sola la plata de la tienda virtual (vacío = ninguna: se anota a mano). */
@@ -565,13 +644,12 @@ public class ContabilidadControlador {
         String nombre = f.getOrDefault("nombre", "").trim().toUpperCase(new Locale("es", "CO"));
         BigDecimal saldoInicial;
         try {
-            saldoInicial = ContabilidadServicio.pesos(f.get("saldoInicial"));
+            saldoInicial = ContabilidadServicio.pesosConSigno(f.get("saldoInicial"));
         } catch (IllegalArgumentException e) {
             ra.addFlashAttribute("error", e.getMessage());
             return "redirect:/contabilidad/cuentas";
         }
         if (saldoInicial == null) saldoInicial = BigDecimal.ZERO;
-        if (f.getOrDefault("saldoInicial", "").trim().startsWith("-")) saldoInicial = saldoInicial.negate();
 
         if (nombre.isEmpty()) {
             ra.addFlashAttribute("error", "Escribe el nombre de la cuenta.");
@@ -615,8 +693,10 @@ public class ContabilidadControlador {
         // Lo que se movió en el mes en cada subcategoría
         Map<Integer, BigDecimal> porSub = new HashMap<>();
         Map<Integer, List<MovimientoContable>> porCategoria = new HashMap<>();
+        LocalDate inicio = servicio.fechaInicio();
         for (MovimientoContable m : movimientoRepository.findByFechaBetweenOrderByFechaDescIdDesc(periodo.atDay(1), periodo.atEndOfMonth())) {
             if (m.getSubcategoria() == null || m.getValor() == null) continue;
+            if (inicio != null && m.getFecha().isBefore(inicio)) continue;   // historial de antes del inicio en cero
             porSub.merge(m.getSubcategoria().getId(), m.getValor(), BigDecimal::add);
             if (m.getSubcategoria().getCategoria() != null) {
                 porCategoria.computeIfAbsent(m.getSubcategoria().getCategoria().getId(), k -> new ArrayList<>()).add(m);

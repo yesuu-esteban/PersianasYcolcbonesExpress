@@ -73,6 +73,10 @@ public class MovimientoContable {
     @Column(name = "pedido_tienda_id")
     private Integer pedidoTiendaId;
 
+    /** Si es un pago (completo o un abono) de una deuda de "Por pagar", el número de esa deuda. */
+    @Column(name = "por_pagar_id")
+    private Integer porPagarId;
+
     @Column(name = "creado_por", length = 80)
     private String creadoPor = "";
 

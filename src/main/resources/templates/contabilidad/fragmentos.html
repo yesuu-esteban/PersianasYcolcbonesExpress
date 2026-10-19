@@ -7,6 +7,7 @@
      · estilos    → dentro de <head>
      · encabezado → marca y menú del módulo (activo = pantalla actual)
      · plata(v)   → un valor en pesos: $1.500.000 (en rojo si es negativo)
+     · aviso-inicio → "La contabilidad empieza el …" (solo si se inició en cero)
      ═══════════════════════════════════════════════════════════════ -->
 
 <th:block th:fragment="estilos">
@@ -37,6 +38,12 @@
 
 <span th:fragment="plata(v)" class="plata" th:classappend="${v != null and v.signum() < 0} ? 'neg'"
       th:text="${v == null} ? '$0' : (${v.signum() < 0} ? '-$' + ${#numbers.formatInteger(v.abs(), 1, 'POINT')} : '$' + ${#numbers.formatInteger(v, 1, 'POINT')})">$0</span>
+
+<div th:fragment="aviso-inicio" class="aviso-inicio" th:if="${fechaInicioTexto != null and fechaInicioTexto != ''}">
+    📅 La contabilidad empieza el <strong th:text="${fechaInicioTexto}">01/11/2026</strong>.
+    Lo anterior quedó guardado como historial y no suma en saldos, resúmenes ni deudas.
+    <a href="/contabilidad/cuentas#inicio" class="link-light">Ver o deshacer</a>
+</div>
 
 </body>
 </html>

@@ -13,7 +13,7 @@ import java.time.format.DateTimeFormatter;
  */
 @Entity
 @Table(name = "retazo_tela")
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+@Getter @Setter @NoArgsConstructor
 public class RetazoTela {
 
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
