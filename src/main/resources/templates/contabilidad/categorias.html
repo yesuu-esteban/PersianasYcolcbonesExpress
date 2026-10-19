@@ -9,6 +9,7 @@
 
 <main>
     <h1>Categorías</h1>
+    <div th:replace="~{contabilidad/fragmentos :: aviso-inicio}"></div>
     <p class="ayuda">En cada categoría hay un cuadro para <strong>anotar la plata</strong> que se gastó o que entró: eliges la subcategoría,
         escribes el valor, la cuenta y guardas. Debajo ves lo que ya se anotó en el mes y cuánto lleva cada subcategoría.
         Todo lo que anotes aquí también sale en Movimientos y en el Resumen.
@@ -91,7 +92,7 @@
                 </div>
                 <div class="col-md-2 col-6">
                     <label class="form-label">Fecha</label>
-                    <input type="date" class="form-control" name="fecha" required th:value="${fechaSugerida}" th:max="${hoy}">
+                    <input type="date" class="form-control" name="fecha" required th:value="${fechaSugerida}" th:max="${hoy}" th:attr="min=${fechaInicioIso}">
                 </div>
                 <div class="col-md-9 col-12">
                     <label class="form-label" th:text="${fc.categoria.deIngreso} ? 'De quién / detalle (opcional)' : 'A quién se le pagó / detalle (opcional)'">Detalle</label>

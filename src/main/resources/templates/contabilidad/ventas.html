@@ -9,6 +9,7 @@
 
 <main>
     <h1>Ventas de Almacén · <span th:text="${mesTexto}">Octubre 2026</span></h1>
+    <div th:replace="~{contabilidad/fragmentos :: aviso-inicio}"></div>
     <p class="ayuda">Los pedidos que se hicieron en Almacén en el mes (por fecha del pedido): lo que se vendió, lo que costó en fábrica,
         la utilidad, lo abonado y lo que falta cobrar. Cada abono que se registra en Almacén se anota solo en Movimientos.
         En "En contabilidad" ves a qué cuenta entró cada abono; si quedó en la cuenta equivocada, usa <strong>Cambiar cuenta</strong>.</p>
@@ -122,7 +123,7 @@
                                     <option th:each="c : ${todasLasCuentas}" th:if="${c.activa}" th:value="${c.id}" th:text="${c.nombre}">NEQUI</option>
                                 </select>
                                 <input type="date" class="form-control form-control-sm" name="fecha" required
-                                       th:value="${f.fechaIso != '' ? f.fechaIso : hoy}" th:max="${hoy}" aria-label="Qué día entró la plata">
+                                       th:value="${f.fechaIso != '' ? f.fechaIso : hoy}" th:max="${hoy}" th:attr="min=${fechaInicioIso}" aria-label="Qué día entró la plata">
                                 <button type="submit" class="btn btn-sm btn-primary"
                                         th:text="'Anotar $' + ${#numbers.formatInteger(f.falta, 1, 'POINT')}">Anotar $0</button>
                             </form>

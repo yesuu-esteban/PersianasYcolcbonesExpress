@@ -13,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -30,6 +31,9 @@ import java.util.Map;
  *
  * Los pedidos viejos que creó la tienda virtual en Almacén (vendedor "Tienda virtual") no salen aquí:
  * la tienda tiene su propia contabilidad (Tienda virtual → Contabilidad).
+ *
+ * Si se inició la contabilidad en cero, los pedidos de antes no salen (el mismo corte de "Por cobrar")
+ * y no se pueden anotar abonos con fecha anterior al inicio.
  */
 @Service
 public class VentasAlmacenServicio {
@@ -119,16 +123,22 @@ public class VentasAlmacenServicio {
         public BigDecimal getAbonosDelMes() { return abonosDelMes; }
     }
 
-    /** Pedidos de Almacén hechos entre dos fechas (incluidas). */
+    /** Pedidos de Almacén hechos entre dos fechas (incluidas), sin los de antes del inicio en cero. */
     @Transactional(readOnly = true)
     public Ventas ventas(LocalDate desde, LocalDate hasta) {
         Ventas v = new Ventas();
         List<PedidoTienda> pedidos = new ArrayList<>();
-        for (PedidoTienda p : pedidoRepository.findByFechaPedidoBetweenOrderByFechaPedidoDescIdDesc(
-                desde.atStartOfDay(), hasta.atTime(23, 59, 59))) {
-            boolean deLaTienda = p.getVendedor() != null
-                    && TiendaServicio.VENDEDOR_TIENDA.equalsIgnoreCase(p.getVendedor().trim());
-            if (!deLaTienda) pedidos.add(p);
+        // Si se inició en cero, los pedidos de antes no cuentan (mismo corte que "Por cobrar")
+        LocalDateTime desdeHora = desde.atStartOfDay();
+        LocalDateTime hastaHora = hasta.atTime(23, 59, 59);
+        LocalDateTime corte = contabilidadServicio.corteDeudas();
+        if (corte != null && corte.isAfter(desdeHora)) desdeHora = corte;
+        if (!desdeHora.isAfter(hastaHora)) {
+            for (PedidoTienda p : pedidoRepository.findByFechaPedidoBetweenOrderByFechaPedidoDescIdDesc(desdeHora, hastaHora)) {
+                boolean deLaTienda = p.getVendedor() != null
+                        && TiendaServicio.VENDEDOR_TIENDA.equalsIgnoreCase(p.getVendedor().trim());
+                if (!deLaTienda) pedidos.add(p);
+            }
         }
 
         // Los abonos ya anotados de estos pedidos, agrupados por pedido
@@ -182,7 +192,9 @@ public class VentasAlmacenServicio {
             v.faltaAnotar = v.faltaAnotar.add(f.falta);
             if (f.isFaltaAnotar()) v.pedidosSinAnotar++;
         }
-        v.abonosDelMes = nz(abonosRepository.abonosEntre(desde, hasta));
+        // Abonos que entraron a las cuentas en el periodo (solo desde el inicio en cero)
+        LocalDate desdeAbonos = contabilidadServicio.desdeInicio(desde);
+        v.abonosDelMes = desdeAbonos.isAfter(hasta) ? BigDecimal.ZERO : nz(abonosRepository.abonosEntre(desdeAbonos, hasta));
         return v;
     }
 
@@ -199,6 +211,11 @@ public class VentasAlmacenServicio {
         }
         if (fecha == null) throw new IllegalArgumentException("Escribe la fecha en que entró la plata.");
         if (fecha.isAfter(ContabilidadServicio.hoy())) throw new IllegalArgumentException("La fecha no puede ser futura.");
+        LocalDate inicio = contabilidadServicio.fechaInicio();
+        if (inicio != null && fecha.isBefore(inicio)) {
+            throw new IllegalArgumentException("La contabilidad empieza el " + inicio.format(FMT)
+                    + ": la fecha del abono no puede ser anterior.");
+        }
 
         BigDecimal falta = nz(p.getAbono()).subtract(nz(abonosRepository.anotadoDelPedido(pedidoId)));
         if (falta.signum() <= 0) {
