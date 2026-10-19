@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:replace="~{contabilidad/fragmentos :: estilos}"></th:block>
+    <title>Contabilidad - Reportes</title>
+    <style>
+        /* Pantalla: Reportes (solo esta pantalla) */
+        .paso { font-size: .78rem; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; color: var(--gold); margin-bottom: 8px; }
+        .modos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+        .opcion-modo { position: relative; display: block; cursor: pointer; border: 1.5px solid rgba(255,255,255,0.15); border-radius: 12px;
+                       padding: 14px 16px 14px 46px; background: rgba(0,0,0,0.15); }
+        .opcion-modo input { position: absolute; left: 16px; top: 17px; width: 18px; height: 18px; accent-color: var(--accent); }
+        .opcion-modo strong { display: block; font-size: 1rem; }
+        .opcion-modo span { font-size: .8rem; color: var(--texto-suave); }
+        .opcion-modo.activa { border-color: var(--accent); background: rgba(236,21,97,0.10); }
+        .opcion-modo:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
+        .fechas { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
+        .fechas .campo { display: flex; flex-direction: column; min-width: 160px; }
+        .atajos { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+        .atajo.activo { background: var(--accent); border-color: var(--accent); color: #fff; }
+        .barra-cats { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 12px; }
+        .barra-cats .form-control { max-width: 260px; }
+        .contador-subs { font-size: .82rem; color: var(--gold); font-weight: 600; margin-left: auto; }
+        .grupo-cats h3 { font-size: .9rem; font-weight: 700; margin: 14px 0 8px; color: var(--texto-suave); }
+        .cats { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr)); gap: 10px; }
+        .cat-card { border: 1px solid rgba(255,255,255,0.12); border-radius: 12px; padding: 10px 12px; background: rgba(0,0,0,0.15); }
+        .cat-card.con-algo { border-color: rgba(236,21,97,0.6); }
+        .cat-card .cat-nombre { display: flex; gap: 8px; align-items: center; font-weight: 700; cursor: pointer; margin-bottom: 6px; }
+        .cat-card ul { list-style: none; margin: 0; padding: 0 0 0 4px; }
+        .cat-card li label { display: flex; gap: 8px; align-items: center; font-size: .84rem; padding: 3px 0; cursor: pointer; }
+        .cat-card input[type="checkbox"], .cuentas-lista input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--accent); flex-shrink: 0; }
+        .inactiva-txt { font-size: .72rem; color: var(--texto-suave); font-weight: 400; }
+        .cuentas-lista { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-top: 8px; }
+        .cuentas-lista label { display: flex; gap: 6px; align-items: center; font-size: .86rem; cursor: pointer; }
+        details.cuentas-opcional summary { cursor: pointer; color: var(--azul); font-size: .86rem; }
+        .botones-reporte { display: flex; flex-wrap: wrap; gap: 8px; }
+        .aviso-form { color: var(--rojo); font-weight: 600; font-size: .86rem; margin-top: 8px; }
+        .reporte-cabeza { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; align-items: flex-start; }
+        .reporte-cabeza h2 { font-size: 1.2rem; margin-bottom: 4px; }
+        .tabla-reporte td, .tabla-reporte th { padding: 6px 8px; }
+        .tabla-reporte .fila-seccion td { background: rgba(236,21,97,0.18); font-weight: 800; text-transform: uppercase; font-size: .8rem; letter-spacing: .4px; }
+        .tabla-reporte .fila-cat td { font-weight: 700; background: rgba(255,255,255,0.04); }
+        .tabla-reporte .fila-sub td:first-child { padding-left: 26px; color: var(--texto-suave); }
+        .cuadros-final { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+        @media (max-width: 767.98px) { .modos, .cuadros-final { grid-template-columns: minmax(0, 1fr); } .contador-subs { margin-left: 0; width: 100%; } }
+        @media (max-width: 575.98px) {
+            .tabla-reporte th:nth-child(2), .tabla-reporte td:nth-child(2) { display: none; }
+            .tabla-detalle th:nth-child(3), .tabla-detalle td:nth-child(3) { display: none; }
+            .tabla-reporte td, .tabla-detalle td { font-size: .8rem; }
+            .tabla-reporte .fila-sub td:first-child { padding-left: 16px; }
+        }
+    </style>
+</head>
+<body>
+<header th:replace="~{contabilidad/fragmentos :: encabezado('reportes')}"></header>
+
+<main>
+    <h1>Reportes</h1>
+    <div th:replace="~{contabilidad/fragmentos :: aviso-inicio}"></div>
+    <p class="ayuda">Saca el resumen que necesites: el general con todo, o solo lo que escojas (por ejemplo, solo nómina).
+        Míralo aquí o descárgalo en <strong>Excel</strong> o <strong>PDF</strong>. Trae los totales por categoría y subcategoría
+        y la lista de cada movimiento.</p>
+    <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
+
+    <form id="formReporte" class="caja" method="get" action="/contabilidad/reportes">
+        <input type="hidden" name="ver" value="1">
+
+        <!-- 1. Qué resumen -->
+        <div class="paso">1. ¿Qué resumen necesitas?</div>
+        <div class="modos mb-4" role="radiogroup" aria-label="Tipo de resumen">
+            <label class="opcion-modo">
+                <input type="radio" name="modo" value="general" th:checked="${general}">
+                <strong>📊 Resumen general</strong>
+                <span>Todo: ingresos, gastos, utilidad, saldos de las cuentas, por cobrar y por pagar.</span>
+            </label>
+            <label class="opcion-modo">
+                <input type="radio" name="modo" value="personalizado" th:checked="${!general}">
+                <strong>🎯 Solo lo que yo escoja</strong>
+                <span>Escoge las categorías o subcategorías. Ej.: solo NÓMINA, o arriendo y servicios.</span>
+            </label>
+        </div>
+
+        <!-- 2. Fechas -->
+        <div class="paso">2. ¿De qué fechas?</div>
+        <div class="fechas">
+            <div class="campo">
+                <label class="form-label" for="desde">Desde</label>
+                <input type="date" class="form-control" id="desde" name="desde" required th:value="${desde}"
+                       th:max="${hoy}" th:attr="min=${fechaInicioIso}">
+            </div>
+            <div class="campo">
+                <label class="form-label" for="hasta">Hasta</label>
+                <input type="date" class="form-control" id="hasta" name="hasta" required th:value="${hasta}"
+                       th:attr="min=${fechaInicioIso}">
+            </div>
+        </div>
+        <div class="atajos mb-4" aria-label="Periodos rápidos">
+            <button type="button" class="btn btn-sm btn-outline-secondary atajo" th:each="a : ${atajos}"
+                    th:attr="data-desde=${a.value[0]},data-hasta=${a.value[1]}" th:text="${a.key}">Este mes</button>
+        </div>
+
+        <!-- 3. Categorías (solo en el personalizado) -->
+        <div id="bloquePersonalizado" th:attr="hidden=${general ? 'hidden' : null}">
+            <div class="paso">3. Escoge las categorías</div>
+            <p class="ayuda mt-0">Marca una categoría para traer todo lo que tiene adentro, o marca solo las subcategorías que necesites.</p>
+            <div class="barra-cats">
+                <input type="search" class="form-control form-control-sm" id="buscarCategoria" placeholder="Buscar (ej. nómina)" aria-label="Buscar categoría">
+                <button type="button" class="btn btn-sm btn-outline-secondary" id="marcarTodo">Marcar todo</button>
+                <button type="button" class="btn btn-sm btn-outline-secondary" id="quitarTodo">Quitar todo</button>
+                <span class="contador-subs" id="contadorSubs" aria-live="polite">Nada escogido todavía</span>
+            </div>
+
+            <div class="grupo-cats" th:unless="${#lists.isEmpty(categoriasEgreso)}">
+                <h3>Gastos, costos y otros egresos</h3>
+                <div class="cats">
+                    <div class="cat-card" th:each="c : ${categoriasEgreso}">
+                        <label class="cat-nombre">
+                            <input type="checkbox" class="chk-cat" th:attr="data-cat=${c.id}">
+                            <span th:text="${c.nombre}">NÓMINA</span>
+                            <span class="inactiva-txt" th:unless="${c.activa}">(inactiva)</span>
+                        </label>
+                        <ul>
+                            <li th:each="s : ${c.subcategorias}">
+                                <label>
+                                    <input type="checkbox" class="chk-sub" name="sub" th:value="${s.id}" th:attr="data-cat=${c.id}"
+                                           th:checked="${subsElegidas.contains(s.id)}">
+                                    <span th:text="${s.nombre}">SUELDOS</span>
+                                    <span class="inactiva-txt" th:unless="${s.activa}">(inactiva)</span>
+                                </label>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grupo-cats" th:unless="${#lists.isEmpty(categoriasIngreso)}">
+                <h3>Ingresos</h3>
+                <div class="cats">
+                    <div class="cat-card" th:each="c : ${categoriasIngreso}">
+                        <label class="cat-nombre">
+                            <input type="checkbox" class="chk-cat" th:attr="data-cat=${c.id}">
+                            <span th:text="${c.nombre}">INGRESOS OPERACIONALES</span>
+                            <span class="inactiva-txt" th:unless="${c.activa}">(inactiva)</span>
+                        </label>
+                        <ul>
+                            <li th:each="s : ${c.subcategorias}">
+                                <label>
+                                    <input type="checkbox" class="chk-sub" name="sub" th:value="${s.id}" th:attr="data-cat=${c.id}"
+                                           th:checked="${subsElegidas.contains(s.id)}">
+                                    <span th:text="${s.nombre}">VENTA DE PRODUCTOS</span>
+                                    <span class="inactiva-txt" th:unless="${s.activa}">(inactiva)</span>
+                                </label>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <details class="cuentas-opcional mt-3" th:attr="open=${#sets.isEmpty(cuentasElegidas) ? null : 'open'}">
+                <summary>Solo de algunas cuentas (opcional; si no marcas ninguna, salen todas)</summary>
+                <div class="cuentas-lista">
+                    <label th:each="c : ${cuentas}">
+                        <input type="checkbox" name="cuenta" th:value="${c.id}" th:checked="${cuentasElegidas.contains(c.id)}">
+                        <span th:text="${c.nombre}">NEQUI</span>
+                        <span class="inactiva-txt" th:unless="${c.activa}">(inactiva)</span>
+                    </label>
+                </div>
+            </details>
+            <div class="mb-4"></div>
+        </div>
+
+        <!-- Nombre y botones -->
+        <div class="paso" id="pasoNombre" th:text="${general} ? '3. Nombre del resumen (opcional)' : '4. Nombre del resumen (opcional)'">3. Nombre del resumen (opcional)</div>
+        <input type="text" class="form-control mb-3" name="titulo" maxlength="120" th:value="${titulo}"
+               placeholder="Ej.: Nómina de noviembre (si lo dejas vacío, se pone solo)" aria-label="Nombre del resumen" style="max-width:520px">
+
+        <div class="botones-reporte">
+            <button type="submit" class="btn btn-primary px-4">Ver en pantalla</button>
+            <button type="submit" class="btn btn-outline-success" formaction="/contabilidad/reportes/excel">⬇ Descargar Excel</button>
+            <button type="submit" class="btn btn-outline-danger" formaction="/contabilidad/reportes/pdf">⬇ Descargar PDF</button>
+        </div>
+        <div class="aviso-form" id="avisoForm" role="alert" hidden></div>
+    </form>
+
+    <!-- ═══ El reporte ═══ -->
+    <section class="caja" id="reporte" th:if="${reporte != null}">
+        <div class="reporte-cabeza">
+            <div>
+                <h2 th:text="${reporte.titulo}">Resumen general</h2>
+                <div class="fw-bold" th:text="${reporte.periodoTexto}">Del 01/11/2026 al 30/11/2026</div>
+                <div class="ayuda" th:text="${reporte.filtrosTexto}">Todas las categorías y todas las cuentas</div>
+                <div class="ayuda" th:if="${reporte.avisoInicio != ''}" th:text="${reporte.avisoInicio}"></div>
+                <div class="ayuda" th:text="${reporte.generado}">Generado el …</div>
+            </div>
+            <div class="botones-reporte">
+                <a class="btn btn-sm btn-outline-success" th:href="@{'/contabilidad/reportes/excel?' + ${consulta}}">⬇ Excel</a>
+                <a class="btn btn-sm btn-outline-danger" th:href="@{'/contabilidad/reportes/pdf?' + ${consulta}}">⬇ PDF</a>
+            </div>
+        </div>
+
+        <div class="caja vacio mt-3 mb-0" th:if="${reporte.vacio}">No hay movimientos con lo que escogiste en este periodo.</div>
+
+        <th:block th:unless="${reporte.vacio}">
+            <!-- Totales rápidos -->
+            <div class="chips">
+                <th:block th:if="${reporte.general}">
+                    <div class="chip"><span>Ingresos</span><strong class="txt-ingreso"><span th:replace="~{contabilidad/fragmentos :: plata(${reporte.totalIngresos})}"></span></strong></div>
+                    <div class="chip"><span>Costos y gastos</span><strong class="txt-egreso"><span th:replace="~{contabilidad/fragmentos :: plata(${reporte.totalCostos.add(reporte.totalGastos)})}"></span></strong></div>
+                    <div class="chip"><span>Utilidad neta</span><strong><span th:replace="~{contabilidad/fragmentos :: plata(${reporte.utilidadNeta})}"></span></strong></div>
+                </th:block>
+                <th:block th:unless="${reporte.general}">
+                    <div class="chip" th:if="${reporte.hayIngresos}"><span>Total ingresos</span><strong class="txt-ingreso"><span th:replace="~{contabilidad/fragmentos :: plata(${reporte.totalIngresos})}"></span></strong></div>
+                    <div class="chip" th:if="${reporte.hayEgresos}"><span>Total egresos</span><strong class="txt-egreso"><span th:replace="~{contabilidad/fragmentos :: plata(${reporte.totalEgresos})}"></span></strong></div>
+                    <div class="chip" th:if="${reporte.hayIngresos and reporte.hayEgresos}"><span>Ingresos − egresos</span><strong><span th:replace="~{contabilidad/fragmentos :: plata(${reporte.neto})}"></span></strong></div>
+                </th:block>
+                <div class="chip"><span>Movimientos</span><strong th:text="${reporte.cantidad}">0</strong></div>
+            </div>
+
+            <!-- Por sección, categoría y subcategoría -->
+            <div class="tabla-wrap mb-3">
+                <table class="table align-middle tabla-reporte">
+                    <thead>
+                        <tr><th>Categoría / subcategoría</th><th class="num">Movimientos</th><th class="num">Total</th></tr>
+                    </thead>
+                    <tbody>
+                        <th:block th:each="sec : ${reporte.secciones}">
+                            <tr class="fila-seccion">
+                                <td th:text="${sec.nombre}">Gastos</td>
+                                <td class="num" th:text="${sec.cantidad}">0</td>
+                                <td class="num"><span th:replace="~{contabilidad/fragmentos :: plata(${sec.total})}"></span></td>
+                            </tr>
+                            <th:block th:each="g : ${sec.grupos}">
+                                <tr class="fila-cat">
+                                    <td th:text="${g.nombre}">NÓMINA</td>
+                                    <td class="num" th:text="${g.cantidad}">0</td>
+                                    <td class="num"><span th:replace="~{contabilidad/fragmentos :: plata(${g.total})}"></span></td>
+                                </tr>
+                                <tr class="fila-sub" th:each="l : ${g.subs}">
+                                    <td th:text="${l.nombre}">SUELDOS</td>
+                                    <td class="num" th:text="${l.cantidad}">0</td>
+                                    <td class="num"><span th:replace="~{contabilidad/fragmentos :: plata(${l.total})}"></span></td>
+                                </tr>
+                            </th:block>
+                        </th:block>
+                    </tbody>
+                </table>
+            </div>
+        </th:block>
+
+        <!-- Resumen general: resultado y consolidado -->
+        <div class="cuadros-final mb-3" th:if="${reporte.general}">
+            <div class="estado-resultado">
+                <h2>Resultado del periodo</h2>
+                <div class="fila"><span>Ingresos</span><span th:replace="~{contabilidad/fragmentos :: plata(${reporte.totalIngresos})}"></span></div>
+                <div class="fila"><span>− Costos de venta</span><span th:replace="~{contabilidad/fragmentos :: plata(${reporte.totalCostos})}"></span></div>
+                <div class="fila subtotal"><span>= Utilidad bruta</span><span th:replace="~{contabilidad/fragmentos :: plata(${reporte.utilidadBruta})}"></span></div>
+                <div class="fila"><span>− Gastos</span><span th:replace="~{contabilidad/fragmentos :: plata(${reporte.totalGastos})}"></span></div>
+                <div class="fila subtotal final"><span>= Utilidad neta</span><span th:replace="~{contabilidad/fragmentos :: plata(${reporte.utilidadNeta})}"></span></div>
+                <th:block th:if="${reporte.totalOtros.signum() != 0}">
+                    <div class="fila"><span>− No son gasto</span><span th:replace="~{contabilidad/fragmentos :: plata(${reporte.totalOtros})}"></span></div>
+                    <div class="fila subtotal"><span>= Plata que quedó</span><span th:replace="~{contabilidad/fragmentos :: plata(${reporte.resultadoEnCaja})}"></span></div>
+                </th:block>
+            </div>
+            <div>
+                <h2>Consolidado de hoy</h2>
+                <table class="table consolidado">
+                    <tbody>
+                        <tr th:each="c : ${reporte.saldos}">
+                            <td th:text="${c.nombre}">BANCOLOMBIA</td>
+                            <td class="num"><span th:replace="~{contabilidad/fragmentos :: plata(${c.saldo})}"></span></td>
+                        </tr>
+                        <tr class="total"><td>TOTAL EN CUENTAS</td><td class="num"><span th:replace="~{contabilidad/fragmentos :: plata(${reporte.totalCuentas})}"></span></td></tr>
+                        <tr><td>+ Cuentas por cobrar</td><td class="num"><span th:replace="~{contabilidad/fragmentos :: plata(${reporte.porCobrar})}"></span></td></tr>
+                        <tr><td>− Cuentas por pagar</td><td class="num"><span th:replace="~{contabilidad/fragmentos :: plata(${reporte.porPagar})}"></span></td></tr>
+                        <tr class="neta"><td>Total + por cobrar − por pagar</td><td class="num"><span th:replace="~{contabilidad/fragmentos :: plata(${reporte.posicionNeta})}"></span></td></tr>
+                    </tbody>
+                </table>
+                <p class="nota">Saldos de hoy: no dependen de las fechas escogidas.</p>
+            </div>
+        </div>
+
+        <!-- Detalle -->
+        <th:block th:unless="${reporte.vacio}">
+            <h2 th:text="'Detalle de movimientos (' + ${reporte.cantidad} + ')'">Detalle de movimientos</h2>
+            <p class="ayuda" th:if="${detalleRecortado}"
+               th:text="'Aquí se ven los primeros ' + ${maxEnPantalla} + '. El Excel y el PDF traen todos.'">Aquí se ven los primeros 300.</p>
+            <div class="tabla-wrap">
+                <table class="table table-hover align-middle tabla-detalle">
+                    <thead>
+                        <tr><th>Fecha</th><th>Categoría</th><th>Cuenta</th><th>Detalle</th><th class="num">Valor</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="d : ${detalleEnPantalla}">
+                            <td class="text-nowrap" th:text="${d.fecha}">05/11/2026</td>
+                            <td class="detalle-mov"><span th:text="${d.subcategoria}">SUELDOS</span><small th:text="${d.categoria}">NÓMINA</small></td>
+                            <td class="text-nowrap" th:text="${d.cuenta}">BANCOLOMBIA</td>
+                            <td class="detalle-mov"><span th:text="${d.tercero}">Juan</span><small th:text="${d.descripcion}"></small></td>
+                            <td class="num fw-bold" th:classappend="${d.deIngreso} ? 'txt-ingreso'"><span th:replace="~{contabilidad/fragmentos :: plata(${d.valor})}"></span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <p class="nota">En verde, los ingresos. Un valor negativo es una devolución (resta en su categoría). Los traslados entre cuentas no salen porque no son ingreso ni gasto.</p>
+        </th:block>
+    </section>
+</main>
+
+<script src="/js/contabilidad/reportes.js"></script>
+<script src="/js/token-nav.js"></script>
+</body>
+</html>
