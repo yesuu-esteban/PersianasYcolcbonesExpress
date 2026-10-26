@@ -14,13 +14,36 @@ import Colcones_Persinas.proyecto_express.repository.fabrica.RolloTelaRepository
 
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
+/**
+ * Inventario de la fábrica: busca, reserva y descuenta el material de cada pedido.
+ *
+ * CÓMO SE DESCUENTA (desde esta versión):
+ *  1. Para toda la orden se arma primero un PLAN DE CORTE en memoria. Cada producto
+ *     (y cada unidad de una misma línea) corta de la pieza que quedó después del
+ *     producto anterior; nunca dos productos "cuentan" con el mismo pedazo.
+ *  2. Siempre se escoge la pieza MÁS PEQUEÑA que alcance (si empatan, la que ya
+ *     está empezada): así se gastan primero los sobrantes y los rollos abiertos.
+ *  3. Si algo no alcanza para algún producto, no se descuenta NADA y se dice cuál.
+ *  4. Si todo alcanza, se descuenta de verdad siguiendo ese mismo plan, y cada
+ *     producto queda con su propio registro: "tenía X m → quedan Y m".
+ */
 @Service
 public class InventarioServicio {
 
@@ -138,6 +161,70 @@ public class InventarioServicio {
         public String color;
         public double ancho;
         public double metros;
+    }
+
+    // ─── Plan de corte (lo que se le va a cortar a cada producto) ───────────
+
+    /** Un corte o un descuento concreto: de qué sale, cuánto se usa y cuánto queda. */
+    public static class Paso {
+        /** Nombre corto para mostrar: "🔧 Tubo", "🧵 Tela", "🔩 Tornillo"… */
+        public String material;
+        /** RETAZO, ROLLO, PIEZA, PITILLO o UNIDAD. */
+        public String clase;
+        /** id del retazo, rollo o pieza (null en UNIDAD). */
+        public Integer fuenteId;
+        /** Nombre del insumo en el catálogo (PIEZA, PITILLO y UNIDAD). */
+        public String insumoNombre;
+        /** Metros que se cortan (o unidades). */
+        public double cantidad;
+        /** Lo que tenía la pieza/rollo antes de este corte (o stock antes). */
+        public double antes;
+        /** Lo que queda después de este corte. */
+        public double despues;
+        /** true = quedó tan poquito que se bota (o se gastó completa). */
+        public boolean descartado;
+        /** true = la pieza la escogió el usuario a mano. */
+        public boolean manual;
+        public boolean sustituto;
+        public double anchoSolicitado;
+        public boolean combinado;
+        /** Aviso para el usuario (p. ej. "la pieza que elegiste ya se gastó en otro producto"). */
+        public String nota;
+        /** Lo que se corta, en palabras: "1.475 m", "1.47 m × 1.70 m", "8 und." */
+        public String medida;
+        /** De dónde sale y cuánto queda, en palabras. */
+        public String texto;
+    }
+
+    /** El plan completo de un producto (una unidad). */
+    public static class PlanPedido {
+        public Pedido pedido;
+        public List<Paso> pasos = new ArrayList<>();
+        public List<String> faltantes = new ArrayList<>();
+
+        public boolean isDisponible() { return faltantes.isEmpty(); }
+    }
+
+    /** Vista previa de UNA unidad (para la pantalla de nuevo pedido). */
+    public static class VistaCopia {
+        public String etiqueta;
+        public boolean disponible = true;
+        public List<Paso> pasos = new ArrayList<>();
+        public List<String> faltantes = new ArrayList<>();
+    }
+
+    /** Vista previa de una línea del formulario (puede tener varias unidades). */
+    public static class VistaLinea {
+        public boolean disponible = true;
+        public List<VistaCopia> copias = new ArrayList<>();
+    }
+
+    /** Vista previa de TODA la orden, contando lo que gasta cada línea. */
+    public static class VistaLote {
+        public boolean disponible = true;
+        public List<VistaLinea> lineas = new ArrayList<>();
+        /** "Tubo R16 #5: 5.80 m → 1.20 m (3 cortes)" — una línea por pieza que se toca. */
+        public List<String> resumen = new ArrayList<>();
     }
 
     private static final int UMBRAL_UNIDAD_ADVERTENCIA_DEFECTO = 50;
@@ -268,25 +355,28 @@ public class InventarioServicio {
 
     public MaterialUsado descontarPiezaPitillo(Pedido pedido, PiezaInsumo pieza, double metros,
                                                 boolean manual, boolean combinado) {
-        if (pieza.getLargoRestante() < metros - 0.001) {
+        double antes = num(pieza.getLargoRestante());
+        if (antes < metros - 0.001) {
             throw new MaterialInsuficienteException(
                     "Pieza #" + pieza.getId() + " (" + pieza.getInsumo().getNombre() + ") no tiene suficiente material ("
-                    + pieza.getLargoRestante() + " m disponibles, " + metros + " m necesarios).");
+                    + antes + " m disponibles, " + metros + " m necesarios).");
         }
 
-        double sobrante = redondear(pieza.getLargoRestante() - metros);
+        double sobrante = redondear(antes - metros);
+        boolean descartar = sobrante < UMBRAL_DESCARTE_PIEZA;
 
         MaterialUsado r = new MaterialUsado();
         r.setPedidoId(pedido.getId());
         r.setTipoMaterial(pieza.getInsumo().getNombre().toUpperCase().replace(" ", "_"));
         r.setPiezaInsumoId(pieza.getId());
         r.setFuenteDescripcion(pieza.getInsumo().getNombre() + " (#" + pieza.getId()
-                + ", pieza original de " + redondear(pieza.getLargoInicial()) + " m)"
-                + (combinado ? " [combinado con otra(s) pieza(s)]" : ""));
+                + ", pieza original de " + redondear(num(pieza.getLargoInicial())) + " m)"
+                + (combinado ? " [combinado con otra(s) pieza(s)]" : "")
+                + cambio(antes, sobrante, descartar));
         r.setMetrosUsados(metros);
         r.setSeleccionManual(manual);
 
-        if (sobrante < UMBRAL_DESCARTE_PIEZA) {
+        if (descartar) {
             r.setMetrosSobrantes(0.0);
             piezaInsumoRepository.delete(pieza);
         } else {
@@ -299,33 +389,27 @@ public class InventarioServicio {
     }
 
     // ═══════════════════════════════════════════════════════════════
-    // DESCUENTOS UNITARIOS
+    // DESCUENTOS UNITARIOS (cada uno deja su registro "tenía → quedan")
     // ═══════════════════════════════════════════════════════════════
 
     public MaterialUsado descontarRetazo(Pedido pedido, RetazoTela retazo, boolean manual) {
         double corteAncho = pedido.getCorteTelaAncho();
         double corteAlto = pedido.getCorteTelaAlto();
 
-        double anchoOriginal = retazo.getAncho();
-        double altoOriginal = retazo.getAlto();
+        double anchoOriginal = num(retazo.getAncho());
+        double altoOriginal = num(retazo.getAlto());
 
-        boolean entraDirecto = retazo.getAncho() >= corteAncho - 0.001 && retazo.getAlto() >= corteAlto - 0.001;
-        boolean entraRotado = retazo.getAncho() >= corteAlto - 0.001 && retazo.getAlto() >= corteAncho - 0.001;
-
-        double altoUsado;
-        if (entraDirecto && (!entraRotado || retazo.getAlto() - corteAlto <= retazo.getAlto() - corteAncho)) {
-            altoUsado = corteAlto;
-        } else if (entraRotado) {
-            altoUsado = corteAncho;
-        } else {
+        double altoUsado = altoQueGastaRetazo(anchoOriginal, altoOriginal, corteAncho, corteAlto);
+        if (altoUsado < 0) {
             throw new MaterialInsuficienteException(
                     "Retazo #" + retazo.getId() + " no tiene medidas suficientes ("
-                    + retazo.getAncho() + "m × " + retazo.getAlto() + "m disponibles, se necesitan "
+                    + anchoOriginal + "m × " + altoOriginal + "m disponibles, se necesitan "
                     + corteAncho + "m × " + corteAlto + "m, en cualquier orientación).");
         }
 
-        double sobrante = redondear(retazo.getAlto() - altoUsado);
-        if (sobrante <= UMBRAL_DESCARTE_RETAZO) {
+        double sobrante = redondear(altoOriginal - altoUsado);
+        boolean descartar = sobrante <= UMBRAL_DESCARTE_RETAZO;
+        if (descartar) {
             retazoTelaRepository.delete(retazo);
         } else {
             retazo.setAlto(sobrante);
@@ -335,12 +419,31 @@ public class InventarioServicio {
         r.setPedidoId(pedido.getId());
         r.setTipoMaterial("RETAZO");
         r.setFuenteDescripcion("Retazo " + retazo.getColor() + " (#" + retazo.getId()
-                + ") — medida original " + anchoOriginal + "m × " + altoOriginal + "m");
+                + ") — medida original " + anchoOriginal + "m × " + altoOriginal + "m"
+                + (descartar
+                    ? " · se gastó completo"
+                    : " · quedan " + num2(anchoOriginal) + " m × " + num2(sobrante) + " m"));
         r.setMetrosUsados(altoUsado);
         r.setMetrosSobrantes(sobrante);
         r.setMetrosCuadrados(redondear(pedido.getCorteTelaAncho() * pedido.getCorteTelaAlto()));
         r.setSeleccionManual(manual);
         return materialUsadoRepository.save(r);
+    }
+
+    /**
+     * Cuánto alto se le quita a un retazo para sacar un corte de anchoCorte × altoCorte.
+     * Prueba derecho y girado y escoge el que deja el sobrante más pequeño.
+     * Devuelve -1 si no cabe de ninguna forma.
+     */
+    private double altoQueGastaRetazo(double anchoRetazo, double altoRetazo, double corteAncho, double corteAlto) {
+        boolean entraDirecto = anchoRetazo >= corteAncho - 0.001 && altoRetazo >= corteAlto - 0.001;
+        boolean entraRotado = anchoRetazo >= corteAlto - 0.001 && altoRetazo >= corteAncho - 0.001;
+        if (entraDirecto && (!entraRotado || altoRetazo - corteAlto <= altoRetazo - corteAncho)) {
+            return corteAlto;
+        } else if (entraRotado) {
+            return corteAncho;
+        }
+        return -1;
     }
 
     public MaterialUsado descontarTela(Pedido pedido, RolloTela rollo, double metros, boolean manual) {
@@ -349,15 +452,18 @@ public class InventarioServicio {
 
     public MaterialUsado descontarTela(Pedido pedido, RolloTela rollo, double metros, boolean manual,
                                         boolean esSustituto, double anchoOriginalNecesario) {
-        if (rollo.getLargoRestante() < metros - 0.001) {
+        double antes = num(rollo.getLargoRestante());
+        if (antes < metros - 0.001) {
             throw new MaterialInsuficienteException(
                     "Rollo #" + rollo.getId() + " no tiene suficiente material ("
-                    + rollo.getLargoRestante() + " m disponibles, " + metros + " m necesarios).");
+                    + antes + " m disponibles, " + metros + " m necesarios).");
         }
-        double restante = redondear(rollo.getLargoRestante() - metros);
+        double restante = redondear(antes - metros);
+        boolean descartar = restante < UMBRAL_DESCARTE_PIEZA;
 
         String fuente = "Rollo " + rollo.getColor() + " " + rollo.getAncho() + "m (#" + rollo.getId()
-                + ", rollo original de " + redondear(rollo.getLargoInicial()) + " m)";
+                + ", rollo original de " + redondear(num(rollo.getLargoInicial())) + " m)"
+                + cambio(antes, restante, descartar);
         if (esSustituto) {
             fuente += " ⚠ SUSTITUTO: se necesitaba ancho " + anchoOriginalNecesario
                     + "m pero no había stock; se usó " + rollo.getAncho() + "m en su lugar.";
@@ -372,7 +478,7 @@ public class InventarioServicio {
         r.setMetrosCuadrados(redondear(pedido.getCorteTelaAncho() * pedido.getCorteTelaAlto()));
         r.setSeleccionManual(manual);
 
-        if (restante < UMBRAL_DESCARTE_PIEZA) {
+        if (descartar) {
             r.setMetrosSobrantes(0.0);
             rolloTelaRepository.delete(rollo);
         } else {
@@ -382,6 +488,7 @@ public class InventarioServicio {
         }
         return materialUsadoRepository.save(r);
     }
+
 
     public MaterialUsado descontarTelaVentaDirecta(Pedido pedido, RolloTela rollo, double metros) {
         if (rollo.getLargoRestante() < metros - 0.001) {
@@ -414,23 +521,26 @@ public class InventarioServicio {
     }
 
     public MaterialUsado descontarInsumoConMedida(Pedido pedido, PiezaInsumo pieza, double metros, boolean manual) {
-        if (pieza.getLargoRestante() < metros - 0.001) {
+        double antes = num(pieza.getLargoRestante());
+        if (antes < metros - 0.001) {
             throw new MaterialInsuficienteException(
                     "Pieza #" + pieza.getId() + " (" + pieza.getInsumo().getNombre() + ") no tiene suficiente material ("
-                    + pieza.getLargoRestante() + " m disponibles, " + metros + " m necesarios).");
+                    + antes + " m disponibles, " + metros + " m necesarios).");
         }
-        double sobrante = redondear(pieza.getLargoRestante() - metros);
+        double sobrante = redondear(antes - metros);
+        boolean descartar = sobrante < UMBRAL_DESCARTE_PIEZA;
 
         MaterialUsado r = new MaterialUsado();
         r.setPedidoId(pedido.getId());
         r.setTipoMaterial(pieza.getInsumo().getNombre().toUpperCase().replace(" ", "_"));
         r.setPiezaInsumoId(pieza.getId());
         r.setFuenteDescripcion(pieza.getInsumo().getNombre() + " (#" + pieza.getId()
-                + ", pieza original de " + redondear(pieza.getLargoInicial()) + " m)");
+                + ", pieza original de " + redondear(num(pieza.getLargoInicial())) + " m)"
+                + cambio(antes, sobrante, descartar));
         r.setMetrosUsados(metros);
         r.setSeleccionManual(manual);
 
-        if (sobrante < UMBRAL_DESCARTE_PIEZA) {
+        if (descartar) {
             r.setMetrosSobrantes(0.0);
             piezaInsumoRepository.delete(pieza);
         } else {
@@ -454,20 +564,832 @@ public class InventarioServicio {
         MaterialUsado r = new MaterialUsado();
         r.setPedidoId(pedido.getId());
         r.setTipoMaterial(insumo.getNombre().toUpperCase().replace(" ", "_"));
-        r.setFuenteDescripcion(insumo.getNombre() + " (unidad)");
+        r.setFuenteDescripcion(insumo.getNombre() + " (unidad) · había " + disponible
+                + " → quedan " + (disponible - unidades));
         r.setMetrosUsados(unidades);
-        r.setMetrosSobrantes(insumo.getStockUnidades());
+        r.setMetrosSobrantes(disponible - unidades);
         r.setSeleccionManual(false);
         return materialUsadoRepository.save(r);
     }
 
     // ═══════════════════════════════════════════════════════════════
-    // VERIFICACIÓN PREVIA — respeta la selección manual del jefe
+    // PLAN DE CORTE — así se decide qué se corta de dónde
     //
-    // NOTA sobre Control R24: cuando el pedido usa Control R24, el control,
-    // terminal, acoples y soportes ya NO se verifican por separado — todo
-    // eso viene físicamente empacado junto en "Paquete de Control R24", del
-    // que basta verificar 1 unidad disponible.
+    // El Simulador es una COPIA en memoria del inventario (no toca la base
+    // de datos). Cada corte que se planea rebaja la pieza en esa copia, así
+    // el siguiente producto ve lo que de verdad quedó. Al final, si todo
+    // alcanza, aplicarPlanes() hace los descuentos reales en el mismo orden.
+    // ═══════════════════════════════════════════════════════════════
+
+    private static final class PiezaSim {
+        final Integer id;
+        final Object insumoId;
+        final String insumo;
+        final double inicial;
+        final double original;
+        double restante;
+        boolean fuera;
+        int cortes;
+
+        PiezaSim(Integer id, Object insumoId, String insumo, double inicial, double restante) {
+            this.id = id;
+            this.insumoId = insumoId;
+            this.insumo = insumo;
+            this.inicial = inicial;
+            this.restante = restante;
+            this.original = restante;
+        }
+
+        boolean empezada() { return restante < inicial - 0.001; }
+    }
+
+    private static final class RolloSim {
+        Integer id;
+        String color;
+        double ancho;
+        double inicial;
+        double original;
+        double restante;
+        boolean fuera;
+        int cortes;
+
+        boolean empezado() { return restante < inicial - 0.001; }
+    }
+
+    private static final class RetazoSim {
+        Integer id;
+        String color;
+        double ancho;
+        double altoOriginal;
+        double alto;
+        boolean fuera;
+        int cortes;
+    }
+
+    private static final class UnidadSim {
+        String nombre;
+        int original;
+        int stock;
+    }
+
+    /** Pieza más pequeña que alcance; si empatan, la ya empezada; luego la más antigua. */
+    private static final Comparator<PiezaSim> MEJOR_PIEZA = Comparator
+            .comparingDouble((PiezaSim p) -> p.restante)
+            .thenComparingInt(p -> p.empezada() ? 0 : 1)
+            .thenComparingInt(p -> p.id == null ? Integer.MAX_VALUE : p.id);
+
+    private static final Comparator<RolloSim> MEJOR_ROLLO = Comparator
+            .comparingDouble((RolloSim r) -> r.restante)
+            .thenComparingInt(r -> r.empezado() ? 0 : 1)
+            .thenComparingInt(r -> r.id == null ? Integer.MAX_VALUE : r.id);
+
+    /** Copia en memoria del inventario para planear cortes sin tocar la base de datos. */
+    private final class Simulador {
+        private final Map<Object, List<PiezaSim>> piezasPorInsumo = new HashMap<>();
+        private final Map<Integer, PiezaSim> piezasPorId = new LinkedHashMap<>();
+        private List<RolloSim> rollos;
+        private final Map<Integer, RolloSim> rollosPorId = new LinkedHashMap<>();
+        private List<RetazoSim> retazos;
+        private final Map<Integer, RetazoSim> retazosPorId = new LinkedHashMap<>();
+        private final Map<String, UnidadSim> unidades = new LinkedHashMap<>();
+
+        private PiezaSim registrar(PiezaInsumo p) {
+            Integer id = p.getId();
+            PiezaSim ya = piezasPorId.get(id);
+            if (ya != null) return ya;
+            Insumo ins = p.getInsumo();
+            PiezaSim s = new PiezaSim(id,
+                    ins != null ? (Object) ins.getId() : null,
+                    ins != null ? ins.getNombre() : "Pieza",
+                    num(p.getLargoInicial()),
+                    num(p.getLargoRestante()));
+            piezasPorId.put(id, s);
+            return s;
+        }
+
+        List<PiezaSim> piezasDe(Insumo insumo) {
+            Object clave = insumo.getId();
+            List<PiezaSim> lista = piezasPorInsumo.get(clave);
+            if (lista == null) {
+                lista = new ArrayList<>();
+                for (PiezaInsumo p : piezaInsumoRepository
+                        .findByInsumoIdAndLargoRestanteGreaterThanOrderByLargoRestanteAsc(insumo.getId(), 0.0)) {
+                    lista.add(registrar(p));
+                }
+                piezasPorInsumo.put(clave, lista);
+            }
+            return lista;
+        }
+
+        PiezaSim pieza(int id) {
+            PiezaSim ya = piezasPorId.get(id);
+            if (ya != null) return ya;
+            return piezaInsumoRepository.findById(id).map(this::registrar).orElse(null);
+        }
+
+        List<RolloSim> rollos() {
+            if (rollos == null) {
+                rollos = new ArrayList<>();
+                for (RolloTela r : rolloTelaRepository.findAllByOrderByColorAscAnchoAscLargoRestanteAsc()) {
+                    RolloSim s = rollosPorId.get(r.getId());
+                    if (s == null) {
+                        s = new RolloSim();
+                        s.id = r.getId();
+                        s.color = r.getColor();
+                        s.ancho = num(r.getAncho());
+                        s.inicial = num(r.getLargoInicial());
+                        s.restante = num(r.getLargoRestante());
+                        s.original = s.restante;
+                        rollosPorId.put(s.id, s);
+                    }
+                    rollos.add(s);
+                }
+            }
+            return rollos;
+        }
+
+        RolloSim rollo(int id) {
+            rollos();
+            return rollosPorId.get(id);
+        }
+
+        List<RetazoSim> retazos() {
+            if (retazos == null) {
+                retazos = new ArrayList<>();
+                for (RetazoTela r : retazoTelaRepository.findAllByOrderByColorAscAnchoAscAltoAsc()) {
+                    RetazoSim s = new RetazoSim();
+                    s.id = r.getId();
+                    s.color = r.getColor();
+                    s.ancho = num(r.getAncho());
+                    s.alto = num(r.getAlto());
+                    s.altoOriginal = s.alto;
+                    retazosPorId.put(s.id, s);
+                    retazos.add(s);
+                }
+            }
+            return retazos;
+        }
+
+        RetazoSim retazo(int id) {
+            retazos();
+            return retazosPorId.get(id);
+        }
+
+        UnidadSim unidad(String nombre) {
+            String clave = nombre.trim().toLowerCase(Locale.ROOT);
+            UnidadSim u = unidades.get(clave);
+            if (u == null) {
+                Insumo insumo = obtenerInsumoPorNombre(nombre.trim());
+                u = new UnidadSim();
+                u.nombre = insumo.getNombre();
+                u.original = insumo.getStockUnidades() != null ? insumo.getStockUnidades() : 0;
+                u.stock = u.original;
+                unidades.put(clave, u);
+            }
+            return u;
+        }
+
+        /** Una línea por cada pieza, rollo, retazo o insumo que la orden toca. */
+        List<String> resumen() {
+            List<String> lineas = new ArrayList<>();
+            for (RetazoSim r : retazosPorId.values()) {
+                if (r.cortes == 0) continue;
+                lineas.add("✂ Retazo " + r.color + " #" + r.id + ": " + num2(r.ancho) + " × " + num2(r.altoOriginal)
+                        + " m → " + (r.fuera ? "se gasta completo" : num2(r.ancho) + " × " + num2(r.alto) + " m")
+                        + veces(r.cortes));
+            }
+            for (RolloSim r : rollosPorId.values()) {
+                if (r.cortes == 0) continue;
+                lineas.add("🧵 Rollo " + r.color + " " + num2(r.ancho) + " m #" + r.id + ": " + num2(r.original)
+                        + " m → " + (r.fuera ? "se acaba" : num2(r.restante) + " m") + veces(r.cortes));
+            }
+            for (PiezaSim p : piezasPorId.values()) {
+                if (p.cortes == 0) continue;
+                lineas.add("📏 " + p.insumo + " #" + p.id + ": " + num2(p.original) + " m → "
+                        + (p.fuera ? "se gasta" : num2(p.restante) + " m") + veces(p.cortes));
+            }
+            for (UnidadSim u : unidades.values()) {
+                if (u.stock == u.original) continue;
+                lineas.add("🔢 " + u.nombre + ": " + u.original + " → " + u.stock + " und.");
+            }
+            return lineas;
+        }
+    }
+
+    private static String veces(int cortes) {
+        return cortes > 1 ? " (" + cortes + " cortes)" : "";
+    }
+
+    /**
+     * Arma el plan de corte de una orden completa. Cada unidad descuenta de lo que
+     * dejó la anterior. Si algo no alcanza lanza MaterialInsuficienteException
+     * diciendo en qué producto, y NO se toca nada del inventario.
+     *
+     * @param selecciones una por pedido (puede ser null o tener nulls = automático)
+     */
+    public List<PlanPedido> planificarLote(List<Pedido> pedidos, List<SeleccionManual> selecciones) {
+        Simulador sim = new Simulador();
+        List<PlanPedido> planes = new ArrayList<>();
+        for (int i : ordenDePlan(pedidos)) {
+            Pedido p = pedidos.get(i);
+            PlanPedido plan = new PlanPedido();
+            plan.pedido = p;
+            try {
+                planificar(p, seleccionDe(selecciones, i), sim, plan, true);
+            } catch (MaterialInsuficienteException e) {
+                if (pedidos.size() == 1) throw e;
+                throw new MaterialInsuficienteException("Producto " + (i + 1) + " «" + nombreProducto(p) + "»: "
+                        + e.getMessage());
+            }
+            planes.add(plan);
+        }
+        return planes;
+    }
+
+    /** Hace los descuentos reales siguiendo el plan (en el mismo orden en que se planeó). */
+    public void aplicarPlanes(List<PlanPedido> planes) {
+        for (PlanPedido plan : planes) {
+            aplicarPlan(plan);
+        }
+    }
+
+    public void aplicarPlan(PlanPedido plan) {
+        Pedido pedido = plan.pedido;
+        for (Paso paso : plan.pasos) {
+            MaterialUsado registro;
+            switch (paso.clase) {
+                case "RETAZO":
+                    registro = descontarRetazo(pedido, obtenerRetazoPorId(paso.fuenteId), paso.manual);
+                    break;
+                case "ROLLO":
+                    registro = descontarTela(pedido, obtenerRolloPorId(paso.fuenteId), paso.cantidad, paso.manual,
+                            paso.sustituto, paso.anchoSolicitado);
+                    break;
+                case "PIEZA":
+                    registro = descontarInsumoConMedida(pedido, obtenerPiezaPorId(paso.fuenteId), paso.cantidad, paso.manual);
+                    break;
+                case "PITILLO":
+                    registro = descontarPiezaPitillo(pedido, obtenerPiezaPorId(paso.fuenteId), paso.cantidad,
+                            paso.manual, paso.combinado);
+                    break;
+                case "UNIDAD":
+                    registro = descontarInsumoPorUnidad(pedido, paso.insumoNombre, (int) Math.round(paso.cantidad));
+                    break;
+                default:
+                    continue;
+            }
+            if (paso.nota != null && registro != null) {
+                registro.setFuenteDescripcion(registro.getFuenteDescripcion() + " — " + paso.nota);
+                materialUsadoRepository.save(registro);
+            }
+        }
+    }
+
+    /**
+     * Vista previa de toda la orden: igual que el plan real, pero si algo falta no
+     * se detiene; lo anota y sigue, para que se vea todo lo que falta de una vez.
+     *
+     * @param lineas             cada línea del formulario con sus unidades ya separadas
+     * @param seleccionPorLinea  la selección manual de cada línea (o null)
+     */
+    public VistaLote previsualizarLote(List<List<Pedido>> lineas, List<SeleccionManual> seleccionPorLinea) {
+        List<Pedido> todos = new ArrayList<>();
+        List<SeleccionManual> sels = new ArrayList<>();
+        List<int[]> ubicacion = new ArrayList<>();
+        for (int l = 0; l < lineas.size(); l++) {
+            List<Pedido> copias = lineas.get(l) != null ? lineas.get(l) : Collections.<Pedido>emptyList();
+            for (int c = 0; c < copias.size(); c++) {
+                todos.add(copias.get(c));
+                sels.add(seleccionDe(seleccionPorLinea, l));
+                ubicacion.add(new int[]{l, c});
+            }
+        }
+
+        Simulador sim = new Simulador();
+        PlanPedido[] planes = new PlanPedido[todos.size()];
+        for (int i : ordenDePlan(todos)) {
+            PlanPedido plan = new PlanPedido();
+            plan.pedido = todos.get(i);
+            if (plan.pedido.getAncho() <= 0 || (!plan.pedido.isRielOndaSerena() && plan.pedido.getAltura() <= 0)) {
+                plan.faltantes.add("Completa ancho y alto para calcular el material.");
+            } else {
+                planificar(plan.pedido, sels.get(i), sim, plan, false);
+            }
+            planes[i] = plan;
+        }
+
+        VistaLote vista = new VistaLote();
+        for (int l = 0; l < lineas.size(); l++) {
+            vista.lineas.add(new VistaLinea());
+        }
+        for (int i = 0; i < todos.size(); i++) {
+            int l = ubicacion.get(i)[0];
+            int c = ubicacion.get(i)[1];
+            int total = lineas.get(l).size();
+            VistaCopia copia = new VistaCopia();
+            copia.etiqueta = total > 1 ? "Unidad " + (c + 1) + " de " + total : "";
+            copia.pasos = planes[i].pasos;
+            copia.faltantes = planes[i].faltantes;
+            copia.disponible = planes[i].isDisponible();
+            VistaLinea linea = vista.lineas.get(l);
+            linea.copias.add(copia);
+            if (!copia.disponible) {
+                linea.disponible = false;
+                vista.disponible = false;
+            }
+        }
+        vista.resumen = sim.resumen();
+        return vista;
+    }
+
+    /**
+     * En qué orden se planean los cortes: primero los productos más anchos (y luego
+     * los más altos). Así los cortes grandes toman las piezas grandes y los cortes
+     * pequeños aprovechan los sobrantes; se desperdicia menos.
+     */
+    private List<Integer> ordenDePlan(List<Pedido> pedidos) {
+        List<Integer> orden = new ArrayList<>();
+        for (int i = 0; i < pedidos.size(); i++) orden.add(i);
+        orden.sort(Comparator
+                .comparingDouble((Integer i) -> -pedidos.get(i).getAncho())
+                .thenComparingDouble(i -> -pedidos.get(i).getAltura())
+                .thenComparingInt(i -> i));
+        return orden;
+    }
+
+    private SeleccionManual seleccionDe(List<SeleccionManual> selecciones, int i) {
+        return (selecciones == null || i >= selecciones.size()) ? null : selecciones.get(i);
+    }
+
+    private String nombreProducto(Pedido p) {
+        String d = p.getDescripcion();
+        if (d != null && !d.isBlank()) return d.trim();
+        return num2(p.getAncho()) + " × " + num2(p.getAltura()) + " m";
+    }
+
+    private void intentarPaso(PlanPedido plan, boolean estricto, Runnable accion) {
+        try {
+            accion.run();
+        } catch (MaterialInsuficienteException e) {
+            if (estricto) throw e;
+            plan.faltantes.add(e.getMessage());
+        }
+    }
+
+    private void planificar(Pedido p, SeleccionManual sel, Simulador sim, PlanPedido plan, boolean estricto) {
+        if (p.isRielOndaSerena()) {
+            planificarRiel(p, sim, plan, estricto);
+        } else {
+            planificarFabricacion(p, sel, sim, plan, estricto);
+        }
+    }
+
+    private void planificarFabricacion(Pedido p, SeleccionManual sel, Simulador sim, PlanPedido plan, boolean estricto) {
+        boolean cabezal = Boolean.TRUE.equals(p.getUsaCabezal());
+
+        intentarPaso(plan, estricto, () -> planificarTela(p, sel, sim, plan));
+
+        intentarPaso(plan, estricto, () -> cortarPieza(sim, plan, "🔧 Tubo",
+                obtenerInsumoPorNombre("Tubo " + p.getTuboRecomendado()), p.getCorteTuberia(),
+                sel != null ? sel.piezaTuboId : null));
+
+        if (cabezal) {
+            intentarPaso(plan, estricto, () -> cortarPieza(sim, plan, "🪟 Cabezal",
+                    obtenerInsumoPorNombre("Cabezal"), p.getMedidaCabezal(),
+                    sel != null ? sel.piezaCabezalId : null));
+        }
+
+        intentarPaso(plan, estricto, () -> cortarPieza(sim, plan, "⚖ Pesa",
+                obtenerInsumoPorNombre("Pesa"), p.getCorteTuberia(),
+                sel != null ? sel.piezaPesaId : null));
+
+        intentarPaso(plan, estricto, () -> cortarPieza(sim, plan, "🧶 Cuerda",
+                obtenerInsumoPorNombre("Cuerda"), p.getMetrosCuerda(),
+                sel != null ? sel.piezaCuerdaId : null));
+
+        // Control R24: viene empacado con terminal, acoples y soportes en un solo ítem.
+        if (p.isUsaPaqueteControlR24()) {
+            intentarPaso(plan, estricto, () -> usarUnidades(sim, plan, "🎛 Control", "Paquete de Control R24", 1));
+        } else {
+            String control = p.getTipoControl() != null ? p.getTipoControl().trim() : "";
+            intentarPaso(plan, estricto, () -> usarUnidades(sim, plan, "🎛 Control", control, 1));
+            if (p.getCantidadAcoples() > 0) {
+                intentarPaso(plan, estricto, () -> usarUnidades(sim, plan, "🔩 Acople", "Acople", p.getCantidadAcoples()));
+            }
+            intentarPaso(plan, estricto, () -> usarUnidades(sim, plan, "🔌 Terminal", "Terminal", p.getCantidadTerminal()));
+        }
+
+        if (Boolean.TRUE.equals(p.getUsaPitilloPesa())) {
+            intentarPaso(plan, estricto, () -> planificarPitillo(p, sel, sim, plan));
+        }
+
+        if (Boolean.TRUE.equals(p.getUsaConectorTope())) {
+            intentarPaso(plan, estricto, () -> usarUnidades(sim, plan, "🔗 Conector", "Conector", p.getCantidadConectores()));
+            if (p.getCantidadTopes() > 0) {
+                intentarPaso(plan, estricto, () -> usarUnidades(sim, plan, "🔗 Tope", "Tope Control", p.getCantidadTopes()));
+            }
+        }
+
+        // Soporte normal: solo si NO es Control R24 (ese ya trae los suyos).
+        if (!p.isUsaPaqueteControlR24()) {
+            intentarPaso(plan, estricto, () -> usarUnidades(sim, plan, "🔩 Soporte", "Soporte", p.getCantidadSoportes()));
+        }
+        if (cabezal) {
+            intentarPaso(plan, estricto, () -> usarUnidades(sim, plan, "🧢 Tapa cabezal", "Tapa Cabezal", p.getCantidadTapas()));
+        }
+        intentarPaso(plan, estricto, () -> usarUnidades(sim, plan, "🧢 Tapa perfil", "Tapa Perfil", p.getCantidadTapasPerfil()));
+        intentarPaso(plan, estricto, () -> usarUnidades(sim, plan, "🔩 Tornillo", "Tornillo", p.getCantidadTornillos()));
+        if (cabezal) {
+            intentarPaso(plan, estricto, () -> usarUnidades(sim, plan, "🔩 Tornillo perforante", "Tornillo Perforante",
+                    p.getCantidadTornillosPerforantes()));
+        }
+    }
+
+    private void planificarRiel(Pedido p, Simulador sim, PlanPedido plan, boolean estricto) {
+        intentarPaso(plan, estricto, () -> cortarPieza(sim, plan, "📏 Riel",
+                obtenerInsumoPorNombre("Riel Onda Serena"), p.getCorteRiel(), null));
+        intentarPaso(plan, estricto, () -> cortarPieza(sim, plan, "📌 Roachina",
+                obtenerInsumoPorNombre("Roachina"), p.getCorteRielPines(), null));
+        intentarPaso(plan, estricto, () -> cortarPieza(sim, plan, "🎗 Riata",
+                obtenerInsumoPorNombre("Riata"), p.getMedidaRiata(), null));
+
+        if (Boolean.TRUE.equals(p.getUsaPolea())) {
+            intentarPaso(plan, estricto, () -> cortarPieza(sim, plan, "🧶 Cuerda",
+                    obtenerInsumoPorNombre("Cuerda Onda Serena"), p.getCorteCuerdaOnda(), null));
+            intentarPaso(plan, estricto, () -> usarUnidades(sim, plan, "⚙ Polea", "Polea", p.getCantidadPoleas()));
+            intentarPaso(plan, estricto, () -> usarUnidades(sim, plan, "✖ Crusador", "Crusador", p.getCantidadTerminalPolea()));
+        } else {
+            intentarPaso(plan, estricto, () -> usarUnidades(sim, plan, "🧢 Tapa riel", "Tapa Riel", p.getCantidadTapasRiel()));
+            String nombreBaston = (p.getBastonElegido() != null && !p.getBastonElegido().isBlank())
+                    ? p.getBastonElegido() : "Bastón 0.80";
+            intentarPaso(plan, estricto, () -> usarUnidades(sim, plan, "🦯 Bastón", nombreBaston, p.getCantidadBaston()));
+        }
+        intentarPaso(plan, estricto, () -> usarUnidades(sim, plan, "🔩 Soporte riel", "Soporte Riel", p.getCantidadSoportesRiel()));
+    }
+
+    // ─── Tela: primero retazo, si no, el rollo más gastado que alcance ──────
+
+    private void planificarTela(Pedido p, SeleccionManual sel, Simulador sim, PlanPedido plan) {
+        double corteAncho = p.getCorteTelaAncho();
+        double corteAlto = p.getCorteTelaAlto();
+        String color = p.getColorTelaDeseado() != null ? p.getColorTelaDeseado() : "";
+        String nota = null;
+
+        if (sel != null && sel.retazoTelaId != null) {
+            RetazoSim r = sim.retazo(sel.retazoTelaId);
+            if (r == null) {
+                nota = "El retazo #" + sel.retazoTelaId + " que elegiste ya no existe; se tomó otra tela.";
+            } else {
+                if (!color.equalsIgnoreCase(r.color)) {
+                    throw new MaterialInsuficienteException(
+                            "El retazo #" + r.id + " es de color \"" + r.color
+                            + "\", pero el pedido necesita color \"" + color + "\".");
+                }
+                if (!r.fuera && altoQueGastaRetazo(r.ancho, r.alto, corteAncho, corteAlto) >= 0) {
+                    cortarRetazo(plan, r, corteAncho, corteAlto, true, null);
+                    return;
+                }
+                if (r.cortes > 0) {
+                    nota = "El retazo #" + r.id + " que elegiste ya no alcanzaba después de cortar los otros productos de esta orden; se tomó otra tela.";
+                } else {
+                    throw new MaterialInsuficienteException(
+                            "El retazo #" + r.id + " elegido no tiene medidas suficientes ("
+                            + r.ancho + "m × " + r.alto + "m disponibles, se necesitan "
+                            + corteAncho + "m × " + corteAlto + "m, en cualquier orientación).");
+                }
+            }
+        } else if (sel != null && sel.rolloTelaId != null) {
+            RolloSim r = sim.rollo(sel.rolloTelaId);
+            double necesario = metrosADescontarDeRollo(p);
+            if (r == null) {
+                nota = "El rollo #" + sel.rolloTelaId + " que elegiste ya no existe; se tomó otra tela.";
+            } else {
+                if (!color.equalsIgnoreCase(r.color)) {
+                    throw new MaterialInsuficienteException(
+                            "El rollo #" + r.id + " es de color \"" + r.color
+                            + "\", pero el pedido necesita color \"" + color + "\".");
+                }
+                if (!r.fuera && r.restante >= necesario - 0.001) {
+                    cortarRollo(plan, r, necesario, true, false, 0.0, null);
+                    return;
+                }
+                if (r.cortes > 0) {
+                    nota = "El rollo #" + r.id + " que elegiste ya no alcanzaba después de los otros productos de esta orden; se tomó otro.";
+                } else {
+                    throw new MaterialInsuficienteException(
+                            "El rollo #" + r.id + " no tiene suficiente material ("
+                            + r.restante + " m disponibles, " + necesario + " m necesarios).");
+                }
+            }
+        }
+
+        // Automático: 1) el retazo que deje menos sobrante
+        RetazoSim mejorRetazo = mejorRetazo(sim, color, corteAncho, corteAlto);
+        if (mejorRetazo != null) {
+            cortarRetazo(plan, mejorRetazo, corteAncho, corteAlto, false, nota);
+            return;
+        }
+
+        // 2) el rollo más gastado que alcance, en el ancho justo o el siguiente más ancho
+        double anchoNecesario = anchoComercialDe(p);
+        double metros = metrosADescontarDeRollo(p);
+        List<Double> anchos = new ArrayList<>(ANCHOS_COMERCIALES);
+        Collections.sort(anchos);
+        for (double anchoProbado : anchos) {
+            if (anchoProbado < anchoNecesario - 0.001) continue;
+            RolloSim rollo = mejorRollo(sim, color, anchoProbado, metros);
+            if (rollo != null) {
+                cortarRollo(plan, rollo, metros, false, anchoProbado > anchoNecesario + 0.001, anchoNecesario, nota);
+                return;
+            }
+        }
+
+        throw new MaterialInsuficienteException(
+                "No hay tela de color " + color + " disponible en ningún ancho comercial igual o mayor a "
+                + anchoNecesario + " m, con " + metros + " m disponibles"
+                + " (ni retazo de " + corteAncho + " × " + corteAlto + " m).");
+    }
+
+    private RetazoSim mejorRetazo(Simulador sim, String color, double corteAncho, double corteAlto) {
+        RetazoSim mejorDirecto = null;
+        RetazoSim mejorRotado = null;
+        for (RetazoSim r : sim.retazos()) {
+            if (r.fuera || !color.equalsIgnoreCase(r.color)) continue;
+            if (r.ancho >= corteAncho - 0.001 && r.alto >= corteAlto - 0.001
+                    && (mejorDirecto == null || r.alto < mejorDirecto.alto)) {
+                mejorDirecto = r;
+            }
+            if (r.ancho >= corteAlto - 0.001 && r.alto >= corteAncho - 0.001
+                    && (mejorRotado == null || r.alto < mejorRotado.alto)) {
+                mejorRotado = r;
+            }
+        }
+        if (mejorDirecto == null) return mejorRotado;
+        if (mejorRotado == null) return mejorDirecto;
+        double sobranteDirecto = mejorDirecto.alto - corteAlto;
+        double sobranteRotado = mejorRotado.alto - corteAncho;
+        return (sobranteDirecto <= sobranteRotado) ? mejorDirecto : mejorRotado;
+    }
+
+    private RolloSim mejorRollo(Simulador sim, String color, double ancho, double metros) {
+        RolloSim mejor = null;
+        for (RolloSim r : sim.rollos()) {
+            if (r.fuera || !color.equalsIgnoreCase(r.color)) continue;
+            if (Math.abs(r.ancho - ancho) > 0.001) continue;
+            if (r.restante < metros - 0.001) continue;
+            if (mejor == null || MEJOR_ROLLO.compare(r, mejor) < 0) mejor = r;
+        }
+        return mejor;
+    }
+
+    private void cortarRetazo(PlanPedido plan, RetazoSim r, double corteAncho, double corteAlto,
+                              boolean manual, String nota) {
+        double altoUsado = altoQueGastaRetazo(r.ancho, r.alto, corteAncho, corteAlto);
+        double antes = r.alto;
+        double despues = redondear(antes - altoUsado);
+        boolean descartado = despues <= UMBRAL_DESCARTE_RETAZO;
+
+        Paso paso = new Paso();
+        paso.material = "✂ Retazo";
+        paso.clase = "RETAZO";
+        paso.fuenteId = r.id;
+        paso.cantidad = altoUsado;
+        paso.antes = antes;
+        paso.despues = descartado ? 0.0 : despues;
+        paso.descartado = descartado;
+        paso.manual = manual;
+        paso.nota = nota;
+        paso.medida = num2(corteAncho) + " m × " + num2(corteAlto) + " m";
+        paso.texto = "Retazo " + r.color + " #" + r.id + " · tiene " + num2(r.ancho) + " × " + num2(antes) + " m → "
+                + (descartado ? "se gasta completo" : "quedará de " + num2(r.ancho) + " × " + num2(despues) + " m")
+                + (manual ? " (elegido por ti)" : "");
+        plan.pasos.add(paso);
+
+        r.cortes++;
+        if (descartado) {
+            r.alto = 0;
+            r.fuera = true;
+        } else {
+            r.alto = despues;
+        }
+    }
+
+    private void cortarRollo(PlanPedido plan, RolloSim r, double metros, boolean manual,
+                             boolean sustituto, double anchoSolicitado, String nota) {
+        double antes = r.restante;
+        double despues = redondear(antes - metros);
+        boolean descartado = despues < UMBRAL_DESCARTE_PIEZA;
+
+        Paso paso = new Paso();
+        paso.material = "🧵 Tela";
+        paso.clase = "ROLLO";
+        paso.fuenteId = r.id;
+        paso.cantidad = metros;
+        paso.antes = antes;
+        paso.despues = descartado ? 0.0 : despues;
+        paso.descartado = descartado;
+        paso.manual = manual;
+        paso.sustituto = sustituto;
+        paso.anchoSolicitado = anchoSolicitado;
+        paso.nota = nota;
+        paso.medida = num2(metros) + " m de largo";
+        paso.texto = "Rollo " + r.color + " " + num2(r.ancho) + " m #" + r.id + textoCambio(antes, despues, descartado)
+                + (manual ? " (elegido por ti)" : "")
+                + (sustituto ? " ⚠ Se necesitaba " + num2(anchoSolicitado) + " m pero no hay; se usa uno más ancho." : "");
+        plan.pasos.add(paso);
+
+        r.cortes++;
+        if (descartado) {
+            r.restante = 0;
+            r.fuera = true;
+        } else {
+            r.restante = despues;
+        }
+    }
+
+    // ─── Piezas con medida (tubo, pesa, cuerda, cabezal, riel…) ─────────────
+
+    private void cortarPieza(Simulador sim, PlanPedido plan, String etiqueta, Insumo insumo,
+                             double metros, Integer manualId) {
+        PiezaSim elegida = null;
+        boolean manual = false;
+        String nota = null;
+
+        if (manualId != null) {
+            PiezaSim m = sim.pieza(manualId);
+            if (m == null) {
+                nota = "La pieza #" + manualId + " que elegiste ya no existe; se tomó otra.";
+            } else {
+                if (!Objects.equals(m.insumoId, (Object) insumo.getId())) {
+                    throw new MaterialInsuficienteException(
+                            "La pieza #" + manualId + " es de \"" + m.insumo
+                            + "\", pero se esperaba una pieza de \"" + insumo.getNombre() + "\".");
+                }
+                if (!m.fuera && m.restante >= metros - 0.001) {
+                    elegida = m;
+                    manual = true;
+                } else if (m.cortes > 0) {
+                    nota = "La pieza #" + manualId + " que elegiste ya no alcanzaba después de cortar los otros productos de esta orden; se tomó otra.";
+                } else {
+                    throw new MaterialInsuficienteException(
+                            "La pieza #" + manualId + " (" + insumo.getNombre() + ") no tiene suficiente material ("
+                            + m.restante + " m disponibles, " + metros + " m necesarios).");
+                }
+            }
+        }
+
+        if (elegida == null) {
+            elegida = mejorPieza(sim, insumo, metros);
+        }
+        agregarCorte(plan, etiqueta, "PIEZA", elegida, metros, manual, false, nota);
+    }
+
+    private PiezaSim mejorPieza(Simulador sim, Insumo insumo, double metros) {
+        PiezaSim mejor = null;
+        double mayor = 0;
+        for (PiezaSim p : sim.piezasDe(insumo)) {
+            if (p.fuera) continue;
+            mayor = Math.max(mayor, p.restante);
+            if (p.restante < metros - 0.001) continue;
+            if (mejor == null || MEJOR_PIEZA.compare(p, mejor) < 0) mejor = p;
+        }
+        if (mejor == null) {
+            throw new MaterialInsuficienteException(
+                    "No hay suficiente \"" + insumo.getNombre() + "\". Se necesitan " + num2(metros) + " m"
+                    + (mayor > 0 ? " y la pieza más larga que queda tiene " + num2(mayor) + " m."
+                                 : " y no hay ninguna pieza disponible."));
+        }
+        return mejor;
+    }
+
+    private void agregarCorte(PlanPedido plan, String etiqueta, String clase, PiezaSim pieza, double metros,
+                              boolean manual, boolean combinado, String nota) {
+        double antes = pieza.restante;
+        double despues = redondear(antes - metros);
+        boolean descartado = despues < UMBRAL_DESCARTE_PIEZA;
+
+        Paso paso = new Paso();
+        paso.material = etiqueta;
+        paso.clase = clase;
+        paso.fuenteId = pieza.id;
+        paso.insumoNombre = pieza.insumo;
+        paso.cantidad = metros;
+        paso.antes = antes;
+        paso.despues = descartado ? 0.0 : despues;
+        paso.descartado = descartado;
+        paso.manual = manual;
+        paso.combinado = combinado;
+        paso.nota = nota;
+        paso.medida = num2(metros) + " m";
+        paso.texto = pieza.insumo + " #" + pieza.id + textoCambio(antes, despues, descartado)
+                + (combinado ? " (se une con otro pedazo)" : "")
+                + (manual ? " (elegida por ti)" : "");
+        plan.pasos.add(paso);
+
+        pieza.cortes++;
+        if (descartado) {
+            pieza.restante = 0;
+            pieza.fuera = true;
+        } else {
+            pieza.restante = despues;
+        }
+    }
+
+    // ─── Pitillo: una pieza que alcance, o varios pedacitos unidos ──────────
+
+    private void planificarPitillo(Pedido p, SeleccionManual sel, Simulador sim, PlanPedido plan) {
+        Insumo pitillo = obtenerInsumoPorNombre("Pitillo");
+        double necesario = p.getCortePitilloPesa();
+        String nota = null;
+
+        if (sel != null && sel.piezaPitilloId != null) {
+            PiezaSim m = sim.pieza(sel.piezaPitilloId);
+            if (m == null) {
+                nota = "La pieza de pitillo #" + sel.piezaPitilloId + " que elegiste ya no existe; se tomó otra.";
+            } else {
+                if (!Objects.equals(m.insumoId, (Object) pitillo.getId())) {
+                    throw new MaterialInsuficienteException(
+                            "La pieza #" + m.id + " es de \"" + m.insumo
+                            + "\", pero se esperaba una pieza de \"" + pitillo.getNombre() + "\".");
+                }
+                if (!m.fuera && m.restante >= necesario - 0.001) {
+                    agregarCorte(plan, "🪡 Pitillo", "PITILLO", m, necesario, true, false, null);
+                    return;
+                }
+                if (m.cortes > 0) {
+                    nota = "La pieza de pitillo #" + m.id + " que elegiste ya no alcanzaba después de cortar los otros productos de esta orden; se tomó otra.";
+                } else {
+                    throw new MaterialInsuficienteException(
+                            "La pieza #" + m.id + " (" + pitillo.getNombre() + ") no tiene suficiente material ("
+                            + m.restante + " m disponibles, " + necesario + " m necesarios).");
+                }
+            }
+        }
+
+        List<PiezaSim> disponibles = new ArrayList<>();
+        for (PiezaSim pz : sim.piezasDe(pitillo)) {
+            if (!pz.fuera && pz.restante > 0.001) disponibles.add(pz);
+        }
+        disponibles.sort(MEJOR_PIEZA);
+
+        for (PiezaSim pz : disponibles) {
+            if (pz.restante >= necesario - 0.001) {
+                agregarCorte(plan, "🪡 Pitillo", "PITILLO", pz, necesario, false, false, nota);
+                return;
+            }
+        }
+
+        // Ninguna alcanza sola: se unen los pedacitos más pequeños primero.
+        List<PiezaSim> combinacion = new ArrayList<>();
+        double acumulado = 0.0;
+        for (PiezaSim pz : disponibles) {
+            combinacion.add(pz);
+            acumulado += pz.restante;
+            if (acumulado >= necesario - 0.001) break;
+        }
+        if (acumulado < necesario - 0.001) {
+            throw new MaterialInsuficienteException(
+                    "No hay suficiente \"" + pitillo.getNombre() + "\" ni combinando los retazos sueltos. Se necesitan "
+                    + redondear(necesario) + " m y solo hay " + redondear(acumulado) + " m disponibles en total.");
+        }
+        double falta = necesario;
+        for (int i = 0; i < combinacion.size(); i++) {
+            PiezaSim pz = combinacion.get(i);
+            boolean ultima = (i == combinacion.size() - 1);
+            double aUsar = ultima ? redondear(falta) : pz.restante;
+            agregarCorte(plan, "🪡 Pitillo", "PITILLO", pz, aUsar, false, true, i == 0 ? nota : null);
+            falta -= aUsar;
+        }
+    }
+
+    // ─── Insumos por unidad ─────────────────────────────────────────────────
+
+    private void usarUnidades(Simulador sim, PlanPedido plan, String etiqueta, String nombreInsumo, int cantidad) {
+        if (cantidad <= 0) return;
+        if (nombreInsumo == null || nombreInsumo.isBlank()) {
+            throw new MaterialInsuficienteException("El pedido no tiene definido qué " + etiqueta + " lleva.");
+        }
+        UnidadSim u = sim.unidad(nombreInsumo);
+        if (u.stock < cantidad) {
+            throw new MaterialInsuficienteException(
+                    "No hay suficiente \"" + u.nombre + "\". Disponible: " + u.stock
+                    + " unidad(es), necesario: " + cantidad + ".");
+        }
+        Paso paso = new Paso();
+        paso.material = etiqueta;
+        paso.clase = "UNIDAD";
+        paso.insumoNombre = u.nombre;
+        paso.cantidad = cantidad;
+        paso.antes = u.stock;
+        paso.despues = u.stock - cantidad;
+        paso.medida = cantidad + " und.";
+        paso.texto = u.nombre + " · había " + u.stock + " → quedan " + (u.stock - cantidad);
+        plan.pasos.add(paso);
+        u.stock -= cantidad;
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // VERIFICACIÓN Y DESCUENTO DE UN SOLO PEDIDO (usan el mismo plan)
     // ═══════════════════════════════════════════════════════════════
 
     public void verificarDisponibilidad(Pedido pedido) {
@@ -475,331 +1397,15 @@ public class InventarioServicio {
     }
 
     public void verificarDisponibilidad(Pedido pedido, SeleccionManual sel) {
-
-        if (sel != null && sel.retazoTelaId != null) {
-            verificarRetazoManual(pedido, sel.retazoTelaId);
-        } else if (sel != null && sel.rolloTelaId != null) {
-            verificarRolloManual(pedido, sel.rolloTelaId);
-        } else {
-            RetazoTela retazo = buscarMejorRetazo(
-                    pedido.getColorTelaDeseado(),
-                    pedido.getCorteTelaAncho(),
-                    pedido.getCorteTelaAlto());
-            if (retazo == null) {
-                buscarMejorRolloConSustituto(
-                        pedido.getColorTelaDeseado(), anchoComercialDe(pedido), metrosADescontarDeRollo(pedido));
-            }
-        }
-
-        Insumo tubo = obtenerInsumoPorNombre("Tubo " + pedido.getTuboRecomendado());
-        if (sel != null && sel.piezaTuboId != null) {
-            verificarPiezaManual(sel.piezaTuboId, tubo, pedido.getCorteTuberia());
-        } else {
-            buscarMejorPieza(tubo, pedido.getCorteTuberia());
-        }
-
-        if (Boolean.TRUE.equals(pedido.getUsaCabezal())) {
-            Insumo cabezal = obtenerInsumoPorNombre("Cabezal");
-            if (sel != null && sel.piezaCabezalId != null) {
-                verificarPiezaManual(sel.piezaCabezalId, cabezal, pedido.getMedidaCabezal());
-            } else {
-                buscarMejorPieza(cabezal, pedido.getMedidaCabezal());
-            }
-        }
-
-        Insumo pesa = obtenerInsumoPorNombre("Pesa");
-        if (sel != null && sel.piezaPesaId != null) {
-            verificarPiezaManual(sel.piezaPesaId, pesa, pedido.getCorteTuberia());
-        } else {
-            buscarMejorPieza(pesa, pedido.getCorteTuberia());
-        }
-
-        Insumo cuerda = obtenerInsumoPorNombre("Cuerda");
-        if (sel != null && sel.piezaCuerdaId != null) {
-            verificarPiezaManual(sel.piezaCuerdaId, cuerda, pedido.getMetrosCuerda());
-        } else {
-            buscarMejorPieza(cuerda, pedido.getMetrosCuerda());
-        }
-
-        // ── Control R24: viene empacado con terminal, acoples y soportes
-        // en un solo ítem físico ("Paquete de Control R24"). Para R16/R8 A/
-        // R8 B se mantiene el flujo normal de piezas separadas. ──
-        if (pedido.isUsaPaqueteControlR24()) {
-            Insumo paqueteR24 = obtenerInsumoPorNombre("Paquete de Control R24");
-            int stockPaquete = paqueteR24.getStockUnidades() != null ? paqueteR24.getStockUnidades() : 0;
-            if (stockPaquete < 1) {
-                throw new MaterialInsuficienteException(
-                        "No hay stock de \"Paquete de Control R24\". Disponible: 0 unidades.");
-            }
-        } else {
-            Insumo control = obtenerInsumoPorNombre(pedido.getTipoControl().trim());
-            int stockControl = control.getStockUnidades() != null ? control.getStockUnidades() : 0;
-            if (stockControl < 1) {
-                throw new MaterialInsuficienteException(
-                        "No hay stock de \"" + control.getNombre() + "\". Disponible: 0 unidades.");
-            }
-
-            if (pedido.getCantidadAcoples() > 0) {
-                Insumo acople = obtenerInsumoPorNombre("Acople");
-                int stockAcople = acople.getStockUnidades() != null ? acople.getStockUnidades() : 0;
-                if (stockAcople < pedido.getCantidadAcoples()) {
-                    throw new MaterialInsuficienteException(
-                            "No hay suficiente \"Acople\". Disponible: " + stockAcople
-                            + " unidad(es), necesario: " + pedido.getCantidadAcoples() + ".");
-                }
-            }
-
-            Insumo terminal = obtenerInsumoPorNombre("Terminal");
-            int stockTerminal = terminal.getStockUnidades() != null ? terminal.getStockUnidades() : 0;
-            if (stockTerminal < pedido.getCantidadTerminal()) {
-                throw new MaterialInsuficienteException(
-                        "No hay suficiente \"Terminal\". Disponible: " + stockTerminal
-                        + " unidad(es), necesario: " + pedido.getCantidadTerminal() + ".");
-            }
-        }
-
-        if (Boolean.TRUE.equals(pedido.getUsaPitilloPesa())) {
-            Insumo pitillo = obtenerInsumoPorNombre("Pitillo");
-            if (sel != null && sel.piezaPitilloId != null) {
-                verificarPiezaManual(sel.piezaPitilloId, pitillo, pedido.getCortePitilloPesa());
-            } else {
-                resolverPitillo(pitillo, pedido.getCortePitilloPesa());
-            }
-        }
-
-        if (Boolean.TRUE.equals(pedido.getUsaConectorTope())) {
-            Insumo conector = obtenerInsumoPorNombre("Conector");
-            int stockConector = conector.getStockUnidades() != null ? conector.getStockUnidades() : 0;
-            int necesarioConector = pedido.getCantidadConectores();
-            if (stockConector < necesarioConector) {
-                throw new MaterialInsuficienteException(
-                        "No hay suficiente \"Conector\". Disponible: " + stockConector
-                        + " unidad(es), necesario: " + necesarioConector + ".");
-            }
-            if (pedido.getCantidadTopes() > 0) {
-                Insumo tope = obtenerInsumoPorNombre("Tope Control");
-                int stockTope = tope.getStockUnidades() != null ? tope.getStockUnidades() : 0;
-                if (stockTope < pedido.getCantidadTopes()) {
-                    throw new MaterialInsuficienteException(
-                            "No hay suficiente \"Tope Control\". Disponible: " + stockTope
-                            + " unidad(es), necesario: " + pedido.getCantidadTopes() + ".");
-                }
-            }
-        }
-
-        // Soporte normal: solo aplica si NO es Control R24 (ese ya trae sus
-        // propios soportes más grandes dentro del paquete).
-        if (!pedido.isUsaPaqueteControlR24()) {
-            Insumo soporte = obtenerInsumoPorNombre("Soporte");
-            int stockSoporte = soporte.getStockUnidades() != null ? soporte.getStockUnidades() : 0;
-            if (stockSoporte < pedido.getCantidadSoportes()) {
-                throw new MaterialInsuficienteException(
-                        "No hay suficiente \"Soporte\". Disponible: " + stockSoporte
-                        + " unidad(es), necesario: " + pedido.getCantidadSoportes() + ".");
-            }
-        }
-
-        if (Boolean.TRUE.equals(pedido.getUsaCabezal())) {
-            Insumo tapa = obtenerInsumoPorNombre("Tapa Cabezal");
-            int stockTapa = tapa.getStockUnidades() != null ? tapa.getStockUnidades() : 0;
-            if (stockTapa < pedido.getCantidadTapas()) {
-                throw new MaterialInsuficienteException(
-                        "No hay suficiente \"Tapa Cabezal\". Disponible: " + stockTapa
-                        + " unidad(es), necesario: " + pedido.getCantidadTapas() + ".");
-            }
-        }
-
-        Insumo tapaPerfil = obtenerInsumoPorNombre("Tapa Perfil");
-        int stockTapaPerfil = tapaPerfil.getStockUnidades() != null ? tapaPerfil.getStockUnidades() : 0;
-        if (stockTapaPerfil < pedido.getCantidadTapasPerfil()) {
-            throw new MaterialInsuficienteException(
-                    "No hay suficiente \"Tapa Perfil\". Disponible: " + stockTapaPerfil
-                    + " unidad(es), necesario: " + pedido.getCantidadTapasPerfil() + ".");
-        }
-
-        Insumo tornillo = obtenerInsumoPorNombre("Tornillo");
-        int stockTornillo = tornillo.getStockUnidades() != null ? tornillo.getStockUnidades() : 0;
-        if (stockTornillo < pedido.getCantidadTornillos()) {
-            throw new MaterialInsuficienteException(
-                    "No hay suficiente \"Tornillo\". Disponible: " + stockTornillo
-                    + " unidad(es), necesario: " + pedido.getCantidadTornillos() + ".");
-        }
-
-        if (Boolean.TRUE.equals(pedido.getUsaCabezal())) {
-            Insumo tornilloPerf = obtenerInsumoPorNombre("Tornillo Perforante");
-            int stockTornilloPerf = tornilloPerf.getStockUnidades() != null ? tornilloPerf.getStockUnidades() : 0;
-            if (stockTornilloPerf < pedido.getCantidadTornillosPerforantes()) {
-                throw new MaterialInsuficienteException(
-                        "No hay suficiente \"Tornillo Perforante\". Disponible: " + stockTornilloPerf
-                        + " unidad(es), necesario: " + pedido.getCantidadTornillosPerforantes() + ".");
-            }
-        }
+        planificarLote(Collections.singletonList(pedido), Collections.singletonList(sel));
     }
-
-    private void verificarRetazoManual(Pedido pedido, int retazoId) {
-        RetazoTela retazo = obtenerRetazoPorId(retazoId);
-        double corteAncho = pedido.getCorteTelaAncho();
-        double corteAlto = pedido.getCorteTelaAlto();
-        boolean entraDirecto = retazo.getAncho() >= corteAncho - 0.001 && retazo.getAlto() >= corteAlto - 0.001;
-        boolean entraRotado  = retazo.getAncho() >= corteAlto - 0.001  && retazo.getAlto() >= corteAncho - 0.001;
-        if (!entraDirecto && !entraRotado) {
-            throw new MaterialInsuficienteException(
-                    "El retazo #" + retazoId + " elegido no tiene medidas suficientes ("
-                    + retazo.getAncho() + "m × " + retazo.getAlto() + "m disponibles, se necesitan "
-                    + corteAncho + "m × " + corteAlto + "m, en cualquier orientación).");
-        }
-        if (!retazo.getColor().equalsIgnoreCase(pedido.getColorTelaDeseado())) {
-            throw new MaterialInsuficienteException(
-                    "El retazo #" + retazoId + " es de color \"" + retazo.getColor()
-                    + "\", pero el pedido necesita color \"" + pedido.getColorTelaDeseado() + "\".");
-        }
-    }
-
-    private void verificarRolloManual(Pedido pedido, int rolloId) {
-        RolloTela rollo = obtenerRolloPorId(rolloId);
-        double necesario = metrosADescontarDeRollo(pedido);
-        if (!rollo.getColor().equalsIgnoreCase(pedido.getColorTelaDeseado())) {
-            throw new MaterialInsuficienteException(
-                    "El rollo #" + rolloId + " es de color \"" + rollo.getColor()
-                    + "\", pero el pedido necesita color \"" + pedido.getColorTelaDeseado() + "\".");
-        }
-        if (rollo.getLargoRestante() < necesario - 0.001) {
-            throw new MaterialInsuficienteException(
-                    "El rollo #" + rolloId + " no tiene suficiente material ("
-                    + rollo.getLargoRestante() + " m disponibles, " + necesario + " m necesarios).");
-        }
-    }
-
-    private void verificarPiezaManual(int piezaId, Insumo insumoEsperado, double metrosNecesarios) {
-        PiezaInsumo pieza = obtenerPiezaPorId(piezaId);
-        if (pieza.getInsumo() == null || pieza.getInsumo().getId() != insumoEsperado.getId()) {
-            String nombreReal = pieza.getInsumo() != null ? pieza.getInsumo().getNombre() : "desconocido";
-            throw new MaterialInsuficienteException(
-                    "La pieza #" + piezaId + " es de \"" + nombreReal
-                    + "\", pero se esperaba una pieza de \"" + insumoEsperado.getNombre() + "\".");
-        }
-        if (pieza.getLargoRestante() < metrosNecesarios - 0.001) {
-            throw new MaterialInsuficienteException(
-                    "La pieza #" + piezaId + " (" + insumoEsperado.getNombre() + ") no tiene suficiente material ("
-                    + pieza.getLargoRestante() + " m disponibles, " + metrosNecesarios + " m necesarios).");
-        }
-    }
-
-    // ═══════════════════════════════════════════════════════════════
-    // DESCUENTO REAL
-    // ═══════════════════════════════════════════════════════════════
 
     public void descontarMaterialDe(Pedido pedido) {
         descontarMaterialDe(pedido, null);
     }
 
     public void descontarMaterialDe(Pedido pedido, SeleccionManual sel) {
-
-        if (sel != null && sel.retazoTelaId != null) {
-            RetazoTela retazo = obtenerRetazoPorId(sel.retazoTelaId);
-            descontarRetazo(pedido, retazo, true);
-        } else if (sel != null && sel.rolloTelaId != null) {
-            RolloTela rollo = obtenerRolloPorId(sel.rolloTelaId);
-            descontarTela(pedido, rollo, metrosADescontarDeRollo(pedido), true);
-        } else {
-            RetazoTela retazo = buscarMejorRetazo(
-                    pedido.getColorTelaDeseado(),
-                    pedido.getCorteTelaAncho(),
-                    pedido.getCorteTelaAlto());
-            if (retazo != null) {
-                descontarRetazo(pedido, retazo, false);
-            } else {
-                RolloEncontrado encontrado = buscarMejorRolloConSustituto(
-                        pedido.getColorTelaDeseado(), anchoComercialDe(pedido), metrosADescontarDeRollo(pedido));
-                descontarTela(pedido, encontrado.rollo, metrosADescontarDeRollo(pedido), false,
-                        encontrado.esSustituto, anchoComercialDe(pedido));
-            }
-        }
-
-        Insumo tubo = obtenerInsumoPorNombre("Tubo " + pedido.getTuboRecomendado());
-        PiezaInsumo piezaTubo = (sel != null && sel.piezaTuboId != null)
-                ? obtenerPiezaPorId(sel.piezaTuboId)
-                : buscarMejorPieza(tubo, pedido.getCorteTuberia());
-        descontarInsumoConMedida(pedido, piezaTubo, pedido.getCorteTuberia(), sel != null && sel.piezaTuboId != null);
-
-        if (Boolean.TRUE.equals(pedido.getUsaCabezal())) {
-            Insumo cabezal = obtenerInsumoPorNombre("Cabezal");
-            PiezaInsumo piezaCabezal = (sel != null && sel.piezaCabezalId != null)
-                    ? obtenerPiezaPorId(sel.piezaCabezalId)
-                    : buscarMejorPieza(cabezal, pedido.getMedidaCabezal());
-            descontarInsumoConMedida(pedido, piezaCabezal, pedido.getMedidaCabezal(),
-                    sel != null && sel.piezaCabezalId != null);
-        }
-
-        Insumo pesa = obtenerInsumoPorNombre("Pesa");
-        PiezaInsumo piezaPesa = (sel != null && sel.piezaPesaId != null)
-                ? obtenerPiezaPorId(sel.piezaPesaId)
-                : buscarMejorPieza(pesa, pedido.getCorteTuberia());
-        descontarInsumoConMedida(pedido, piezaPesa, pedido.getCorteTuberia(), sel != null && sel.piezaPesaId != null);
-
-        Insumo cuerda = obtenerInsumoPorNombre("Cuerda");
-        PiezaInsumo piezaCuerda = (sel != null && sel.piezaCuerdaId != null)
-                ? obtenerPiezaPorId(sel.piezaCuerdaId)
-                : buscarMejorPieza(cuerda, pedido.getMetrosCuerda());
-        descontarInsumoConMedida(pedido, piezaCuerda, pedido.getMetrosCuerda(),
-                sel != null && sel.piezaCuerdaId != null);
-
-        // ── Control R24: 1 unidad de "Paquete de Control R24" en vez de
-        // Control + Acople + Terminal por separado. ──
-        if (pedido.isUsaPaqueteControlR24()) {
-            descontarInsumoPorUnidad(pedido, "Paquete de Control R24", 1);
-        } else {
-            descontarInsumoPorUnidad(pedido, pedido.getTipoControl().trim(), 1);
-
-            if (pedido.getCantidadAcoples() > 0) {
-                descontarInsumoPorUnidad(pedido, "Acople", pedido.getCantidadAcoples());
-            }
-
-            descontarInsumoPorUnidad(pedido, "Terminal", pedido.getCantidadTerminal());
-        }
-
-        if (Boolean.TRUE.equals(pedido.getUsaPitilloPesa())) {
-            Insumo pitillo = obtenerInsumoPorNombre("Pitillo");
-            if (sel != null && sel.piezaPitilloId != null) {
-                PiezaInsumo piezaManual = obtenerPiezaPorId(sel.piezaPitilloId);
-                descontarPiezaPitillo(pedido, piezaManual, pedido.getCortePitilloPesa(), true, false);
-            } else {
-                List<PiezaInsumo> piezasPitillo = resolverPitillo(pitillo, pedido.getCortePitilloPesa());
-                boolean combinado = piezasPitillo.size() > 1;
-                double restante = pedido.getCortePitilloPesa();
-                for (int i = 0; i < piezasPitillo.size(); i++) {
-                    PiezaInsumo p = piezasPitillo.get(i);
-                    boolean esUltima = (i == piezasPitillo.size() - 1);
-                    double aUsar = esUltima ? restante : p.getLargoRestante();
-                    descontarPiezaPitillo(pedido, p, aUsar, false, combinado);
-                    restante -= aUsar;
-                }
-            }
-        }
-
-        if (Boolean.TRUE.equals(pedido.getUsaConectorTope())) {
-            descontarInsumoPorUnidad(pedido, "Conector", pedido.getCantidadConectores());
-            if (pedido.getCantidadTopes() > 0) {
-                descontarInsumoPorUnidad(pedido, "Tope Control", pedido.getCantidadTopes());
-            }
-        }
-
-        // Soporte normal: solo si NO es Control R24 (ese ya trae los suyos).
-        if (!pedido.isUsaPaqueteControlR24()) {
-            descontarInsumoPorUnidad(pedido, "Soporte", pedido.getCantidadSoportes());
-        }
-
-        if (Boolean.TRUE.equals(pedido.getUsaCabezal())) {
-            descontarInsumoPorUnidad(pedido, "Tapa Cabezal", pedido.getCantidadTapas());
-        }
-
-        descontarInsumoPorUnidad(pedido, "Tapa Perfil", pedido.getCantidadTapasPerfil());
-
-        descontarInsumoPorUnidad(pedido, "Tornillo", pedido.getCantidadTornillos());
-
-        if (Boolean.TRUE.equals(pedido.getUsaCabezal())) {
-            descontarInsumoPorUnidad(pedido, "Tornillo Perforante", pedido.getCantidadTornillosPerforantes());
-        }
+        aplicarPlanes(planificarLote(Collections.singletonList(pedido), Collections.singletonList(sel)));
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -842,98 +1448,21 @@ public class InventarioServicio {
     // ═══════════════════════════════════════════════════════════════
     // RIEL DE ONDA SERENA
     // ═══════════════════════════════════════════════════════════════
-
     public void verificarRielOndaSerena(Pedido pedido) {
-        Insumo riel = obtenerInsumoPorNombre("Riel Onda Serena");
-        buscarMejorPieza(riel, pedido.getCorteRiel());
-
-        Insumo roachina = obtenerInsumoPorNombre("Roachina");
-        buscarMejorPieza(roachina, pedido.getCorteRielPines());
-
-        Insumo riata = obtenerInsumoPorNombre("Riata");
-        buscarMejorPieza(riata, pedido.getMedidaRiata());
-
-        if (Boolean.TRUE.equals(pedido.getUsaPolea())) {
-            Insumo cuerdaOnda = obtenerInsumoPorNombre("Cuerda Onda Serena");
-            buscarMejorPieza(cuerdaOnda, pedido.getCorteCuerdaOnda());
-
-            Insumo polea = obtenerInsumoPorNombre("Polea");
-            int stockPolea = polea.getStockUnidades() != null ? polea.getStockUnidades() : 0;
-            if (stockPolea < pedido.getCantidadPoleas()) {
-                throw new MaterialInsuficienteException(
-                        "No hay suficiente \"Polea\". Disponible: " + stockPolea
-                        + " unidad(es), necesario: " + pedido.getCantidadPoleas() + ".");
-            }
-
-            Insumo crusador = obtenerInsumoPorNombre("Crusador");
-            int stockCrusador = crusador.getStockUnidades() != null ? crusador.getStockUnidades() : 0;
-            if (stockCrusador < pedido.getCantidadTerminalPolea()) {
-                throw new MaterialInsuficienteException(
-                        "No hay suficiente \"Crusador\". Disponible: " + stockCrusador
-                        + " unidad(es), necesario: " + pedido.getCantidadTerminalPolea() + ".");
-            }
-        } else {
-            Insumo tapaRiel = obtenerInsumoPorNombre("Tapa Riel");
-            int stockTapaRiel = tapaRiel.getStockUnidades() != null ? tapaRiel.getStockUnidades() : 0;
-            if (stockTapaRiel < pedido.getCantidadTapasRiel()) {
-                throw new MaterialInsuficienteException(
-                        "No hay suficiente \"Tapa Riel\". Disponible: " + stockTapaRiel
-                        + " unidad(es), necesario: " + pedido.getCantidadTapasRiel() + ".");
-            }
-
-            String nombreBaston = (pedido.getBastonElegido() != null && !pedido.getBastonElegido().isBlank())
-                    ? pedido.getBastonElegido() : "Bastón 0.80";
-            Insumo baston = obtenerInsumoPorNombre(nombreBaston);
-            int stockBaston = baston.getStockUnidades() != null ? baston.getStockUnidades() : 0;
-            if (stockBaston < pedido.getCantidadBaston()) {
-                throw new MaterialInsuficienteException(
-                        "No hay suficiente \"" + nombreBaston + "\". Disponible: " + stockBaston
-                        + " unidad(es), necesario: " + pedido.getCantidadBaston() + ".");
-            }
-        }
-
-        Insumo soporteRiel = obtenerInsumoPorNombre("Soporte Riel");
-        int stockSoporteRiel = soporteRiel.getStockUnidades() != null ? soporteRiel.getStockUnidades() : 0;
-        if (stockSoporteRiel < pedido.getCantidadSoportesRiel()) {
-            throw new MaterialInsuficienteException(
-                    "No hay suficiente \"Soporte Riel\". Disponible: " + stockSoporteRiel
-                    + " unidad(es), necesario: " + pedido.getCantidadSoportesRiel() + ".");
-        }
+        planificarLote(Collections.singletonList(pedido), null);
     }
 
     public void descontarRielOndaSerena(Pedido pedido) {
-        Insumo riel = obtenerInsumoPorNombre("Riel Onda Serena");
-        PiezaInsumo piezaRiel = buscarMejorPieza(riel, pedido.getCorteRiel());
-        descontarInsumoConMedida(pedido, piezaRiel, pedido.getCorteRiel(), false);
-
-        Insumo roachina = obtenerInsumoPorNombre("Roachina");
-        PiezaInsumo piezaRoachina = buscarMejorPieza(roachina, pedido.getCorteRielPines());
-        descontarInsumoConMedida(pedido, piezaRoachina, pedido.getCorteRielPines(), false);
-
-        Insumo riata = obtenerInsumoPorNombre("Riata");
-        PiezaInsumo piezaRiata = buscarMejorPieza(riata, pedido.getMedidaRiata());
-        descontarInsumoConMedida(pedido, piezaRiata, pedido.getMedidaRiata(), false);
-
-        if (Boolean.TRUE.equals(pedido.getUsaPolea())) {
-            Insumo cuerdaOnda = obtenerInsumoPorNombre("Cuerda Onda Serena");
-            PiezaInsumo piezaCuerda = buscarMejorPieza(cuerdaOnda, pedido.getCorteCuerdaOnda());
-            descontarInsumoConMedida(pedido, piezaCuerda, pedido.getCorteCuerdaOnda(), false);
-
-            descontarInsumoPorUnidad(pedido, "Polea", pedido.getCantidadPoleas());
-            descontarInsumoPorUnidad(pedido, "Crusador", pedido.getCantidadTerminalPolea());
-        } else {
-            descontarInsumoPorUnidad(pedido, "Tapa Riel", pedido.getCantidadTapasRiel());
-
-            String nombreBaston = (pedido.getBastonElegido() != null && !pedido.getBastonElegido().isBlank())
-                    ? pedido.getBastonElegido() : "Bastón 0.80";
-            descontarInsumoPorUnidad(pedido, nombreBaston, pedido.getCantidadBaston());
-        }
-
-        descontarInsumoPorUnidad(pedido, "Soporte Riel", pedido.getCantidadSoportesRiel());
+        aplicarPlanes(planificarLote(Collections.singletonList(pedido), null));
     }
 
     // ═══════════════════════════════════════════════════════════════
     // REVERSIÓN DE MATERIAL (para edición de pedidos)
+    //
+    // Devuelve al inventario lo que el pedido gastó. Si la pieza o el rollo
+    // ya no existe (porque quedó tan corto que se descartó), se vuelve a
+    // crear con lo que se le había cortado, para que no se pierda material.
+    // Los "extras" no se devuelven: al editar se conservan como texto.
     // ═══════════════════════════════════════════════════════════════
 
     public void revertirMaterialDe(int pedidoId) {
@@ -941,34 +1470,112 @@ public class InventarioServicio {
         if (registros.isEmpty()) return;
 
         for (MaterialUsado m : registros) {
-            if ("TELA".equals(m.getTipoMaterial())) {
+            String tipo = m.getTipoMaterial() != null ? m.getTipoMaterial() : "";
+
+            if ("EXTRA".equals(tipo)) {
+                continue;
+            }
+
+            if ("TELA".equals(tipo)) {
                 if (m.getRolloTelaId() != null) {
-                    rolloTelaRepository.findById(m.getRolloTelaId()).ifPresent(rollo -> {
-                        rollo.setLargoRestante(redondear(rollo.getLargoRestante() + m.getMetrosUsados()));
+                    Optional<RolloTela> existente = rolloTelaRepository.findById(m.getRolloTelaId());
+                    if (existente.isPresent()) {
+                        RolloTela rollo = existente.get();
+                        rollo.setLargoRestante(redondear(num(rollo.getLargoRestante()) + m.getMetrosUsados()));
                         rolloTelaRepository.save(rollo);
-                    });
+                    } else {
+                        RolloTela recuperado = reconstruirRolloDesdeFuente(m);
+                        if (recuperado != null) rolloTelaRepository.save(recuperado);
+                    }
                 }
-            } else if ("RETAZO".equals(m.getTipoMaterial())) {
+            } else if ("RETAZO".equals(tipo)) {
                 RetazoTela retazoRecuperado = reconstruirRetazoDesdeFuente(m);
                 if (retazoRecuperado != null) {
                     retazoTelaRepository.save(retazoRecuperado);
                 }
             } else if (m.getPiezaInsumoId() != null) {
-                piezaInsumoRepository.findById(m.getPiezaInsumoId()).ifPresent(pieza -> {
-                    pieza.setLargoRestante(redondear(pieza.getLargoRestante() + m.getMetrosUsados()));
+                Optional<PiezaInsumo> existente = piezaInsumoRepository.findById(m.getPiezaInsumoId());
+                if (existente.isPresent()) {
+                    PiezaInsumo pieza = existente.get();
+                    double nuevo = redondear(num(pieza.getLargoRestante()) + m.getMetrosUsados());
+                    double inicial = num(pieza.getLargoInicial());
+                    pieza.setLargoRestante(inicial > 0 ? Math.min(nuevo, inicial) : nuevo);
                     piezaInsumoRepository.save(pieza);
-                });
-            } else if (!"EXTRA".equals(m.getTipoMaterial())) {
-                String nombreInsumo = m.getTipoMaterial().replace("_", " ");
+                } else {
+                    PiezaInsumo recuperada = reconstruirPiezaDesdeFuente(m);
+                    if (recuperada != null) piezaInsumoRepository.save(recuperada);
+                }
+            } else {
+                String nombreInsumo = tipo.replace("_", " ");
                 insumoRepository.findByNombreIgnoreCase(nombreInsumo).ifPresent(insumo -> {
                     int actual = insumo.getStockUnidades() != null ? insumo.getStockUnidades() : 0;
-                    insumo.setStockUnidades(actual + (int) m.getMetrosUsados());
+                    insumo.setStockUnidades(actual + (int) Math.round(m.getMetrosUsados()));
                     insumoRepository.save(insumo);
                 });
             }
         }
 
         materialUsadoRepository.deleteAll(registros);
+    }
+
+    private static final Pattern PATRON_SOBRABAN = Pattern.compile("sobraban ([0-9]+(?:\\.[0-9]+)?) m");
+    private static final Pattern PATRON_PIEZA_ORIGINAL = Pattern.compile("pieza original de ([0-9]+(?:\\.[0-9]+)?) m");
+    private static final Pattern PATRON_ROLLO = Pattern.compile(
+            "^Rollo (.+?) ([0-9]+(?:\\.[0-9]+)?)m \\(#\\d+, rollo original de ([0-9]+(?:\\.[0-9]+)?) m\\)");
+
+    /** Lo que se botó por quedar muy corto (solo los registros nuevos lo traen). */
+    private double descartadoDe(MaterialUsado m) {
+        String desc = m.getFuenteDescripcion();
+        if (desc == null) return 0.0;
+        Matcher mt = PATRON_SOBRABAN.matcher(desc);
+        return mt.find() ? Double.parseDouble(mt.group(1)) : 0.0;
+    }
+
+    private PiezaInsumo reconstruirPiezaDesdeFuente(MaterialUsado m) {
+        try {
+            String nombreInsumo = m.getTipoMaterial().replace("_", " ");
+            Optional<Insumo> insumo = insumoRepository.findByNombreIgnoreCase(nombreInsumo);
+            if (insumo.isEmpty()) return null;
+
+            double devolver = redondear(m.getMetrosUsados() + descartadoDe(m));
+            if (devolver <= 0.001) return null;
+
+            double inicial = devolver;
+            String desc = m.getFuenteDescripcion();
+            if (desc != null) {
+                Matcher mt = PATRON_PIEZA_ORIGINAL.matcher(desc);
+                if (mt.find()) inicial = Math.max(devolver, Double.parseDouble(mt.group(1)));
+            }
+
+            PiezaInsumo pieza = new PiezaInsumo();
+            pieza.setInsumo(insumo.get());
+            pieza.setLargoInicial(inicial);
+            pieza.setLargoRestante(devolver);
+            return pieza;
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private RolloTela reconstruirRolloDesdeFuente(MaterialUsado m) {
+        try {
+            String desc = m.getFuenteDescripcion();
+            if (desc == null) return null;
+            Matcher mt = PATRON_ROLLO.matcher(desc);
+            if (!mt.find()) return null;
+
+            double devolver = redondear(m.getMetrosUsados() + descartadoDe(m));
+            if (devolver <= 0.001) return null;
+
+            RolloTela rollo = new RolloTela();
+            rollo.setColor(mt.group(1).trim());
+            rollo.setAncho(Double.parseDouble(mt.group(2)));
+            rollo.setLargoInicial(Math.max(devolver, Double.parseDouble(mt.group(3))));
+            rollo.setLargoRestante(devolver);
+            return rollo;
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     private RetazoTela reconstruirRetazoDesdeFuente(MaterialUsado m) {
@@ -1019,8 +1626,44 @@ public class InventarioServicio {
     // ═══════════════════════════════════════════════════════════════
 
     public void procesarLoteCompleto(List<Pedido> pedidos) {
-        for (Pedido p : pedidos) verificarDisponibilidad(p);
-        for (Pedido p : pedidos) descontarMaterialDe(p);
+        aplicarPlanes(planificarLote(pedidos, null));
+    }
+
+    // ─── Textos de "tenía → quedan" ────────────────────────────────────────
+
+    /** Para el registro guardado: " · tenía 3.00 m → quedan 1.53 m". */
+    private String cambio(double antes, double despues, boolean descartado) {
+        if (descartado) {
+            if (despues <= 0.001) {
+                return " · tenía " + num2(antes) + " m → se gastó completa";
+            }
+            return " · tenía " + num2(antes) + " m → sobraban " + num2(despues) + " m (muy poco, se descartó)";
+        }
+        return " · tenía " + num2(antes) + " m → quedan " + num2(despues) + " m";
+    }
+
+    /** Para la vista previa: " · tiene 3.00 m → quedarán 1.53 m". */
+    private String textoCambio(double antes, double despues, boolean descartado) {
+        if (descartado) {
+            if (despues <= 0.001) {
+                return " · tiene " + num2(antes) + " m → se gasta completa";
+            }
+            return " · tiene " + num2(antes) + " m → sobran " + num2(despues) + " m (muy poco, se bota)";
+        }
+        return " · tiene " + num2(antes) + " m → quedarán " + num2(despues) + " m";
+    }
+
+    /** 1.5 → "1.50", 1.475 → "1.475", 3 → "3.00". */
+    private static String num2(double v) {
+        BigDecimal b = BigDecimal.valueOf(Math.round(v * 1000.0) / 1000.0).setScale(3, RoundingMode.HALF_UP)
+                .stripTrailingZeros();
+        if (b.scale() < 2) b = b.setScale(2, RoundingMode.HALF_UP);
+        return b.toPlainString();
+    }
+
+    /** Lee un número aunque el modelo lo tenga como double o como Double (null = 0). */
+    private static double num(Object valor) {
+        return valor == null ? 0.0 : ((Number) valor).doubleValue();
     }
 
     // ═══════════════════════════════════════════════════════════════

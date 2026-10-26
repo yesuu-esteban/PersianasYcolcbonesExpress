@@ -14,6 +14,7 @@ import Colcones_Persinas.proyecto_express.servicio.fabrica.InventarioServicio;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Controller;
+import org.springframework.transaction.interceptor.TransactionAspectSupport;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
@@ -216,6 +217,7 @@ public class PedidoControlador {
         model.addAttribute("piezasDisponibles",  inventarioServicio.getTodasLasPiezas());
         model.addAttribute("retazosDisponibles", inventarioServicio.getTodosLosRetazos());
         model.addAttribute("catalogoInsumos",    insumoRepository.findAllByOrderByNombreAsc());
+        model.addAttribute("opcionesControl",    opcionesControl());
         return "fabrica/nuevo_pedido";
     }
 
@@ -229,7 +231,8 @@ public class PedidoControlador {
             @RequestParam(required = false, defaultValue = "false") boolean usaCabezal,
             @RequestParam(required = false, defaultValue = "true")  boolean usaPitilloPesa,
             @RequestParam(required = false, defaultValue = "true")  boolean usaConectorTope,
-            @RequestParam(required = false) String tipoTuboManual) {
+            @RequestParam(required = false) String tipoTuboManual,
+            @RequestParam(required = false) String tipoControlManual) {
 
         Pedido p = new Pedido();
         p.setAncho(ancho);
@@ -239,6 +242,7 @@ public class PedidoControlador {
         p.setUsaPitilloPesa(usaPitilloPesa);
         p.setUsaConectorTope(usaConectorTope);
         p.setTuboManualElegido(normalizarTuboManual(tipoTuboManual));
+        p.setControlManualElegido(normalizarTuboManual(tipoControlManual));
         p.calcularFichaTecnica();
         return inventarioServicio.previsualizar(p);
     }
@@ -263,7 +267,82 @@ public class PedidoControlador {
         return inventarioServicio.previsualizarRiel(p);
     }
 
+    // ─── Previsualización AJAX — TODA la orden (cada línea y cada unidad) ──
+    /**
+     * Una línea del formulario tal como la manda nuevo_pedido.js.
+     * Los campos manuales vienen como texto ("auto" o el id).
+     */
+    public static class LineaPrevia {
+        public double ancho;
+        public double altura;
+        public String color;
+        public String descripcion;
+        public int cantidad = 1;
+        public boolean usaCabezal;
+        public boolean usaPitilloPesa = true;
+        public boolean usaConectorTope = true;
+        public String tipoTuboManual;
+        public String tipoControlManual;
+        public String rolloManual;
+        public String retazoManual;
+        public String tuboManual;
+        public String cabezalManual;
+        public String pesaManual;
+        public String cuerdaManual;
+        public String pitilloManual;
+    }
+
+    /**
+     * Calcula el material de toda la orden contando lo que ya gastan las líneas
+     * y unidades anteriores, así la vista previa muestra cómo se va rebajando
+     * cada tubo, rollo o pesa. No descuenta nada.
+     */
+    @PostMapping("/previsualizar-lote")
+    @ResponseBody
+    public InventarioServicio.VistaLote previsualizarLote(@RequestBody List<LineaPrevia> lineas) {
+        List<List<Pedido>> pedidosPorLinea = new ArrayList<>();
+        List<InventarioServicio.SeleccionManual> selecciones = new ArrayList<>();
+        if (lineas != null) {
+            for (LineaPrevia l : lineas) {
+                int cantidad = Math.max(1, Math.min(l.cantidad, 50));
+                List<Pedido> copias = new ArrayList<>();
+                for (int j = 0; j < cantidad; j++) {
+                    Pedido p = new Pedido();
+                    p.setDescripcion(l.descripcion != null ? l.descripcion : "");
+                    p.setAncho(l.ancho);
+                    p.setAltura(l.altura);
+                    p.setColorTelaDeseado(l.color != null ? l.color : "");
+                    p.setUsaCabezal(l.usaCabezal);
+                    p.setUsaPitilloPesa(l.usaPitilloPesa);
+                    p.setUsaConectorTope(l.usaConectorTope);
+                    p.setTuboManualElegido(normalizarTuboManual(l.tipoTuboManual));
+                    p.setControlManualElegido(normalizarTuboManual(l.tipoControlManual));
+                    p.calcularFichaTecnica();
+                    copias.add(p);
+                }
+                pedidosPorLinea.add(copias);
+
+                InventarioServicio.SeleccionManual sel = new InventarioServicio.SeleccionManual();
+                sel.rolloTelaId    = parsearIdManual(l.rolloManual);
+                sel.retazoTelaId   = parsearIdManual(l.retazoManual);
+                sel.piezaTuboId    = parsearIdManual(l.tuboManual);
+                sel.piezaCabezalId = l.usaCabezal ? parsearIdManual(l.cabezalManual) : null;
+                sel.piezaPesaId    = parsearIdManual(l.pesaManual);
+                sel.piezaCuerdaId  = parsearIdManual(l.cuerdaManual);
+                sel.piezaPitilloId = l.usaPitilloPesa ? parsearIdManual(l.pitilloManual) : null;
+                if (sel.rolloTelaId != null && sel.retazoTelaId != null) sel.retazoTelaId = null;
+                selecciones.add(sel);
+            }
+        }
+        return inventarioServicio.previsualizarLote(pedidosPorLinea, selecciones);
+    }
+
     // ─── Guardar lista de pedidos ─────────────────────────────────────────
+    /**
+     * Cada línea se separa en sus unidades (cantidad 3 = 3 pedidos) y TODAS se
+     * planean juntas: cada unidad corta de lo que dejó la anterior. Si algo no
+     * alcanza no se guarda ningún pedido ni se descuenta nada.
+     */
     @PostMapping("/guardar-lista")
     @org.springframework.transaction.annotation.Transactional
     public String guardarListaPedidos(
@@ -298,20 +377,22 @@ public class PedidoControlador {
             boolean usaPitilloPesa  = leerBooleanoFila(allParams, "usaPitilloPesa",  i, true);
             boolean usaConectorTope = leerBooleanoFila(allParams, "usaConectorTope", i, true);
             String tipoTuboManual   = leerTextoOpcionalFila(allParams, "tipoTuboManual", i);
+            String tipoControlManual = leerTextoOpcionalFila(allParams, "tipoControlManual", i);
 
             InventarioServicio.SeleccionManual seleccion = new InventarioServicio.SeleccionManual();
             seleccion.rolloTelaId    = leerIdOpcionalFila(allParams, "rolloManual",   i);
             seleccion.retazoTelaId   = leerIdOpcionalFila(allParams, "retazoManual",  i);
             seleccion.piezaTuboId    = leerIdOpcionalFila(allParams, "tuboManual",    i);
+            seleccion.piezaCabezalId = tieneCabezal ? leerIdOpcionalFila(allParams, "cabezalManual", i) : null;
             seleccion.piezaPesaId    = leerIdOpcionalFila(allParams, "pesaManual",    i);
             seleccion.piezaCuerdaId  = leerIdOpcionalFila(allParams, "cuerdaManual",  i);
-            seleccion.piezaPitilloId = leerIdOpcionalFila(allParams, "pitilloManual", i);
+            seleccion.piezaPitilloId = usaPitilloPesa ? leerIdOpcionalFila(allParams, "pitilloManual", i) : null;
 
             if (seleccion.rolloTelaId != null && seleccion.retazoTelaId != null) {
                 seleccion.retazoTelaId = null;
             }
 
-            int cantidad = cantidades.get(i);
+            int cantidad = Math.max(1, cantidades.get(i) != null ? cantidades.get(i) : 1);
             for (int j = 0; j < cantidad; j++) {
                 Pedido p = new Pedido();
                 p.setNombreDecorador(nombreDecorador);
@@ -328,6 +409,7 @@ public class PedidoControlador {
                 p.setUsaPitilloPesa(usaPitilloPesa);
                 p.setUsaConectorTope(usaConectorTope);
                 p.setTuboManualElegido(tipoTuboManual);
+                p.setControlManualElegido(tipoControlManual);
                 if (fechaInicioElegida != null) {
                     p.setFechaCreacion(fechaInicioElegida);
                 }
@@ -338,32 +420,47 @@ public class PedidoControlador {
             }
         }
 
+        // 1) Plan de corte de TODA la orden (todavía no se toca el inventario)
+        List<InventarioServicio.PlanPedido> planes;
         try {
-            for (int i = 0; i < pedidosDelLote.size(); i++) {
-                inventarioServicio.verificarDisponibilidad(pedidosDelLote.get(i), seleccionesDelLote.get(i));
-            }
+            planes = inventarioServicio.planificarLote(pedidosDelLote, seleccionesDelLote);
         } catch (InventarioServicio.MaterialInsuficienteException e) {
             redirectAttributes.addFlashAttribute("error", e.getMessage());
             return "redirect:/taller/nuevo";
         }
 
+        // 2) Se guardan los pedidos y se descuenta siguiendo el plan
         try {
-            for (int i = 0; i < pedidosDelLote.size(); i++) {
-                Pedido p = pedidosDelLote.get(i);
+            for (Pedido p : pedidosDelLote) {
                 pedidoRepository.save(p);
-                inventarioServicio.descontarMaterialDe(p, seleccionesDelLote.get(i));
-                if (i == 0) {
-                    procesarExtras(p, allParams);
-                }
+            }
+            inventarioServicio.aplicarPlanes(planes);
+            if (!pedidosDelLote.isEmpty()) {
+                procesarExtras(pedidosDelLote.get(0), allParams);
             }
         } catch (InventarioServicio.MaterialInsuficienteException e) {
-            redirectAttributes.addFlashAttribute("error", e.getMessage());
+            deshacerTransaccion();
+            redirectAttributes.addFlashAttribute("error",
+                    "No se guardó nada: " + e.getMessage());
             return "redirect:/taller/nuevo";
         }
 
         redirectAttributes.addFlashAttribute("mensaje",
-            pedidosDelLote.size() + " pedido(s) creados correctamente.");
+            pedidosDelLote.size() + " pedido(s) creados correctamente. El material de cada uno quedó descontado.");
         return "redirect:/taller/pedidos";
+    }
+
+    /**
+     * Marca la transacción para que se deshaga todo lo que se alcanzó a hacer
+     * (pedidos guardados, material descontado). Se usa cuando algo falla a mitad
+     * de camino y la respuesta igual es un redirect normal.
+     */
+    private void deshacerTransaccion() {
+        try {
+            TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
+        } catch (Exception sinTransaccion) {
+            // No hay transacción activa: no hay nada que deshacer.
+        }
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -417,7 +514,8 @@ public class PedidoControlador {
             inventarioServicio.descontarItemsTelaVenta(pedido, itemsTela);
             procesarExtras(pedido, allParams);
         } catch (InventarioServicio.MaterialInsuficienteException e) {
-            redirectAttributes.addFlashAttribute("error", e.getMessage());
+            deshacerTransaccion();
+            redirectAttributes.addFlashAttribute("error", "No se guardó nada: " + e.getMessage());
             return "redirect:/taller/nuevo";
         }
 
@@ -560,10 +658,10 @@ public class PedidoControlador {
             return "redirect:/taller/nuevo";
         }
 
+        // Plan de corte de todos los rieles juntos: cada uno corta de lo que dejó el anterior.
+        List<InventarioServicio.PlanPedido> planes;
         try {
-            for (Pedido p : pedidosDelLote) {
-                inventarioServicio.verificarRielOndaSerena(p);
-            }
+            planes = inventarioServicio.planificarLote(pedidosDelLote, null);
             List<InventarioServicio.ExtraInsumo> extras = leerExtrasComoLista(allParams);
             inventarioServicio.verificarExtras(extras);
         } catch (InventarioServicio.MaterialInsuficienteException e) {
@@ -572,16 +670,14 @@ public class PedidoControlador {
         }
 
         try {
-            for (int i = 0; i < pedidosDelLote.size(); i++) {
-                Pedido p = pedidosDelLote.get(i);
+            for (Pedido p : pedidosDelLote) {
                 pedidoRepository.save(p);
-                inventarioServicio.descontarRielOndaSerena(p);
-                if (i == 0) {
-                    procesarExtras(p, allParams);
-                }
             }
+            inventarioServicio.aplicarPlanes(planes);
+            procesarExtras(pedidosDelLote.get(0), allParams);
         } catch (InventarioServicio.MaterialInsuficienteException e) {
-            redirectAttributes.addFlashAttribute("error", e.getMessage());
+            deshacerTransaccion();
+            redirectAttributes.addFlashAttribute("error", "No se guardó nada: " + e.getMessage());
             return "redirect:/taller/nuevo";
         }
 
@@ -614,6 +710,7 @@ public class PedidoControlador {
         model.addAttribute("piezasDisponibles",  inventarioServicio.getTodasLasPiezas());
         model.addAttribute("retazosDisponibles", inventarioServicio.getTodosLosRetazos());
         model.addAttribute("catalogoInsumos",    insumoRepository.findAllByOrderByNombreAsc());
+        model.addAttribute("opcionesControl",    opcionesControl());
 
         List<MaterialUsado> extrasExistentes = inventarioServicio.getHistorialDePedido(id).stream()
                 .filter(m -> "EXTRA".equals(m.getTipoMaterial()))
@@ -640,6 +737,7 @@ public class PedidoControlador {
             @RequestParam(required = false, defaultValue = "true")  boolean usaPitilloPesa,
             @RequestParam(required = false, defaultValue = "true")  boolean usaConectorTope,
             @RequestParam(required = false) String tipoTuboManual,
+            @RequestParam(required = false) String tipoControlManual,
             @RequestParam(required = false) String rolloManual,
             @RequestParam(required = false) String retazoManual,
             @RequestParam(required = false) String tuboManual,
@@ -670,6 +768,7 @@ public class PedidoControlador {
         pedido.setUsaConectorTope(usaConectorTope);
 
         pedido.setTuboManualElegido(normalizarTuboManual(tipoTuboManual));
+        pedido.setControlManualElegido(normalizarTuboManual(tipoControlManual));
         pedido.calcularFichaTecnica();
         if (estado != null && !estado.isBlank()) {
             pedido.setEstado(estado);
@@ -693,35 +792,34 @@ public class PedidoControlador {
         try {
             inventarioServicio.revertirMaterialDe(id);
         } catch (Exception e) {
+            deshacerTransaccion();
             redirectAttributes.addFlashAttribute("error",
                     "No se pudo revertir el material del pedido: " + e.getMessage());
             return "redirect:/taller/editar/" + id;
         }
 
+        // Si algo falla de aquí en adelante se deshace TODO (también la devolución
+        // del material de arriba), así el pedido y el inventario quedan como estaban.
+        List<InventarioServicio.PlanPedido> planes;
         try {
-            inventarioServicio.verificarDisponibilidad(pedido, seleccion);
+            planes = inventarioServicio.planificarLote(
+                    Collections.singletonList(pedido), Collections.singletonList(seleccion));
         } catch (InventarioServicio.MaterialInsuficienteException e) {
+            deshacerTransaccion();
             redirectAttributes.addFlashAttribute("error",
-                    "No hay suficiente material para la nueva configuración: " + e.getMessage());
-            return "redirect:/taller/editar/" + id;
-        }
-
-        pedidoRepository.save(pedido);
-
-        try {
-            inventarioServicio.descontarMaterialDe(pedido, seleccion);
-        } catch (InventarioServicio.MaterialInsuficienteException e) {
-            redirectAttributes.addFlashAttribute("error",
-                    "Error al descontar material: " + e.getMessage());
+                    "No hay suficiente material para la nueva configuración (no se cambió nada): " + e.getMessage());
             return "redirect:/taller/editar/" + id;
         }
 
         try {
+            pedidoRepository.save(pedido);
+            inventarioServicio.aplicarPlanes(planes);
             procesarExtras(pedido, allParams);
         } catch (InventarioServicio.MaterialInsuficienteException e) {
+            deshacerTransaccion();
             redirectAttributes.addFlashAttribute("error",
-                    "Pedido guardado, pero hubo un problema con un insumo extra: " + e.getMessage());
-            return "redirect:/taller/pedidos";
+                    "No se cambió nada: " + e.getMessage());
+            return "redirect:/taller/editar/" + id;
         }
 
         redirectAttributes.addFlashAttribute("mensaje", "Pedido actualizado. Inventario reajustado correctamente.");
@@ -759,6 +857,7 @@ public class PedidoControlador {
         try {
             inventarioServicio.revertirMaterialDe(id);
         } catch (Exception e) {
+            deshacerTransaccion();
             redirectAttributes.addFlashAttribute("error",
                     "No se pudo revertir el material del pedido: " + e.getMessage());
             return "redirect:/taller/editar/" + id;
@@ -774,25 +873,27 @@ public class PedidoControlador {
         pedido.setBastonElegido(bastonElegido);
         pedido.setLadoApertura(ladoApertura);
 
+        List<InventarioServicio.PlanPedido> planes;
         try {
-            inventarioServicio.verificarRielOndaSerena(pedido);
+            planes = inventarioServicio.planificarLote(Collections.singletonList(pedido), null);
             List<InventarioServicio.ExtraInsumo> extras = leerExtrasComoLista(allParams);
             inventarioServicio.verificarExtras(extras);
         } catch (InventarioServicio.MaterialInsuficienteException e) {
+            deshacerTransaccion();
             redirectAttributes.addFlashAttribute("error",
-                    "No hay suficiente material para la nueva configuración: " + e.getMessage());
+                    "No hay suficiente material para la nueva configuración (no se cambió nada): " + e.getMessage());
             return "redirect:/taller/editar/" + id;
         }
 
-        pedidoRepository.save(pedido);
-
         try {
-            inventarioServicio.descontarRielOndaSerena(pedido);
+            pedidoRepository.save(pedido);
+            inventarioServicio.aplicarPlanes(planes);
             procesarExtras(pedido, allParams);
         } catch (InventarioServicio.MaterialInsuficienteException e) {
+            deshacerTransaccion();
             redirectAttributes.addFlashAttribute("error",
-                    "Error al descontar material: " + e.getMessage());
-            return "redirect:/taller/pedidos";
+                    "No se cambió nada: " + e.getMessage());
+            return "redirect:/taller/editar/" + id;
         }
 
         redirectAttributes.addFlashAttribute("mensaje",
@@ -928,6 +1029,23 @@ public class PedidoControlador {
     private Integer parsearIdManual(String valor) {
         if (valor == null || valor.isBlank() || "auto".equalsIgnoreCase(valor.trim())) return null;
         try { return Integer.parseInt(valor.trim()); } catch (NumberFormatException e) { return null; }
+    }
+
+    /**
+     * Controles que se pueden escoger a mano: los de siempre más cualquier otro
+     * insumo del catálogo cuyo nombre empiece por "Control".
+     * "Control R24" significa el Paquete de Control R24 completo.
+     */
+    private List<String> opcionesControl() {
+        List<String> opciones = new ArrayList<>(Arrays.asList("Control R8 A", "Control R8 B", "Control R16", "Control R24"));
+        for (Insumo insumo : insumoRepository.findAllByOrderByNombreAsc()) {
+            String nombre = insumo.getNombre() != null ? insumo.getNombre().trim() : "";
+            if (nombre.toLowerCase().startsWith("control ")
+                    && opciones.stream().noneMatch(o -> o.equalsIgnoreCase(nombre))) {
+                opciones.add(nombre);
+            }
+        }
+        return opciones;
     }
 
     private String normalizarTuboManual(String valor) {

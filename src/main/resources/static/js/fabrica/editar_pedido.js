@@ -7,6 +7,7 @@ const ckCabezal      = document.getElementById('ckCabezal');
 const ckPitillo      = document.getElementById('ckPitillo');
 const ckConector     = document.getElementById('ckConector');
 const selectTipoTubo = document.getElementById('selectTipoTubo');
+const selectTipoControl = document.getElementById('selectTipoControl');
 const caja           = document.getElementById('cajaPrevisualizacion');
 
 const selectRetazo  = document.getElementById('selectRetazo');
@@ -131,6 +132,7 @@ async function consultarPrevisualizacion() {
     const pitillo  = ckPitillo.checked;
     const conector = ckConector.checked;
     const tipoTuboManual = selectTipoTubo.value;
+    const tipoControlManual = selectTipoControl ? selectTipoControl.value : 'auto';
 
     const retazoManualId = selectRetazo.value !== 'auto' ? selectRetazo.value : null;
     const rolloManualId  = selectRollo.value  !== 'auto' ? selectRollo.value  : null;
@@ -149,7 +151,8 @@ async function consultarPrevisualizacion() {
             usaCabezal: cabezal,
             usaPitilloPesa: pitillo,
             usaConectorTope: conector,
-            tipoTuboManual
+            tipoTuboManual,
+            tipoControlManual
         });
 
         const token = localStorage.getItem('authToken');
@@ -242,6 +245,7 @@ ckCabezal.addEventListener('change', disparar);
 ckPitillo.addEventListener('change', () => { actualizarSelectsManual(); disparar(); });
 ckConector.addEventListener('change', disparar);
 selectTipoTubo.addEventListener('change', disparar);
+if (selectTipoControl) selectTipoControl.addEventListener('change', disparar);
 
 let extraIndex = 0;
 
@@ -378,3 +382,46 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 });
+
+// ─── Antes de enviar ───────────────────────────────────────────────────
+// 1) Las casillas sin marcar no viajan en el formulario y el servidor las
+//    tomaba como marcadas (Pitillo y Conector quedaban siempre puestos).
+//    Aquí se mandan como "false".
+// 2) Si se borró un insumo extra del medio, se renumeran los que quedan
+//    (si no, los de abajo no se guardaban).
+(function () {
+    const form = ckPitillo ? ckPitillo.closest('form') : null;
+    if (!form) return;
+    form.addEventListener('submit', () => {
+        form.querySelectorAll('input.falso-auto').forEach(x => x.remove());
+        [ckPitillo, ckConector].forEach(chk => {
+            if (chk && !chk.checked) {
+                const oculto = document.createElement('input');
+                oculto.type = 'hidden';
+                oculto.className = 'falso-auto';
+                oculto.name = chk.name;
+                oculto.value = 'false';
+                form.appendChild(oculto);
+            }
+        });
+
+        const filas = Array.from(form.querySelectorAll('.fila-extra'));
+        const infos = Array.from(form.querySelectorAll('.fila-extra-info'));
+        const usadas = new Set();
+        filas.forEach((fila, i) => {
+            const viejo = fila.getAttribute('data-indice');
+            const info = infos.find(x => x.getAttribute('data-indice') === viejo);
+            [fila, info].forEach(bloque => {
+                if (!bloque) return;
+                bloque.querySelectorAll('[name]').forEach(el => {
+                    const m = el.name.match(/^([A-Za-z]+)\[\d+\]$/);
+                    if (m) el.name = m[1] + '[' + i + ']';
+                });
+            });
+            if (info) usadas.add(info);
+        });
+        infos.forEach(info => {
+            if (!usadas.has(info)) info.querySelectorAll('[name]').forEach(el => { el.disabled = true; });
+        });
+    });
+})();

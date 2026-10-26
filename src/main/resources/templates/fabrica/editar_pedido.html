@@ -81,6 +81,21 @@
                     </select>
                 </div>
 
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Tipo de control</label>
+                    <select name="tipoControlManual" id="selectTipoControl" class="form-select">
+                        <option value="auto" th:selected="${pedido.controlManualElegido == null or pedido.controlManualElegido == ''}">⚡ Automático (según medida)</option>
+                        <option th:each="c : ${opcionesControl}" th:value="${c}"
+                                th:text="${c == 'Control R24'} ? 'Control R24 (paquete: trae terminal, acoples y soportes)' : ${c}"
+                                th:selected="${pedido.controlManualElegido == c}">Control</option>
+                    </select>
+                    <div class="form-text">
+                        Ahora lleva: <strong th:text="${pedido.tipoControl}">Control R16</strong>.
+                        Si lo cambias, al guardar se devuelve el control anterior al inventario y se descuenta el nuevo
+                        (con sus acoples, terminal, conectores y soportes según corresponda).
+                    </div>
+                </div>
+
                 <div class="card mb-3 border-secondary-subtle">
                     <div class="card-body pb-2">
                         <p class="fw-bold mb-2">Materiales opcionales</p>

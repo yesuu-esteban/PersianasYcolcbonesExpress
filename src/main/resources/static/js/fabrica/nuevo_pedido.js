@@ -104,10 +104,18 @@ function engancharEventosFila(fila) {
     const disparar = () => {
         clearTimeout(fila._t);
         fila._t = setTimeout(() => {
-            consultarPrevisualizacion(fila);
             actualizarSelectsManualFila(fila);
+            programarPrevisualizacionLote();
         }, 420);
     };
+    const cantidad = fila.querySelector('.campo-cantidad');
+    if (cantidad) cantidad.addEventListener('input', programarPrevisualizacionLote);
+    const desc = fila.querySelector('[name="descripciones"]');
+    if (desc) desc.addEventListener('change', programarPrevisualizacionLote);
+    ['.select-tubo', '.select-cabezal', '.select-pesa', '.select-cuerda', '.select-pitillo', '.select-tipo-control'].forEach(sel => {
+        const s = fila.querySelector(sel);
+        if (s) s.addEventListener('change', programarPrevisualizacionLote);
+    });
     fila.querySelector('.campo-ancho').addEventListener('input', disparar);
     fila.querySelector('.campo-alto').addEventListener('input', disparar);
     fila.querySelector('.campo-color').addEventListener('change', disparar);
@@ -118,12 +126,18 @@ function engancharEventosFila(fila) {
 
     fila.querySelector('.select-retazo').addEventListener('change', function() {
         if (this.value !== 'auto') fila.querySelector('.select-rollo').value = 'auto';
-        consultarPrevisualizacion(fila);
+        programarPrevisualizacionLote();
     });
     fila.querySelector('.select-rollo').addEventListener('change', function() {
         if (this.value !== 'auto') fila.querySelector('.select-retazo').value = 'auto';
-        consultarPrevisualizacion(fila);
+        programarPrevisualizacionLote();
     });
+}
+
+function opcionesTipoControl() {
+    const lista = (typeof opcionesControl !== 'undefined' && opcionesControl) ? opcionesControl : [];
+    return '<option value="auto">⚡ Automático (según medida)</option>'
+        + lista.map(c => `<option value="${c}">${c === 'Control R24' ? 'Control R24 (paquete completo)' : c}</option>`).join('');
 }
 
 function htmlFila(idx) {
@@ -204,6 +218,12 @@ function htmlFila(idx) {
                     </select>
                 </div>
                 <div class="col-md-6 col-lg-4">
+                    <label class="form-label">🎛 Tipo de control</label>
+                    <select name="tipoControlManual[${idx}]" class="form-select form-select-sm select-tipo-control">
+                        ${opcionesTipoControl()}
+                    </select>
+                </div>
+                <div class="col-md-6 col-lg-4">
                     <label class="form-label">🔩 Pieza de tubo</label>
                     <select name="tuboManual[${idx}]" class="form-select form-select-sm select-tubo">
                         <option value="auto">⚡ Automático</option>
@@ -247,89 +267,237 @@ function agregarFila() {
     actualizarSelectsManualFila(nueva);
 }
 
-async function consultarPrevisualizacion(fila) {
-    const caja     = fila.querySelector('.previsualizacion');
-    const ancho    = fila.querySelector('.campo-ancho').value;
-    const alto     = fila.querySelector('.campo-alto').value;
-    const color    = fila.querySelector('.campo-color').value;
-    const cabezal  = fila.querySelector('.campo-cabezal').checked;
-    const pitillo  = fila.querySelector('.campo-pitillo').checked;
-    const conector = fila.querySelector('.campo-conector').checked;
-    const tipoTuboManual = fila.querySelector('.select-tipo-tubo').value;
+// ═══════════════════════════════════════════════════════════════════════
+// VISTA PREVIA DE TODA LA ORDEN
+// Se le pregunta al servidor por TODAS las líneas juntas (y cada unidad de
+// cada línea), así se ve cómo se va rebajando el mismo tubo, rollo o pesa
+// de un producto al siguiente. Es el mismo cálculo que se usa al guardar.
+// ═══════════════════════════════════════════════════════════════════════
 
-    const selectRetazo = fila.querySelector('.select-retazo');
-    const selectRollo  = fila.querySelector('.select-rollo');
-    const retazoManualId = selectRetazo && selectRetazo.value !== 'auto' ? selectRetazo.value : null;
-    const rolloManualId  = selectRollo  && selectRollo.value  !== 'auto' ? selectRollo.value  : null;
+let temporizadorLote = null;
+let consultaLoteActual = 0;
 
-    if (!ancho || !alto) {
-        caja.className = 'previsualizacion';
-        caja.innerHTML = '<span class="cargando">Completa ancho, alto y color para ver el material necesario.</span>';
-        return;
-    }
-    caja.className = 'previsualizacion';
-    caja.innerHTML = '<span class="cargando">🔍 Consultando inventario...</span>';
+/** Se deja con este nombre porque otras partes del archivo lo llaman. */
+function consultarPrevisualizacion() {
+    programarPrevisualizacionLote();
+}
 
+function programarPrevisualizacionLote() {
+    clearTimeout(temporizadorLote);
+    temporizadorLote = setTimeout(consultarPrevisualizacionLote, 380);
+}
+
+function filasProducto() {
+    return Array.from(document.querySelectorAll('#contenedor-productos .fila-producto'));
+}
+
+function valorManual(fila, selector) {
+    const s = fila.querySelector(selector);
+    return s && s.value && s.value !== 'auto' ? s.value : 'auto';
+}
+
+function datosFila(fila) {
+    const desc = fila.querySelector('[name="descripciones"]');
+    const cant = parseInt((fila.querySelector('.campo-cantidad') || {}).value, 10);
+    return {
+        descripcion: desc ? desc.value : '',
+        cantidad: isNaN(cant) || cant < 1 ? 1 : cant,
+        ancho: parseFloat(fila.querySelector('.campo-ancho').value) || 0,
+        altura: parseFloat(fila.querySelector('.campo-alto').value) || 0,
+        color: fila.querySelector('.campo-color').value,
+        usaCabezal: fila.querySelector('.campo-cabezal').checked,
+        usaPitilloPesa: fila.querySelector('.campo-pitillo').checked,
+        usaConectorTope: fila.querySelector('.campo-conector').checked,
+        tipoTuboManual: valorManual(fila, '.select-tipo-tubo'),
+        tipoControlManual: valorManual(fila, '.select-tipo-control'),
+        retazoManual: valorManual(fila, '.select-retazo'),
+        rolloManual: valorManual(fila, '.select-rollo'),
+        tuboManual: valorManual(fila, '.select-tubo'),
+        cabezalManual: valorManual(fila, '.select-cabezal'),
+        pesaManual: valorManual(fila, '.select-pesa'),
+        cuerdaManual: valorManual(fila, '.select-cuerda'),
+        pitilloManual: valorManual(fila, '.select-pitillo')
+    };
+}
+
+async function consultarPrevisualizacionLote() {
+    const filas = filasProducto();
+    if (!filas.length) { pintarResumenLote(null); return; }
+
+    const lineas = filas.map(datosFila);
+    filas.forEach((fila, i) => {
+        const caja = fila.querySelector('.previsualizacion');
+        if (!lineas[i].ancho || !lineas[i].altura) {
+            caja.className = 'previsualizacion mt-2';
+            caja.innerHTML = '<span class="cargando">Completa ancho, alto y color para ver el material necesario.</span>';
+        } else if (!caja.innerHTML.includes('<table')) {
+            caja.className = 'previsualizacion mt-2';
+            caja.innerHTML = '<span class="cargando">🔍 Consultando inventario...</span>';
+        }
+    });
+    if (!lineas.some(l => l.ancho && l.altura)) { pintarResumenLote(null); return; }
+
+    const miConsulta = ++consultaLoteActual;
     try {
-        const params = new URLSearchParams({ ancho, altura: alto, color, usaCabezal: cabezal, usaPitilloPesa: pitillo, usaConectorTope: conector, tipoTuboManual });
-
+        const params = new URLSearchParams();
         const token = localStorage.getItem('authToken');
         if (token) params.set('token', token);
-
-        const resp = await fetch('/taller/previsualizar-material?' + params.toString());
+        const resp = await fetch('/taller/previsualizar-lote' + (token ? '?' + params.toString() : ''), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(lineas)
+        });
         if (!resp.ok) throw new Error('HTTP ' + resp.status);
         const d = await resp.json();
+        if (miConsulta !== consultaLoteActual) return; // llegó una respuesta vieja
 
-        if (d.disponible) {
-            caja.className = 'previsualizacion ok';
-            const a = parseFloat(ancho), h = parseFloat(alto);
-            const descTela = cabezal ? 0.035 : 0.03;
-            const descTubo = cabezal ? 0.03  : 0.025;
-            const cAncho = (a - descTela).toFixed(3);
-            const cAlto  = (h + 0.20).toFixed(3);
-            const cTubo  = (a - descTubo).toFixed(3);
-            let html = '<strong>✓ Material disponible</strong>';
-            html += '<table style="width:100%;border-collapse:collapse;margin-top:6px">';
-            if (retazoManualId) {
-                const retazo = retazosDisponibles.find(r => String(r.id) === String(retazoManualId));
-                if (retazo) {
-                    html += tr('✂ Retazo', `${cAncho} m × ${cAlto} m`,
-                        `⭐ Retazo #${retazo.id} · ${retazo.color} ${retazo.ancho}m × ${retazo.alto.toFixed(2)}m (elegido por ti)`);
-                }
-            } else if (rolloManualId) {
-                const rollo = rollosDisponibles.find(r => String(r.id) === String(rolloManualId));
-                if (rollo) {
-                    const sobrante = (rollo.largoRestante - parseFloat(cAlto > cAncho ? cAlto : cAncho)).toFixed(2);
-                    html += tr('🧵 Tela', `${cAncho} m × ${cAlto} m`,
-                        `⭐ Rollo #${rollo.id} · ${rollo.color} ${rollo.ancho}m · quedarían aprox. ${sobrante} m (elegido por ti)`);
-                }
-            } else {
-                if (d.retazoSugerido)  html += tr('✂ Retazo', `${cAncho} m × ${cAlto} m`, d.retazoSugerido);
-                else if (d.rolloSugerido) html += tr('🧵 Tela', `${cAncho} m × ${cAlto} m`, d.rolloSugerido);
-            }
-            if (d.tuboSugerido)    html += tr('🔧 Tubo',          `${cTubo} m`,               d.tuboSugerido);
-            if (d.cabezalSugerido) html += tr('🪟 Cabezal',       `${(a - 0.005).toFixed(3)} m`, d.cabezalSugerido);
-            if (d.pesaSugerida)    html += tr('⚖ Pesa',           `${cTubo} m`,               d.pesaSugerida);
-            if (d.cuerdaSugerida)  html += tr('🧶 Cuerda',         h <= 1.50 ? '3 m' : '4 m', d.cuerdaSugerida);
-            if (d.controlInfo)     html += tr('🎛 Control',        '1 und.',                   d.controlInfo);
-            if (d.acopleInfo)      html += tr('🔩 Acople',          '',                         d.acopleInfo);
-            if (d.terminalInfo)    html += tr('🔌 Terminal',        '1 und.',                   d.terminalInfo);
-            if (d.pitilloSugerido) html += tr('🪡 Pitillo',       `${cAncho} m`,              d.pitilloSugerido);
-            if (d.conectorInfo)    html += tr('🔗 Conec./Tope',   '',                          d.conectorInfo);
-            if (d.soporteInfo)     html += tr('🔩 Soporte',          '2 und.',                    d.soporteInfo);
-            if (d.tapaInfo)        html += tr('🧢 Tapa Cabezal',     '2 und.',                    d.tapaInfo);
-            if (d.tapaPerfilInfo)  html += tr('🧢 Tapa Perfil',      '2 und.',                    d.tapaPerfilInfo);
-            html += '</table>';
-            caja.innerHTML = html;
-        } else {
-            caja.className = 'previsualizacion falta';
-            caja.innerHTML = '<strong>⚠ Falta material:</strong><br>' + d.faltantes.join('<br>');
-        }
+        filas.forEach((fila, i) => {
+            if (!lineas[i].ancho || !lineas[i].altura) return;
+            pintarLinea(fila, d.lineas[i]);
+        });
+        pintarResumenLote(d);
     } catch (e) {
-        console.error('Error consultando previsualización:', e);
-        caja.className = 'previsualizacion falta';
-        caja.innerHTML = '<span>No se pudo consultar el inventario.</span>';
+        console.error('Error consultando la vista previa de la orden:', e);
+        filas.forEach((fila, i) => {
+            if (!lineas[i].ancho || !lineas[i].altura) return;
+            const caja = fila.querySelector('.previsualizacion');
+            caja.className = 'previsualizacion mt-2 falta';
+            caja.innerHTML = '<span>No se pudo consultar el inventario.</span>';
+        });
     }
+}
+
+function esc(t) {
+    return String(t == null ? '' : t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+function tablaPasos(pasos) {
+    let html = '<table style="width:100%;border-collapse:collapse;margin-top:4px">';
+    pasos.forEach(p => {
+        let info = esc(p.texto);
+        if (p.manual) info = '⭐ ' + info;
+        if (p.descartado) info = '<span style="color:#8a6d00">' + info + '</span>';
+        if (p.nota) info += '<br><small style="color:#8a6d00">⚠ ' + esc(p.nota) + '</small>';
+        html += tr(esc(p.material), esc(p.medida), info);
+    });
+    return html + '</table>';
+}
+
+function pintarLinea(fila, linea) {
+    const caja = fila.querySelector('.previsualizacion');
+    if (!linea) return;
+    const varias = linea.copias.length > 1;
+    let html = linea.disponible
+        ? '<strong>✓ Material disponible' + (varias ? ' para las ' + linea.copias.length + ' unidades' : '') + '</strong>'
+        : '<strong>⚠ Falta material</strong>';
+
+    linea.copias.forEach((c, j) => {
+        const faltan = c.faltantes && c.faltantes.length
+            ? '<div style="color:#842029;margin-top:4px">' + c.faltantes.map(esc).join('<br>') + '</div>' : '';
+        if (varias) {
+            const abierto = linea.copias.length <= 3 || !c.disponible ? ' open' : '';
+            html += `<details${abierto} style="margin-top:6px;border-top:1px dashed #b9d9c4;padding-top:4px">
+                <summary style="cursor:pointer;font-weight:600;font-size:0.82rem">${esc(c.etiqueta)} ${c.disponible ? '✓' : '⚠'}</summary>
+                ${tablaPasos(c.pasos)}${faltan}</details>`;
+        } else {
+            html += tablaPasos(c.pasos) + faltan;
+        }
+    });
+    caja.className = 'previsualizacion mt-2 ' + (linea.disponible ? 'ok' : 'falta');
+    caja.innerHTML = html;
+}
+
+/** Recuadro debajo de los productos: lo que gasta TODA la orden, pieza por pieza. */
+function pintarResumenLote(d) {
+    let caja = document.getElementById('resumenLote');
+    const contenedor = document.getElementById('contenedor-productos');
+    if (!caja && contenedor) {
+        caja = document.createElement('div');
+        caja.id = 'resumenLote';
+        caja.className = 'previsualizacion mt-2';
+        contenedor.insertAdjacentElement('afterend', caja);
+    }
+    if (!caja) return;
+    if (!d || !d.resumen || !d.resumen.length) { caja.style.display = 'none'; return; }
+    caja.style.display = '';
+    caja.className = 'previsualizacion mt-2 ' + (d.disponible ? 'ok' : 'falta');
+    caja.innerHTML = '<strong>📦 Lo que gasta toda la orden</strong>'
+        + '<div style="font-size:0.8rem;color:#555">Cada producto corta de lo que dejó el anterior; siempre se usa primero el pedazo más pequeño que alcance.</div>'
+        + '<ul style="margin:6px 0 0;padding-left:18px;font-size:0.82rem">'
+        + d.resumen.map(r => '<li>' + esc(r) + '</li>').join('') + '</ul>';
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// ANTES DE ENVIAR: renumerar las filas
+// Si se borra una fila del medio, los nombres como "cabezales[2]" quedan
+// corridos y el servidor le aplicaría a un producto los datos de otro. Aquí
+// se vuelven a numerar 0, 1, 2… en el orden en que se ven, y las casillas
+// sin marcar se mandan como "false" (si no, el servidor las toma por marcadas).
+// ═══════════════════════════════════════════════════════════════════════
+
+function renumerarFilas(filas) {
+    filas.forEach((fila, i) => {
+        fila.querySelectorAll('[name]').forEach(el => {
+            const m = el.name.match(/^([A-Za-z]+)\[\d+\]$/);
+            if (m) el.name = m[1] + '[' + i + ']';
+        });
+    });
+}
+
+function mandarCasillasApagadas(filas, selectores) {
+    filas.forEach(fila => {
+        fila.querySelectorAll('input.falso-auto').forEach(x => x.remove());
+        selectores.forEach(sel => {
+            const chk = fila.querySelector(sel);
+            if (chk && !chk.checked) {
+                const oculto = document.createElement('input');
+                oculto.type = 'hidden';
+                oculto.className = 'falso-auto';
+                oculto.name = chk.name;
+                oculto.value = 'false';
+                fila.appendChild(oculto);
+            }
+        });
+    });
+}
+
+/** Extras: cada fila .fila-extra tiene su fila de info hermana con el mismo data-indice. */
+function renumerarExtras(form) {
+    const filas = Array.from(form.querySelectorAll('.fila-extra'));
+    const infos = Array.from(form.querySelectorAll('.fila-extra-info'));
+    const usadas = new Set();
+    filas.forEach((fila, i) => {
+        const viejo = fila.getAttribute('data-indice');
+        const info = infos.find(x => x.getAttribute('data-indice') === viejo);
+        [fila, info].forEach(bloque => {
+            if (!bloque) return;
+            bloque.querySelectorAll('[name]').forEach(el => {
+                const m = el.name.match(/^([A-Za-z]+)\[\d+\]$/);
+                if (m) el.name = m[1] + '[' + i + ']';
+            });
+        });
+        if (info) usadas.add(info);
+    });
+    // Filas de info que quedaron huérfanas (se borró su fila): no se envían
+    infos.forEach(info => {
+        if (!usadas.has(info)) info.querySelectorAll('[name]').forEach(el => { el.disabled = true; });
+    });
+}
+
+function prepararFormularioAntesDeEnviar(form) {
+    if (!form) return;
+    form.addEventListener('submit', () => {
+        const productos = Array.from(form.querySelectorAll('.fila-producto'));
+        if (productos.length) {
+            renumerarFilas(productos);
+            mandarCasillasApagadas(productos, ['.campo-cabezal', '.campo-pitillo', '.campo-conector']);
+        }
+        const rieles = Array.from(form.querySelectorAll('.fila-riel'));
+        if (rieles.length) renumerarFilas(rieles);
+        const telasVenta = Array.from(form.querySelectorAll('.fila-tela-venta'));
+        if (telasVenta.length) renumerarFilas(telasVenta);
+        renumerarExtras(form);
+    });
 }
 
 function tr(mat, med, info) {
@@ -761,6 +929,15 @@ document.addEventListener('DOMContentLoaded', () => {
         engancharEventosFila(fila0);
         actualizarSelectsManualFila(fila0);
     }
+
+    // Si se agrega o se quita un producto, se recalcula toda la orden
+    const contenedorProductos = document.getElementById('contenedor-productos');
+    if (contenedorProductos) {
+        new MutationObserver(programarPrevisualizacionLote).observe(contenedorProductos, { childList: true });
+    }
+
+    // Antes de enviar cada formulario se renumeran las filas
+    document.querySelectorAll('form').forEach(prepararFormularioAntesDeEnviar);
     agregarFilaTelaVenta();
 
     const filaRiel0 = document.querySelector('.fila-riel[data-indice="0"]');

@@ -122,6 +122,14 @@
                             </select>
                         </div>
                         <div class="col-md-6 col-lg-4">
+                            <label class="form-label">🎛 Tipo de control</label>
+                            <select name="tipoControlManual[0]" class="form-select form-select-sm select-tipo-control">
+                                <option value="auto">⚡ Automático (según medida)</option>
+                                <option th:each="c : ${opcionesControl}" th:value="${c}"
+                                        th:text="${c == 'Control R24'} ? 'Control R24 (paquete completo)' : ${c}">Control</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 col-lg-4">
                             <label class="form-label">🔩 Pieza de tubo</label>
                             <select name="tuboManual[0]" class="form-select form-select-sm select-tubo">
                                 <option value="auto">⚡ Automático</option>
@@ -311,6 +319,7 @@
     const piezasDisponibles   = /*[[${piezasDisponibles}]]*/   [];
     const retazosDisponibles  = /*[[${retazosDisponibles}]]*/  [];
     const catalogoInsumos     = /*[[${catalogoInsumos}]]*/     [];
+    const opcionesControl     = /*[[${opcionesControl}]]*/     [];
 </script>
 
 <script src="/js/fabrica/nuevo_pedido.js"></script>

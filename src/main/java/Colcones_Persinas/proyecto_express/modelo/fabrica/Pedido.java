@@ -54,6 +54,14 @@ public class Pedido {
     @Column(name = "tubo_manual_elegido")
     private String tuboManualElegido;
 
+    /**
+     * Control escogido a mano por el jefe ("Control R16", "Control R8 A",
+     * "Control R8 B", "Control R24"…). Si está vacío, el control se escoge
+     * solo según la medida, como siempre.
+     */
+    @Column(name = "control_manual_elegido")
+    private String controlManualElegido;
+
     /** Solo aplica a Riel de Onda Serena sin polea: cuál de los bastones fijos elegido eligió el jefe. */
     @Column(name = "baston_elegido")
     private String bastonElegido;
@@ -395,6 +403,14 @@ public class Pedido {
             this.tipoControl = "Control R24";
         } else {
             this.tipoControl = (this.ancho > 1.50) ? "Control R16" : "Control R8 B";
+        }
+
+        // Si el jefe escogió el control a mano, ese manda sobre el automático.
+        // (Si escoge "Control R24" se usa el Paquete completo; si escoge otro,
+        // el control va suelto con su terminal, acoples y soportes.)
+        if (this.controlManualElegido != null && !this.controlManualElegido.isBlank()
+                && !"auto".equalsIgnoreCase(this.controlManualElegido.trim())) {
+            this.tipoControl = this.controlManualElegido.trim();
         }
 
         this.medidaCuerda = (this.altura <= 1.50) ? "3 metros" : "4 metros";
