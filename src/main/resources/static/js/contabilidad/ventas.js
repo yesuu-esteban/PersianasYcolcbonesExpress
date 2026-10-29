@@ -184,9 +184,12 @@
         c('dPctRet').value = num(v.porcentajeRetencion) > 0 ? String(num(v.porcentajeRetencion)).replace('.', ',') : '';
         c('dProveedor').value = v.proveedor || '';
         c('dProveedor').placeholder = v.proveedorPedido ? 'Fabricante del pedido: ' + v.proveedorPedido : 'Ej: SAFRA, P Y C';
-        c('dCosto').value = v.costoManual ? '$ ' + fmt.format(num(v.costo)) : '';
-        c('dCosto').placeholder = 'De fábrica: ' + plata(num(v.costoFabrica));
-        c('dCostoAyuda').textContent = 'Vacío = costo de fábrica (' + plata(num(v.costoFabrica)) + ')';
+        // El costo sale escrito: el de fábrica del pedido o el que se escribió aquí antes
+        c('dCosto').value = '$ ' + fmt.format(num(v.costo));
+        c('dCosto').placeholder = '$ 0';
+        c('dCostoAyuda').textContent = v.costoManual
+            ? 'Escrito a mano. El precio fábrica del pedido es ' + plata(num(v.costoFabrica)) + '.'
+            : 'Precio fábrica del pedido de Almacén. Cámbialo si la factura del proveedor dice otro valor.';
         c('dGasto').value = num(v.gasto) > 0 ? '$ ' + fmt.format(num(v.gasto)) : '';
         c('dInstalacion').value = v.estadoInstalacion || 'NO_INSTALADO';
         c('dPunto').value = v.puntoVenta || '';

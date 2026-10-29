@@ -288,6 +288,22 @@ public class ContabilidadServicio {
         public BigDecimal getUtilidadNeta() { return getUtilidadBruta().subtract(totalGastos); }
         /** Lo que quedó en plata después también de activos, préstamos y retiros. */
         public BigDecimal getResultadoEnCaja() { return getUtilidadNeta().subtract(totalOtros); }
+
+        /** Costo de fábrica de los pedidos de Almacén del periodo que se sumó a los costos (0 = ninguno). */
+        private BigDecimal costoFabrica = BigDecimal.ZERO;
+        public BigDecimal getCostoFabrica() { return costoFabrica; }
+
+        /**
+         * Suma a los costos de venta lo que cobra la fábrica por los pedidos de Almacén del periodo
+         * (el "Precio fábrica" de cada producto, o el costo escrito en Ventas). Sale como su propio grupo.
+         */
+        public void agregarCostoFabrica(BigDecimal costo, int pedidos) {
+            if (costo == null || costo.signum() <= 0) return;
+            costoFabrica = costoFabrica.add(costo);
+            costos.add(0, new Grupo("COSTO DE FÁBRICA (pedidos de Almacén)", costo,
+                    List.of(new Linea("Precio fábrica de " + pedidos + " pedido(s) del mes", costo))));
+            totalCostos = totalCostos.add(costo);
+        }
     }
 
     /**

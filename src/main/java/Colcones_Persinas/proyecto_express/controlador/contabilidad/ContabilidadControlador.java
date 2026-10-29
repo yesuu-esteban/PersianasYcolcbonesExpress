@@ -212,8 +212,12 @@ public class ContabilidadControlador {
         model.addAttribute("porCobrar", porCobrar);
         model.addAttribute("porPagar", porPagar);
         model.addAttribute("posicionNeta", totalCuentas.add(porCobrar).subtract(porPagar));
-        model.addAttribute("resultado", servicio.resultado(periodo.atDay(1), periodo.atEndOfMonth(), null));
-        model.addAttribute("ventas", ventasServicio.ventas(periodo.atDay(1), periodo.atEndOfMonth()));
+        // El resultado del mes suma a los costos lo que cobra la fábrica por los pedidos de Almacén del mes
+        ContabilidadServicio.Resultado resultado = servicio.resultado(periodo.atDay(1), periodo.atEndOfMonth(), null);
+        VentasAlmacenServicio.Ventas ventasMes = ventasServicio.ventas(periodo.atDay(1), periodo.atEndOfMonth());
+        resultado.agregarCostoFabrica(ventasMes.getCosto(), ventasMes.getCantidad());
+        model.addAttribute("resultado", resultado);
+        model.addAttribute("ventas", ventasMes);
         ponerPeriodo(model, periodo);
         return "contabilidad/resumen";
     }

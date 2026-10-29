@@ -35,12 +35,22 @@ public class GraficasServicio {
     private final ContabilidadServicio contabilidad;
     private final CuentaContableRepository cuentaRepository;
     private final MovimientoContableRepository movimientoRepository;
+    private final VentasAlmacenServicio ventasServicio;
 
     public GraficasServicio(ContabilidadServicio contabilidad, CuentaContableRepository cuentaRepository,
-                            MovimientoContableRepository movimientoRepository) {
+                            MovimientoContableRepository movimientoRepository, VentasAlmacenServicio ventasServicio) {
         this.contabilidad = contabilidad;
         this.cuentaRepository = cuentaRepository;
         this.movimientoRepository = movimientoRepository;
+        this.ventasServicio = ventasServicio;
+    }
+
+    /** El resultado del mes con el costo de fábrica de los pedidos de Almacén sumado a los costos. */
+    private ContabilidadServicio.Resultado resultadoConFabrica(YearMonth m) {
+        ContabilidadServicio.Resultado r = contabilidad.resultado(m.atDay(1), m.atEndOfMonth(), null);
+        VentasAlmacenServicio.Ventas v = ventasServicio.ventas(m.atDay(1), m.atEndOfMonth());
+        r.agregarCostoFabrica(v.getCosto(), v.getCantidad());
+        return r;
     }
 
     /**
@@ -50,7 +60,7 @@ public class GraficasServicio {
     @Transactional(readOnly = true)
     public Map<String, Object> datos(YearMonth mes, boolean porSemana) {
         Map<String, Object> d = new LinkedHashMap<>();
-        ContabilidadServicio.Resultado r = contabilidad.resultado(mes.atDay(1), mes.atEndOfMonth(), null);
+        ContabilidadServicio.Resultado r = resultadoConFabrica(mes);
 
         // ── Pastel: gastos por categoría (costos de venta, gastos y "no es gasto") ──
         List<ContabilidadServicio.Grupo> egresos = new ArrayList<>();
@@ -96,7 +106,7 @@ public class GraficasServicio {
         List<Long> ing = new ArrayList<>(), gas = new ArrayList<>(), util = new ArrayList<>();
         for (int i = 11; i >= 0; i--) {
             YearMonth m = mes.minusMonths(i);
-            ContabilidadServicio.Resultado rm = contabilidad.resultado(m.atDay(1), m.atEndOfMonth(), null);
+            ContabilidadServicio.Resultado rm = resultadoConFabrica(m);
             etiquetas.add(MESES_CORTOS[m.getMonthValue() - 1] + " " + String.valueOf(m.getYear()).substring(2));
             ing.add(pesos(rm.getTotalIngresos()));
             gas.add(pesos(rm.getTotalCostos().add(rm.getTotalGastos())));

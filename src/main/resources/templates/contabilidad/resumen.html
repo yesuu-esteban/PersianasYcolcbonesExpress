@@ -75,6 +75,10 @@
                 </th:block>
 
                 <p class="nota">Toca una categoría para ver el detalle. Los traslados entre cuentas no cuentan aquí: solo cambian dónde está la plata.</p>
+                <p class="nota" th:if="${resultado.costoFabrica.signum() > 0}">
+                    "Costo de fábrica" es el precio fábrica de los pedidos de Almacén del mes (o el costo escrito en Ventas).
+                    Cuando le pagues a la fábrica, anota ese egreso en una categoría que <strong>no</strong> sea de costos de venta,
+                    para que no se cuente dos veces.</p>
             </th:block>
         </section>
 

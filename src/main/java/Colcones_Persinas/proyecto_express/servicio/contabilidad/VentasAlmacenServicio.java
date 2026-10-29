@@ -481,7 +481,9 @@ public class VentasAlmacenServicio {
         // Si dejan el mismo fabricante del pedido no se guarda: así, si cambian el pedido, se ve el nuevo.
         d.setProveedor(proveedor.isBlank() || proveedor.equalsIgnoreCase(texto(p.getFabrica()).trim()) ? null : proveedor);
 
-        d.setCosto(plata(campos.get("costo"), "El costo"));
+        // Si el costo que viene es el mismo de fábrica, no se guarda aparte: así sigue al pedido de Almacén
+        BigDecimal costo = plata(campos.get("costo"), "El costo");
+        d.setCosto(costo != null && costo.compareTo(pesos(costoDeFabrica(p))) == 0 ? null : costo);
         BigDecimal gasto = plata(campos.get("gasto"), "El gasto");
         d.setGasto(gasto == null ? BigDecimal.ZERO : gasto);
 
