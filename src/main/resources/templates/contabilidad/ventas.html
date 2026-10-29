@@ -2,17 +2,18 @@
 <html lang="es" xmlns:th="http://www.thymeleaf.org">
 <head>
     <th:block th:replace="~{contabilidad/fragmentos :: estilos}"></th:block>
-    <title>Contabilidad - Ventas de Almacén</title>
+    <title>Contabilidad - Ventas</title>
 </head>
 <body>
 <header th:replace="~{contabilidad/fragmentos :: encabezado('ventas')}"></header>
 
-<main>
-    <h1>Ventas de Almacén · <span th:text="${mesTexto}">Octubre 2026</span></h1>
+<main class="ancho">
+    <h1>Ventas · <span th:text="${mesTexto}">Octubre 2026</span></h1>
     <div th:replace="~{contabilidad/fragmentos :: aviso-inicio}"></div>
-    <p class="ayuda">Los pedidos que se hicieron en Almacén en el mes (por fecha del pedido): lo que se vendió, lo que costó en fábrica,
-        la utilidad, lo abonado y lo que falta cobrar. Cada abono que se registra en Almacén se anota solo en Movimientos.
-        En "En contabilidad" ves a qué cuenta entró cada abono; si quedó en la cuenta equivocada, usa <strong>Cambiar cuenta</strong>.</p>
+    <p class="ayuda">Los pedidos de Almacén del mes con las columnas de la planilla de ventas: subtotal, IVA, retención (RTF), total,
+        cada abono con lo que quedó debiendo, lo que falta por cobrar, costo, gasto y utilidad.
+        Con <strong>💵 Pago</strong> registras lo que pagó el cliente y te dice cuánto queda debiendo;
+        con <strong>✏ Datos</strong> pones la factura, si lleva IVA, la retención, el costo, el gasto, la instalación y el punto de venta.</p>
     <div th:if="${mensaje}" class="alert alert-success" th:text="${mensaje}"></div>
     <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
 
@@ -28,79 +29,141 @@
         <button type="submit" class="btn btn-outline-secondary">Ver</button>
     </form>
 
-    <!-- ═══ Totales ═══ -->
-    <div class="chips">
-        <div class="chip"><span>Pedidos</span><strong th:text="${ventas.cantidad}">0</strong></div>
-        <div class="chip"><span>Vendido</span><strong><span th:replace="~{contabilidad/fragmentos :: plata(${ventas.vendido})}"></span></strong></div>
-        <div class="chip"><span>Costo fábrica</span><strong><span th:replace="~{contabilidad/fragmentos :: plata(${ventas.costoFabrica})}"></span></strong></div>
-        <div class="chip"><span>Utilidad estimada</span><strong><span th:replace="~{contabilidad/fragmentos :: plata(${ventas.utilidad})}"></span></strong></div>
-        <div class="chip"><span>Abonado</span><strong><span th:replace="~{contabilidad/fragmentos :: plata(${ventas.abonado})}"></span></strong></div>
-        <div class="chip"><span>Falta cobrar</span><strong><span th:replace="~{contabilidad/fragmentos :: plata(${ventas.saldo})}"></span></strong></div>
+    <!-- ═══ Totales (la fila de arriba de la planilla) ═══ -->
+    <div class="chips totales-ventas">
+        <div class="chip"><span>Ventas</span><strong th:text="${ventas.cantidad}">0</strong></div>
+        <div class="chip"><span>Subtotal</span><strong><span th:replace="~{contabilidad/fragmentos :: plata(${ventas.subtotal})}"></span></strong></div>
+        <div class="chip"><span>Total IVA</span><strong><span th:replace="~{contabilidad/fragmentos :: plata(${ventas.iva})}"></span></strong></div>
+        <div class="chip"><span>Total RTF</span><strong><span th:replace="~{contabilidad/fragmentos :: plata(${ventas.retencion})}"></span></strong></div>
+        <div class="chip destacado"><span>Ventas totales</span><strong><span th:replace="~{contabilidad/fragmentos :: plata(${ventas.vendido})}"></span></strong></div>
+        <div class="chip"><span>Total abonos</span><strong class="txt-ingreso"><span th:replace="~{contabilidad/fragmentos :: plata(${ventas.abonado})}"></span></strong></div>
+        <div class="chip destacado"><span>Por cobrar · <b th:text="${ventas.conSaldo} + ' venta(s)'">3 venta(s)</b></span>
+            <strong class="atrasado"><span th:replace="~{contabilidad/fragmentos :: plata(${ventas.saldo})}"></span></strong></div>
+        <div class="chip"><span>Total costo</span><strong><span th:replace="~{contabilidad/fragmentos :: plata(${ventas.costo})}"></span></strong></div>
+        <div class="chip"><span>Total gasto</span><strong><span th:replace="~{contabilidad/fragmentos :: plata(${ventas.gasto})}"></span></strong></div>
+        <div class="chip destacado"><span>Total utilidad</span><strong><span th:replace="~{contabilidad/fragmentos :: plata(${ventas.utilidad})}"></span></strong></div>
         <div class="chip"><span>Abonos que entraron este mes</span><strong class="txt-ingreso"><span th:replace="~{contabilidad/fragmentos :: plata(${ventas.abonosDelMes})}"></span></strong></div>
     </div>
 
     <div class="alert alert-info" th:if="${ventas.pedidosSinAnotar > 0}">
         <strong th:text="${ventas.pedidosSinAnotar} + ' pedido(s)'">2 pedido(s)</strong> tienen abonos que todavía no están en contabilidad
         (<span th:replace="~{contabilidad/fragmentos :: plata(${ventas.faltaAnotar})}"></span>). Suele pasar con pedidos hechos antes de empezar la contabilidad.
-        Puedes anotarlos con el botón <strong>Anotar</strong> de cada pedido, eligiendo a qué cuenta entró la plata y qué día.
-        Si un abono quedó en la cuenta equivocada, corrígelo con <strong>Cambiar cuenta</strong>.
+        Puedes anotarlos con el botón <strong>Anotar abono viejo</strong> de cada venta, eligiendo a qué cuenta entró la plata y qué día.
         <br><strong>Ojo:</strong> si el saldo inicial que pusiste en Cuentas ya incluye esa plata, no lo anotes, porque quedaría contada dos veces.
     </div>
 
     <!-- ═══ Lista ═══ -->
     <div class="caja vacio" th:if="${ventas.cantidad == 0}">No se hicieron pedidos en Almacén este mes.</div>
 
-    <div class="tabla-wrap" th:unless="${ventas.cantidad == 0}">
-        <table class="table table-hover align-middle">
+    <th:block th:unless="${ventas.cantidad == 0}">
+    <div class="barra-ventas">
+        <input type="search" class="form-control" id="buscarVenta" placeholder="Buscar cliente, factura, dirección, proveedor…" aria-label="Buscar venta">
+        <select class="form-select" id="filtroVenta" aria-label="Mostrar">
+            <option value="todas">Todas las ventas</option>
+            <option value="deben">Solo las que deben</option>
+            <option value="pagadas">Solo las pagadas</option>
+            <option value="sin-factura">Pendientes de facturar</option>
+            <option value="sin-instalar">No instaladas</option>
+        </select>
+        <span class="ayuda" id="contadorVentas" th:text="${ventas.cantidad} + ' venta(s)'">4 venta(s)</span>
+    </div>
+
+    <div class="tabla-wrap">
+        <table class="table table-hover align-middle tabla-ventas">
             <thead>
                 <tr>
-                    <th>Pedido</th>
+                    <th>#</th>
+                    <th>Factura</th>
                     <th>Cliente</th>
-                    <th>Vendedor</th>
-                    <th>Estado</th>
-                    <th class="num">Precio</th>
-                    <th class="num">Costo fábrica</th>
+                    <th class="num">Subtotal</th>
+                    <th class="num">IVA</th>
+                    <th class="num">RTF</th>
+                    <th class="num">Total venta</th>
+                    <th>Abonos</th>
+                    <th class="num">Por cobrar</th>
+                    <th>Proveedor</th>
+                    <th class="num">Costo</th>
+                    <th class="num">Gasto</th>
                     <th class="num">Utilidad</th>
-                    <th class="num">Abonado</th>
-                    <th class="num">Saldo</th>
-                    <th>En contabilidad</th>
+                    <th>Finalizado</th>
+                    <th>Punto venta</th>
+                    <th>Quién instaló</th>
                     <th></th>
                 </tr>
             </thead>
             <tbody>
-                <tr th:each="f : ${ventas.filas}">
+                <tr th:each="f : ${ventas.filas}" th:id="'venta-' + ${f.id}" class="fila-venta"
+                    th:classappend="${resaltar != null and resaltar == f.id} ? 'resaltada'"
+                    th:attr="data-id=${f.id},data-debe=${f.saldo.signum() > 0},data-factura=${f.estadoFactura},data-instalacion=${f.estadoInstalacion}">
                     <td class="detalle-mov text-nowrap">
                         <span th:text="'#' + ${f.id}">#1287</span>
                         <small th:text="${f.fecha}">05/10/2026</small>
                     </td>
-                    <td class="detalle-mov">
+                    <td class="detalle-mov text-nowrap">
+                        <span th:text="${f.factura != '' ? f.factura : '—'}">FECL 436</span>
+                        <span class="etiqueta" th:classappend="'fac-' + ${f.estadoFactura}" th:text="${f.estadoFacturaTexto}">Pendiente facturar</span>
+                    </td>
+                    <td class="detalle-mov celda-cliente">
                         <span th:text="${f.cliente}">Cliente</span>
+                        <small th:if="${f.direccion != ''}" th:text="${f.direccion}">Dirección</small>
                         <small th:if="${f.cedula != ''}" th:text="'C.C. ' + ${f.cedula}">C.C. 000</small>
                     </td>
-                    <td th:text="${f.vendedor}">Vendedor</td>
-                    <td class="detalle-mov">
-                        <span th:text="${f.estado}">Pendiente</span>
-                        <small th:text="${f.estadoPago}">Pago pendiente</small>
+                    <td class="num"><span th:replace="~{contabilidad/fragmentos :: plata(${f.subtotal})}"></span></td>
+                    <td class="num">
+                        <th:block th:if="${f.llevaIva}"><span th:replace="~{contabilidad/fragmentos :: plata(${f.iva})}"></span></th:block>
+                        <span th:unless="${f.llevaIva}" class="ayuda">—</span>
                     </td>
-                    <td class="num"><span th:replace="~{contabilidad/fragmentos :: plata(${f.precio})}"></span></td>
-                    <td class="num"><span th:replace="~{contabilidad/fragmentos :: plata(${f.costoFabrica})}"></span></td>
+                    <td class="num">
+                        <span th:if="${f.retencion.signum() > 0}" class="detalle-mov">
+                            <span th:replace="~{contabilidad/fragmentos :: plata(${f.retencion})}"></span>
+                            <small th:text="${#numbers.formatDecimal(f.porcentajeRetencion, 1, 'POINT', 1, 'COMMA')} + ' %'">2,5 %</small>
+                        </span>
+                        <span th:unless="${f.retencion.signum() > 0}" class="ayuda">—</span>
+                    </td>
+                    <td class="num fw-bold"><span th:replace="~{contabilidad/fragmentos :: plata(${f.totalVenta})}"></span></td>
+                    <td class="celda-abonos">
+                        <div th:each="pg : ${f.pagos}" class="pago" th:classappend="${!pg.anotado} ? 'sin-anotar'">
+                            <span class="pago-num" th:text="'Abono ' + ${pg.numero}">Abono 1</span>
+                            <span class="plata" th:text="'$' + ${#numbers.formatInteger(pg.valor, 1, 'POINT')}">$240.000</span>
+                            <small th:text="${pg.fecha} + ' · ' + ${pg.cuenta}">05/10/2026 · NEQUI</small>
+                            <small class="queda" th:text="${pg.quedaDebiendo.signum() > 0} ? ('quedó debiendo $' + ${#numbers.formatInteger(pg.quedaDebiendo, 1, 'POINT')}) : '✓ quedó pagado'">quedó debiendo $250.000</small>
+                        </div>
+                        <span class="ayuda" th:if="${#lists.isEmpty(f.pagos)}">Sin abonos</span>
+                        <div class="total-abonos" th:if="${#lists.size(f.pagos) > 1}">
+                            Total: <span th:replace="~{contabilidad/fragmentos :: plata(${f.abonado})}"></span>
+                        </div>
+                    </td>
+                    <td class="num celda-saldo">
+                        <strong th:if="${f.saldo.signum() > 0}" class="atrasado"><span th:replace="~{contabilidad/fragmentos :: plata(${f.saldo})}"></span></strong>
+                        <span th:if="${f.saldo.signum() == 0}" class="txt-ingreso fw-bold text-nowrap">✓ Paz y salvo</span>
+                        <span th:if="${f.saldo.signum() < 0}" class="txt-traslado detalle-mov">
+                            <span th:text="'$' + ${#numbers.formatInteger(f.saldo.negate(), 1, 'POINT')}">$1</span>
+                            <small>a favor del cliente</small>
+                        </span>
+                    </td>
+                    <td th:text="${f.proveedor != '' ? f.proveedor : '—'}">SAFRA</td>
+                    <td class="num detalle-mov">
+                        <span th:replace="~{contabilidad/fragmentos :: plata(${f.costo})}"></span>
+                        <small th:unless="${f.costoManual}">de fábrica</small>
+                    </td>
+                    <td class="num">
+                        <th:block th:if="${f.gasto.signum() > 0}"><span th:replace="~{contabilidad/fragmentos :: plata(${f.gasto})}"></span></th:block>
+                        <span th:unless="${f.gasto.signum() > 0}" class="ayuda">—</span>
+                    </td>
                     <td class="num fw-bold"><span th:replace="~{contabilidad/fragmentos :: plata(${f.utilidad})}"></span></td>
-                    <td class="num"><span th:replace="~{contabilidad/fragmentos :: plata(${f.abonado})}"></span></td>
-                    <td class="num"><span th:replace="~{contabilidad/fragmentos :: plata(${f.saldo})}"></span></td>
-                    <td class="detalle-mov text-nowrap">
-                        <span class="atrasado" th:if="${f.faltaAnotar}">Faltan <span th:replace="~{contabilidad/fragmentos :: plata(${f.falta})}"></span></span>
-                        <span class="txt-ingreso" th:if="${!f.faltaAnotar and f.abonado.signum() > 0}">✓ Anotado</span>
-                        <span class="ayuda" th:if="${!f.faltaAnotar and f.abonado.signum() <= 0 and #lists.isEmpty(f.abonos)}">Sin abonos</span>
-                        <!-- A qué cuenta entró cada abono ya anotado -->
-                        <small th:each="a : ${f.abonos}"
-                               th:text="${a.cuenta} + ' · $' + ${#numbers.formatInteger(a.valor, 1, 'POINT')}">NEQUI · $200.000</small>
-                    </td>
-                    <td style="min-width:200px">
-                        <a class="btn btn-sm btn-outline-secondary text-nowrap"
-                           th:href="@{/almacen/listado(nombre=${f.cliente})}">Ver en Almacén</a>
+                    <td><span class="etiqueta" th:classappend="'ins-' + ${f.estadoInstalacion}" th:text="${f.estadoInstalacionTexto}">No instalado</span></td>
+                    <td th:text="${f.puntoVenta != '' ? f.puntoVenta : '—'}">Redes</td>
+                    <td th:text="${f.quienInstalo != '' ? f.quienInstalo : '—'}">—</td>
+                    <td class="celda-acciones">
+                        <div class="d-flex gap-1 flex-wrap">
+                            <button type="button" class="btn btn-sm btn-success btn-pago" th:if="${f.saldo.signum() > 0}"
+                                    th:attr="data-id=${f.id}">💵 Pago</button>
+                            <button type="button" class="btn btn-sm btn-outline-info btn-datos" th:attr="data-id=${f.id}">✏ Datos</button>
+                            <a class="btn btn-sm btn-outline-secondary text-nowrap" th:href="@{/almacen/listado(nombre=${f.cliente})}">Almacén</a>
+                        </div>
                         <!-- Corregir la cuenta a la que entró un abono (si se eligió mal) -->
                         <details class="pagar" th:if="${!#lists.isEmpty(f.abonos)}">
-                            <summary class="btn btn-sm btn-outline-info mt-1">Cambiar cuenta</summary>
+                            <summary class="btn btn-sm btn-outline-secondary mt-1">Cambiar cuenta</summary>
                             <form class="mt-2 d-grid gap-1" method="post" th:each="a : ${f.abonos}"
                                   th:action="@{/contabilidad/ventas/abono/{mid}/cuenta(mid=${a.movimientoId})}">
                                 <input type="hidden" name="mes" th:value="${mes}">
@@ -115,7 +178,7 @@
                             </form>
                         </details>
                         <details class="pagar" th:if="${f.faltaAnotar}">
-                            <summary class="btn btn-sm btn-outline-success mt-1">Anotar</summary>
+                            <summary class="btn btn-sm btn-outline-warning mt-1">Anotar abono viejo</summary>
                             <form class="mt-2 d-grid gap-2" method="post" th:action="@{/contabilidad/ventas/{id}/anotar(id=${f.id})}">
                                 <input type="hidden" name="mes" th:value="${mes}">
                                 <select class="form-select form-select-sm" name="cuentaId" required aria-label="A qué cuenta entró la plata">
@@ -131,12 +194,156 @@
                     </td>
                 </tr>
             </tbody>
+            <tfoot>
+                <tr class="fila-totales">
+                    <td colspan="3">Totales del mes</td>
+                    <td class="num"><span th:replace="~{contabilidad/fragmentos :: plata(${ventas.subtotal})}"></span></td>
+                    <td class="num"><span th:replace="~{contabilidad/fragmentos :: plata(${ventas.iva})}"></span></td>
+                    <td class="num"><span th:replace="~{contabilidad/fragmentos :: plata(${ventas.retencion})}"></span></td>
+                    <td class="num"><span th:replace="~{contabilidad/fragmentos :: plata(${ventas.vendido})}"></span></td>
+                    <td><span th:replace="~{contabilidad/fragmentos :: plata(${ventas.abonado})}"></span></td>
+                    <td class="num"><span th:replace="~{contabilidad/fragmentos :: plata(${ventas.saldo})}"></span></td>
+                    <td></td>
+                    <td class="num"><span th:replace="~{contabilidad/fragmentos :: plata(${ventas.costo})}"></span></td>
+                    <td class="num"><span th:replace="~{contabilidad/fragmentos :: plata(${ventas.gasto})}"></span></td>
+                    <td class="num"><span th:replace="~{contabilidad/fragmentos :: plata(${ventas.utilidad})}"></span></td>
+                    <td colspan="4"></td>
+                </tr>
+            </tfoot>
         </table>
     </div>
-    <p class="nota">Aquí se cuenta lo que se vendió aunque no se haya cobrado todo. El Resumen cuenta solo la plata que entró y salió de las cuentas,
-        por eso los dos números pueden ser distintos. La utilidad es la estimada de cada pedido (precio al cliente menos precio de fábrica).</p>
+    </th:block>
+
+    <p class="nota">Si la venta lleva IVA, el precio del pedido ya lo incluye: subtotal = total ÷ 1,19 e IVA = total − subtotal.
+        La retención (RTF) se saca del subtotal y el cliente la descuenta de lo que paga. Por cobrar = total − RTF − abonos.
+        Utilidad = total venta − costo − gasto (igual que la planilla). Si no escribes un costo, se usa el costo de fábrica del pedido.
+        Aquí se cuenta lo que se vendió aunque no se haya cobrado todo; el Resumen cuenta solo la plata que entró y salió de las cuentas.</p>
 </main>
 
+<!-- ═══ Registrar un pago ═══ -->
+<dialog id="dlgPago" class="dialogo" aria-labelledby="tituloPago">
+    <form method="post" id="formPago" class="d-grid gap-2">
+        <h2 id="tituloPago">💵 Registrar pago</h2>
+        <p class="ayuda mb-0" id="pagoCliente">Cliente</p>
+        <div class="resumen-pago">
+            <div><span>Total a pagar</span><strong id="pagoTotal">$0</strong><small class="ayuda d-block" id="pagoNotaRtf"></small></div>
+            <div><span>Ya abonó</span><strong id="pagoAbonado">$0</strong></div>
+            <div><span>Debe</span><strong class="atrasado" id="pagoDebe">$0</strong></div>
+        </div>
+        <input type="hidden" name="mes" th:value="${mes}">
+        <div>
+            <label class="form-label" for="pagoValor">¿Cuánto pagó?</label>
+            <div class="d-flex gap-2">
+                <input type="text" inputmode="numeric" class="form-control" id="pagoValor" name="valor" required autocomplete="off" placeholder="$ 0">
+                <button type="button" class="btn btn-outline-secondary text-nowrap" id="pagoTodo">Pagó todo</button>
+            </div>
+        </div>
+        <div>
+            <label class="form-label" for="pagoCuenta">¿A qué cuenta entró?</label>
+            <select class="form-select" id="pagoCuenta" name="cuentaId" required>
+                <option value="">Elige la cuenta</option>
+                <option th:each="c : ${todasLasCuentas}" th:if="${c.activa}" th:value="${c.id}" th:text="${c.nombre}">NEQUI</option>
+            </select>
+        </div>
+        <div>
+            <label class="form-label" for="pagoFecha">¿Qué día?</label>
+            <input type="date" class="form-control" id="pagoFecha" name="fecha" required th:value="${hoy}" th:max="${hoy}" th:attr="min=${fechaInicioIso}">
+        </div>
+        <div class="queda-debiendo" id="pagoQueda" aria-live="polite">Escribe cuánto pagó.</div>
+        <div class="d-flex gap-2 justify-content-end">
+            <button type="button" class="btn btn-outline-secondary btn-cerrar">Cancelar</button>
+            <button type="submit" class="btn btn-primary">Registrar pago</button>
+        </div>
+    </form>
+</dialog>
+
+<!-- ═══ Datos de la venta ═══ -->
+<dialog id="dlgDatos" class="dialogo ancho" aria-labelledby="tituloDatos">
+    <form method="post" id="formDatos">
+        <h2 id="tituloDatos">✏ Datos de la venta</h2>
+        <p class="ayuda" id="datosCliente">Cliente</p>
+        <input type="hidden" name="mes" th:value="${mes}">
+        <div class="grid-datos">
+            <div>
+                <label class="form-label" for="dFactura">N.º de factura</label>
+                <input type="text" class="form-control" id="dFactura" name="factura" maxlength="40" placeholder="Ej: FECL 436">
+            </div>
+            <div>
+                <label class="form-label" for="dEstadoFactura">Estado factura</label>
+                <select class="form-select" id="dEstadoFactura" name="estadoFactura">
+                    <option value="PENDIENTE">Pendiente facturar</option>
+                    <option value="FACTURADA">Facturada</option>
+                    <option value="NO_REQUIERE">No requiere</option>
+                </select>
+            </div>
+            <div class="campo-iva">
+                <label class="form-label" for="dLlevaIva">IVA</label>
+                <div class="d-flex gap-2 align-items-center">
+                    <label class="form-check m-0 text-nowrap"><input type="checkbox" class="form-check-input" id="dLlevaIva" name="llevaIva" value="true"> Lleva IVA</label>
+                    <input type="text" inputmode="decimal" class="form-control" id="dPctIva" name="porcentajeIva" value="19" aria-label="Porcentaje de IVA" style="max-width:80px">
+                    <span>%</span>
+                </div>
+                <small class="ayuda">El precio ya lo incluye</small>
+            </div>
+            <div>
+                <label class="form-label" for="dPctRet">Retención (RTF) %</label>
+                <input type="text" inputmode="decimal" class="form-control" id="dPctRet" name="porcentajeRetencion" list="listaRetenciones" placeholder="0">
+                <datalist id="listaRetenciones"><option th:each="r : ${retenciones}" th:value="${r}"></option></datalist>
+                <small class="ayuda">Sobre el subtotal</small>
+            </div>
+            <div>
+                <label class="form-label" for="dProveedor">Proveedor</label>
+                <input type="text" class="form-control" id="dProveedor" name="proveedor" maxlength="120">
+            </div>
+            <div>
+                <label class="form-label" for="dCosto">Costo</label>
+                <input type="text" inputmode="numeric" class="form-control" id="dCosto" name="costo">
+                <small class="ayuda" id="dCostoAyuda">Vacío = costo de fábrica</small>
+            </div>
+            <div>
+                <label class="form-label" for="dGasto">Gasto</label>
+                <input type="text" inputmode="numeric" class="form-control" id="dGasto" name="gasto" placeholder="$ 0">
+                <small class="ayuda">Instalación, transporte…</small>
+            </div>
+            <div>
+                <label class="form-label" for="dInstalacion">Finalizado</label>
+                <select class="form-select" id="dInstalacion" name="estadoInstalacion">
+                    <option value="NO_INSTALADO">No instalado</option>
+                    <option value="INSTALADO">Instalado</option>
+                    <option value="ENTREGADO">Entregado (sin instalación)</option>
+                </select>
+            </div>
+            <div>
+                <label class="form-label" for="dPunto">Punto de venta</label>
+                <input type="text" class="form-control" id="dPunto" name="puntoVenta" maxlength="40" list="listaPuntos">
+                <datalist id="listaPuntos"><option th:each="p : ${puntosDeVenta}" th:value="${p}"></option></datalist>
+            </div>
+            <div>
+                <label class="form-label" for="dInstalo">Quién instaló</label>
+                <input type="text" class="form-control" id="dInstalo" name="quienInstalo" maxlength="80">
+            </div>
+        </div>
+
+        <div class="vista-calculo" aria-live="polite">
+            <div><span>Subtotal</span><strong id="cSubtotal">$0</strong></div>
+            <div><span>IVA</span><strong id="cIva">$0</strong></div>
+            <div><span>RTF</span><strong id="cRet">$0</strong></div>
+            <div><span>Total venta</span><strong id="cTotal">$0</strong></div>
+            <div><span>Por cobrar</span><strong id="cSaldo">$0</strong></div>
+            <div><span>Utilidad</span><strong id="cUtilidad">$0</strong></div>
+        </div>
+
+        <div class="d-flex gap-2 justify-content-end mt-3">
+            <button type="button" class="btn btn-outline-secondary btn-cerrar">Cancelar</button>
+            <button type="submit" class="btn btn-primary">Guardar</button>
+        </div>
+    </form>
+</dialog>
+
+<script th:inline="javascript">
+    const VENTAS = /*[[${ventas.filas}]]*/ [];
+</script>
 <script src="/js/token-nav.js"></script>
+<script src="/js/contabilidad/ventas.js"></script>
 </body>
 </html>

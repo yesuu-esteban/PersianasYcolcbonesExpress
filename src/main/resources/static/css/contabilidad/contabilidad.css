@@ -171,9 +171,66 @@ details.iniciar summary { cursor: pointer; display: inline-block; }
 .form-check-input:checked { background-color: var(--accent); border-color: var(--accent); }
 select:disabled { opacity: .55; }
 
+/* ── Ventas (planilla con IVA, retención, abonos y saldos) ── */
+main.ancho { max-width: 1760px; }
+.totales-ventas .chip { min-width: 140px; }
+.totales-ventas .chip.destacado { border-color: rgba(255,193,7,0.45); background: rgba(255,193,7,0.07); }
+.totales-ventas .chip span b { color: var(--texto); font-weight: 700; text-transform: none; }
+.barra-ventas { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 4px 0 10px; }
+.barra-ventas .form-control { flex: 1 1 280px; max-width: 420px; }
+.barra-ventas .form-select { flex: 0 1 220px; }
+.tabla-ventas { min-width: 1700px; }
+.tabla-ventas thead th { position: sticky; top: 0; z-index: 1; background: var(--bg-card); white-space: nowrap; }
+.tabla-ventas td { font-size: .82rem; }
+.tabla-ventas .celda-cliente { min-width: 180px; max-width: 240px; }
+.tabla-ventas .celda-abonos { min-width: 210px; }
+.tabla-ventas .celda-acciones { min-width: 200px; }
+.tabla-ventas tr.resaltada td { background: rgba(255,193,7,0.10); }
+.tabla-ventas tfoot td { font-weight: 800; border-top: 2px solid rgba(255,255,255,0.25); white-space: nowrap; }
+.etiqueta { display: inline-block; font-size: .68rem; font-weight: 700; padding: 2px 8px; border-radius: 999px; margin-top: 3px;
+    background: rgba(255,255,255,0.10); color: var(--texto-suave); white-space: nowrap; }
+.etiqueta.fac-FACTURADA, .etiqueta.ins-INSTALADO { background: rgba(81,207,102,0.16); color: var(--verde); }
+.etiqueta.fac-PENDIENTE, .etiqueta.ins-NO_INSTALADO { background: rgba(255,193,7,0.14); color: var(--gold); }
+.etiqueta.ins-ENTREGADO { background: rgba(116,192,252,0.16); color: var(--azul); }
+.pago { padding: 4px 0; border-bottom: 1px dashed var(--linea); }
+.pago:last-of-type { border-bottom: 0; }
+.pago .pago-num { font-weight: 700; color: var(--texto-suave); margin-right: 6px; font-size: .74rem; text-transform: uppercase; }
+.pago .plata { font-weight: 700; color: var(--verde); }
+.pago small { display: block; color: var(--texto-suave); font-size: .72rem; }
+.pago small.queda { color: var(--gold); }
+.pago.sin-anotar .plata { color: var(--gold); }
+.total-abonos { font-size: .76rem; color: var(--texto-suave); margin-top: 3px; }
+.celda-saldo strong { font-size: .95rem; }
+
+/* Cuadros de "Registrar pago" y "Datos de la venta" */
+dialog.dialogo {
+    background: var(--bg-card); color: var(--texto); border: 1px solid rgba(255,255,255,0.15); border-radius: 16px;
+    padding: 22px; width: min(440px, calc(100vw - 24px)); box-shadow: 0 18px 60px rgba(0,0,0,0.6);
+}
+dialog.dialogo.ancho { width: min(860px, calc(100vw - 24px)); }
+dialog.dialogo::backdrop { background: rgba(10,5,20,0.72); }
+dialog.dialogo h2 { margin-bottom: 4px; }
+.resumen-pago, .vista-calculo { display: grid; gap: 8px; }
+.resumen-pago { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.vista-calculo { grid-template-columns: repeat(6, minmax(0, 1fr)); margin-top: 14px; }
+.resumen-pago > div, .vista-calculo > div { background: rgba(0,0,0,0.2); border-radius: 10px; padding: 8px 10px; }
+.resumen-pago span, .vista-calculo span { display: block; font-size: .68rem; color: var(--texto-suave); text-transform: uppercase; letter-spacing: .3px; }
+.resumen-pago strong, .vista-calculo strong { font-size: .95rem; white-space: nowrap; }
+.queda-debiendo { background: rgba(255,193,7,0.08); border: 1px solid rgba(255,193,7,0.35); border-radius: 10px; padding: 10px 12px; font-size: .9rem; }
+.queda-debiendo strong { color: var(--gold); font-size: 1.05rem; }
+.queda-debiendo.bien { background: rgba(81,207,102,0.10); border-color: rgba(81,207,102,0.5); color: var(--verde); }
+.queda-debiendo.mal { background: rgba(255,138,128,0.10); border-color: rgba(255,138,128,0.5); color: var(--rojo); }
+.grid-datos { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px 14px; }
+.grid-datos small.ayuda { display: block; margin-top: 2px; }
+.btn-success { background: #2f9e44; border-color: #2f9e44; font-weight: 600; }
+.btn-outline-warning { color: var(--gold); border-color: rgba(255,193,7,0.5); }
+.btn-outline-warning:hover { background: #e0a800; color: #1a0f2e; }
+
 @media (max-width: 991.98px) {
     .resumen-grid { grid-template-columns: minmax(0, 1fr); }
     .filtros { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid-datos { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .vista-calculo { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 @media (max-width: 575.98px) {
     body { padding: 10px; }
@@ -183,4 +240,7 @@ select:disabled { opacity: .55; }
     .form-control, .form-select { font-size: 16px; }
     .chip { flex: 1 1 calc(50% - 10px); min-width: 0; }
     .periodo .campo { flex: 1 1 100%; }
+    .grid-datos { grid-template-columns: minmax(0, 1fr); }
+    .vista-calculo, .resumen-pago { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    dialog.dialogo { padding: 16px; }
 }

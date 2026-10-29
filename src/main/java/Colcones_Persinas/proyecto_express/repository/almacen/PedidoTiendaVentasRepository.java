@@ -17,4 +17,7 @@ public interface PedidoTiendaVentasRepository extends Repository<PedidoTienda, I
     List<PedidoTienda> findByFechaPedidoBetweenOrderByFechaPedidoDescIdDesc(LocalDateTime desde, LocalDateTime hasta);
 
     Optional<PedidoTienda> findById(Integer id);
+
+    /** Para registrar un pago desde Ventas (suma al abono y recalcula el saldo, igual que Almacén). */
+    PedidoTienda save(PedidoTienda pedido);
 }

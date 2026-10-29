@@ -230,8 +230,43 @@ public class ContabilidadControlador {
         model.addAttribute("ventas", ventasServicio.ventas(periodo.atDay(1), periodo.atEndOfMonth()));
         model.addAttribute("todasLasCuentas", cuentaRepository.findAllByOrderByOrdenAscNombreAsc());
         model.addAttribute("hoy", ContabilidadServicio.hoy().toString());
+        model.addAttribute("puntosDeVenta", VentasAlmacenServicio.PUNTOS_DE_VENTA);
+        model.addAttribute("retenciones", VentasAlmacenServicio.RETENCIONES);
         ponerPeriodo(model, periodo);
         return "contabilidad/ventas";
+    }
+
+    /** Registra un pago del cliente desde Ventas y dice cuánto queda debiendo. */
+    @PostMapping("/ventas/{id}/pago")
+    public String registrarPagoVenta(@PathVariable int id, @RequestParam Map<String, String> f, RedirectAttributes ra) {
+        try {
+            VentasAlmacenServicio.ResultadoPago r = ventasServicio.registrarPago(id,
+                    ContabilidadServicio.pesos(f.get("valor")), entero(f.get("cuentaId")), fecha(f.get("fecha")), usuarioActual());
+            MovimientoContable m = r.getMovimiento();
+            BigDecimal queda = r.getQuedaDebiendo();
+            ra.addFlashAttribute("mensaje", "Pago de $" + miles(m.getValor()) + " de " + r.getCliente()
+                    + " (venta #" + id + ") registrado en " + m.getCuenta().getNombre() + ". "
+                    + (queda.signum() > 0 ? "Queda debiendo $" + miles(queda) + "." : "✓ Ya quedó a paz y salvo."));
+            ra.addFlashAttribute("resaltar", id);
+        } catch (IllegalArgumentException e) {
+            ra.addFlashAttribute("error", e.getMessage());
+        }
+        ra.addAttribute("mes", leerMes(f.get("mes")).toString());
+        return "redirect:/contabilidad/ventas";
+    }
+
+    /** Guarda factura, IVA, retención, proveedor, costo, gasto, instalación, punto de venta y quién instaló. */
+    @PostMapping("/ventas/{id}/datos")
+    public String guardarDatosVenta(@PathVariable int id, @RequestParam Map<String, String> f, RedirectAttributes ra) {
+        try {
+            ventasServicio.guardarDatos(id, f, usuarioActual());
+            ra.addFlashAttribute("mensaje", "Venta #" + id + ": datos guardados.");
+            ra.addFlashAttribute("resaltar", id);
+        } catch (IllegalArgumentException e) {
+            ra.addFlashAttribute("error", "Venta #" + id + ": " + e.getMessage());
+        }
+        ra.addAttribute("mes", leerMes(f.get("mes")).toString());
+        return "redirect:/contabilidad/ventas";
     }
 
     /** Anota en contabilidad los abonos de un pedido que todavía no estaban (pedidos de antes de la contabilidad). */
