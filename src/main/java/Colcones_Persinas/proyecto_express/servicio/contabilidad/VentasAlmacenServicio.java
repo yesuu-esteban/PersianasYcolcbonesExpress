@@ -1,5 +1,6 @@
 package Colcones_Persinas.proyecto_express.servicio.contabilidad;
 
+import Colcones_Persinas.proyecto_express.modelo.almacen.DetallePedidoTienda;
 import Colcones_Persinas.proyecto_express.modelo.almacen.PedidoTienda;
 import Colcones_Persinas.proyecto_express.modelo.contabilidad.CuentaContable;
 import Colcones_Persinas.proyecto_express.modelo.contabilidad.DatosVenta;
@@ -351,7 +352,7 @@ public class VentasAlmacenServicio {
         f.aCobrar = f.totalVenta.subtract(f.retencion);
 
         // Costo, gasto y utilidad
-        f.costoFabrica = pesos(p.getCostoFabricaTotal());
+        f.costoFabrica = pesos(costoDeFabrica(p));
         f.costo = f.costoManual ? pesos(d.getCosto()) : f.costoFabrica;
         f.gasto = pesos(f.gasto);
         f.utilidad = f.totalVenta.subtract(f.costo).subtract(f.gasto);
@@ -551,6 +552,31 @@ public class VentasAlmacenServicio {
             throw new IllegalArgumentException("La contabilidad empieza el " + inicio.format(FMT)
                     + ": la fecha del pago no puede ser anterior.");
         }
+    }
+
+    /**
+     * Lo que cobra la fábrica por el pedido: la suma del "Precio fábrica" de cada producto del pedido de
+     * Almacén (precio fábrica × cantidad). Se toma directo de los productos para que salga siempre lo que
+     * se escribió en el formulario.
+     */
+    static BigDecimal costoDeFabrica(PedidoTienda p) {
+        BigDecimal suma = BigDecimal.ZERO;
+        boolean hayProductos = false;
+        if (p.getDetalles() != null) {
+            for (DetallePedidoTienda d : p.getDetalles()) {
+                if (d == null) continue;
+                hayProductos = true;
+                BigDecimal linea = d.getSubtotalFabrica();
+                if (linea == null || linea.signum() == 0) {
+                    BigDecimal unitario = d.getPrecioFabricaUnitario() != null ? d.getPrecioFabricaUnitario() : BigDecimal.ZERO;
+                    Object cantidad = d.getCantidad();   // sirve si es int o Integer
+                    long n = cantidad == null ? 0 : ((Number) cantidad).longValue();
+                    linea = unitario.multiply(BigDecimal.valueOf(n));
+                }
+                suma = suma.add(linea);
+            }
+        }
+        return hayProductos ? suma : nz(p.getCostoFabricaTotal());
     }
 
     private static boolean esDeLaTienda(PedidoTienda p) {
