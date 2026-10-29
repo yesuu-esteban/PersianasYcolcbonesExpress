@@ -95,6 +95,11 @@ table.table td { border-color: rgba(255,255,255,0.08); vertical-align: middle; }
     font-size: 1.15rem; font-weight: 800;
 }
 .resumen-total .fila-total span:last-child { color: var(--accent-light); }
+.resumen-total .fila-resumen small { font-size: 0.72rem; opacity: 0.75; }
+.resumen-total .fila-debe { font-size: 1rem; color: #fff; }
+.resumen-total .fila-debe span:last-child { color: #ffc107; font-weight: 800; }
+.resumen-total .fila-utilidad span:last-child { color: #51cf66; font-weight: 800; }
+.resumen-total .fila-utilidad span.negativa { color: #ff8a80; }
 
 @media (max-width: 576px) {
     body { padding: 12px; }

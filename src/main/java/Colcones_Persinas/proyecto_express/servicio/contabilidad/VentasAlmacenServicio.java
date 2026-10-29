@@ -559,7 +559,7 @@ public class VentasAlmacenServicio {
      * Almacén (precio fábrica × cantidad). Se toma directo de los productos para que salga siempre lo que
      * se escribió en el formulario.
      */
-    static BigDecimal costoDeFabrica(PedidoTienda p) {
+    public static BigDecimal costoDeFabrica(PedidoTienda p) {
         BigDecimal suma = BigDecimal.ZERO;
         boolean hayProductos = false;
         if (p.getDetalles() != null) {

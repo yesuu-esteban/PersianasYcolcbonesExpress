@@ -62,9 +62,11 @@ function agregarFilaProducto() {
     calcularTotales();
 }
 
-// ── Cuadro resumen: suma cantidad × precio venta de cada producto, menos el descuento ──
+// ── Cuadro resumen: total (cantidad × precio venta, menos el descuento), abono, lo que queda
+//    debiendo, costo de fábrica (cantidad × precio fábrica) y la utilidad ──
 function calcularTotales() {
     let totalProductos = 0;
+    let costoFabrica = 0;
 
     document.querySelectorAll('#cuerpoDetalles tr').forEach(fila => {
         const inputCantidad = fila.querySelector('input[name$=".cantidad"]');
@@ -74,6 +76,10 @@ function calcularTotales() {
         const cantidad = parseFloat(inputCantidad.value) || 0;
         const precio = parseFloat(inputPrecio.value) || 0;
         totalProductos += cantidad * precio;
+
+        const inputFabrica = fila.querySelector('input[name$=".precioFabricaUnitario"]');
+        const precioFabrica = inputFabrica ? (parseFloat(inputFabrica.value) || 0) : 0;
+        costoFabrica += cantidad * precioFabrica;
     });
 
     const inputDescuento = document.querySelector('input[name="descuento"]');
@@ -86,6 +92,18 @@ function calcularTotales() {
     if (elTotalProductos) elTotalProductos.textContent = '$ ' + formatearMiles(totalProductos);
     if (elTotalDescuento) elTotalDescuento.textContent = '$ ' + formatearMiles(descuento);
     if (elTotalAPagar) elTotalAPagar.textContent = '$ ' + formatearMiles(totalAPagar);
+
+    const inputAbono = document.querySelector('input[name="abono"]');
+    const abono = inputAbono ? (parseFloat(inputAbono.value) || 0) : 0;
+    const saldo = totalAPagar - abono;
+    const utilidad = totalAPagar - costoFabrica;
+    const poner = (id, texto) => { const el = document.getElementById(id); if (el) el.textContent = texto; };
+    poner('totalAbono', '$ ' + formatearMiles(abono));
+    poner('totalSaldo', saldo < 0 ? 'El abono es mayor al total' : (saldo === 0 ? '✓ Paz y salvo' : '$ ' + formatearMiles(saldo)));
+    poner('totalCostoFabrica', '$ ' + formatearMiles(costoFabrica));
+    poner('totalUtilidad', (utilidad < 0 ? '-$ ' : '$ ') + formatearMiles(Math.abs(utilidad)));
+    const filaUtilidad = document.getElementById('totalUtilidad');
+    if (filaUtilidad) filaUtilidad.classList.toggle('negativa', utilidad < 0);
 }
 
 function formatearMiles(numero) {

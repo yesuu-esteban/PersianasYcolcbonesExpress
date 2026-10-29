@@ -4,7 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Nuevo Pedido de Almacén</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap guardado en el proyecto (static/css/vendor). Si ese archivo no está, se usa el de internet. -->
+    <link href="/css/vendor/bootstrap.min.css" rel="stylesheet"
+          onerror="this.onerror=null;this.href='https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css';">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/css/almacen/pedido_form.css">
 </head>
@@ -216,6 +218,23 @@
             <div class="fila-total">
                 <span>Total a pagar</span>
                 <span id="totalAPagar">$ 0</span>
+            </div>
+            <div class="fila-resumen mt-2">
+                <span>Abono</span>
+                <span id="totalAbono">$ 0</span>
+            </div>
+            <div class="fila-resumen fila-debe">
+                <span>Queda debiendo</span>
+                <span id="totalSaldo">$ 0</span>
+            </div>
+            <hr>
+            <div class="fila-resumen">
+                <span>Costo fábrica <small>(precio fábrica × cantidad)</small></span>
+                <span id="totalCostoFabrica">$ 0</span>
+            </div>
+            <div class="fila-resumen fila-utilidad">
+                <span>Utilidad</span>
+                <span id="totalUtilidad">$ 0</span>
             </div>
         </div>
 

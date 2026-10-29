@@ -27,6 +27,7 @@ import Colcones_Persinas.proyecto_express.repository.almacen.PedidoTiendaReposit
 import Colcones_Persinas.proyecto_express.repository.contabilidad.CuentaContableRepository;
 import Colcones_Persinas.proyecto_express.repository.instalaciones.TareaCalendarioRepository;
 import Colcones_Persinas.proyecto_express.servicio.contabilidad.ContabilidadServicio;
+import Colcones_Persinas.proyecto_express.servicio.contabilidad.VentasAlmacenServicio;
 import Colcones_Persinas.proyecto_express.servicio.instalaciones.CalendarioServicio;
 import Colcones_Persinas.proyecto_express.servicio.tienda.TiendaServicio;
 
@@ -218,6 +219,17 @@ public class PedidoTiendaControlador {
                 : new ArrayList<>();
 
         model.addAttribute("pedidos", pedidosPagina);
+        // Costo de fábrica de cada pedido (suma del "Precio fábrica" × cantidad de sus productos) y la utilidad
+        Map<Integer, BigDecimal> costoFabricaPorPedido = new HashMap<>();
+        Map<Integer, BigDecimal> utilidadPorPedido = new HashMap<>();
+        for (PedidoTienda p : pedidosPagina) {
+            BigDecimal costo = VentasAlmacenServicio.costoDeFabrica(p);
+            BigDecimal precio = p.getPrecioCliente() != null ? p.getPrecioCliente() : BigDecimal.ZERO;
+            costoFabricaPorPedido.put(p.getId(), costo);
+            utilidadPorPedido.put(p.getId(), precio.subtract(costo));
+        }
+        model.addAttribute("costoFabricaPorPedido", costoFabricaPorPedido);
+        model.addAttribute("utilidadPorPedido", utilidadPorPedido);
         model.addAttribute("nombre", nombre != null ? nombre : "");
         model.addAttribute("cedula", cedula != null ? cedula : "");
         model.addAttribute("direccion", direccion != null ? direccion : "");
@@ -437,10 +449,10 @@ public class PedidoTiendaControlador {
                 .map(p -> p.getSaldo() != null ? p.getSaldo() : BigDecimal.ZERO)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         BigDecimal sumaCostoFabrica = pedidosFiltrados.stream()
-                .map(PedidoTienda::getCostoFabricaTotal)
+                .map(VentasAlmacenServicio::costoDeFabrica)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         BigDecimal sumaUtilidad = pedidosFiltrados.stream()
-                .map(PedidoTienda::getUtilidadEstimada)
+                .map(PedidoTiendaControlador::utilidadDe)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         Map<String, List<PedidoTienda>> porVendedor = pedidosFiltrados.stream()
@@ -454,7 +466,7 @@ public class PedidoTiendaControlador {
                     .map(p -> p.getPrecioCliente() != null ? p.getPrecioCliente() : BigDecimal.ZERO)
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
             BigDecimal utilidadVendedor = lista.stream()
-                    .map(PedidoTienda::getUtilidadEstimada)
+                    .map(PedidoTiendaControlador::utilidadDe)
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
 
             Map<String, Object> fila = new HashMap<>();
@@ -496,7 +508,6 @@ public class PedidoTiendaControlador {
     static boolean esDeLaTiendaVirtual(PedidoTienda p) {
         return p.getVendedor() != null && TiendaServicio.VENDEDOR_TIENDA.equalsIgnoreCase(p.getVendedor().trim());
     }
-
     private Integer parseEnteroSeguro(String valor) {
         if (valor == null || valor.isBlank()) return null;
         try {
@@ -564,6 +575,12 @@ public class PedidoTiendaControlador {
         pedido.setAbono(abono);
 
         pedido.setSaldo(pedido.getPrecioCliente().subtract(abono));
+    }
+
+    /** Utilidad de un pedido: precio al cliente − costo de fábrica (suma de sus productos). */
+    private static BigDecimal utilidadDe(PedidoTienda p) {
+        BigDecimal precio = p.getPrecioCliente() != null ? p.getPrecioCliente() : BigDecimal.ZERO;
+        return precio.subtract(VentasAlmacenServicio.costoDeFabrica(p));
     }
 
     private String formatearMonto(BigDecimal monto) {
