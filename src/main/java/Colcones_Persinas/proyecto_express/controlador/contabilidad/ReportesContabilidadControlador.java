@@ -69,9 +69,10 @@ public class ReportesContabilidadControlador {
     @ModelAttribute
     public void datosDeInicio(Model model) {
         ConfiguracionContable conf = contabilidad.configuracion();
-        boolean hay = conf != null && conf.getFechaInicio() != null;
-        model.addAttribute("fechaInicioTexto", hay ? conf.getFechaInicioFormateada() : "");
-        model.addAttribute("fechaInicioIso", hay ? conf.getFechaInicio().toString() : null);
+        LocalDate inicio = contabilidad.fechaInicio();   // solo si ya llegó el día
+        model.addAttribute("fechaInicioTexto", inicio != null ? conf.getFechaInicioFormateada() : "");
+        model.addAttribute("fechaInicioIso", inicio != null ? inicio.toString() : null);
+        model.addAttribute("inicioProgramadoTexto", contabilidad.inicioProgramado() ? conf.getFechaInicioFormateada() : "");
     }
 
     // ═══════════════════════════════════════════════════════════════

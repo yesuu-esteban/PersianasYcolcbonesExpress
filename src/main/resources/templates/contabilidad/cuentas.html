@@ -33,7 +33,7 @@
                     </td>
                     <td>
                         <input type="text" class="form-control form-control-sm campo-pesos" name="saldoInicial" inputmode="numeric"
-                               th:value="${f.cuenta.saldoInicial.signum() < 0 ? '-' : ''} + ${#numbers.formatInteger(f.cuenta.saldoInicial.abs(), 1, 'POINT')}"
+                               th:value="${f.saldoInicial.signum() < 0 ? '-' : ''} + ${#numbers.formatInteger(f.saldoInicial.abs(), 1, 'POINT')}"
                                th:attr="form='cuenta-' + ${f.cuenta.id}" aria-label="Saldo inicial">
                     </td>
                     <td class="num fw-bold"><span th:replace="~{contabilidad/fragmentos :: plata(${f.saldo})}"></span></td>
@@ -92,10 +92,15 @@
         <h2>Iniciar la contabilidad en cero</h2>
 
         <div class="estado-inicio" th:if="${hayInicio}">
-            <p class="mb-2">
+            <p class="mb-2" th:unless="${inicioProgramado}">
                 📅 La contabilidad empieza el <strong th:text="${conf.fechaInicioFormateada}">01/11/2026</strong>.
                 Todo lo de antes (movimientos, deudas por pagar y pedidos por cobrar) quedó guardado como historial
                 y no suma en saldos ni resúmenes.
+            </p>
+            <p class="mb-2" th:if="${inicioProgramado}">
+                📅 Programado: el <strong th:text="${conf.fechaInicioFormateada}">01/11/2026</strong> la contabilidad se reinicia en cero sola,
+                con los saldos de arranque de abajo. <strong>Hasta ese día todo funciona normal</strong>: los saldos de hoy, el resumen,
+                las gráficas, las ventas y los pagos cuentan como siempre. Ese día, lo de antes queda como historial.
             </p>
             <form method="post" action="/contabilidad/cuentas/deshacer-inicio"
                   onsubmit="return confirm('¿Deshacer el inicio en cero? La contabilidad vuelve a contar todo lo anterior y cada cuenta recupera el saldo inicial que tenía antes.');">
@@ -107,6 +112,8 @@
             <summary class="btn btn-sm btn-outline-secondary" th:text="${hayInicio} ? 'Cambiar la fecha de inicio' : 'Iniciar en cero'">Iniciar en cero</summary>
             <p class="ayuda mt-3">
                 Sirve para empezar la contabilidad limpia desde un día (por ejemplo, el 1 de noviembre).
+                Si eliges un día que todavía no llega, queda <strong>programado</strong>: hasta ese día todo sigue funcionando normal
+                y ese día arranca en cero solo.
                 <strong>No se borra nada</strong>: lo de antes queda guardado como historial, pero ya no cuenta
                 en saldos, resumen, gráficas, deudas por pagar ni pedidos por cobrar. Y se puede deshacer.
                 Cada cuenta arranca con lo que escribas aquí; si la dejas vacía, arranca en $0.
@@ -129,7 +136,8 @@
                                 <td th:text="${f.cuenta.nombre}">NEQUI</td>
                                 <td>
                                     <input type="text" class="form-control form-control-sm campo-pesos" inputmode="numeric" placeholder="0"
-                                           th:name="'saldo_' + ${f.cuenta.id}" th:attr="aria-label='Saldo de arranque de ' + ${f.cuenta.nombre}">
+                                           th:name="'saldo_' + ${f.cuenta.id}" th:attr="aria-label='Saldo de arranque de ' + ${f.cuenta.nombre}"
+                                           th:value="${hayInicio and f.saldoArranque.signum() != 0} ? ${(f.saldoArranque.signum() < 0 ? '-' : '') + #numbers.formatInteger(f.saldoArranque.abs(), 1, 'POINT')} : ''">
                                 </td>
                             </tr>
                         </tbody>

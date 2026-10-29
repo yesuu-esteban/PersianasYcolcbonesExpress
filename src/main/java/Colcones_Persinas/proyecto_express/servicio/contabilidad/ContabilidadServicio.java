@@ -65,11 +65,52 @@ public class ContabilidadServicio {
         return configuracionRepository.findById(ConfiguracionContable.ID).orElse(null);
     }
 
-    /** Desde qué día cuenta la contabilidad (null = desde siempre). */
+    /** La fecha de inicio guardada, aunque todavía no haya llegado (null = no hay). */
     @Transactional(readOnly = true)
-    public LocalDate fechaInicio() {
+    public LocalDate fechaInicioGuardada() {
         ConfiguracionContable c = configuracion();
         return c != null ? c.getFechaInicio() : null;
+    }
+
+    /**
+     * Desde qué día cuenta la contabilidad HOY (null = desde siempre).
+     * Si el inicio en cero se programó para un día que todavía no llega (por ejemplo, hoy es 29 de octubre
+     * y se programó para el 1 de noviembre), todavía no aplica: hasta ese día todo funciona normal
+     * y ese día arranca en cero solo.
+     */
+    @Transactional(readOnly = true)
+    public LocalDate fechaInicio() {
+        LocalDate guardada = fechaInicioGuardada();
+        return guardada != null && !guardada.isAfter(hoy()) ? guardada : null;
+    }
+
+    /** true = el inicio en cero está programado para un día que todavía no llega. */
+    @Transactional(readOnly = true)
+    public boolean inicioProgramado() {
+        LocalDate guardada = fechaInicioGuardada();
+        return guardada != null && guardada.isAfter(hoy());
+    }
+
+    /**
+     * Con qué saldo arranca la cuenta HOY para calcular su saldo: mientras el inicio en cero está
+     * programado se usa el saldo de antes (el de arranque se guarda para cuando llegue el día).
+     */
+    public BigDecimal saldoBase(CuentaContable c) {
+        if (inicioProgramado() && c.getSaldoAntesInicio() != null) return nz(c.getSaldoAntesInicio());
+        return nz(c.getSaldoInicial());
+    }
+
+    /**
+     * Cambia el saldo inicial que se ve en Cuentas. Mientras el inicio en cero está programado,
+     * se cambia el saldo de antes (el que cuenta hoy) y no el de arranque.
+     */
+    public void cambiarSaldoBase(CuentaContable c, BigDecimal valor) {
+        if (inicioProgramado()) {
+            if (c.getSaldoInicial() == null) c.setSaldoInicial(BigDecimal.ZERO);   // cuenta nueva: arranca en 0 ese día
+            c.setSaldoAntesInicio(nz(valor));
+        } else {
+            c.setSaldoInicial(nz(valor));
+        }
     }
 
     /** Si "desde" es anterior a la fecha de inicio, devuelve la fecha de inicio; si no, "desde". */
@@ -88,7 +129,7 @@ public class ContabilidadServicio {
     @Transactional(readOnly = true)
     public LocalDateTime corteDeudas() {
         ConfiguracionContable c = configuracion();
-        if (c == null || c.getFechaInicio() == null) return null;
+        if (c == null || c.getFechaInicio() == null || inicioProgramado()) return null;
         LocalDateTime inicio = c.getFechaInicio().atStartOfDay();
         LocalDateTime cambio = c.getFechaCambio();
         return cambio != null && cambio.isBefore(inicio) ? cambio : inicio;
@@ -153,7 +194,7 @@ public class ContabilidadServicio {
     public Map<Integer, BigDecimal> saldosPorCuenta() {
         LocalDate inicio = fechaInicio();
         Map<Integer, BigDecimal> saldos = new HashMap<>();
-        for (CuentaContable c : cuentaRepository.findAll()) saldos.put(c.getId(), nz(c.getSaldoInicial()));
+        for (CuentaContable c : cuentaRepository.findAll()) saldos.put(c.getId(), saldoBase(c));
         List<Object[]> sumas = inicio == null ? movimientoRepository.sumasPorCuentaYTipo()
                 : movimientoRepository.sumasPorCuentaYTipoDesde(inicio);
         for (Object[] fila : sumas) {
@@ -179,7 +220,7 @@ public class ContabilidadServicio {
         CuentaContable c = cuentaRepository.findById(cuentaId).orElseThrow(() -> new IllegalArgumentException("Esa cuenta ya no existe."));
         BigDecimal actual = saldosPorCuenta().getOrDefault(cuentaId, BigDecimal.ZERO);
         BigDecimal diferencia = saldoReal.subtract(actual);
-        c.setSaldoInicial(nz(c.getSaldoInicial()).add(diferencia));
+        cambiarSaldoBase(c, saldoBase(c).add(diferencia));
         cuentaRepository.save(c);
         return diferencia;
     }

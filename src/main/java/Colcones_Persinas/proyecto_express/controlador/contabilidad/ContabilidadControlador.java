@@ -84,10 +84,19 @@ public class ContabilidadControlador {
     /** Una cuenta con su saldo actual, para las tablas. */
     public static class FilaCuenta {
         private final CuentaContable cuenta;
-        private final BigDecimal saldo;
-        FilaCuenta(CuentaContable cuenta, BigDecimal saldo) { this.cuenta = cuenta; this.saldo = saldo; }
+        private final BigDecimal saldo, saldoInicial;
+        FilaCuenta(CuentaContable cuenta, BigDecimal saldo) {
+            this(cuenta, saldo, cuenta.getSaldoInicial() != null ? cuenta.getSaldoInicial() : BigDecimal.ZERO);
+        }
+        FilaCuenta(CuentaContable cuenta, BigDecimal saldo, BigDecimal saldoInicial) {
+            this.cuenta = cuenta; this.saldo = saldo; this.saldoInicial = saldoInicial;
+        }
         public CuentaContable getCuenta() { return cuenta; }
         public BigDecimal getSaldo() { return saldo; }
+        /** El saldo inicial con el que se calcula HOY (mientras el inicio en cero está programado, el de antes). */
+        public BigDecimal getSaldoInicial() { return saldoInicial; }
+        /** Con cuánto arranca la cuenta el día del inicio en cero. */
+        public BigDecimal getSaldoArranque() { return cuenta.getSaldoInicial() != null ? cuenta.getSaldoInicial() : BigDecimal.ZERO; }
     }
 
     /** Un pedido de Almacén que debe plata, con los días que lleva. */
@@ -170,14 +179,19 @@ public class ContabilidadControlador {
         }
     }
 
-    /** Para el aviso "La contabilidad empieza el …" que sale en todas las pantallas (vacío = desde siempre). */
+    /**
+     * Para el aviso "La contabilidad empieza el …" que sale en todas las pantallas (vacío = desde siempre).
+     * Si el inicio en cero está programado para un día que todavía no llega, no hay límite todavía:
+     * sale el aviso "El … la contabilidad se reinicia en cero; mientras tanto funciona normal".
+     */
     @ModelAttribute
     public void datosDeInicio(Model model) {
         ConfiguracionContable conf = servicio.configuracion();
-        boolean hay = conf != null && conf.getFechaInicio() != null;
-        model.addAttribute("fechaInicioTexto", hay ? conf.getFechaInicioFormateada() : "");
+        LocalDate inicio = servicio.fechaInicio();   // solo si ya llegó el día
+        model.addAttribute("fechaInicioTexto", inicio != null ? conf.getFechaInicioFormateada() : "");
         // Para que los campos de fecha no dejen elegir días de antes del inicio (null = sin límite)
-        model.addAttribute("fechaInicioIso", hay ? conf.getFechaInicio().toString() : null);
+        model.addAttribute("fechaInicioIso", inicio != null ? inicio.toString() : null);
+        model.addAttribute("inicioProgramadoTexto", servicio.inicioProgramado() ? conf.getFechaInicioFormateada() : "");
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -581,6 +595,7 @@ public class ContabilidadControlador {
         LocalDate hoy = ContabilidadServicio.hoy();
         model.addAttribute("conf", conf);
         model.addAttribute("hayInicio", conf != null && conf.getFechaInicio() != null);
+        model.addAttribute("inicioProgramado", servicio.inicioProgramado());
         model.addAttribute("fechaInicioSugerida", hoy.withDayOfMonth(1).plusMonths(1).toString());
         model.addAttribute("hoy", hoy.toString());
         return "contabilidad/cuentas";
@@ -632,8 +647,12 @@ public class ContabilidadControlador {
             }
             LocalDate fecha = fecha(f.get("fechaInicio"));
             servicio.iniciarEnCero(fecha, saldos, usuarioActual());
-            ra.addFlashAttribute("mensaje", "Listo: la contabilidad empieza el " + servicio.configuracion().getFechaInicioFormateada()
-                    + ". Lo anterior quedó guardado como historial y ya no suma. Si te equivocaste, usa \"Deshacer\".");
+            String dia = servicio.configuracion().getFechaInicioFormateada();
+            ra.addFlashAttribute("mensaje", servicio.inicioProgramado()
+                    ? "Listo: el " + dia + " la contabilidad se reinicia en cero sola, con los saldos que escribiste. "
+                      + "Hasta ese día todo funciona normal: puedes seguir anotando movimientos, ventas y pagos."
+                    : "Listo: la contabilidad empieza el " + dia
+                      + ". Lo anterior quedó guardado como historial y ya no suma. Si te equivocaste, usa \"Deshacer\".");
         } catch (IllegalArgumentException e) {
             ra.addFlashAttribute("error", e.getMessage());
         }
@@ -700,7 +719,7 @@ public class ContabilidadControlador {
                 if (id == null) c.setOrden(cuentaRepository.findAllByOrderByOrdenAscNombreAsc().stream()
                         .mapToInt(CuentaContable::getOrden).max().orElse(0) + 1);
                 c.setNombre(nombre);
-                c.setSaldoInicial(saldoInicial);
+                servicio.cambiarSaldoBase(c, saldoInicial);
                 cuentaRepository.save(c);
                 ra.addFlashAttribute("mensaje", "Cuenta " + nombre + " guardada.");
             }
@@ -940,7 +959,7 @@ public class ContabilidadControlador {
         List<FilaCuenta> filas = new ArrayList<>();
         for (CuentaContable c : cuentaRepository.findAllByOrderByOrdenAscNombreAsc()) {
             BigDecimal saldo = saldos.getOrDefault(c.getId(), BigDecimal.ZERO);
-            if (todas || c.isActiva() || saldo.signum() != 0) filas.add(new FilaCuenta(c, saldo));
+            if (todas || c.isActiva() || saldo.signum() != 0) filas.add(new FilaCuenta(c, saldo, servicio.saldoBase(c)));
         }
         return filas;
     }

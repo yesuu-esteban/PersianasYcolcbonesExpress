@@ -141,7 +141,7 @@ public class GraficasServicio {
         // Plata total antes del primer periodo = saldos iniciales + todo lo anterior
         // (si se inició la contabilidad en cero, solo desde la fecha de inicio)
         long total = 0;
-        for (CuentaContable c : cuentaRepository.findAll()) total += pesos(c.getSaldoInicial());
+        for (CuentaContable c : cuentaRepository.findAll()) total += pesos(contabilidad.saldoBase(c));
         List<MovimientoContable> movs = new ArrayList<>(movimientoRepository.findByFechaBetweenOrderByFechaDescIdDesc(
                 contabilidad.desdeInicio(DESDE_SIEMPRE), fin));
         movs.sort(Comparator.comparing(MovimientoContable::getFecha).thenComparingInt(MovimientoContable::getId));
