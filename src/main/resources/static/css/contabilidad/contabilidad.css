@@ -52,6 +52,7 @@ h2 { font-weight: 700; font-size: 1.05rem; margin: 0 0 12px; }
 .form-control::placeholder { color: #8f84a8; }
 .form-select option, .form-select optgroup { background: var(--bg-input); color: #fff; }
 input[type="month"], input[type="date"] { color-scheme: dark; }
+.form-control:disabled, .form-select:disabled { background: rgba(255,255,255,0.04); color: #8f84a8; border-color: rgba(255,255,255,0.08); opacity: 1; }
 
 /* ── Valores en pesos ── */
 .plata { white-space: nowrap; font-variant-numeric: tabular-nums; }
