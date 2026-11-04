@@ -716,17 +716,37 @@ public class ContabilidadControlador {
         } else if (id == null ? cuentaRepository.existsByNombreIgnoreCase(nombre) : cuentaRepository.existsByNombreIgnoreCaseAndIdNot(nombre, id)) {
             ra.addFlashAttribute("error", "Ya existe una cuenta llamada " + nombre + ".");
         } else {
-            CuentaContable c = id == null ? new CuentaContable() : cuentaRepository.findById(id).orElse(null);
-            if (c == null) {
-                ra.addFlashAttribute("error", "Esa cuenta ya no existe.");
-            } else {
-                if (id == null) c.setOrden(cuentaRepository.findAllByOrderByOrdenAscNombreAsc().stream()
-                        .mapToInt(CuentaContable::getOrden).max().orElse(0) + 1);
-                c.setNombre(nombre);
-                servicio.cambiarSaldoBase(c, saldoInicial);
-                cuentaRepository.save(c);
+            try {
+                servicio.guardarCuenta(id, nombre, saldoInicial);
                 ra.addFlashAttribute("mensaje", "Cuenta " + nombre + " guardada.");
+            } catch (IllegalArgumentException e) {
+                ra.addFlashAttribute("error", e.getMessage());
             }
+        }
+        return "redirect:/contabilidad/cuentas";
+    }
+
+    /**
+     * "Cuadrar con lo que hay hoy": deja cada cuenta con lo que escribieron en "real_{id}"
+     * (lo que dice hoy cada banco, billetera o caja). Las cuentas que no cambian no se tocan.
+     */
+    @PostMapping("/cuentas/cuadrar")
+    public String cuadrarSaldos(@RequestParam Map<String, String> f, RedirectAttributes ra) {
+        Map<Integer, BigDecimal> reales = new HashMap<>();
+        try {
+            for (Map.Entry<String, String> e : f.entrySet()) {
+                if (!e.getKey().startsWith("real_")) continue;
+                Integer id = entero(e.getKey().substring("real_".length()));
+                BigDecimal valor = ContabilidadServicio.pesosConSigno(e.getValue());
+                if (id != null && valor != null) reales.put(id, valor);
+            }
+            List<String> cambios = servicio.cuadrarSaldos(reales);
+            ra.addFlashAttribute("mensaje", cambios.isEmpty()
+                    ? "Todas las cuentas ya tenían esos saldos: no hubo que cambiar nada."
+                    : "Listo, saldos de hoy guardados. " + String.join(" · ", cambios)
+                      + ". Desde ahora se suman los ingresos y se restan los egresos que se anoten.");
+        } catch (IllegalArgumentException e) {
+            ra.addFlashAttribute("error", e.getMessage());
         }
         return "redirect:/contabilidad/cuentas";
     }

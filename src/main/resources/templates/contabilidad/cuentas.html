@@ -9,18 +9,52 @@
 
 <main>
     <h1>Cuentas</h1>
-    <p class="ayuda">Bancos, billeteras y cajas donde está la plata. El <strong>saldo inicial</strong> es lo que había en cada una
-        el día que empezó la contabilidad; desde ahí se suman los ingresos y se restan los egresos.
-        Si el saldo de hoy no cuadra con el real, usa <strong>Ajustar</strong> y escribe cuánto hay de verdad.</p>
+    <p class="ayuda">Bancos, billeteras y cajas donde está la plata. Para dejar el saldo que hay <strong>hoy</strong> en cada una,
+        usa <strong>Cuadrar con lo que hay hoy</strong>: desde ese saldo se suman los ingresos y se restan los egresos que se anoten.</p>
     <div th:if="${mensaje}" class="alert alert-success" th:text="${mensaje}"></div>
     <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
+
+    <!-- ═══ Cuadrar todas las cuentas con el saldo real de hoy ═══ -->
+    <section class="caja caja-cuadrar">
+        <h2>Cuadrar con lo que hay hoy</h2>
+        <p class="ayuda">Escribe lo que dice <strong>hoy</strong> cada banco, billetera o caja y guarda. El sistema deja ese saldo
+            y desde ahí suma los ingresos y resta los egresos que se anoten. No se cambia ni se borra ningún movimiento.
+            Si una cuenta está sobregirada, escribe el saldo con un menos adelante (ej. -200.000).</p>
+        <form method="post" action="/contabilidad/cuentas/cuadrar" id="formCuadrar">
+            <div class="tabla-wrap mb-2">
+                <table class="table align-middle mb-0 tabla-cuadrar">
+                    <thead>
+                        <tr><th>Cuenta</th><th class="num">En el sistema hoy</th><th>Lo que hay de verdad hoy</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="f : ${filas}" th:if="${f.cuenta.activa}">
+                            <td th:text="${f.cuenta.nombre}">ISABELLA</td>
+                            <td class="num"><span th:replace="~{contabilidad/fragmentos :: plata(${f.saldo})}"></span></td>
+                            <td>
+                                <input type="text" class="form-control form-control-sm campo-pesos campo-real" inputmode="numeric"
+                                       th:name="'real_' + ${f.cuenta.id}"
+                                       th:value="${(f.saldo.signum() < 0 ? '-' : '') + #numbers.formatInteger(f.saldo.abs(), 1, 'POINT')}"
+                                       th:attr="aria-label='Saldo real de hoy de ' + ${f.cuenta.nombre}">
+                            </td>
+                        </tr>
+                        <tr class="fila-total-cuadre">
+                            <td class="fw-bold">TOTAL</td>
+                            <td class="num fw-bold"><span th:replace="~{contabilidad/fragmentos :: plata(${total})}"></span></td>
+                            <td class="fw-bold" id="totalCuadre">$0</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <button type="submit" class="btn btn-primary">Guardar saldos de hoy</button>
+        </form>
+    </section>
 
     <div class="tabla-wrap mb-3">
         <table class="table align-middle tabla-cuentas">
             <thead>
                 <tr>
                     <th>Cuenta</th>
-                    <th>Saldo inicial</th>
+                    <th th:text="${fechaInicioTexto != null and fechaInicioTexto != ''} ? ('Saldo al ' + ${fechaInicioTexto}) : 'Saldo inicial'">Saldo inicial</th>
                     <th class="num">Saldo hoy</th>
                     <th></th>
                 </tr>

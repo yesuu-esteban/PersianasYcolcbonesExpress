@@ -225,6 +225,49 @@ public class ContabilidadServicio {
         return diferencia;
     }
 
+    /**
+     * Deja varias cuentas con el saldo real de hoy de una sola vez (lo que dice cada banco, billetera o caja).
+     * Solo se tocan las cuentas que vienen en el mapa y cuyo saldo es distinto; los movimientos no cambian.
+     * Desde ahí el saldo sigue sumando los ingresos y restando los egresos que se anoten.
+     * @return una línea por cuenta cambiada: "ISABELLA: $10.082.274 → $12.043.146"
+     */
+    @Transactional
+    public List<String> cuadrarSaldos(Map<Integer, BigDecimal> reales) {
+        List<String> cambios = new ArrayList<>();
+        if (reales == null || reales.isEmpty()) return cambios;
+        Map<Integer, BigDecimal> actuales = saldosPorCuenta();
+        for (CuentaContable c : cuentaRepository.findAllByOrderByOrdenAscNombreAsc()) {
+            BigDecimal real = reales.get(c.getId());
+            if (real == null) continue;
+            BigDecimal actual = actuales.getOrDefault(c.getId(), BigDecimal.ZERO);
+            BigDecimal diferencia = real.subtract(actual);
+            if (diferencia.signum() == 0) continue;
+            cambiarSaldoBase(c, saldoBase(c).add(diferencia));
+            cuentaRepository.save(c);
+            cambios.add(c.getNombre() + ": $" + miles(actual) + " → $" + miles(real));
+        }
+        return cambios;
+    }
+
+    /**
+     * Crea o cambia una cuenta (nombre y saldo inicial). Se hace aquí, dentro de una transacción,
+     * para que el cambio siempre quede guardado.
+     */
+    @Transactional
+    public CuentaContable guardarCuenta(Integer id, String nombre, BigDecimal saldoInicial) {
+        CuentaContable c;
+        if (id == null) {
+            c = new CuentaContable();
+            c.setOrden(cuentaRepository.findAllByOrderByOrdenAscNombreAsc().stream()
+                    .mapToInt(CuentaContable::getOrden).max().orElse(0) + 1);
+        } else {
+            c = cuentaRepository.findById(id).orElseThrow(() -> new IllegalArgumentException("Esa cuenta ya no existe."));
+        }
+        c.setNombre(nombre);
+        cambiarSaldoBase(c, saldoInicial == null ? BigDecimal.ZERO : saldoInicial);
+        return cuentaRepository.save(c);
+    }
+
     /** Elimina una cuenta que nunca se ha usado. Si tiene movimientos, hay que desactivarla. */
     @Transactional
     public CuentaContable eliminarCuenta(int cuentaId) {
