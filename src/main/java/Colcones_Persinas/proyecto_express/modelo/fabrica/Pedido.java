@@ -73,6 +73,18 @@ public class Pedido {
     @Column(name = "lado_apertura")
     private String ladoApertura;
 
+    /**
+     * Valor del m² con que se vendió esta persiana. Se guarda al crearla (sale de
+     * "Precios de venta"), así si después se cambia el estándar los pedidos viejos
+     * conservan su precio. null = pedido viejo: se usa el valor de siempre.
+     */
+    @Column(name = "precio_venta_m2")
+    private Double precioVentaM2;
+
+    /** Solo venta directa: total vendido (suma de sus líneas con precio). */
+    @Column(name = "total_venta")
+    private Double totalVenta;
+
     @Column(name = "fecha_creacion")
     private LocalDateTime fechaCreacion;
 
@@ -275,13 +287,16 @@ public class Pedido {
 
     @Transient
     public double getPrecioVenta() {
-        if (isVentaDirecta() || isRielOndaSerena()) return 0.0;
+        if (isVentaDirecta()) return this.totalVenta != null ? this.totalVenta : 0.0;
+        if (isRielOndaSerena()) return 0.0;
 
         double metrosCuadrados = this.ancho * this.altura;
         double anchoComercial = getAnchoComercialUsado();
 
         double valorPorM2;
-        if (anchoComercial <= 1.83) {
+        if (this.precioVentaM2 != null && this.precioVentaM2 > 0) {
+            valorPorM2 = this.precioVentaM2;
+        } else if (anchoComercial <= 1.83) {
             valorPorM2 = 51200.0;
         } else if (anchoComercial <= 2.50) {
             valorPorM2 = 53800.0;

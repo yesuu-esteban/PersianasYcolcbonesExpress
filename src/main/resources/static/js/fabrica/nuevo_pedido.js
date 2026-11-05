@@ -563,118 +563,7 @@ function agregarFilaExtra() {
     cont.insertAdjacentHTML('beforeend', filaExtraHtml(extraIndex++));
 }
 
-let idxTelaVenta = 0;
-let idxInsumoVenta = 0;
-
-function coloresDisponiblesVenta() {
-    const colores = [...new Set(
-        rollosDisponibles.filter(r => r.largoRestante > 0.001).map(r => r.color)
-    )];
-    return colores.sort();
-}
-
-function anchosDisponiblesVenta(color) {
-    const anchos = [...new Set(
-        rollosDisponibles
-            .filter(r => r.color && r.color.toLowerCase() === (color || '').toLowerCase() && r.largoRestante > 0.001)
-            .map(r => r.ancho)
-    )];
-    return anchos.sort((a, b) => a - b);
-}
-
-function opcionesRolloVenta(color, ancho) {
-    const candidatos = rollosDisponibles.filter(r =>
-        r.color && r.color.toLowerCase() === (color || '').toLowerCase() &&
-        Math.abs(r.ancho - parseFloat(ancho)) < 0.001 &&
-        r.largoRestante > 0.001
-    );
-    let html = '<option value="auto">⚡ Automático (el rollo con menos sobrante)</option>';
-    candidatos.forEach(r => {
-        html += `<option value="${r.id}">Rollo #${r.id} · ${r.largoRestante.toFixed(2)} m restantes</option>`;
-    });
-    return html;
-}
-
-function refrescarFilaTelaVenta(fila) {
-    const color  = fila.querySelector('.select-color-venta').value;
-    const anchos = anchosDisponiblesVenta(color);
-    const selAncho = fila.querySelector('.select-ancho-venta');
-    const anchoPrevio = selAncho.value;
-    selAncho.innerHTML = anchos.length
-        ? anchos.map(a => `<option value="${a}">${a.toFixed(2)} m</option>`).join('')
-        : '<option value="">– Sin anchos disponibles –</option>';
-    if (anchos.some(a => String(a) === anchoPrevio)) selAncho.value = anchoPrevio;
-
-    const selRollo = fila.querySelector('.select-rollo-venta');
-    selRollo.innerHTML = opcionesRolloVenta(color, selAncho.value);
-}
-
-function agregarFilaTelaVenta() {
-    const i = idxTelaVenta++;
-    const colores = coloresDisponiblesVenta();
-    const opcionesColor = colores.length
-        ? colores.map(c => `<option value="${c}">${c}</option>`).join('')
-        : '<option value="">– Sin telas en inventario –</option>';
-
-    const html = `
-        <div class="row g-2 mb-2 align-items-center fila-tela-venta" data-indice="${i}">
-            <div class="col-md-3">
-                <select name="ventaTelaColor[${i}]" class="form-select form-select-sm select-color-venta">${opcionesColor}</select>
-            </div>
-            <div class="col-md-2">
-                <select name="ventaTelaAncho[${i}]" class="form-select form-select-sm select-ancho-venta"></select>
-            </div>
-            <div class="col-md-2">
-                <input type="number" step="0.01" min="0" name="ventaTelaMetros[${i}]" class="form-control form-control-sm" placeholder="Metros" required>
-            </div>
-            <div class="col-md-4">
-                <select name="ventaTelaRolloId[${i}]" class="form-select form-select-sm select-rollo-venta"></select>
-            </div>
-            <div class="col-md-1">
-                <button type="button" class="btn btn-sm btn-outline-danger" onclick="this.closest('.fila-tela-venta').remove()">✕</button>
-            </div>
-        </div>`;
-    document.getElementById('contenedorTelaVenta').insertAdjacentHTML('beforeend', html);
-
-    const fila = document.querySelector(`.fila-tela-venta[data-indice="${i}"]`);
-    refrescarFilaTelaVenta(fila);
-    fila.querySelector('.select-color-venta').addEventListener('change', () => refrescarFilaTelaVenta(fila));
-    fila.querySelector('.select-ancho-venta').addEventListener('change', () => {
-        fila.querySelector('.select-rollo-venta').innerHTML =
-            opcionesRolloVenta(fila.querySelector('.select-color-venta').value, fila.querySelector('.select-ancho-venta').value);
-    });
-}
-
-function filaInsumoVentaHtml(idx) {
-    return `
-    <div class="row g-2 align-items-center mb-1 fila-extra" data-indice="${idx}">
-        <div class="col-md-5">
-            <select name="extraInsumoId[${idx}]" class="form-select form-select-sm select-extra-insumo" onchange="actualizarInfoInsumoVenta(this)">
-                ${opcionesCatalogo()}
-            </select>
-        </div>
-        <div class="col-md-4 campo-libre-extra" style="display:none;">
-            <input type="text" name="extraNombreLibre[${idx}]" class="form-control form-control-sm" placeholder="Nombre del insumo">
-        </div>
-        <div class="col-md-2">
-            <input type="number" step="0.01" min="0" name="extraCantidad[${idx}]" class="form-control form-control-sm campo-cantidad-insumo-venta" placeholder="Cantidad">
-        </div>
-        <div class="col-md-1">
-            <button type="button" class="btn btn-sm btn-outline-danger" onclick="this.closest('.fila-extra').remove()">✕</button>
-        </div>
-    </div>
-    <div class="row mb-2 fila-extra-info" data-indice="${idx}">
-        <div class="col-md-7">
-            <div class="info-stock-insumo"></div>
-        </div>
-        <div class="col-md-5 campo-pieza-insumo" style="display:none;">
-            <label class="form-label mb-1" style="font-size:0.76rem">🔩 ¿De qué pieza específica se corta?</label>
-            <select name="extraPiezaId[${idx}]" class="form-select form-select-sm select-pieza-insumo">
-                <option value="auto">⚡ Automático (sugerido)</option>
-            </select>
-        </div>
-    </div>`;
-}
+// La pestaña "Venta Directa" vive en /js/fabrica/venta_directa.js
 
 function actualizarInfoInsumoVenta(select) {
     const filaCampos = select.closest('.fila-extra');
@@ -738,14 +627,6 @@ function actualizarInfoInsumoVenta(select) {
             infoDiv.textContent = `🔢 Se vende por unidad · disponible: ${stock} unidad(es).`;
         }
     }
-}
-
-function agregarFilaInsumoVenta() {
-    const cont = document.getElementById('contenedorInsumoVenta');
-    cont.insertAdjacentHTML('beforeend', filaInsumoVentaHtml(idxInsumoVenta++));
-    const filaCampos = cont.querySelector(`.fila-extra[data-indice="${idxInsumoVenta - 1}"]`);
-    const select = filaCampos.querySelector('.select-extra-insumo');
-    actualizarInfoInsumoVenta(select);
 }
 
 let filaRielIndex = 1;
@@ -938,7 +819,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Antes de enviar cada formulario se renumeran las filas
     document.querySelectorAll('form').forEach(prepararFormularioAntesDeEnviar);
-    agregarFilaTelaVenta();
 
     const filaRiel0 = document.querySelector('.fila-riel[data-indice="0"]');
     if (filaRiel0) {

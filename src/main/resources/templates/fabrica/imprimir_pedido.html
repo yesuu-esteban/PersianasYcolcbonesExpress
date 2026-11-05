@@ -2,17 +2,17 @@
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <title>Orden de Fabricación</title>
+    <title th:text="${pedido.isVentaDirecta()} ? 'Venta Directa' : 'Orden de Fabricación'">Orden de Fabricación</title>
     <link rel="stylesheet" href="/css/fabrica/imprimir_pedido.css">
 </head>
 <body>
 
     <!-- Encabezado -->
     <div class="encabezado-reporte no-print-hide">
-        <span class="titulo">📄 Orden de Fabricación</span>
+        <span class="titulo" th:text="${pedido.isVentaDirecta()} ? '🧾 Venta Directa' : '📄 Orden de Fabricación'">📄 Orden de Fabricación</span>
         <div class="partes">
-            <span><strong>Distribuidor</strong><span th:text="${pedido.nombreDecorador}"></span></span>
-            <span><strong>Cliente final</strong><span th:text="${pedido.nombreClienteFinal}"></span></span>
+            <span th:unless="${pedido.isVentaDirecta()}"><strong>Distribuidor</strong><span th:text="${pedido.nombreDecorador}"></span></span>
+            <span><strong th:text="${pedido.isVentaDirecta()} ? 'Cliente' : 'Cliente final'">Cliente final</strong><span th:text="${pedido.nombreClienteFinal}"></span></span>
         </div>
     </div>
 
@@ -135,7 +135,74 @@
     <!-- ══════════════════════════════════════════════════════════════ -->
     <!-- VISTA: FABRICACIÓN NORMAL (ENROLLABLE / BLACKOUT)              -->
     <!-- ══════════════════════════════════════════════════════════════ -->
-    <div class="grid-etiquetas" th:unless="${pedido.isRielOndaSerena()}">
+    <!-- ══════════════════════════════════════════════════════════════ -->
+    <!-- VISTA: VENTA DIRECTA (solo lo que se vendió y cómo quedó todo)  -->
+    <!-- ══════════════════════════════════════════════════════════════ -->
+    <th:block th:if="${pedido.isVentaDirecta()}">
+        <div class="etiqueta etiqueta-full">
+            <h3>🧾 Lo que se vendió · Venta #<span th:text="${pedido.id}"></span></h3>
+            <div class="datos-venta">
+                <span><strong>Cliente:</strong> <span th:text="${pedido.nombreClienteFinal}"></span></span>
+                <span><strong>Fecha:</strong> <span th:text="${pedido.fechaCreacionFormateada}"></span></span>
+                <span th:if="${pedido.descripcion != null and !#strings.isEmpty(pedido.descripcion)}"><strong>Descripción:</strong> <span th:text="${pedido.descripcion}"></span></span>
+            </div>
+            <table class="tabla-material tabla-venta">
+                <thead>
+                    <tr>
+                        <th>Producto</th>
+                        <th>Medida</th>
+                        <th>Cantidad</th>
+                        <th>Precio</th>
+                        <th>Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="l : ${lineasVenta}">
+                        <td th:text="${l.descripcion}"></td>
+                        <td th:text="${l.medida != null and !#strings.isEmpty(l.medida)} ? ${l.medida} : '—'"></td>
+                        <td class="num" th:text="${#numbers.formatDecimal(l.cantidad, 1, 'POINT', 2, 'COMMA')} + ' ' + ${l.unidad}"></td>
+                        <td class="num" th:text="${l.precioUnitario > 0} ? '$' + ${#numbers.formatDecimal(l.precioUnitario, 1, 'POINT', 0, 'COMMA')} + ' / ' + ${l.unidad} : '—'"></td>
+                        <td class="num" th:text="'$' + ${#numbers.formatDecimal(l.total, 1, 'POINT', 0, 'COMMA')}"></td>
+                    </tr>
+                    <tr th:if="${lineasVenta == null or #lists.isEmpty(lineasVenta)}">
+                        <td colspan="5" class="sin-material">Venta registrada antes de que existieran los precios: abajo está el material que se descontó.</td>
+                    </tr>
+                </tbody>
+                <tfoot th:if="${lineasVenta != null and !#lists.isEmpty(lineasVenta)}">
+                    <tr>
+                        <td colspan="4" class="num"><strong>TOTAL</strong></td>
+                        <td class="num"><strong th:text="'$' + ${#numbers.formatDecimal(totalVenta, 1, 'POINT', 0, 'COMMA')}"></strong></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+
+        <div class="etiqueta etiqueta-full">
+            <h3>📦 Así quedó el inventario</h3>
+            <p class="sin-material" th:if="${historialMaterial == null or #lists.isEmpty(historialMaterial)}">
+                Esta venta no descontó material.
+            </p>
+            <table class="tabla-material" th:if="${historialMaterial != null and !#lists.isEmpty(historialMaterial)}">
+                <thead>
+                    <tr>
+                        <th>De dónde salió</th>
+                        <th>Se usó</th>
+                        <th>Qué quedó</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="m : ${historialMaterial}"
+                        th:classappend="${m.tipoMaterial=='RETAZO'}?'fila-tela-retazo':(${m.tipoMaterial=='TELA'}?'fila-tela-rollo':(${m.tipoMaterial=='EXTRA'}?'fila-extra':''))">
+                        <td th:text="${#strings.contains(m.fuenteDescripcion, ' · ')} ? ${#strings.substringBefore(m.fuenteDescripcion, ' · ')} : ${m.fuenteDescripcion}"></td>
+                        <td th:text="${m.tipoMaterial == 'EXTRA'} ? 'no se descuenta' : (${m.piezaInsumoId != null or m.rolloTelaId != null or m.tipoMaterial == 'RETAZO'} ? ${m.metrosUsados} + ' m' : ${#numbers.formatDecimal(m.metrosUsados, 1, 0)} + ' und.')"></td>
+                        <td th:text="${#strings.contains(m.fuenteDescripcion, ' · ')} ? ${#strings.substringAfter(m.fuenteDescripcion, ' · ')} : '—'"></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </th:block>
+
+    <div class="grid-etiquetas" th:unless="${pedido.isRielOndaSerena() or pedido.isVentaDirecta()}">
 
         <!-- 1: Identificación -->
         <div class="etiqueta">
@@ -308,7 +375,7 @@
     </div>
 
     <!-- Registro de material utilizado -->
-    <div class="etiqueta etiqueta-full">
+    <div class="etiqueta etiqueta-full" th:unless="${pedido.isVentaDirecta()}">
         <h3>📋 Registro de material utilizado</h3>
         <div style="display:flex;gap:4px 14px;margin-bottom:4px;font-size:0.64rem;background:#f8f9fa;border-radius:4px;padding:3px 7px;flex-wrap:wrap;">
             <span style="min-width:0;"><strong>Dist.:</strong> <span th:text="${pedido.nombreDecorador}"></span></span>

@@ -203,3 +203,8 @@ body {
     .etiqueta h3 { font-size: 0.70rem; margin-bottom: 4px; }
     .tabla-material, .desglose-tabla { font-size: 0.60rem; }
 }
+
+/* ── Venta directa ── */
+.datos-venta { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 0.72rem; background: #f8f9fa; border-radius: 4px; padding: 4px 8px; margin-bottom: 6px; }
+.tabla-venta td.num, .tabla-venta th.num, .tabla-material td.num { text-align: right; white-space: nowrap; }
+.tabla-venta tfoot td { border-top: 2px solid #212529; font-size: 0.85rem; }

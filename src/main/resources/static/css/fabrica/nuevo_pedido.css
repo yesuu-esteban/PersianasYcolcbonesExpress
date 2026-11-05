@@ -57,3 +57,29 @@
 .info-stock-insumo.sin-stock { color: #b02a37; font-weight: 600; }
 .nav-tabs .nav-link { font-weight: 600; }
 .nav-tabs .nav-link.active { border-bottom-color: #fff; }
+
+/* ── Venta directa ── */
+.linea-venta {
+    background: #fff;
+    border: 1px solid #f1d98a;
+    border-radius: 6px;
+    padding: 8px 10px;
+    margin-bottom: 8px;
+}
+.linea-venta select, .linea-venta input { font-size: 0.85rem; }
+.ayuda-precio { font-size: 0.76rem; color: #6c757d; }
+.ayuda-precio.cambiado { color: #8a5a00; font-weight: 600; }
+.ayuda-precio.nuevo { color: #0a5c30; font-weight: 600; }
+.ayuda-precio.sin { color: #b02a37; }
+.caja-total-venta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    background: #f0fbf4;
+    border: 1px solid #198754;
+    border-radius: 6px;
+    padding: 12px 16px;
+}
+.caja-total-venta .total-venta { font-size: 1.25rem; }

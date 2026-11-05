@@ -4,15 +4,20 @@ import Colcones_Persinas.proyecto_express.modelo.fabrica.Insumo;
 import Colcones_Persinas.proyecto_express.modelo.fabrica.MaterialUsado;
 import Colcones_Persinas.proyecto_express.modelo.fabrica.Pedido;
 import Colcones_Persinas.proyecto_express.modelo.fabrica.PiezaInsumo;
+import Colcones_Persinas.proyecto_express.modelo.fabrica.VentaDirectaLinea;
 import Colcones_Persinas.proyecto_express.repository.fabrica.InsumoRepository;
 import Colcones_Persinas.proyecto_express.repository.fabrica.MaterialUsadoRepository;
 import Colcones_Persinas.proyecto_express.repository.fabrica.PedidoRepository;
 import Colcones_Persinas.proyecto_express.repository.fabrica.PiezaInsumoRepository;
+import Colcones_Persinas.proyecto_express.repository.fabrica.VentaDirectaLineaRepository;
 import Colcones_Persinas.proyecto_express.servicio.fabrica.CalculadoraCostoFabricacionServicio;
 import Colcones_Persinas.proyecto_express.servicio.fabrica.InventarioServicio;
+import Colcones_Persinas.proyecto_express.servicio.fabrica.PrecioVentaServicio;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Sort;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Controller;
 import org.springframework.transaction.interceptor.TransactionAspectSupport;
 import org.springframework.ui.Model;
@@ -41,6 +46,8 @@ public class PedidoControlador {
     @Autowired private MaterialUsadoRepository materialUsadoRepository;
     @Autowired private PiezaInsumoRepository piezaInsumoRepository;
     @Autowired private CalculadoraCostoFabricacionServicio calculadoraCostoFabricacionServicio;
+    @Autowired private PrecioVentaServicio precioVentaServicio;
+    @Autowired private VentaDirectaLineaRepository ventaDirectaLineaRepository;
 
     // ─── Ver lista de pedidos ─────────────────────────────────────────────
     @GetMapping("/pedidos")
@@ -218,6 +225,7 @@ public class PedidoControlador {
         model.addAttribute("retazosDisponibles", inventarioServicio.getTodosLosRetazos());
         model.addAttribute("catalogoInsumos",    insumoRepository.findAllByOrderByNombreAsc());
         model.addAttribute("opcionesControl",    opcionesControl());
+        model.addAttribute("preciosVenta",       precioVentaServicio.mapa());
         return "fabrica/nuevo_pedido";
     }
 
@@ -415,6 +423,7 @@ public class PedidoControlador {
                 }
                 p.calcularFichaTecnica();
                 p.calcularEstadoGeneral();
+                p.setPrecioVentaM2(precioVentaServicio.precioPersianaM2(p.getAnchoComercialUsado()));
                 pedidosDelLote.add(p);
                 seleccionesDelLote.add(seleccion);
             }
@@ -467,11 +476,19 @@ public class PedidoControlador {
     // VENTA DIRECTA
     // ═══════════════════════════════════════════════════════════════
 
+    /**
+     * Venta directa: tela por ancho × alto e insumos, cada uno con su precio.
+     *  - Todo se planea junto antes de tocar el inventario: si algo no alcanza no se guarda nada.
+     *  - La tela busca primero un retazo que sirva y si no, el rollo más gastado que alcance.
+     *  - Los insumos por medida se cortan de una pieza que alcance, o de varias si ninguna alcanza sola.
+     *  - Si "guardarPrecios" viene marcado, los precios escritos quedan como el nuevo estándar.
+     */
     @PostMapping("/guardar-venta-directa")
     @org.springframework.transaction.annotation.Transactional
     public String guardarVentaDirecta(
             @RequestParam String nombreClienteFinal,
             @RequestParam(required = false) String descripcion,
+            @RequestParam(required = false, defaultValue = "false") boolean guardarPrecios,
             @RequestParam Map<String, String> allParams,
             RedirectAttributes redirectAttributes) {
 
@@ -480,11 +497,26 @@ public class PedidoControlador {
             return "redirect:/taller/nuevo";
         }
 
+        VentaLeida venta = leerVentaDirecta(allParams);
+        if (venta.telas.isEmpty() && venta.insumos.isEmpty() && venta.libres.isEmpty()) {
+            redirectAttributes.addFlashAttribute("error",
+                    "Agrega al menos una tela o un insumo para registrar la venta.");
+            return "redirect:/taller/nuevo";
+        }
+
+        InventarioServicio.PlanVenta plan;
+        try {
+            plan = inventarioServicio.planificarVentaDirecta(venta.telas, venta.insumos, true);
+        } catch (InventarioServicio.MaterialInsuficienteException e) {
+            redirectAttributes.addFlashAttribute("error", "No se guardó la venta: " + e.getMessage());
+            return "redirect:/taller/nuevo";
+        }
+
         Pedido pedido = new Pedido();
         pedido.setTipo("VENTA_DIRECTA");
         pedido.setNombreDecorador("Venta Directa");
-        pedido.setNombreClienteFinal(nombreClienteFinal);
-        pedido.setDescripcion(descripcion != null ? descripcion : "");
+        pedido.setNombreClienteFinal(nombreClienteFinal.trim());
+        pedido.setDescripcion(descripcion != null ? descripcion.trim() : "");
         pedido.setUsaCabezal(false);
         pedido.setUsaPitilloPesa(false);
         pedido.setUsaConectorTope(false);
@@ -492,57 +524,204 @@ public class PedidoControlador {
         pedido.setDespachado(true);
         pedido.calcularEstadoGeneral();
 
-        List<InventarioServicio.ItemTelaVenta> itemsTela = leerItemsTelaVenta(allParams);
-        List<InventarioServicio.ExtraInsumo> extras = leerExtrasComoLista(allParams);
-
-        if (itemsTela.isEmpty() && extras.isEmpty()) {
-            redirectAttributes.addFlashAttribute("error",
-                    "Agrega al menos un ítem de tela o un insumo para registrar la venta.");
-            return "redirect:/taller/nuevo";
-        }
-
-        try {
-            inventarioServicio.verificarItemsTelaVenta(itemsTela);
-            inventarioServicio.verificarExtras(extras);
-        } catch (InventarioServicio.MaterialInsuficienteException e) {
-            redirectAttributes.addFlashAttribute("error", e.getMessage());
-            return "redirect:/taller/nuevo";
-        }
-
         try {
             pedidoRepository.save(pedido);
-            inventarioServicio.descontarItemsTelaVenta(pedido, itemsTela);
-            procesarExtras(pedido, allParams);
+            inventarioServicio.aplicarVentaDirecta(pedido, plan);
+            inventarioServicio.procesarExtras(pedido, venta.libres);
         } catch (InventarioServicio.MaterialInsuficienteException e) {
             deshacerTransaccion();
             redirectAttributes.addFlashAttribute("error", "No se guardó nada: " + e.getMessage());
             return "redirect:/taller/nuevo";
         }
 
-        redirectAttributes.addFlashAttribute("mensaje", "Venta directa registrada correctamente.");
-        return "redirect:/taller/pedidos";
+        // Lo vendido, con precio
+        double total = 0;
+        for (VentaDirectaLinea l : construirLineasVenta(pedido.getId(), venta)) {
+            ventaDirectaLineaRepository.save(l);
+            total += l.getTotal();
+        }
+        pedido.setTotalVenta(total);
+        pedidoRepository.save(pedido);
+
+        int preciosNuevos = guardarPrecios ? guardarPreciosVenta(venta) : 0;
+
+        redirectAttributes.addFlashAttribute("mensaje", "Venta directa registrada correctamente."
+                + (preciosNuevos > 0 ? " Se guardaron " + preciosNuevos + " precio(s) nuevo(s) como estándar." : ""));
+        return "redirect:/taller/imprimir/" + pedido.getId();
     }
 
-    private List<InventarioServicio.ItemTelaVenta> leerItemsTelaVenta(Map<String, String> allParams) {
-        List<InventarioServicio.ItemTelaVenta> items = new ArrayList<>();
-        int i = 0;
-        while (allParams.containsKey("ventaTelaMetros[" + i + "]")) {
-            String metrosStr = allParams.getOrDefault("ventaTelaMetros[" + i + "]", "").trim();
-            final int idx = i;
-            i++;
-            if (metrosStr.isEmpty()) continue;
-            double metros;
-            try { metros = Double.parseDouble(metrosStr); } catch (NumberFormatException e) { continue; }
-            if (metros <= 0) continue;
+    /** Vista previa de la venta directa: qué se corta de dónde y cómo queda el inventario. No descuenta nada. */
+    @PostMapping("/previsualizar-venta-directa")
+    @ResponseBody
+    public InventarioServicio.VistaVenta previsualizarVentaDirecta(@RequestParam Map<String, String> allParams) {
+        VentaLeida venta = leerVentaDirecta(allParams);
+        return inventarioServicio.previsualizarVentaDirecta(venta.telas, venta.insumos);
+    }
 
-            InventarioServicio.ItemTelaVenta item = new InventarioServicio.ItemTelaVenta();
-            item.metros = metros;
-            item.color  = allParams.getOrDefault("ventaTelaColor[" + idx + "]", "").trim();
-            item.ancho  = parsearDoubleSeguro(allParams.get("ventaTelaAncho[" + idx + "]"), 1.83);
-            item.rolloId = leerIdOpcionalFila(allParams, "ventaTelaRolloId", idx);
-            items.add(item);
+    /** Lo que trae el formulario de venta directa, ya separado. */
+    static class VentaLeida {
+        final List<InventarioServicio.ItemTelaVenta> telas = new ArrayList<>();
+        /** Insumos del catálogo (se descuentan). */
+        final List<InventarioServicio.ExtraInsumo> insumos = new ArrayList<>();
+        /** Insumos escritos a mano (no se descuentan, solo quedan registrados). */
+        final List<InventarioServicio.ExtraInsumo> libres = new ArrayList<>();
+        /** Nombre y forma de venta de cada insumo del catálogo, por id. */
+        final Map<Integer, Insumo> catalogo = new HashMap<>();
+    }
+
+    VentaLeida leerVentaDirecta(Map<String, String> allParams) {
+        VentaLeida v = new VentaLeida();
+
+        // Telas: ventaTelaColor[i], ventaTelaAnchoCorte[i], ventaTelaAltoCorte[i], ventaTelaFuente[i], ventaTelaPrecioMetro[i]
+        for (int i = 0; i < 200; i++) {
+            if (!allParams.containsKey("ventaTelaAnchoCorte[" + i + "]")) {
+                if (i > 0 && !allParams.containsKey("ventaTelaAnchoCorte[" + (i + 1) + "]")) break;
+                continue;
+            }
+            double ancho = numero(allParams.get("ventaTelaAnchoCorte[" + i + "]"));
+            double alto = numero(allParams.get("ventaTelaAltoCorte[" + i + "]"));
+            if (ancho <= 0 && alto <= 0) continue;
+
+            InventarioServicio.ItemTelaVenta it = new InventarioServicio.ItemTelaVenta();
+            it.color = allParams.getOrDefault("ventaTelaColor[" + i + "]", "").trim();
+            it.anchoCorte = ancho;
+            it.altoCorte = alto;
+            String fuente = allParams.getOrDefault("ventaTelaFuente[" + i + "]", "auto").trim();
+            if (fuente.startsWith("rollo-")) it.rolloId = parsearIdManual(fuente.substring(6));
+            if (fuente.startsWith("retazo-")) it.retazoId = parsearIdManual(fuente.substring(7));
+            it.precioM2 = numeroONulo(allParams.get("ventaTelaPrecioMetro[" + i + "]"));
+            v.telas.add(it);
         }
-        return items;
+
+        // Insumos: ventaInsumoId[i], ventaInsumoCantidad[i], ventaInsumoPieza[i], ventaInsumoNombreLibre[i], ventaInsumoPrecio[i]
+        for (int i = 0; i < 200; i++) {
+            if (!allParams.containsKey("ventaInsumoCantidad[" + i + "]")) {
+                if (i > 0 && !allParams.containsKey("ventaInsumoCantidad[" + (i + 1) + "]")) break;
+                continue;
+            }
+            double cantidad = numero(allParams.get("ventaInsumoCantidad[" + i + "]"));
+            if (cantidad <= 0) continue;
+
+            InventarioServicio.ExtraInsumo ex = new InventarioServicio.ExtraInsumo();
+            ex.cantidad = cantidad;
+            ex.precio = numeroONulo(allParams.get("ventaInsumoPrecio[" + i + "]"));
+            String idTexto = allParams.getOrDefault("ventaInsumoId[" + i + "]", "").trim();
+            Integer insumoId = "libre".equalsIgnoreCase(idTexto) ? null : parsearIdManual(idTexto);
+            if (insumoId == null) {
+                ex.nombreLibre = allParams.getOrDefault("ventaInsumoNombreLibre[" + i + "]", "").trim();
+                v.libres.add(ex);
+                continue;
+            }
+            Insumo insumo = v.catalogo.computeIfAbsent(insumoId, k -> insumoRepository.findById(k).orElse(null));
+            ex.insumoId = insumoId;
+            if (insumo != null && Boolean.TRUE.equals(insumo.getTieneMedida())) {
+                ex.piezaId = parsearIdManual(allParams.get("ventaInsumoPieza[" + i + "]"));
+            }
+            v.insumos.add(ex);
+        }
+        return v;
+    }
+
+    /** Una línea por cada cosa vendida, con su precio y su total. */
+    private List<VentaDirectaLinea> construirLineasVenta(int pedidoId, VentaLeida v) {
+        List<VentaDirectaLinea> lineas = new ArrayList<>();
+        int orden = 0;
+        for (InventarioServicio.ItemTelaVenta it : v.telas) {
+            VentaDirectaLinea l = new VentaDirectaLinea();
+            l.setPedidoId(pedidoId);
+            l.setOrden(orden++);
+            l.setTipo("TELA");
+            l.setDescripcion("Tela " + it.color);
+            l.setMedida(dos(it.anchoCorte) + " × " + dos(it.altoCorte) + " m");
+            l.setCantidad(Math.round(it.anchoCorte * it.altoCorte * 1000.0) / 1000.0);
+            l.setUnidad("m²");
+            double precio = it.precioM2 != null ? it.precioM2 : 0.0;
+            l.setPrecioUnitario(precio);
+            l.setTotal(Math.round(l.getCantidad() * precio));
+            lineas.add(l);
+        }
+        for (InventarioServicio.ExtraInsumo ex : v.insumos) {
+            Insumo insumo = v.catalogo.get(ex.insumoId);
+            boolean porMedida = insumo != null && Boolean.TRUE.equals(insumo.getTieneMedida());
+            VentaDirectaLinea l = new VentaDirectaLinea();
+            l.setPedidoId(pedidoId);
+            l.setOrden(orden++);
+            l.setTipo("INSUMO");
+            l.setDescripcion(insumo != null ? insumo.getNombre() : "Insumo #" + ex.insumoId);
+            l.setCantidad(ex.cantidad);
+            l.setUnidad(porMedida ? "m" : "und.");
+            l.setMedida("");
+            double precio = ex.precio != null ? ex.precio : 0.0;
+            l.setPrecioUnitario(precio);
+            l.setTotal(Math.round(ex.cantidad * precio));
+            lineas.add(l);
+        }
+        for (InventarioServicio.ExtraInsumo ex : v.libres) {
+            VentaDirectaLinea l = new VentaDirectaLinea();
+            l.setPedidoId(pedidoId);
+            l.setOrden(orden++);
+            l.setTipo("LIBRE");
+            l.setDescripcion(ex.nombreLibre != null && !ex.nombreLibre.isBlank() ? ex.nombreLibre : "Otro");
+            l.setCantidad(ex.cantidad);
+            l.setUnidad("und.");
+            l.setMedida("");
+            double precio = ex.precio != null ? ex.precio : 0.0;
+            l.setPrecioUnitario(precio);
+            l.setTotal(Math.round(ex.cantidad * precio));
+            lineas.add(l);
+        }
+        return lineas;
+    }
+
+    /** Guarda como nuevo estándar los precios de tela (por ancho de rollo) e insumos que se escribieron. */
+    private int guardarPreciosVenta(VentaLeida v) {
+        String usuario = usuarioActual();
+        int cambiados = 0;
+        for (InventarioServicio.ItemTelaVenta it : v.telas) {
+            if (it.precioM2 == null || it.precioM2 <= 0) continue;
+            // El alto va a lo ancho del rollo (si no cabe, se corta girado)
+            double altoEnRollo = it.altoCorte <= 3.0 + 0.001 ? it.altoCorte : it.anchoCorte;
+            double anchoRollo = PrecioVentaServicio.anchoComercialPara(altoEnRollo);
+            if (precioVentaServicio.guardar(PrecioVentaServicio.claveTela(anchoRollo),
+                    PrecioVentaServicio.nombreTela(anchoRollo), it.precioM2, usuario)) cambiados++;
+        }
+        for (InventarioServicio.ExtraInsumo ex : v.insumos) {
+            if (ex.precio == null || ex.precio <= 0) continue;
+            Insumo insumo = v.catalogo.get(ex.insumoId);
+            String nombre = insumo != null
+                    ? insumo.getNombre() + (Boolean.TRUE.equals(insumo.getTieneMedida()) ? " (por metro)" : " (por unidad)")
+                    : "Insumo #" + ex.insumoId;
+            if (precioVentaServicio.guardar(PrecioVentaServicio.claveInsumo(ex.insumoId), nombre, ex.precio, usuario)) cambiados++;
+        }
+        return cambiados;
+    }
+
+    private String usuarioActual() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        return auth != null ? auth.getName() : "";
+    }
+
+    /** "1,5" o "1.5" → 1.5; vacío o malo → 0. */
+    private static double numero(String texto) {
+        Double v = numeroONulo(texto);
+        return v != null ? v : 0.0;
+    }
+
+    private static Double numeroONulo(String texto) {
+        if (texto == null) return null;
+        String t = texto.replace("$", "").replace(" ", "").trim();
+        if (t.isEmpty()) return null;
+        if (t.contains(",") && !t.contains(".")) t = t.replace(',', '.');
+        try {
+            double v = Double.parseDouble(t);
+            return Double.isNaN(v) || Double.isInfinite(v) ? null : v;
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    private static String dos(double v) {
+        return String.format(java.util.Locale.ROOT, "%.2f", v);
     }
 
     private List<InventarioServicio.ExtraInsumo> leerExtrasComoLista(Map<String, String> allParams) {
@@ -759,8 +938,13 @@ public class PedidoControlador {
         pedido.setNombreDecorador(nombreDecorador);
         pedido.setNombreClienteFinal(nombreClienteFinal);
         pedido.setDescripcion(descripcion);
+        double anchoRolloAntes = pedido.getAnchoComercialUsado();
         pedido.setAncho(ancho);
         pedido.setAltura(altura);
+        // Si con la medida nueva cambia el ancho de rollo, cambia el valor del m²
+        if (Math.abs(pedido.getAnchoComercialUsado() - anchoRolloAntes) > 0.001) {
+            pedido.setPrecioVentaM2(precioVentaServicio.precioPersianaM2(pedido.getAnchoComercialUsado()));
+        }
         pedido.setColorTelaDeseado(colorTelaDeseado);
         pedido.setLadoControl(ladoControl);
         pedido.setUsaCabezal(usaCabezal);
@@ -1111,6 +1295,13 @@ public class PedidoControlador {
         List<MaterialUsado> historial = inventarioServicio.getHistorialDePedido(id);
         model.addAttribute("historialMaterial", historial);
 
+        if (p.isVentaDirecta()) {
+            List<VentaDirectaLinea> lineas = ventaDirectaLineaRepository.findByPedidoIdOrderByOrdenAsc(id);
+            model.addAttribute("lineasVenta", lineas);
+            model.addAttribute("totalVenta", lineas.stream().mapToDouble(VentaDirectaLinea::getTotal).sum());
+            return "fabrica/imprimir_pedido";
+        }
+
         if (p.isRielOndaSerena()) {
             MaterialUsado materialRiel = historial.stream()
                     .filter(m -> "RIEL_ONDA_SERENA".equals(m.getTipoMaterial()))
@@ -1230,6 +1421,7 @@ public class PedidoControlador {
     public String eliminarPedido(@PathVariable("id") int id, RedirectAttributes redirectAttributes) {
         try {
             pedidoRepository.deleteById(id);
+            ventaDirectaLineaRepository.deleteByPedidoId(id);
             redirectAttributes.addFlashAttribute("mensaje", "Pedido eliminado correctamente.");
         } catch (Exception e) {
             redirectAttributes.addFlashAttribute("error", "No se pudo eliminar el pedido: " + e.getMessage());

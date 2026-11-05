@@ -154,6 +154,10 @@ public class InventarioServicio {
         public Integer insumoId;
         public String nombreLibre;
         public double cantidad;
+        /** Venta directa: pieza elegida a mano (solo insumos por medida). null = automático. */
+        public Integer piezaId;
+        /** Venta directa: precio por unidad (o por metro). null = sin precio. */
+        public Double precio;
     }
 
     public static class ItemTelaVenta {
@@ -161,6 +165,39 @@ public class InventarioServicio {
         public String color;
         public double ancho;
         public double metros;
+        /** Venta directa: medida del pedazo que se vende (ancho × alto, en metros). */
+        public double anchoCorte;
+        public double altoCorte;
+        /** Venta directa: retazo elegido a mano. null = automático. */
+        public Integer retazoId;
+        /** Venta directa: precio del m². null = sin precio. */
+        public Double precioM2;
+    }
+
+    /** Plan de una venta directa: una entrada por cada línea (tela o insumo del catálogo). */
+    public static class PlanVenta {
+        public List<String> titulos = new ArrayList<>();
+        public List<PlanPedido> planes = new ArrayList<>();
+        public List<String> faltantes = new ArrayList<>();
+        /** "Rollo Blanco 2.50 m #4: 30.00 m → 28.50 m" — cómo queda cada cosa que se toca. */
+        public List<String> resumen = new ArrayList<>();
+
+        public boolean isDisponible() { return faltantes.isEmpty(); }
+    }
+
+    /** Vista previa de una venta directa (para la pantalla). */
+    public static class VistaVenta {
+        public boolean disponible = true;
+        public List<VistaLineaVenta> lineas = new ArrayList<>();
+        public List<String> faltantes = new ArrayList<>();
+        public List<String> resumen = new ArrayList<>();
+    }
+
+    public static class VistaLineaVenta {
+        public String titulo;
+        public boolean disponible = true;
+        public List<Paso> pasos = new ArrayList<>();
+        public List<String> faltantes = new ArrayList<>();
     }
 
     // ─── Plan de corte (lo que se le va a cortar a cada producto) ───────────
@@ -1442,6 +1479,255 @@ public class InventarioServicio {
                     ? obtenerRolloPorId(it.rolloId)
                     : buscarMejorRollo(it.color, it.ancho, it.metros);
             descontarTelaVentaDirecta(pedido, rollo, it.metros);
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // VENTA DIRECTA (nueva) — tela por ancho × alto e insumos
+    //
+    // Todo se planea junto sobre la copia en memoria del inventario
+    // (Simulador): cada línea descuenta de lo que dejó la anterior, así
+    // dos líneas del mismo insumo no pueden pasar la revisión por separado
+    // y luego dejar el inventario en negativo. Si algo no alcanza no se
+    // toca nada.
+    // ═══════════════════════════════════════════════════════════════
+
+    /** Ancho máximo de rollo que existe. */
+    private static final double ANCHO_MAXIMO_ROLLO = 3.00;
+
+    /** Pedido "de mentiras" (no se guarda) que corta exactamente ancho × alto. */
+    private static final class CorteTelaVenta extends Pedido {
+        private final double corteAncho;
+        private final double corteAlto;
+
+        CorteTelaVenta(String color, double corteAncho, double corteAlto) {
+            this.corteAncho = corteAncho;
+            this.corteAlto = corteAlto;
+            setTipo("VENTA_DIRECTA");
+            setColorTelaDeseado(color != null ? color : "");
+            setUsaCabezal(false);
+            setAncho(corteAncho);
+            setAltura(corteAlto);
+        }
+
+        @Override public double getCorteTelaAncho() { return corteAncho; }
+        @Override public double getCorteTelaAlto()  { return corteAlto; }
+    }
+
+    public static String tituloTela(int n, ItemTelaVenta it) {
+        return "Tela " + n + ": " + (it.color != null ? it.color : "") + " " + num2(it.anchoCorte) + " × " + num2(it.altoCorte) + " m";
+    }
+
+    /**
+     * Arma el plan de toda la venta. Con estricto=true, si algo no alcanza lanza
+     * MaterialInsuficienteException (sin tocar nada). Con estricto=false anota lo
+     * que falta y sigue (para la vista previa).
+     * Los insumos "libres" (fuera de catálogo, insumoId null) no entran aquí.
+     */
+    public PlanVenta planificarVentaDirecta(List<ItemTelaVenta> telas, List<ExtraInsumo> insumos, boolean estricto) {
+        Simulador sim = new Simulador();
+        PlanVenta pv = new PlanVenta();
+        int n = 0;
+        if (telas != null) {
+            for (ItemTelaVenta it : telas) {
+                n++;
+                String titulo = tituloTela(n, it);
+                PlanPedido plan = new PlanPedido();
+                try {
+                    plan.pedido = planificarTelaVenta(it, sim, plan);
+                } catch (MaterialInsuficienteException e) {
+                    String msg = titulo + " → " + e.getMessage();
+                    if (estricto) throw new MaterialInsuficienteException(msg);
+                    plan.faltantes.add(e.getMessage());
+                    pv.faltantes.add(msg);
+                }
+                pv.titulos.add(titulo);
+                pv.planes.add(plan);
+            }
+        }
+        if (insumos != null) {
+            for (ExtraInsumo ex : insumos) {
+                if (ex.insumoId == null || ex.cantidad <= 0) continue;
+                PlanPedido plan = new PlanPedido();
+                String titulo = "Insumo";
+                try {
+                    Insumo insumo = insumoRepository.findById(ex.insumoId)
+                            .orElseThrow(() -> new MaterialInsuficienteException(
+                                    "El insumo #" + ex.insumoId + " ya no existe en el catálogo."));
+                    titulo = insumo.getNombre() + " · " + (Boolean.TRUE.equals(insumo.getTieneMedida())
+                            ? num2(ex.cantidad) + " m" : num2(ex.cantidad) + " und.");
+                    planificarInsumoVenta(insumo, ex, sim, plan);
+                } catch (MaterialInsuficienteException e) {
+                    String msg = titulo + " → " + e.getMessage();
+                    if (estricto) throw new MaterialInsuficienteException(msg);
+                    plan.faltantes.add(e.getMessage());
+                    pv.faltantes.add(msg);
+                }
+                pv.titulos.add(titulo);
+                pv.planes.add(plan);
+            }
+        }
+        pv.resumen = sim.resumen();
+        return pv;
+    }
+
+    /** Tela: primero un retazo que alcance, si no el rollo más gastado con el ancho justo (o el siguiente). */
+    private Pedido planificarTelaVenta(ItemTelaVenta it, Simulador sim, PlanPedido plan) {
+        double ancho = redondear(it.anchoCorte);
+        double alto = redondear(it.altoCorte);
+        if (ancho <= 0 || alto <= 0) {
+            throw new MaterialInsuficienteException("Escribe el ancho y el alto de la tela (en metros).");
+        }
+        if (it.color == null || it.color.isBlank()) {
+            throw new MaterialInsuficienteException("Escoge el color de la tela.");
+        }
+        String nota = null;
+        // Si el alto no cabe a lo ancho de ningún rollo, se corta girado.
+        if (alto > ANCHO_MAXIMO_ROLLO + 0.001) {
+            if (ancho > ANCHO_MAXIMO_ROLLO + 0.001) {
+                throw new MaterialInsuficienteException("Un pedazo de " + num2(ancho) + " × " + num2(alto)
+                        + " m no cabe en ningún rollo (el más ancho es de " + num2(ANCHO_MAXIMO_ROLLO) + " m).");
+            }
+            double t = ancho; ancho = alto; alto = t;
+            nota = "Se corta girado: el alto es más grande que el rollo más ancho.";
+        }
+        CorteTelaVenta corte = new CorteTelaVenta(it.color.trim(), ancho, alto);
+
+        SeleccionManual sel = null;
+        if (it.retazoId != null || it.rolloId != null) {
+            sel = new SeleccionManual();
+            sel.retazoTelaId = it.retazoId;
+            sel.rolloTelaId = it.retazoId == null ? it.rolloId : null;
+            if (sel.rolloTelaId != null) {
+                RolloSim r = sim.rollo(sel.rolloTelaId);
+                if (r != null && r.ancho < alto - 0.001) {
+                    throw new MaterialInsuficienteException("El rollo #" + r.id + " mide " + num2(r.ancho)
+                            + " m de ancho y el pedazo necesita " + num2(alto) + " m. Escoge un rollo más ancho o deja \"Automático\".");
+                }
+            }
+        }
+        int antes = plan.pasos.size();
+        planificarTela(corte, sel, sim, plan);
+        if (nota != null && plan.pasos.size() > antes) {
+            Paso p = plan.pasos.get(plan.pasos.size() - 1);
+            p.nota = p.nota == null ? nota : p.nota + " " + nota;
+        }
+        return corte;
+    }
+
+    /**
+     * Insumo del catálogo:
+     *  - Por unidad: se descuenta del stock (la cantidad debe ser entera).
+     *  - Por medida: si una sola pieza alcanza, se corta de la más pequeña que alcance;
+     *    si ninguna alcanza sola, se va tomando de varias piezas (de la más larga a la más corta)
+     *    hasta completar. Nunca deja una pieza en negativo.
+     */
+    private void planificarInsumoVenta(Insumo insumo, ExtraInsumo ex, Simulador sim, PlanPedido plan) {
+        if (!Boolean.TRUE.equals(insumo.getTieneMedida())) {
+            double c = ex.cantidad;
+            if (Math.abs(c - Math.rint(c)) > 0.001) {
+                throw new MaterialInsuficienteException("\"" + insumo.getNombre() + "\" se vende por unidad: la cantidad debe ser un número entero (escribiste " + num2(c) + ").");
+            }
+            usarUnidades(sim, plan, "🔢 " + insumo.getNombre(), insumo.getNombre(), (int) Math.rint(c));
+            return;
+        }
+
+        double metros = redondear(ex.cantidad);
+        String etiqueta = "📏 " + insumo.getNombre();
+        String nota = null;
+
+        if (ex.piezaId != null) {
+            PiezaSim m = sim.pieza(ex.piezaId);
+            if (m == null) {
+                nota = "La pieza #" + ex.piezaId + " que elegiste ya no existe; se tomó otra.";
+            } else {
+                if (!Objects.equals(m.insumoId, (Object) insumo.getId())) {
+                    throw new MaterialInsuficienteException("La pieza #" + m.id + " es de \"" + m.insumo
+                            + "\", no de \"" + insumo.getNombre() + "\".");
+                }
+                if (!m.fuera && m.restante >= metros - 0.001) {
+                    agregarCorte(plan, etiqueta, "PIEZA", m, metros, true, false, null);
+                    return;
+                }
+                if (m.cortes > 0) {
+                    nota = "La pieza #" + m.id + " que elegiste ya se usó en otra línea de esta venta; se tomó de otras.";
+                } else {
+                    throw new MaterialInsuficienteException("La pieza #" + m.id + " solo tiene " + num2(m.restante)
+                            + " m y se necesitan " + num2(metros) + " m. Deja \"Automático\" para que se tome de varias piezas.");
+                }
+            }
+        }
+
+        List<PiezaSim> disponibles = new ArrayList<>();
+        double total = 0;
+        for (PiezaSim p : sim.piezasDe(insumo)) {
+            if (p.fuera || p.restante <= 0.001) continue;
+            disponibles.add(p);
+            total += p.restante;
+        }
+        total = redondear(total);
+        if (total < metros - 0.001) {
+            throw new MaterialInsuficienteException("No hay suficiente \"" + insumo.getNombre() + "\". Se necesitan "
+                    + num2(metros) + " m y en total quedan " + num2(total) + " m"
+                    + (disponibles.isEmpty() ? "." : " en " + disponibles.size() + " pieza(s)."));
+        }
+
+        // 1) Una sola pieza que alcance: la más pequeña.
+        PiezaSim una = null;
+        for (PiezaSim p : disponibles) {
+            if (p.restante < metros - 0.001) continue;
+            if (una == null || MEJOR_PIEZA.compare(p, una) < 0) una = p;
+        }
+        if (una != null) {
+            agregarCorte(plan, etiqueta, "PIEZA", una, metros, false, false, nota);
+            return;
+        }
+
+        // 2) Ninguna alcanza sola: se toma de varias, empezando por la más larga.
+        disponibles.sort(Comparator.comparingDouble((PiezaSim p) -> p.restante).reversed()
+                .thenComparingInt(p -> p.id == null ? Integer.MAX_VALUE : p.id));
+        double falta = metros;
+        boolean primera = true;
+        for (PiezaSim p : disponibles) {
+            if (falta <= 0.001) break;
+            double usa = redondear(Math.min(p.restante, falta));
+            String aviso = primera
+                    ? (nota != null ? nota + " " : "") + "Ninguna pieza alcanza sola; se completa con varias."
+                    : null;
+            agregarCorte(plan, etiqueta, "PIEZA", p, usa, false, true, aviso);
+            falta = redondear(falta - usa);
+            primera = false;
+        }
+    }
+
+    /** Vista previa de la venta: no descuenta nada; muestra cómo queda todo y qué falta. */
+    public VistaVenta previsualizarVentaDirecta(List<ItemTelaVenta> telas, List<ExtraInsumo> insumos) {
+        PlanVenta pv = planificarVentaDirecta(telas, insumos, false);
+        VistaVenta v = new VistaVenta();
+        for (int i = 0; i < pv.planes.size(); i++) {
+            PlanPedido plan = pv.planes.get(i);
+            VistaLineaVenta l = new VistaLineaVenta();
+            l.titulo = pv.titulos.get(i);
+            l.pasos = plan.pasos;
+            l.faltantes = plan.faltantes;
+            l.disponible = plan.faltantes.isEmpty();
+            v.lineas.add(l);
+        }
+        v.faltantes = pv.faltantes;
+        v.resumen = pv.resumen;
+        v.disponible = pv.isDisponible();
+        return v;
+    }
+
+    /** Hace los descuentos reales del plan (ya revisado con estricto=true). */
+    public void aplicarVentaDirecta(Pedido venta, PlanVenta pv) {
+        for (PlanPedido plan : pv.planes) {
+            if (plan.pedido == null) {
+                plan.pedido = venta;
+            } else {
+                plan.pedido.setId(venta.getId());
+            }
+            aplicarPlan(plan);
         }
     }
 

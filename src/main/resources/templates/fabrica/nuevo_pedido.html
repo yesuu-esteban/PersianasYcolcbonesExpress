@@ -186,7 +186,7 @@
     </div>
 
     <div class="tab-pane fade" id="tabVentaDirecta">
-        <form th:action="@{/taller/guardar-venta-directa}" method="post" class="bg-white p-4 shadow-sm border rounded">
+        <form th:action="@{/taller/guardar-venta-directa}" method="post" id="formVentaDirecta" class="bg-white p-4 shadow-sm border rounded">
             <div class="row g-3 mb-3">
                 <div class="col-md-6">
                     <label class="form-label fw-bold">Cliente</label>
@@ -199,15 +199,36 @@
             </div>
 
             <div class="seccion-extras mb-3">
-                <p class="fw-bold mb-2">🧵 Tela vendida por metros</p>
+                <p class="fw-bold mb-1">🧵 Tela sola (por ancho × alto)</p>
+                <p class="text-muted small mb-2">
+                    El alto va a lo ancho del rollo, igual que en las persianas. Primero se busca un retazo que sirva;
+                    si no hay, se corta del rollo más gastado que alcance. El precio es el de <strong>solo tela</strong> por m².
+                </p>
                 <div id="contenedorTelaVenta"></div>
-                <button type="button" class="btn btn-sm btn-outline-dark" onclick="agregarFilaTelaVenta()">+ Agregar tela</button>
+                <button type="button" class="btn btn-sm btn-outline-dark" id="btnAgregarTelaVenta">+ Agregar tela</button>
             </div>
 
             <div class="seccion-extras mb-3">
-                <p class="fw-bold mb-2">🔧 Insumos vendidos</p>
+                <p class="fw-bold mb-1">🔧 Insumos</p>
+                <p class="text-muted small mb-2">
+                    Por unidad se descuenta del stock. Por metro se corta de la pieza más pequeña que alcance;
+                    si ninguna alcanza sola, se toma de varias piezas hasta completar. Nunca queda nada en negativo.
+                </p>
                 <div id="contenedorInsumoVenta"></div>
-                <button type="button" class="btn btn-sm btn-outline-dark" onclick="agregarFilaInsumoVenta()">+ Agregar insumo</button>
+                <button type="button" class="btn btn-sm btn-outline-dark" id="btnAgregarInsumoVenta">+ Agregar insumo</button>
+            </div>
+
+            <!-- Qué se corta de dónde y cómo queda el inventario (se llena solo) -->
+            <div id="previaVenta" class="previsualizacion mt-3" style="display:none"></div>
+
+            <div class="caja-total-venta mt-3">
+                <div class="form-check mb-0">
+                    <input class="form-check-input" type="checkbox" name="guardarPrecios" value="true" id="chkGuardarPrecios" checked>
+                    <label class="form-check-label" for="chkGuardarPrecios">
+                        💾 Si cambio un precio, guardarlo como el nuevo precio estándar
+                    </label>
+                </div>
+                <div class="total-venta">Total: <strong id="totalVentaDirecta">$0</strong></div>
             </div>
 
             <div class="mt-4">
@@ -320,9 +341,11 @@
     const retazosDisponibles  = /*[[${retazosDisponibles}]]*/  [];
     const catalogoInsumos     = /*[[${catalogoInsumos}]]*/     [];
     const opcionesControl     = /*[[${opcionesControl}]]*/     [];
+    const preciosVenta        = /*[[${preciosVenta}]]*/        {};
 </script>
 
 <script src="/js/fabrica/nuevo_pedido.js"></script>
+<script src="/js/fabrica/venta_directa.js"></script>
 </div>
 
 </div>

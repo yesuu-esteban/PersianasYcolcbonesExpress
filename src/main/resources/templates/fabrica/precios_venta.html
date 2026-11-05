@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+
+<div th:replace="~{fragments/sidebar :: layout(contenido=~{::seccion-contenido}, activo='precios-venta', titulo='💲 Precios de Venta')}">
+
+<div th:fragment="seccion-contenido">
+    <link rel="stylesheet" href="/css/fabrica/precios.css">
+
+    <div class="card-explicacion">
+        <strong>¿Qué es esto?</strong> Son los precios con los que se <strong>vende</strong> (distintos del
+        <a href="/inventario/precios">costo de fabricación</a>). Cámbialos aquí cuando quieras: lo que guardes
+        es lo que sale escrito por defecto en las ventas nuevas. Las persianas que ya estaban hechas conservan su precio.
+        En la venta directa también puedes cambiar un precio y, si dejas marcada la casilla, queda guardado aquí.
+    </div>
+
+    <div th:if="${mensaje}" class="alert alert-success" th:text="${mensaje}"></div>
+    <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
+
+    <form th:action="@{/inventario/precios-venta/guardar}" method="post">
+        <div class="row g-4">
+            <div class="col-lg-6">
+                <div class="bg-white rounded shadow-sm p-3 h-100">
+                    <h5 class="mb-1">🪟 Persiana blackout <small class="text-muted">(todo incluido)</small></h5>
+                    <p class="text-muted small mb-2">Valor del m² según el ancho del rollo que usa la persiana.</p>
+                    <table class="table table-sm align-middle mb-0">
+                        <tbody>
+                            <tr th:each="f : ${persianas}">
+                                <td th:text="${f.nombre}"></td>
+                                <td style="width:45%">
+                                    <div class="input-group input-group-sm">
+                                        <span class="input-group-text">$</span>
+                                        <input type="number" step="1" min="0" class="form-control"
+                                               th:name="'precio[' + ${f.clave} + ']'"
+                                               th:value="${f.valor != null} ? ${#numbers.formatDecimal(f.valor, 1, 'NONE', 0, 'POINT')} : ''">
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="bg-white rounded shadow-sm p-3 h-100">
+                    <h5 class="mb-1">🧵 Solo tela</h5>
+                    <p class="text-muted small mb-2">Valor del m² cuando se vende la tela sola (venta directa).</p>
+                    <table class="table table-sm align-middle mb-0">
+                        <tbody>
+                            <tr th:each="f : ${telas}">
+                                <td th:text="${f.nombre}"></td>
+                                <td style="width:45%">
+                                    <div class="input-group input-group-sm">
+                                        <span class="input-group-text">$</span>
+                                        <input type="number" step="1" min="0" class="form-control" placeholder="Sin precio"
+                                               th:name="'precio[' + ${f.clave} + ']'"
+                                               th:value="${f.valor != null} ? ${#numbers.formatDecimal(f.valor, 1, 'NONE', 0, 'POINT')} : ''">
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="col-12">
+                <div class="bg-white rounded shadow-sm p-3">
+                    <h5 class="mb-1">🔧 Insumos en venta directa</h5>
+                    <p class="text-muted small mb-2">Por unidad, o por metro si el insumo se vende por medida. Vacío = sin precio todavía.</p>
+                    <div class="row g-2">
+                        <div class="col-md-6 col-xl-4" th:each="f : ${insumos}">
+                            <div class="d-flex align-items-center gap-2 border rounded px-2 py-1">
+                                <span class="flex-grow-1 small" th:text="${f.nombre}"></span>
+                                <div class="input-group input-group-sm" style="max-width:150px">
+                                    <span class="input-group-text">$</span>
+                                    <input type="number" step="1" min="0" class="form-control" placeholder="—"
+                                           th:name="'precio[' + ${f.clave} + ']'"
+                                           th:value="${f.valor != null} ? ${#numbers.formatDecimal(f.valor, 1, 'NONE', 0, 'POINT')} : ''">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12 text-muted" th:if="${#lists.isEmpty(insumos)}">No hay insumos en el catálogo.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="mt-3 d-flex gap-2">
+            <button type="submit" class="btn btn-success">💾 Guardar precios</button>
+            <a href="/inventario/precios" class="btn btn-outline-secondary">🧮 Ver costos de fabricación</a>
+        </div>
+    </form>
+</div>
+
+</div>
+
+</body>
+</html>
