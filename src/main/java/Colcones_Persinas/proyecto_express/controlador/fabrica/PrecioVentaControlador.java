@@ -22,8 +22,10 @@ import java.util.Map;
  * Pantalla "Precios de venta" de Fábrica (/inventario/precios-venta):
  *  - Persiana blackout (todo incluido): valor del m² por ancho de rollo.
  *  - Solo tela: valor del m² por ancho de rollo.
- *  - Insumos en venta directa: valor por unidad o por metro.
+ *  - Insumos en venta directa: valor por unidad o por metro. Son los mismos insumos
+ *    del inventario (si se borra uno del inventario, su precio desaparece).
  * Lo que se guarda aquí es lo que sale escrito por defecto en las ventas.
+ * El costo de FABRICACIÓN está aparte, en "Precios" (/inventario/precios).
  */
 @Controller
 @RequestMapping("/inventario/precios-venta")
@@ -56,6 +58,8 @@ public class PrecioVentaControlador {
 
     @GetMapping
     public String ver(Model model) {
+        // Los insumos salen del inventario; si alguno se borró, su precio se borra aquí
+        precioVentaServicio.limpiarInsumosBorrados();
         List<Fila> persianas = new ArrayList<>();
         List<Fila> telas = new ArrayList<>();
         for (double a : PrecioVentaServicio.ANCHOS) {

@@ -1,15 +1,19 @@
 package Colcones_Persinas.proyecto_express.servicio.fabrica;
 
+import Colcones_Persinas.proyecto_express.modelo.fabrica.Insumo;
 import Colcones_Persinas.proyecto_express.modelo.fabrica.PrecioVentaEstandar;
+import Colcones_Persinas.proyecto_express.repository.fabrica.InsumoRepository;
 import Colcones_Persinas.proyecto_express.repository.fabrica.PrecioVentaEstandarRepository;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Precios de venta estándar de Fábrica. Se pueden cambiar a mano (en la pantalla
@@ -18,6 +22,11 @@ import java.util.Map;
  *  - Persiana blackout (todo incluido): un valor por m² según el ancho del rollo.
  *  - Solo tela: otro valor por m², también según el ancho del rollo.
  *  - Insumos en venta directa: un valor por unidad (o por metro si se vende por medida).
+ *    La lista de insumos es la misma del inventario: si un insumo se borra del
+ *    inventario, su precio de venta también se borra.
+ *
+ * OJO: esto es el precio de VENTA. El costo de FABRICACIÓN es otra cosa y está en
+ * "Precios" (/inventario/precios).
  */
 @Service
 public class PrecioVentaServicio {
@@ -29,9 +38,11 @@ public class PrecioVentaServicio {
     private static final double[] PERSIANA_POR_DEFECTO = {51200.0, 53800.0, 74250.0};
 
     private final PrecioVentaEstandarRepository repositorio;
+    private final InsumoRepository insumoRepository;
 
-    public PrecioVentaServicio(PrecioVentaEstandarRepository repositorio) {
+    public PrecioVentaServicio(PrecioVentaEstandarRepository repositorio, InsumoRepository insumoRepository) {
         this.repositorio = repositorio;
+        this.insumoRepository = insumoRepository;
     }
 
     // ─── Claves ─────────────────────────────────────────────────────────────
@@ -50,6 +61,16 @@ public class PrecioVentaServicio {
     public static String clavePersiana(double anchoComercial) { return "PERSIANA_" + codigoAncho(anchoComercial); }
     public static String claveTela(double anchoComercial)     { return "TELA_" + codigoAncho(anchoComercial); }
     public static String claveInsumo(int insumoId)            { return "INSUMO_" + insumoId; }
+
+    /** "INSUMO_12" → 12; cualquier otra clave → null. */
+    public static Integer idInsumoDe(String clave) {
+        if (clave == null || !clave.startsWith("INSUMO_")) return null;
+        try {
+            return Integer.parseInt(clave.substring(7));
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
 
     public static String nombrePersiana(double ancho) { return "Persiana blackout · rollo " + codigoAncho(ancho) + " m (por m²)"; }
     public static String nombreTela(double ancho)     { return "Solo tela · rollo " + codigoAncho(ancho) + " m (por m²)"; }
@@ -76,8 +97,29 @@ public class PrecioVentaServicio {
         return v != null ? v : 0.0;
     }
 
+    /**
+     * Borra el precio de venta de los insumos que ya no existen en el inventario.
+     * Se llama cada vez que se muestran los precios, así un insumo borrado no
+     * deja su precio "huérfano". Devuelve cuántos borró.
+     */
+    @Transactional
+    public int limpiarInsumosBorrados() {
+        Set<Integer> existentes = new HashSet<>();
+        for (Insumo i : insumoRepository.findAll()) existentes.add(i.getId());
+        int borrados = 0;
+        for (PrecioVentaEstandar p : repositorio.findAllByOrderByClaveAsc()) {
+            Integer id = idInsumoDe(p.getClave());
+            if (id != null && !existentes.contains(id)) {
+                repositorio.delete(p);
+                borrados++;
+            }
+        }
+        return borrados;
+    }
+
     /** Todos los precios (clave → valor) para la pantalla; incluye los de persiana aunque no se hayan guardado. */
     public Map<String, Double> mapa() {
+        limpiarInsumosBorrados();
         Map<String, Double> m = new LinkedHashMap<>();
         for (double a : ANCHOS) {
             m.put(clavePersiana(a), precioPersianaM2(a));
@@ -102,6 +144,9 @@ public class PrecioVentaServicio {
     @Transactional
     public boolean guardar(String clave, String nombre, Double valor, String usuario) {
         if (clave == null || clave.isBlank() || valor == null || valor < 0 || valor.isNaN()) return false;
+        // Solo insumos que existan en el inventario
+        Integer idInsumo = idInsumoDe(clave);
+        if (clave.startsWith("INSUMO_") && (idInsumo == null || insumoRepository.findById(idInsumo).isEmpty())) return false;
         double redondeado = Math.round(valor * 100.0) / 100.0;
         Double actual = valor(clave);
         PrecioVentaEstandar p = repositorio.findByClave(clave).orElse(null);

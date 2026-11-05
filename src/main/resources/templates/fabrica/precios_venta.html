@@ -8,8 +8,8 @@
     <link rel="stylesheet" href="/css/fabrica/precios.css">
 
     <div class="card-explicacion">
-        <strong>¿Qué es esto?</strong> Son los precios con los que se <strong>vende</strong> (distintos del
-        <a href="/inventario/precios">costo de fabricación</a>). Cámbialos aquí cuando quieras: lo que guardes
+        <strong>¿Qué es esto?</strong> Son los precios con los que se <strong>vende</strong>. El
+        <strong>costo de fabricación</strong> es otra cosa y está en <a href="/inventario/precios">🧮 Precios fabricación</a>. Cámbialos aquí cuando quieras: lo que guardes
         es lo que sale escrito por defecto en las ventas nuevas. Las persianas que ya estaban hechas conservan su precio.
         En la venta directa también puedes cambiar un precio y, si dejas marcada la casilla, queda guardado aquí.
     </div>
@@ -64,7 +64,11 @@
             <div class="col-12">
                 <div class="bg-white rounded shadow-sm p-3">
                     <h5 class="mb-1">🔧 Insumos en venta directa</h5>
-                    <p class="text-muted small mb-2">Por unidad, o por metro si el insumo se vende por medida. Vacío = sin precio todavía.</p>
+                    <p class="text-muted small mb-2">
+                        Son los mismos insumos del <a href="/inventario">inventario</a>: si agregas uno, aparece aquí;
+                        si lo borras del inventario, su precio de venta se borra también.
+                        Por unidad, o por metro si el insumo se vende por medida. Vacío = sin precio todavía.
+                    </p>
                     <div class="row g-2">
                         <div class="col-md-6 col-xl-4" th:each="f : ${insumos}">
                             <div class="d-flex align-items-center gap-2 border rounded px-2 py-1">
