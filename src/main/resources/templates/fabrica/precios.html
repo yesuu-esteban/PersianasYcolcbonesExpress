@@ -72,13 +72,26 @@
         </table>
     </div>
 
-    <div class="card shadow-sm">
+    <div class="card shadow-sm" id="tarjetaAgregarPrecio">
         <div class="card-header bg-dark text-white">+ Agregar nuevo ítem de precio</div>
         <div class="card-body">
-            <form th:action="@{/inventario/precios/nuevo}" method="post" class="row g-2 align-items-end">
+            <!-- Insumos del inventario que todavía no tienen precio de fabricación (lo llena precios_fabricacion.js) -->
+            <div id="insumosSinPrecio" class="insumos-sin-precio mb-3" style="display:none">
+                <div class="fw-bold mb-1">📦 Insumos del inventario sin precio de fabricación
+                    <span class="badge bg-warning text-dark" id="cuantosSinPrecio">0</span></div>
+                <div class="text-muted small mb-2">Toca uno para llenarlo abajo; escribe el precio y dale "+ Agregar".</div>
+                <div id="chipsSinPrecio" class="d-flex flex-wrap gap-2"></div>
+            </div>
+            <div id="todosConPrecio" class="alert alert-success py-2 small mb-3" style="display:none">
+                ✓ Todos los insumos del inventario ya tienen precio de fabricación.
+            </div>
+
+            <form th:action="@{/inventario/precios/nuevo}" method="post" class="row g-2 align-items-end" id="formNuevoPrecio">
                 <div class="col-md-3">
                     <label class="form-label fw-bold">Nombre</label>
-                    <input type="text" name="nombre" class="form-control" placeholder="Ej: Tubo R24" required>
+                    <input type="text" name="nombre" class="form-control" placeholder="Escoge de la lista o escribe"
+                           list="listaInsumosInventario" autocomplete="off" required>
+                    <datalist id="listaInsumosInventario"></datalist>
                 </div>
                 <div class="col-md-3">
                     <label class="form-label fw-bold">Fórmula</label>
@@ -103,6 +116,7 @@
             </form>
         </div>
     </div>
+    <script src="/js/fabrica/precios_fabricacion.js"></script>
 </div>
 
 </div>

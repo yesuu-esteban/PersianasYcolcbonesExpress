@@ -4,3 +4,12 @@
     background: #eaf2fd; border-left: 4px solid #1976d2; border-radius: 6px;
     padding: 12px 16px; margin-bottom: 20px; font-size: 0.88rem;
 }
+
+/* Insumos del inventario sin precio de fabricación */
+.insumos-sin-precio {
+    background: #fff8e1;
+    border: 1px dashed #f0ad4e;
+    border-radius: 6px;
+    padding: 10px 12px;
+}
+.chip-insumo { border-radius: 999px; font-size: 0.8rem; }

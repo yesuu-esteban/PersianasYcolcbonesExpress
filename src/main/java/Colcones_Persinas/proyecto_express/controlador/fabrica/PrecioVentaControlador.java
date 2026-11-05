@@ -12,9 +12,11 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -77,6 +79,23 @@ public class PrecioVentaControlador {
         model.addAttribute("telas", telas);
         model.addAttribute("insumos", insumos);
         return "fabrica/precios_venta";
+    }
+
+    /**
+     * Lista de insumos del inventario (nombre y si se mide en metros).
+     * La usa la pantalla "Precios fabricación" para ofrecer los que todavía no tienen precio.
+     */
+    @GetMapping("/insumos-inventario")
+    @ResponseBody
+    public List<Map<String, Object>> insumosInventario() {
+        List<Map<String, Object>> lista = new ArrayList<>();
+        for (Insumo i : insumoRepository.findAllByOrderByNombreAsc()) {
+            Map<String, Object> m = new LinkedHashMap<>();
+            m.put("nombre", i.getNombre());
+            m.put("tieneMedida", Boolean.TRUE.equals(i.getTieneMedida()));
+            lista.add(m);
+        }
+        return lista;
     }
 
     /** Recibe "precio[CLAVE]" de cada fila y guarda solo los que cambiaron. */
