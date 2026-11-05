@@ -107,6 +107,17 @@
                 </div>
             </a>
 
+            <!-- RECIBOS SABANA (sede La Calera): SOLO lo ven Fabián (ADMIN) y Giovanny (SABANA) -->
+            <a class="module-card" th:href="@{/recibos/sabana}"
+               sec:authorize="(hasRole('ADMIN') and authentication.name.equalsIgnoreCase('Fabian')) or (hasRole('SABANA') and authentication.name.equalsIgnoreCase('giovanny'))">
+                <div class="module-content">
+                    <span class="module-category">Módulo de Caja</span>
+                    <h2>Recibos Sabana</h2>
+                    <p>Recibos de caja de la sede La Calera (Calle 9 #7A-53) a nombre de Giovanny Andrés Romero Fagua.</p>
+                    <span class="module-action">Acceder al módulo &rarr;</span>
+                </div>
+            </a>
+
             <!-- CONTABILIDAD: ingresos, egresos, saldos de las cuentas, por cobrar y por pagar -->
             <a class="module-card" th:href="@{/contabilidad}" sec:authorize="hasAnyRole('TIENDA_ADMIN','ADMIN')">
                 <div class="module-content">
