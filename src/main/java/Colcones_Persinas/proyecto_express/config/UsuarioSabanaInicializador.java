@@ -14,12 +14,13 @@ import org.springframework.stereotype.Component;
  *  - Rol: SABANA → en el portal SOLO ve la tarjeta "Recibos Sabana".
  *  - Nombre: Giovanny Andrés Romero Fagua
  *
- * La contraseña NO está escrita aquí (así no queda guardada en el código ni en GitHub).
- * Se toma de la variable CLAVE_GIOVANNY que se pone en Railway → Variables.
+ * Contraseña:
+ *  - Si en Railway → Variables está CLAVE_GIOVANNY, se usa esa.
+ *  - Si no está, se crea con la clave temporal 123456 (igual que los demás usuarios iniciales).
+ *    Giovanny debe cambiarla al entrar: Mi cuenta → Cambiar contraseña.
  *
  * Igual que UsuarioInicializador:
  *  - Si "giovanny" YA existe, no se toca nada (ni contraseña, ni rol).
- *  - Si no existe y la variable CLAVE_GIOVANNY no está puesta, no se crea y se avisa en el log.
  */
 @Component
 public class UsuarioSabanaInicializador implements CommandLineRunner {
@@ -28,6 +29,8 @@ public class UsuarioSabanaInicializador implements CommandLineRunner {
     static final String ROL = "SABANA";
     static final String NOMBRE = "Giovanny Andrés Romero Fagua";
     static final String VARIABLE_CLAVE = "CLAVE_GIOVANNY";
+    /** Clave temporal (la misma de los demás usuarios iniciales) si no se puso CLAVE_GIOVANNY. */
+    static final String CLAVE_TEMPORAL = "123456";
 
     private final UsuarioRepository usuarioRepository;
     private final PasswordEncoder passwordEncoder;
@@ -44,9 +47,11 @@ public class UsuarioSabanaInicializador implements CommandLineRunner {
         }
         String clave = System.getenv(VARIABLE_CLAVE);
         if (clave == null || clave.isBlank()) {
-            System.out.println("[UsuarioSabanaInicializador] No se creó \"" + USUARIO
-                    + "\": falta la variable " + VARIABLE_CLAVE + " (ponla en Railway → Variables).");
-            return;
+            // Sin variable en Railway: se crea con la clave temporal de siempre.
+            // Giovanny debe cambiarla al entrar por primera vez (Mi cuenta → Cambiar contraseña).
+            clave = CLAVE_TEMPORAL;
+            System.out.println("[UsuarioSabanaInicializador] \"" + USUARIO
+                    + "\" se crea con la clave temporal. Cámbiala en Mi cuenta al entrar.");
         }
         Usuario usuario = new Usuario();
         usuario.setUsername(USUARIO);
