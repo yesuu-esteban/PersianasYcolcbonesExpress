@@ -13,7 +13,8 @@
         '/images/portal/fondo5.jpg',
         '/images/portal/fondo6.jpg'
     ];
-    const SEGUNDOS_POR_FOTO = 7;
+    const SEGUNDOS_POR_FOTO = 3;   // cada cuánto cambia la foto
+    const MS_TRANSICION = 1200;     // lo que dura el fundido (igual que en portal.css)
 
     const caja = document.getElementById('fondoPortal');
     if (!caja) return;
@@ -56,7 +57,7 @@
             void nueva.offsetWidth;
             nueva.classList.add('activa');
             antes.classList.add('saliendo');
-            setTimeout(() => antes.classList.remove('activa', 'saliendo'), 1800);
+            setTimeout(() => antes.classList.remove('activa', 'saliendo'), MS_TRANSICION);
         }
         function arrancar() { if (!reloj) reloj = setInterval(siguiente, SEGUNDOS_POR_FOTO * 1000); }
         function parar() { clearInterval(reloj); reloj = null; }
