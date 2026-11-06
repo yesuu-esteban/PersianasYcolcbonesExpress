@@ -1221,7 +1221,8 @@ public class PedidoControlador {
      * "Control R24" significa el Paquete de Control R24 completo.
      */
     private List<String> opcionesControl() {
-        List<String> opciones = new ArrayList<>(Arrays.asList("Control R8 A", "Control R8 B", "Control R16", "Control R24"));
+        List<String> opciones = new ArrayList<>(Arrays.asList("Control R8 A", "Control R8 B", "Control R16",
+                "Control R16 Gris", "Control R16 Negro", "Control R24"));
         for (Insumo insumo : insumoRepository.findAllByOrderByNombreAsc()) {
             String nombre = insumo.getNombre() != null ? insumo.getNombre().trim() : "";
             if (nombre.toLowerCase().startsWith("control ")
@@ -1385,12 +1386,17 @@ public class PedidoControlador {
         m.put("TUBO_R8", "Tubo R8");
         m.put("PESA", "Pesa");
         m.put("CUERDA", "Cuerda / Cadenilla (Blackout)");
+        m.put("CADENILLA_NEGRA", "Cuerda / Cadenilla (Blackout)");
         m.put("CONTROL_R16", "Mecanismo (Control y accesorios)");
+        m.put("CONTROL_R16_GRIS", "Mecanismo (Control y accesorios)");
+        m.put("CONTROL_R16_NEGRO", "Mecanismo (Control y accesorios)");
         m.put("CONTROL_R24", "Mecanismo (Control y accesorios) R24");
         m.put("PAQUETE_DE_CONTROL_R24", "Paquete de Control R24 (control + terminal + acoples + soportes)");
         m.put("CONTROL_R8_A", "Mecanismo (Control y accesorios)");
         m.put("CONTROL_R8_B", "Mecanismo (Control y accesorios)");
         m.put("TERMINAL", "Terminal · incluido en Mecanismo");
+        m.put("TERMINAL_GRIS", "Terminal Gris · incluido en Mecanismo");
+        m.put("TERMINAL_NEGRO", "Terminal Negro · incluido en Mecanismo");
         m.put("ACOPLE", "Acople · incluido en Mecanismo");
         m.put("CONECTOR", "Conector · incluido en Mecanismo");
         m.put("TOPE_CONTROL", "Tope Control · incluido en Mecanismo");
@@ -1410,6 +1416,8 @@ public class PedidoControlador {
         m.put("CRUSADOR", "Crusador");
         m.put("TAPA_RIEL", "Tapa Riel");
         m.put("SOPORTE_RIEL", "Soporte Riel");
+        m.put("PESA_RIEL", "Pesa Riel");
+        m.put("TOPE_RIEL", "Tope Riel");
         m.put("BASTÓN_0.80", "Bastón 0.80");
         m.put("BASTÓN_1.20", "Bastón 1.20");
         m.put("BASTÓN_1.50", "Bastón 1.50");

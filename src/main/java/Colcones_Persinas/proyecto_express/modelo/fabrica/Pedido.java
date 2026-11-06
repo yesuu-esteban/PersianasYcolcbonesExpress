@@ -252,6 +252,33 @@ public class Pedido {
         return Boolean.TRUE.equals(usaCabezal) ? 4 : 0;
     }
 
+    /**
+     * Color del control R16: "Gris" para "Control R16 Gris", "Negro" para
+     * "Control R16 Negro"; null para el Control R16 normal y los demás controles.
+     */
+    @Transient
+    public String getColorControl() {
+        if (this.tipoControl == null) return null;
+        String t = this.tipoControl.trim().toLowerCase();
+        if (!t.startsWith("control r16")) return null;
+        if (t.contains("gris")) return "Gris";
+        if (t.contains("negro")) return "Negro";
+        return null;
+    }
+
+    /** Terminal que va con el control: "Terminal Gris", "Terminal Negro" o el "Terminal" normal. */
+    @Transient
+    public String getNombreTerminal() {
+        String color = getColorControl();
+        return color == null ? "Terminal" : "Terminal " + color;
+    }
+
+    /** Lo que se descuenta como cuerda: el control R16 Negro lleva "Cadenilla Negra"; los demás la "Cuerda" normal. */
+    @Transient
+    public String getNombreCuerda() {
+        return "Negro".equals(getColorControl()) ? "Cadenilla Negra" : "Cuerda";
+    }
+
     private boolean esControlR16() {
         return this.tipoControl != null && this.tipoControl.trim().startsWith("Control R16");
     }
@@ -359,6 +386,24 @@ public class Pedido {
     @Transient
     public int getCantidadBaston() {
         if (Boolean.TRUE.equals(this.usaPolea)) return 0;
+        return "Hacia los extremos".equalsIgnoreCase(this.ladoApertura) ? 2 : 1;
+    }
+
+    /**
+     * Pesa del riel: solo cuando el riel es de CUERDA (lleva polea). 1 unidad.
+     * Con bastón no lleva pesa.
+     */
+    @Transient
+    public int getCantidadPesaRiel() {
+        return Boolean.TRUE.equals(this.usaPolea) ? 1 : 0;
+    }
+
+    /**
+     * Tope del riel: lo lleva siempre, sea de cuerda o de bastón.
+     * 2 si abre "Hacia los extremos" (uno en cada extremo); si abre a un solo lado, 1.
+     */
+    @Transient
+    public int getCantidadTopesRiel() {
         return "Hacia los extremos".equalsIgnoreCase(this.ladoApertura) ? 2 : 1;
     }
 

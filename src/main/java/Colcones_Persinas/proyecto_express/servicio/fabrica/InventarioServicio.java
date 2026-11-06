@@ -121,6 +121,8 @@ public class InventarioServicio {
         public String tapaRielInfo;
         public String bastonInfo;
         public String soporteRielInfo;
+        public String pesaRielInfo;
+        public String topeRielInfo;
         public List<String> faltantes = new ArrayList<>();
     }
 
@@ -1000,8 +1002,10 @@ public class InventarioServicio {
                 obtenerInsumoPorNombre("Pesa"), p.getCorteTuberia(),
                 sel != null ? sel.piezaPesaId : null));
 
-        intentarPaso(plan, estricto, () -> cortarPieza(sim, plan, "🧶 Cuerda",
-                obtenerInsumoPorNombre("Cuerda"), p.getMetrosCuerda(),
+        // Cuerda normal, o "Cadenilla Negra" si el control es R16 Negro
+        intentarPaso(plan, estricto, () -> cortarPieza(sim, plan,
+                "Cuerda".equals(p.getNombreCuerda()) ? "🧶 Cuerda" : "🧶 Cadenilla negra",
+                obtenerInsumoPorNombre(p.getNombreCuerda()), p.getMetrosCuerda(),
                 sel != null ? sel.piezaCuerdaId : null));
 
         // Control R24: viene empacado con terminal, acoples y soportes en un solo ítem.
@@ -1013,7 +1017,8 @@ public class InventarioServicio {
             if (p.getCantidadAcoples() > 0) {
                 intentarPaso(plan, estricto, () -> usarUnidades(sim, plan, "🔩 Acople", "Acople", p.getCantidadAcoples()));
             }
-            intentarPaso(plan, estricto, () -> usarUnidades(sim, plan, "🔌 Terminal", "Terminal", p.getCantidadTerminal()));
+            // Terminal del mismo color del control (Gris / Negro) o el normal
+            intentarPaso(plan, estricto, () -> usarUnidades(sim, plan, "🔌 " + p.getNombreTerminal(), p.getNombreTerminal(), p.getCantidadTerminal()));
         }
 
         if (Boolean.TRUE.equals(p.getUsaPitilloPesa())) {
@@ -1055,12 +1060,16 @@ public class InventarioServicio {
                     obtenerInsumoPorNombre("Cuerda Onda Serena"), p.getCorteCuerdaOnda(), null));
             intentarPaso(plan, estricto, () -> usarUnidades(sim, plan, "⚙ Polea", "Polea", p.getCantidadPoleas()));
             intentarPaso(plan, estricto, () -> usarUnidades(sim, plan, "✖ Crusador", "Crusador", p.getCantidadTerminalPolea()));
+            // Riel de cuerda: lleva 1 pesa
+            intentarPaso(plan, estricto, () -> usarUnidades(sim, plan, "⚖ Pesa riel", "Pesa Riel", p.getCantidadPesaRiel()));
         } else {
             intentarPaso(plan, estricto, () -> usarUnidades(sim, plan, "🧢 Tapa riel", "Tapa Riel", p.getCantidadTapasRiel()));
             String nombreBaston = (p.getBastonElegido() != null && !p.getBastonElegido().isBlank())
                     ? p.getBastonElegido() : "Bastón 0.80";
             intentarPaso(plan, estricto, () -> usarUnidades(sim, plan, "🦯 Bastón", nombreBaston, p.getCantidadBaston()));
         }
+        // Tope: siempre (cuerda o bastón); 2 si abre hacia los extremos, si no 1
+        intentarPaso(plan, estricto, () -> usarUnidades(sim, plan, "⛔ Tope riel", "Tope Riel", p.getCantidadTopesRiel()));
         intentarPaso(plan, estricto, () -> usarUnidades(sim, plan, "🔩 Soporte riel", "Soporte Riel", p.getCantidadSoportesRiel()));
     }
 
@@ -2005,9 +2014,9 @@ public class InventarioServicio {
         });
 
         intentar(res, () -> {
-            Insumo cuerda = obtenerInsumoPorNombre("Cuerda");
+            Insumo cuerda = obtenerInsumoPorNombre(pedido.getNombreCuerda());
             PiezaInsumo p = buscarMejorPieza(cuerda, pedido.getMetrosCuerda());
-            res.cuerdaSugerida = "Cuerda (#" + p.getId() + ") · quedarían "
+            res.cuerdaSugerida = cuerda.getNombre() + " (#" + p.getId() + ") · quedarían "
                     + redondear(p.getLargoRestante() - pedido.getMetrosCuerda()) + " m";
         });
 
@@ -2038,11 +2047,11 @@ public class InventarioServicio {
             }
 
             intentar(res, () -> {
-                Insumo terminal = obtenerInsumoPorNombre("Terminal");
+                Insumo terminal = obtenerInsumoPorNombre(pedido.getNombreTerminal());
                 int stock = terminal.getStockUnidades() != null ? terminal.getStockUnidades() : 0;
                 int necesario = pedido.getCantidadTerminal();
-                if (stock < necesario) throw new MaterialInsuficienteException("Sin stock suficiente de \"Terminal\".");
-                res.terminalInfo = "Terminal ×" + necesario + " · quedarían " + (stock - necesario);
+                if (stock < necesario) throw new MaterialInsuficienteException("Sin stock suficiente de \"" + terminal.getNombre() + "\".");
+                res.terminalInfo = terminal.getNombre() + " ×" + necesario + " · quedarían " + (stock - necesario);
             });
         }
 
@@ -2185,6 +2194,14 @@ public class InventarioServicio {
                 if (stock < necesario) throw new MaterialInsuficienteException("Sin stock suficiente de \"Crusador\".");
                 res.crusadorInfo = "Crusador ×" + necesario + " · quedarían " + (stock - necesario);
             });
+
+            intentar(res, () -> {
+                Insumo pesa = obtenerInsumoPorNombre("Pesa Riel");
+                int stock = pesa.getStockUnidades() != null ? pesa.getStockUnidades() : 0;
+                int necesario = pedido.getCantidadPesaRiel();
+                if (stock < necesario) throw new MaterialInsuficienteException("Sin stock suficiente de \"Pesa Riel\".");
+                res.pesaRielInfo = "Pesa Riel ×" + necesario + " · quedarían " + (stock - necesario);
+            });
         } else {
             intentar(res, () -> {
                 Insumo tapaRiel = obtenerInsumoPorNombre("Tapa Riel");
@@ -2204,6 +2221,14 @@ public class InventarioServicio {
                 res.bastonInfo = nombreBaston + " ×" + necesario + " · quedarían " + (stock - necesario);
             });
         }
+
+        intentar(res, () -> {
+            Insumo tope = obtenerInsumoPorNombre("Tope Riel");
+            int stock = tope.getStockUnidades() != null ? tope.getStockUnidades() : 0;
+            int necesario = pedido.getCantidadTopesRiel();
+            if (stock < necesario) throw new MaterialInsuficienteException("Sin stock suficiente de \"Tope Riel\".");
+            res.topeRielInfo = "Tope Riel ×" + necesario + " · quedarían " + (stock - necesario);
+        });
 
         intentar(res, () -> {
             Insumo soporteRiel = obtenerInsumoPorNombre("Soporte Riel");

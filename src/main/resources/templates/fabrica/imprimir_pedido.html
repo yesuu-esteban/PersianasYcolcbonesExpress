@@ -95,8 +95,10 @@
             <h3>🔩 Accesorios</h3>
             <p th:if="${pedido.usaPolea}"><strong>Poleas:</strong> 2 und.</p>
             <p th:if="${pedido.usaPolea}"><strong>Crusador:</strong> <span th:text="${pedido.cantidadTerminalPolea}"></span> und.</p>
+            <p th:if="${pedido.usaPolea}"><strong>Pesa:</strong> <span th:text="${pedido.cantidadPesaRiel}"></span> und.</p>
             <p th:unless="${pedido.usaPolea}"><strong>Tapas de riel:</strong> 2 und.</p>
             <p th:unless="${pedido.usaPolea}"><strong>Bastón:</strong> <span th:text="${pedido.bastonElegido}"></span> (<span th:text="${pedido.cantidadBaston}"></span> und.)</p>
+            <p><strong>Topes:</strong> <span th:text="${pedido.cantidadTopesRiel}"></span> und.<span th:if="${pedido.cantidadTopesRiel == 2}"> (hacia los extremos)</span></p>
             <p><strong>Soportes:</strong> <span th:text="${pedido.cantidadSoportesRiel}"></span> und. (según ancho)</p>
 
             <div th:if="${extrasHistorial != null and not #lists.isEmpty(extrasHistorial)}"
@@ -218,7 +220,7 @@
                       th:text="${pedido.tipoSistema}"></span>
             </p>
             <p><strong>Mando:</strong>   <span class="valor-mando" th:text="${pedido.ladoControl}"></span></p>
-            <p><strong>Cuerda:</strong>  <span th:text="${pedido.medidaCuerda}"></span></p>
+            <p><strong th:text="${pedido.nombreCuerda == 'Cuerda'} ? 'Cuerda:' : 'Cadenilla negra:'">Cuerda:</strong>  <span th:text="${pedido.medidaCuerda}"></span></p>
             <p><strong>Control:</strong> <span th:text="${pedido.tipoControl}"></span></p>
 
             <div class="costo-fabrica-box">
@@ -297,7 +299,7 @@
             <p th:if="${pedido.isUsaPaqueteControlR24()}">
                 <strong>Paquete R24:</strong> incluye control, terminal, acoples y soportes (1 und.)
             </p>
-            <p th:unless="${pedido.isUsaPaqueteControlR24()}"><strong>Terminal:</strong> 1 und.</p>
+            <p th:unless="${pedido.isUsaPaqueteControlR24()}"><strong th:text="${pedido.nombreTerminal} + ':'">Terminal:</strong> 1 und.</p>
             <p th:if="${!pedido.isUsaPaqueteControlR24() and pedido.cantidadAcoples > 0}"><strong>Acoples:</strong> 2 und.</p>
 
             <div class="fila-cabezal" th:if="${pedido.usaCabezal}">
@@ -338,7 +340,7 @@
             </p>
             <p><strong>Color:</strong> <span th:text="${pedido.colorTelaDeseado}"></span></p>
             <p><strong>Mando:</strong>  <span class="valor-mando" th:text="${pedido.ladoControl}"></span></p>
-            <p><strong>Cuerda:</strong> <span th:text="${pedido.medidaCuerda}"></span></p>
+            <p><strong th:text="${pedido.nombreCuerda == 'Cuerda'} ? 'Cuerda:' : 'Cadenilla negra:'">Cuerda:</strong> <span th:text="${pedido.medidaCuerda}"></span></p>
             <p><strong>Control:</strong><span th:text="${pedido.tipoControl}"></span></p>
 
             <div th:if="${extrasHistorial != null and not #lists.isEmpty(extrasHistorial)}"
@@ -401,11 +403,11 @@
             </thead>
             <tbody>
                 <tr th:each="m : ${historialMaterial}"
-                    th:classappend="${m.tipoMaterial=='RETAZO'}?'fila-tela-retazo':(${m.tipoMaterial=='TELA'}?'fila-tela-rollo':(${m.tipoMaterial=='EXTRA'}?'fila-extra':(${m.tipoMaterial=='TERMINAL' or m.tipoMaterial=='ACOPLE' or m.tipoMaterial=='CONECTOR' or m.tipoMaterial=='TOPE_CONTROL'}?'fila-incluida':'')))">
+                    th:classappend="${m.tipoMaterial=='RETAZO'}?'fila-tela-retazo':(${m.tipoMaterial=='TELA'}?'fila-tela-rollo':(${m.tipoMaterial=='EXTRA'}?'fila-extra':(${#strings.startsWith(m.tipoMaterial,'TERMINAL') or m.tipoMaterial=='ACOPLE' or m.tipoMaterial=='CONECTOR' or m.tipoMaterial=='TOPE_CONTROL'}?'fila-incluida':'')))">
                     <td>
                         <span th:text="${nombresAmigables != null and nombresAmigables.get(m.tipoMaterial) != null} ? ${nombresAmigables.get(m.tipoMaterial)} : ${m.tipoMaterial}"></span>
                         <span class="nota-incluido"
-                              th:if="${m.tipoMaterial=='TERMINAL' or m.tipoMaterial=='ACOPLE' or m.tipoMaterial=='CONECTOR' or m.tipoMaterial=='TOPE_CONTROL'}">
+                              th:if="${#strings.startsWith(m.tipoMaterial,'TERMINAL') or m.tipoMaterial=='ACOPLE' or m.tipoMaterial=='CONECTOR' or m.tipoMaterial=='TOPE_CONTROL'}">
                             ya incluido en el precio de Mecanismo
                         </span>
                     </td>

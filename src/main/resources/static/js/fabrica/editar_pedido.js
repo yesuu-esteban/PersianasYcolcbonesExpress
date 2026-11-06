@@ -76,6 +76,26 @@ function opcionesPieza(nombreInsumo) {
     return html;
 }
 
+/** El Control R16 Negro lleva "Cadenilla Negra"; los demás la "Cuerda" normal. */
+function nombreCuerdaPorControl(control) {
+    const c = String(control || '').toLowerCase();
+    return c.startsWith('control r16') && c.includes('negro') ? 'Cadenilla Negra' : 'Cuerda';
+}
+
+function controlActual() {
+    if (selectTipoControl && selectTipoControl.value && selectTipoControl.value !== 'auto') return selectTipoControl.value;
+    return selectTipoControl ? (selectTipoControl.dataset.actual || '') : '';
+}
+
+function refrescarSelectCuerda() {
+    const nombre = nombreCuerdaPorControl(controlActual());
+    if (selectCuerda.dataset.insumo === nombre && selectCuerda.options.length > 1) return;
+    selectCuerda.dataset.insumo = nombre;
+    selectCuerda.innerHTML = opcionesPieza(nombre);
+    const etiqueta = selectCuerda.parentElement.querySelector('label');
+    if (etiqueta) etiqueta.textContent = nombre === 'Cuerda' ? '🧶 Pieza de cuerda' : '🧶 Pieza de cadenilla negra';
+}
+
 function actualizarSelectsManual() {
     const color   = campoColor.value;
     const ancho   = parseFloat(campoAncho.value) || 0;
@@ -106,7 +126,7 @@ function actualizarSelectsManual() {
 
     selectTubo.innerHTML    = opcionesPieza(nombreTubo);
     selectPesa.innerHTML    = opcionesPieza('Pesa');
-    selectCuerda.innerHTML  = opcionesPieza('Cuerda');
+    refrescarSelectCuerda();
     selectPitillo.innerHTML = opcionesPieza('Pitillo');
 
     filaCabezal.style.display = cabezal ? '' : 'none';
@@ -196,7 +216,7 @@ async function consultarPrevisualizacion() {
             if (d.tuboSugerido)           html += fila2('🔧 Tubo',          `${cTubo} m`,                    d.tuboSugerido);
             if (d.cabezalSugerido)        html += fila2('🪟 Cabezal',        `${(a - 0.005).toFixed(3)} m`,   d.cabezalSugerido);
             if (d.pesaSugerida)           html += fila2('⚖ Pesa',           `${cTubo} m`,                    d.pesaSugerida);
-            if (d.cuerdaSugerida)         html += fila2('🧶 Cuerda',          h <= 1.50 ? '3 m' : '4 m',      d.cuerdaSugerida);
+            if (d.cuerdaSugerida)         html += fila2(nombreCuerdaPorControl(controlActual()) === 'Cuerda' ? '🧶 Cuerda' : '🧶 Cadenilla negra',          h <= 1.50 ? '3 m' : '4 m',      d.cuerdaSugerida);
             if (d.controlInfo)            html += fila2('🎛 Control',         '1 und.',                        d.controlInfo);
             if (d.acopleInfo)             html += fila2('🔩 Acople',          '',                              d.acopleInfo);
             if (d.terminalInfo)           html += fila2('🔌 Terminal',        '1 und.',                        d.terminalInfo);
@@ -245,7 +265,7 @@ ckCabezal.addEventListener('change', disparar);
 ckPitillo.addEventListener('change', () => { actualizarSelectsManual(); disparar(); });
 ckConector.addEventListener('change', disparar);
 selectTipoTubo.addEventListener('change', disparar);
-if (selectTipoControl) selectTipoControl.addEventListener('change', disparar);
+if (selectTipoControl) selectTipoControl.addEventListener('change', () => { refrescarSelectCuerda(); disparar(); });
 
 let extraIndex = 0;
 

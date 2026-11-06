@@ -80,7 +80,7 @@ function actualizarSelectsManualFila(fila) {
 
     fila.querySelector('.select-tubo').innerHTML    = opcionesPieza(nombreTubo);
     fila.querySelector('.select-pesa').innerHTML    = opcionesPieza('Pesa');
-    fila.querySelector('.select-cuerda').innerHTML  = opcionesPieza('Cuerda');
+    refrescarSelectCuerda(fila);
     fila.querySelector('.select-pitillo').innerHTML = opcionesPieza('Pitillo');
 
     const filaCabezal = fila.querySelector('.campo-cabezal-manual');
@@ -91,6 +91,25 @@ function actualizarSelectsManualFila(fila) {
 
     const filaPitillo = fila.querySelector('.campo-pitillo-manual');
     if (filaPitillo) filaPitillo.style.display = usaPitillo ? '' : 'none';
+}
+
+/** El Control R16 Negro lleva "Cadenilla Negra"; los demás la "Cuerda" normal. */
+function nombreCuerdaPorControl(control) {
+    const c = String(control || '').toLowerCase();
+    return c.startsWith('control r16') && c.includes('negro') ? 'Cadenilla Negra' : 'Cuerda';
+}
+
+/** Llena la lista de piezas de cuerda (o cadenilla negra) según el control escogido en la fila. */
+function refrescarSelectCuerda(fila) {
+    const selCuerda = fila.querySelector('.select-cuerda');
+    if (!selCuerda) return;
+    const selControl = fila.querySelector('.select-tipo-control');
+    const nombre = nombreCuerdaPorControl(selControl ? selControl.value : '');
+    if (selCuerda.dataset.insumo === nombre && selCuerda.options.length > 1) return;
+    selCuerda.dataset.insumo = nombre;
+    selCuerda.innerHTML = opcionesPieza(nombre);
+    const etiqueta = selCuerda.parentElement.querySelector('label');
+    if (etiqueta) etiqueta.textContent = nombre === 'Cuerda' ? '🧶 Pieza de cuerda' : '🧶 Pieza de cadenilla negra';
 }
 
 function toggleManual(btn) {
@@ -123,6 +142,8 @@ function engancharEventosFila(fila) {
     fila.querySelector('.campo-pitillo').addEventListener('change', () => { actualizarSelectsManualFila(fila); disparar(); });
     fila.querySelector('.campo-conector').addEventListener('change', disparar);
     fila.querySelector('.select-tipo-tubo').addEventListener('change', () => { actualizarSelectsManualFila(fila); disparar(); });
+    const selControl = fila.querySelector('.select-tipo-control');
+    if (selControl) selControl.addEventListener('change', () => refrescarSelectCuerda(fila));
 
     fila.querySelector('.select-retazo').addEventListener('change', function() {
         if (this.value !== 'auto') fila.querySelector('.select-rollo').value = 'auto';
@@ -679,10 +700,12 @@ async function calcularRielPreviewFila(fila) {
                 if (d.cuerdaOndaInfo) html += trRiel('🧶 Cuerda de onda', corteCuerda + ' m', d.cuerdaOndaInfo);
                 if (d.poleaInfo)      html += trRiel('🔧 Poleas', '2 und.', d.poleaInfo);
                 if (d.crusadorInfo)   html += trRiel('🎛 Crusador', (haciaExtremos ? '2' : '1') + ' und.' + (haciaExtremos ? ' (hacia los extremos)' : ''), d.crusadorInfo);
+                if (d.pesaRielInfo)   html += trRiel('⚖ Pesa', '1 und. (riel de cuerda)', d.pesaRielInfo);
             } else {
                 if (d.tapaRielInfo) html += trRiel('🧢 Tapas de riel', '2 und.', d.tapaRielInfo);
                 if (d.bastonInfo)   html += trRiel('🪄 Bastón', (haciaExtremos ? '2' : '1') + ' und.' + (haciaExtremos ? ' (hacia los extremos)' : ''), d.bastonInfo);
             }
+            if (d.topeRielInfo)    html += trRiel('⛔ Topes', (haciaExtremos ? '2' : '1') + ' und.' + (haciaExtremos ? ' (hacia los extremos)' : ''), d.topeRielInfo);
             if (d.soporteRielInfo) html += trRiel('🔩 Soportes de riel', soportes + ' und. (según ancho)', d.soporteRielInfo);
             html += '</table>';
             caja.className = 'previsualizacion-riel previsualizacion ok';

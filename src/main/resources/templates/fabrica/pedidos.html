@@ -185,7 +185,7 @@
                             <th:block th:if="${p.usaCabezal}">
                                 <strong>Cabezal:</strong> <span th:text="${#numbers.formatDecimal(p.medidaCabezal, 1, 3)}"></span>m<br>
                             </th:block>
-                            <strong>Cuerda:</strong> <span th:text="${p.medidaCuerda}"></span><br>
+                            <strong th:text="${p.nombreCuerda == 'Cuerda'} ? 'Cuerda:' : 'Cadenilla negra:'">Cuerda:</strong> <span th:text="${p.medidaCuerda}"></span><br>
                             <strong>Control:</strong> <span th:text="${p.tipoControl}"></span><br>
                             <strong>Precio de Venta:</strong> $<span th:text="${#numbers.formatDecimal(p.precioVenta, 1, 'POINT', 0, 'NONE')}"></span><br>
                             <strong>Costo Fabricación:</strong> $<span th:text="${costoFabricacionRealPorPedido != null and costoFabricacionRealPorPedido.get(p.id) != null ? #numbers.formatDecimal(costoFabricacionRealPorPedido.get(p.id), 1, 'POINT', 0, 'NONE') : '0'}"></span>
