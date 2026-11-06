@@ -271,3 +271,70 @@ body {
     .sin-sesion { padding: 32px 22px; }
     .sin-sesion h2 { font-size: 1.25rem; }
 }
+
+/* ═══ Fondo con imágenes que cambian (js/inicio/portal_fondo.js) ═══ */
+.fondo-portal {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    overflow: hidden;
+    background: var(--carbon);
+    pointer-events: none;
+}
+.fondo-capa {
+    position: absolute;
+    inset: -2%;
+    background-size: cover;
+    background-position: center 45%;
+    filter: blur(1.5px) saturate(1.05);
+    opacity: 0;
+    transform: scale(1.08);
+    transition: opacity 1.8s ease;
+    will-change: opacity, transform;
+}
+.fondo-capa.activa {
+    opacity: 1;
+    animation: fondo-acercar 9s ease-out forwards;
+}
+.fondo-capa.saliendo { opacity: 0; }
+@keyframes fondo-acercar {
+    from { transform: scale(1.08); }
+    to   { transform: scale(1.0); }
+}
+/* Velo oscuro para que todo se lea bien encima de las fotos */
+.fondo-portal::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background:
+        radial-gradient(ellipse at 50% 20%, rgba(18, 17, 16, 0.12) 0%, rgba(18, 17, 16, 0.55) 75%),
+        linear-gradient(180deg, rgba(18, 17, 16, 0.35) 0%, rgba(18, 17, 16, 0.62) 100%);
+}
+@media (prefers-reduced-motion: reduce) {
+    .fondo-capa, .fondo-capa.activa { animation: none; transform: none; transition: none; }
+}
+
+/* Todo el contenido va por encima del fondo */
+.portal-header, .portal-main, .portal-footer { position: relative; z-index: 1; }
+
+/* Con fondo: encabezado, tarjetas y pie se vuelven de vidrio oscuro */
+body.con-fondo { background: transparent; }
+body.con-fondo .portal-header,
+body.con-fondo .portal-footer {
+    background: rgba(28, 26, 24, 0.55);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+}
+body.con-fondo .module-card,
+body.con-fondo .sin-sesion {
+    background: rgba(24, 22, 20, 0.62);
+    backdrop-filter: blur(12px) saturate(120%);
+    -webkit-backdrop-filter: blur(12px) saturate(120%);
+    border-color: rgba(244, 239, 230, 0.12);
+}
+body.con-fondo .module-card:hover {
+    background: rgba(24, 22, 20, 0.75);
+}
+body.con-fondo .portal-hero h1,
+body.con-fondo .portal-hero p { text-shadow: 0 2px 14px rgba(0, 0, 0, 0.75); }
+body.con-fondo .portal-hero p { color: #e6e0d6; }
