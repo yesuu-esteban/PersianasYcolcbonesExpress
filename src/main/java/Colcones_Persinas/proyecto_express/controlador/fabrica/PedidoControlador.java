@@ -1416,8 +1416,11 @@ public class PedidoControlador {
         m.put("CRUSADOR", "Crusador");
         m.put("TAPA_RIEL", "Tapa Riel");
         m.put("SOPORTE_RIEL", "Soporte Riel");
-        m.put("PESA_RIEL", "Pesa Riel");
-        m.put("TOPE_RIEL", "Tope Riel");
+        m.put("TENSOR", "Tensor");
+        m.put("FRENO_LATERAL", "Freno Lateral");
+        // Nombres viejos (rieles hechos antes del cambio de nombre)
+        m.put("PESA_RIEL", "Tensor");
+        m.put("TOPE_RIEL", "Freno Lateral");
         m.put("BASTÓN_0.80", "Bastón 0.80");
         m.put("BASTÓN_1.20", "Bastón 1.20");
         m.put("BASTÓN_1.50", "Bastón 1.50");

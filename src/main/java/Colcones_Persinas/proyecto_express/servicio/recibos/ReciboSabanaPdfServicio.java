@@ -28,13 +28,12 @@ public class ReciboSabanaPdfServicio {
     /** Datos que salen en el encabezado del recibo de Sabana (los mismos de imprimir.html de Sabana). */
     public static final String NOMBRE_RESPONSABLE = "Giovanny Andrés Romero Fagua";
     public static final String SEDE = "Sede La Calera: Calle 9 #7A-53";
-    /** Todas las sedes que salen en el encabezado (las 3 de siempre + La Calera). */
+    /** Sedes del encabezado, en este orden: Fábrica primero, luego Granada y La Calera. */
     public static final java.util.List<String> SEDES = java.util.List.of(
+            "Fábrica: Calle 15 #14-20",
             "Sede Granada: Calle 8 #23-16 Local 6",
-            "Sede Av. Bolívar: Cra 14 #12N-05",
-            "Sede Centro: Calle 15 #14-20",
             SEDE);
-    public static final String CELULAR = "3041354963";
+    public static final String CELULAR = "3041354963 - 3115580796";
 
     private static final NumberFormat FMT_MONEDA = NumberFormat.getInstance(new Locale("es", "CO"));
 

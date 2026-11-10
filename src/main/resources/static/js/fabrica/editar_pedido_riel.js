@@ -47,16 +47,16 @@ async function calcularPreview() {
             if (d.roachinaInfo) html += trRiel('📌 Roachina',  corteRiel + ' m', d.roachinaInfo);
             if (d.riataInfo)    html += trRiel('🪢 Riata',     corteRiel + ' m (siempre obligatoria)', d.riataInfo);
             if (usaPolea) {
-                const corteCuerda = (ancho * 2 + 4).toFixed(3);
+                const corteCuerda = (parseFloat(corteRiel) * 2 + 4).toFixed(3);   // doble del ancho del riel + 4 m
                 if (d.cuerdaOndaInfo) html += trRiel('🧶 Cuerda de onda', corteCuerda + ' m', d.cuerdaOndaInfo);
                 if (d.poleaInfo)      html += trRiel('🔧 Poleas', '2 und.', d.poleaInfo);
                 if (d.crusadorInfo)   html += trRiel('🎛 Crusador', (haciaExtremos ? '2' : '1') + ' und.' + (haciaExtremos ? ' (hacia los extremos)' : ''), d.crusadorInfo);
-                if (d.pesaRielInfo)   html += trRiel('⚖ Pesa', '1 und. (riel de cuerda)', d.pesaRielInfo);
+                if (d.tensorInfo)     html += trRiel('🔗 Tensor', '1 und. (riel de cuerda)', d.tensorInfo);
             } else {
                 if (d.tapaRielInfo) html += trRiel('🧢 Tapas de riel', '2 und.', d.tapaRielInfo);
                 if (d.bastonInfo)   html += trRiel('🪄 Bastón', (haciaExtremos ? '2' : '1') + ' und.' + (haciaExtremos ? ' (hacia los extremos)' : ''), d.bastonInfo);
             }
-            if (d.topeRielInfo)    html += trRiel('⛔ Topes', (haciaExtremos ? '2' : '1') + ' und.' + (haciaExtremos ? ' (hacia los extremos)' : ''), d.topeRielInfo);
+            if (d.frenosLateralesInfo) html += trRiel('🛑 Frenos laterales', (haciaExtremos ? '2' : '1') + ' und.' + (haciaExtremos ? ' (hacia los extremos)' : ''), d.frenosLateralesInfo);
             if (d.soporteRielInfo) html += trRiel('🔩 Soportes de riel', soportes + ' und. (según ancho)', d.soporteRielInfo);
             html += '</table>';
             caja.className = 'previsualizacion ok';

@@ -32,8 +32,8 @@ import java.util.stream.Collectors;
  * Recibos de caja de la sede Sabana (La Calera). Rutas "/recibos/sabana/**".
  *
  * Es un módulo aparte de los recibos de Almacén y Fábrica: tabla propia, numeración
- * propia (0001, 0002…) y encabezado propio (Giovanny Andrés Romero Fagua · sedes Granada,
- * Av. Bolívar, Centro y La Calera: Calle 9 #7A-53 · Celular 3041354963).
+ * propia (0001, 0002…) y encabezado propio (Giovanny Andrés Romero Fagua · Fábrica: Calle 15 #14-20,
+ * Sede Granada y Sede La Calera: Calle 9 #7A-53 · Celular 3041354963 - 3115580796).
  *
  * SOLO lo pueden usar el administrador Fabián (usuario "Fabian", rol ADMIN) y Giovanny
  * (usuario "giovanny", rol SABANA). Los demás administradores y usuarios no lo ven en el

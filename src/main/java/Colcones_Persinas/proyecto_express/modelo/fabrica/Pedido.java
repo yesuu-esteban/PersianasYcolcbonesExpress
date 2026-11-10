@@ -353,7 +353,8 @@ public class Pedido {
 
     @Transient
     public double getCorteCuerdaOnda() {
-        return Math.round((this.ancho * 2 + 4.0) * 1000.0) / 1000.0;
+        // Cuerda del riel de cuerda: el doble del ANCHO DEL RIEL (el corte del riel) + 4 metros
+        return Math.round((getCorteRiel() * 2 + 4.0) * 1000.0) / 1000.0;
     }
 
     @Transient
@@ -390,20 +391,20 @@ public class Pedido {
     }
 
     /**
-     * Pesa del riel: solo cuando el riel es de CUERDA (lleva polea). 1 unidad.
-     * Con bastón no lleva pesa.
+     * Tensor del riel: solo cuando el riel es de CUERDA (lleva polea). 1 unidad.
+     * Con bastón no lleva tensor.
      */
     @Transient
-    public int getCantidadPesaRiel() {
+    public int getCantidadTensorRiel() {
         return Boolean.TRUE.equals(this.usaPolea) ? 1 : 0;
     }
 
     /**
-     * Tope del riel: lo lleva siempre, sea de cuerda o de bastón.
+     * Frenos laterales del riel: los lleva siempre, sea de cuerda o de bastón.
      * 2 si abre "Hacia los extremos" (uno en cada extremo); si abre a un solo lado, 1.
      */
     @Transient
-    public int getCantidadTopesRiel() {
+    public int getCantidadFrenosLaterales() {
         return "Hacia los extremos".equalsIgnoreCase(this.ladoApertura) ? 2 : 1;
     }
 

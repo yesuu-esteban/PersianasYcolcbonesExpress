@@ -121,8 +121,8 @@ public class InventarioServicio {
         public String tapaRielInfo;
         public String bastonInfo;
         public String soporteRielInfo;
-        public String pesaRielInfo;
-        public String topeRielInfo;
+        public String tensorInfo;
+        public String frenosLateralesInfo;
         public List<String> faltantes = new ArrayList<>();
     }
 
@@ -1060,16 +1060,16 @@ public class InventarioServicio {
                     obtenerInsumoPorNombre("Cuerda Onda Serena"), p.getCorteCuerdaOnda(), null));
             intentarPaso(plan, estricto, () -> usarUnidades(sim, plan, "⚙ Polea", "Polea", p.getCantidadPoleas()));
             intentarPaso(plan, estricto, () -> usarUnidades(sim, plan, "✖ Crusador", "Crusador", p.getCantidadTerminalPolea()));
-            // Riel de cuerda: lleva 1 pesa
-            intentarPaso(plan, estricto, () -> usarUnidades(sim, plan, "⚖ Pesa riel", "Pesa Riel", p.getCantidadPesaRiel()));
+            // Riel de cuerda: lleva 1 tensor
+            intentarPaso(plan, estricto, () -> usarUnidades(sim, plan, "🔗 Tensor", "Tensor", p.getCantidadTensorRiel()));
         } else {
             intentarPaso(plan, estricto, () -> usarUnidades(sim, plan, "🧢 Tapa riel", "Tapa Riel", p.getCantidadTapasRiel()));
             String nombreBaston = (p.getBastonElegido() != null && !p.getBastonElegido().isBlank())
                     ? p.getBastonElegido() : "Bastón 0.80";
             intentarPaso(plan, estricto, () -> usarUnidades(sim, plan, "🦯 Bastón", nombreBaston, p.getCantidadBaston()));
         }
-        // Tope: siempre (cuerda o bastón); 2 si abre hacia los extremos, si no 1
-        intentarPaso(plan, estricto, () -> usarUnidades(sim, plan, "⛔ Tope riel", "Tope Riel", p.getCantidadTopesRiel()));
+        // Frenos laterales: siempre (cuerda o bastón); 2 si abre hacia los extremos, si no 1
+        intentarPaso(plan, estricto, () -> usarUnidades(sim, plan, "🛑 Freno lateral", "Freno Lateral", p.getCantidadFrenosLaterales()));
         intentarPaso(plan, estricto, () -> usarUnidades(sim, plan, "🔩 Soporte riel", "Soporte Riel", p.getCantidadSoportesRiel()));
     }
 
@@ -2196,11 +2196,11 @@ public class InventarioServicio {
             });
 
             intentar(res, () -> {
-                Insumo pesa = obtenerInsumoPorNombre("Pesa Riel");
-                int stock = pesa.getStockUnidades() != null ? pesa.getStockUnidades() : 0;
-                int necesario = pedido.getCantidadPesaRiel();
-                if (stock < necesario) throw new MaterialInsuficienteException("Sin stock suficiente de \"Pesa Riel\".");
-                res.pesaRielInfo = "Pesa Riel ×" + necesario + " · quedarían " + (stock - necesario);
+                Insumo tensor = obtenerInsumoPorNombre("Tensor");
+                int stock = tensor.getStockUnidades() != null ? tensor.getStockUnidades() : 0;
+                int necesario = pedido.getCantidadTensorRiel();
+                if (stock < necesario) throw new MaterialInsuficienteException("Sin stock suficiente de \"Tensor\".");
+                res.tensorInfo = "Tensor ×" + necesario + " · quedarían " + (stock - necesario);
             });
         } else {
             intentar(res, () -> {
@@ -2223,11 +2223,11 @@ public class InventarioServicio {
         }
 
         intentar(res, () -> {
-            Insumo tope = obtenerInsumoPorNombre("Tope Riel");
-            int stock = tope.getStockUnidades() != null ? tope.getStockUnidades() : 0;
-            int necesario = pedido.getCantidadTopesRiel();
-            if (stock < necesario) throw new MaterialInsuficienteException("Sin stock suficiente de \"Tope Riel\".");
-            res.topeRielInfo = "Tope Riel ×" + necesario + " · quedarían " + (stock - necesario);
+            Insumo freno = obtenerInsumoPorNombre("Freno Lateral");
+            int stock = freno.getStockUnidades() != null ? freno.getStockUnidades() : 0;
+            int necesario = pedido.getCantidadFrenosLaterales();
+            if (stock < necesario) throw new MaterialInsuficienteException("Sin stock suficiente de \"Freno Lateral\".");
+            res.frenosLateralesInfo = "Freno Lateral ×" + necesario + " · quedarían " + (stock - necesario);
         });
 
         intentar(res, () -> {
